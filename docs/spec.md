@@ -70,7 +70,7 @@ that rather than calling everything a "mod."
 2. **Showcase** — Browse all projects with art, description, type, MC version/loader, and download counts.
 3. **Link out to downloads** — Each project links to Modrinth / CurseForge / other hosts (no self-hosting of mod files).
 4. **Discussion** — Visitors can comment on projects, **only when signed in with Google** (spam/bot/abuse prevention).
-5. **Donations (later)** — Connect to a donation platform so people can support his work.
+5. **Donations (Phase 2) — Ko-fi.** Embedded Ko-fi panel on a `/support` page + floating button; later, Ko-fi webhook → Supabase for a supporters wall / goal bar. Account under David/StudioBing (Ko-fi requires 18+). Details in `platform-audit.md`. (Decided 2026-08-16.)
 6. **Oliver-maintainable** — Two editing surfaces: (a) **Claude Code in VS Code** on his own clone of this repo (his existing workflow); (b) a **very simple admin UI** for changes that are annoying via prompt (feature/hide/reorder, moderation, settings, uploads).
 7. **Fun, on-brand aesthetic** — purple / gold crown / glowing green; pixel-art sensibility without being unusable.
 
@@ -87,7 +87,7 @@ that rather than calling everything a "mod."
   - **Multiple moderators**: Oliver can grant mod access to others (e.g. David). Mods can delete/hide comments and ban users.
   - **Notifications**: on/off toggle for new-comment alerts (email initially; Discord webhook optional).
 - **Admin UI (minimal)** — moderation queue, moderator list, settings toggles, feature/hide/reorder items, upload skins/art. Everything else via Claude Code edits.
-- **Donations** — placeholder / later phase.
+- **Support** — Ko-fi panel embed + floating button (Phase 2); supporters wall via webhook (Phase 2b).
 
 ## 6. Non-goals (for now)
 
