@@ -36,7 +36,7 @@ Claude Code session here** from the exported bundle/HTML, then commit it.
 
 ### Bringing the materials back into this repo
 1. **Export** from Claude Design via "Hand off to Claude Code" (download bundle, or it pushes to the attached repo). Also save the project **share URL** and HTML exports of key screens.
-2. **Land under `design/claude-design-export/`** — raw and unmodified. If Claude Design pushed a branch/PR, **review before merging**: design files only, no app scaffold; move anything placed at root into `design/`. Copy produced art into `assets/brand/`.
+2. **Land under `design/claude-design-export/pass-N/`** — raw and unmodified. If Claude Design pushed a branch/PR, **review before merging**: design files only, no app scaffold; move anything placed at root into `design/`. Copy produced art into `assets/brand/`.
 3. **Derive `DESIGN.md`** at repo root in a Claude Code session here (tokens, components + states, layout, motion, voice, do/don'ts, asset specs), with a contrast/mobile/coverage sanity pass; gaps → `docs/questions.md`.
 4. **Loop:** the export is a snapshot; `DESIGN.md` is the source of truth. Re-export on later iterations and update `DESIGN.md`; the `design-check` skill enforces it.
 

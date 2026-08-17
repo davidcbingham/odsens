@@ -7,7 +7,7 @@ We're done with this pass. Please commit the results to the connected GitHub rep
 ## Rules
 - Work on a **new branch** named `design/pass-2` (never commit directly to `main`) and open a **pull request** into `main` when done. My dad reviews and merges.
 - **Design files only.** Do not scaffold an app, add a framework, package.json, build config, or any code outside `design/`. The framework hasn't been chosen.
-- Do not modify anything under `docs/`, `assets/brand/`, `.env*`, `README.md`, or `CLAUDE.md`. Do not touch `design/claude-design-export/` files from pass 1.
+- Do not modify anything under `docs/`, `assets/brand/`, `.env*`, `README.md`, or `CLAUDE.md`. Do not touch existing `design/claude-design-export/pass-1/` or `pass-2/` files.
 - Do not delete or rename anything.
 
 ## Where things go

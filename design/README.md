@@ -1,49 +1,19 @@
 # design/ — Claude Design handoff materials
 
-**Export:** "Three design directions" — 2026-08-16, from Oliver's Claude Design session (claude.ai Design tab).
-**Chosen direction: C — Crate Poster** (blocky poster type on flat colour slabs, hard 2px edges, offset block shadows,
-zero blur). Directions A (Pixel Crown) and B (Soft Blocky) kept for reference.
+Each Claude Design cycle lands in its own folder under `claude-design-export/`. The durable artifact is repo-root
+**`DESIGN.md`**; the folders are raw reference (open the `.dc.html` prototypes in a browser). Do not edit exports in place.
 Claude Design project share URL: _(add)_
 
-## `claude-design-export/` — raw export (reference only; do not edit)
-| File | What |
-|---|---|
-| `Direction A/B/C - *.dc.html` | The three explored directions |
-| `odsens Design System.dc.html` | Tokens, type, components with states |
-| `odsens Screens - Core.dc.html` | Home, Projects grid, Project detail (desktop 1280 + phone 390) |
-| `odsens Screens - Sections.dc.html` | Videos, Skins (reserved), Art, Support, Custom Orders, Admin |
-| `handoff/DESIGN.md` | Handoff spec as exported (canonical copy lives at repo-root `DESIGN.md`) |
-| `assets/` | Art used by the prototypes (kept here so the HTML renders; canonical copies in `assets/brand/`) |
-| `uploads/` | Only the two unique screenshots Oliver uploaded; other uploads were byte-identical to `assets/` and dropped |
-| `github.md`, `support.js`, `.thumbnail` | Export metadata / prototype runtime |
+| Folder | Date | What | Outcome |
+|---|---|---|---|
+| `pass-1/` | 2026-08-16 | Three directions (A Pixel Crown, B Soft Blocky, **C Crate Poster** chosen), design system, Core screens (Home/Projects/Detail), Section screens (Videos/Skins/Art/Support/Custom Orders/Admin), `handoff/DESIGN.md` v1, prototype `assets/`, 2 unique `uploads/` screenshots | `DESIGN.md` v1 → reviewed to v1.1 (`docs/design-review.md`) |
+| `pass-2/` | 2026-08-17 | Coverage pass: Accounts & Comments screens (handle onboarding, profile, comment states), Admin & States screens (Settings/Stats/Orders/gate, upload well, 404/error/skeletons/empty/toasts, support wrapper, video facades, Privacy), `handoff/DESIGN.md` v1.2, `CHANGELOG.md`, `PULL-REQUEST.md`, `FILE-LIST.txt`; pass-1 files carried forward | `DESIGN.md` v1.2 (+ v1.2a decisions) |
+| `pass-3/` | _(incoming)_ | Notification settings matrix · Seen on (item row, Home strip, aggregate page, admin Mentions) · Workrooms (Phase 2, design-ahead) · Email + Discord templates · Supporters leaderboard · handle-guidance copy · privacy line · versions changelog cell · Custom Orders confirmation · nav update — brief: `docs/claude-design-pass3-prompt.md` | → `DESIGN.md` v1.3 |
 
-Open the `.dc.html` files in a browser to view the prototypes.
+## Where things went (pass 1)
+- `handoff/DESIGN.md` → **`/DESIGN.md`** (paths repointed to `assets/brand/…`)
+- prototype `assets/` → canonical copies in `assets/brand/{avatar,skins,art,thumbnails}/`
 
-## Where things went
-- `handoff/DESIGN.md` → **`/DESIGN.md`** (paths repointed to `assets/brand/…`) — the source of truth from here on.
-- `assets/avatar.png` → `assets/brand/avatar/oddsense-avatar-5000.png`
-- `assets/skin-*.png` → `assets/brand/skins/` (64×64 source textures — render as 3D, never display flat)
-- `assets/art-*.png` → `assets/brand/art/` (PFPs / renders for the Art gallery)
-- `assets/thumb-*.png` → `assets/brand/thumbnails/` (video thumbnails)
-
-If the design is iterated again in Claude Design, re-export into a dated subfolder here and update `DESIGN.md`.
-
----
-
-## Pass 2 (2026-08-17) — `claude-design-export/pass-2/`
-
-Second Claude Design session: same Crate Poster direction, filling the coverage gaps the functional spec exposed.
-Claude Design project share URL: _(add)_
-
-| File | What |
-|---|---|
-| `handoff/DESIGN.md` | Spec as exported, v1.2 (canonical copy at repo-root `DESIGN.md`, paths repointed to `assets/brand/…`) |
-| `CHANGELOG.md` | What changed since v1 and why |
-| `odsens Screens - Accounts and Comments.dc.html` | Handle onboarding, handle/picture states, square crop, profile menu, Your profile, comment thread + every action and edge state |
-| `odsens Screens - Admin and States.dc.html` | Admin Settings / Stats / Orders / sign-in gate, upload well, 404, generic error, loading skeletons, empty states, toasts, support wrapper, video facades, Privacy page + footer |
-| `odsens Design System.dc.html`, `odsens Screens - Core.dc.html`, `odsens Screens - Sections.dc.html`, `Direction A/B/C - *.dc.html` | Carried forward from pass 1, unchanged |
-| `assets/`, `support.js`, `github.md` | Art the prototypes reference (canonical copies in `assets/brand/`) + export metadata / runtime |
-
-Highlights: `--orange #E8762A` added for CurseForge and source colours fixed app-wide (Modrinth green, CurseForge orange, direct indigo) · card and panel outlines lifted to `--line-soft` · user notification bell cut from v1 · Shorts row on Videos · mod actions only auto-show on held/reported comments, otherwise behind a `Moderate ON/OFF` toggle · new components: handle field, square toggle, picture upload + crop, toast, skeleton, upload well, stat tile, flat bar chart, video facade, profile menu, mod action row.
-
-Still missing before build: project icons, in-game screenshots, rendered 3D skin previews.
+## Landing a new pass
+Drop the export zip in `pass-N/`, then Claude Code unpacks, verifies (design files only, `assets/brand` paths, prior
+corrections preserved), places files, updates `DESIGN.md`, and re-runs the coverage check. Process: `docs/design-process.md`.

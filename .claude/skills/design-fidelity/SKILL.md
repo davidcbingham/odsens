@@ -1,6 +1,6 @@
 ---
 name: design-fidelity
-description: Front-end fidelity specialist for odsens.com — verifies built UI matches DESIGN.md (tokens, type, spacing, edges, components, states, voice) and the Claude Design prototypes in design/claude-design-export, with computed contrast checks and desktop+phone screenshots. Use when building or changing any visible UI; called by build-phase, new-feature, and restyle.
+description: Front-end fidelity specialist for odsens.com — verifies built UI matches DESIGN.md (tokens, type, spacing, edges, components, states, voice) and the Claude Design prototypes in design/claude-design-export/pass-*/, with computed contrast checks and desktop+phone screenshots. Use when building or changing any visible UI; called by build-phase, new-feature, and restyle.
 ---
 
 # design-fidelity

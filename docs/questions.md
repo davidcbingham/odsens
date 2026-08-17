@@ -95,3 +95,6 @@ Answered items get folded into `spec.md` and struck here.
 41. **Mention click behaviour** — embed the third-party video inline (facade) with an "on YouTube ↗" link (proposed), or always link out? *(Oliver)*
 42. **Claude Design pass 3?** — Seen on + Workrooms can be built from existing components per DESIGN.md §12; does Oliver want to art-direct them first? *(Oliver)*
 43. **Workroom email opt-in copy + privacy page line** — draft when Phase 2 starts.
+
+## Design pass 3 (queued 2026-08-17) — brief in `docs/claude-design-pass3-prompt.md`
+Notification matrix (site-level, decided) · Seen on (item row, Home strip, aggregate page, admin Mentions + Suggested) · Workrooms (P2, design-ahead) · Email + Discord templates · Supporters leaderboard · handle-guidance copy · privacy line · versions changelog · Custom Orders confirmation · nav order (Claude Design to propose). Lands in `design/claude-design-export/pass-3/` → `DESIGN.md` v1.3.
