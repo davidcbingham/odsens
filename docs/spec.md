@@ -23,7 +23,7 @@ Oliver already builds his mods with **Claude Code inside VS Code**, so that is t
 |---|---|
 | Domain | **odsens.com** (purchased via Squarespace; DNS to be pointed at Vercel) |
 | Handle | **OddSense** (Modrinth, CurseForge, Scratch, Roblox display name), **@OdSens** (YouTube), Minecraft IGN `oddsense` (UUID `36a329d1-4a13-41dc-a3d4-1ea956c2956d`) |
-| Display name | OddSense |
+| Naming model | **OddSense** = Oliver the person (his username on the site) and his Minecraft character. **odsens** = the website/brand. Keep these distinct in copy and UI. |
 | Avatar | Pixel-art Minecraft character: **purple** hoodie/armor, **gold crown**, **glowing green eyes**, black face, white outline. Oliver has lots of original art across his mods and can supply more. |
 | Disambiguation | **NOT** related to *oddsensenyc.com* (a NYC creative studio, 2018–2024, now closed). Zero overlap, no references, no shared branding. |
 
@@ -73,7 +73,7 @@ that rather than calling everything a "mod."
 4. **Discussion** — Visitors can comment on projects, **only when signed in with Google** (spam/bot/abuse prevention).
 5. **Support (Phase 2) — Ko-fi.** Tipping must be **maximum usability, minimum clicks** — embedded Ko-fi panel on the site (no bounce to Ko-fi where avoidable) + floating button. Later: Ko-fi webhook → Supabase for a supporters wall / goal bar / **donor leaderboard tied to site accounts** (idea queue). Account under David/StudioBing (Ko-fi requires 18+). Details in `platform-audit.md`. (Decided 2026-08-16.)
 5b. **Custom Orders (future)** — visitors can describe a mod/skin/etc. they want and **hire Oliver** to make it. Likely built on **Ko-fi Commissions** (native request form + payment; webhook `type: "Commission"`) with an odsens.com front door. Needs a design-detail session (scope, pricing, comms, expectations for a minor creator).
-6. **Oliver-maintainable** — Two editing surfaces: (a) an **Admin UI** (primary for content) with an add/edit menu for **every content type the site hosts** — exclusive projects (mod / datapack / resource pack / plugin), skins, art — plus curation of synced items, moderation, and settings; (b) **Claude Code in VS Code** on his own clone of this repo (primary for changing the site itself). (Decided 2026-08-16.)
+6. **Oliver-maintainable** — Two editing surfaces plus a helper team: (a) an **Admin UI** (primary for content) with an add/edit menu for **every content type the site hosts** — exclusive projects (mod / datapack / resource pack / plugin), skins, art — plus curation of synced items, moderation, and settings; (b) **Claude Code in VS Code** on his own clone of this repo (primary for changing the site itself); (c) **repo-committed Claude skills** — "the site management team" — that encode how to add/curate content, sync, moderate, deploy, and check design (`docs/site-management-skills.md`). (Decided 2026-08-16.)
 7. **Fun, on-brand aesthetic** — purple / gold crown / glowing green; pixel-art sensibility without being unusable.
 
 ## 5. Functional scope (initial thinking — to be confirmed)
@@ -90,7 +90,7 @@ that rather than calling everything a "mod."
   - **Moderation mode is an admin setting**: *auto-publish for signed-in users* vs. *hold first-time commenters for approval*. Start permissive; tighten if abuse appears.
   - **Multiple moderators**: Oliver can grant mod access to others (e.g. David). Mods can delete/hide comments and ban users.
   - **Notifications**: on/off toggle for new-comment alerts. Channels and infrastructure (email / Discord / in-app / push) to be settled in a dedicated design session.
-  - **Threading/reactions**: flat comments to start; revisit in the comments design session.
+  - **Threaded replies** (so Oliver can respond in-thread) and **likes** on comments (feedback signal). Details in the comments design session.
 - **Admin UI** (auth-gated; Oliver + moderators/admins) — a menu with one section per hosted content type:
   - **Projects** — create/edit exclusive projects (Modrinth-shaped form: metadata, gallery, versions + file upload); curate synced Modrinth projects (feature / hide / reorder / extra art).
   - **Skins** — add/edit (details per future skins design).
@@ -124,6 +124,8 @@ that rather than calling everything a "mod."
 
 ## 8. Aesthetic direction (early)
 
+- **Tone: playful and cartoony — fun, relaxed, inviting.** (Decided 2026-08-16.)
+- Design system will be produced as a repo-root **`DESIGN.md`** in a Claude Design session with Oliver — see `docs/design-process.md`. Inspiration hunt happens after the functional spec is complete.
 - Palette from avatar: deep purple, gold, glowing green accent, near-black background, white outline highlights.
 - Pixel/blocky motifs (Minecraft-adjacent) used tastefully — chunky borders, pixel icons — but readable typography and clean layout.
 - Dark theme first (matches YouTube/Modrinth vibe). Light theme optional.
@@ -145,4 +147,5 @@ See `docs/questions.md` — running list of open questions (answered items migra
 *Revision log*
 - 2026-08-16 — Initial draft from David's brief + Modrinth/Scratch public data.
 - 2026-08-16 — Folded in David's answers to Q1–3, 5–9; added platform audit (`platform-audit.md`).
+- 2026-08-16 — Threaded comments + likes; naming model; tone; DESIGN.md/Claude Design process; inspiration-hunt process; site-management skills plan.
 - 2026-08-16 — Ko-fi chosen. Oliver's input: exclusive on-site projects (Modrinth-shaped schema, file hosting), CurseForge download totals, no Scratch, Skins + Art sections native. `.env.example` added.

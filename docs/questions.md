@@ -16,17 +16,17 @@ Answered items get folded into `spec.md` and struck here.
 
 ## Comments & moderation
 9. ~~**Moderation model**~~ — **Answered:** See earlier batch — admin setting; multi-mod; notifications toggle.
-10. ~~**Replies / threads / reactions**~~ — **Answered:** Considered answered (David, 2026-08-16). Working assumption: **flat comments** to start; threading/reactions decided in the comments design-detail session.
+10. ~~**Replies / threads / reactions**~~ — **Answered:** **Threaded comments + likes.** Threads let Oliver reply to people; likes surface feedback on what resonates. (Updated 2026-08-16.)
 11. ~~**Notifications**~~ — **Answered:** Yes, but **channels + infrastructure need a dedicated design session** (email / Discord / in-app / push; per-event types). Added to Future Design Sessions.
 
 ## Donations
 12. ~~**Platform**~~ — **Answered:** **Ko-fi**, with **maximum usability, minimum clicks** — embedded panel, no redirect where avoidable. Also: 12b **Custom Orders / commissions** (leverage Ko-fi Commissions), 12c **donor leaderboard** (idea queue).
 
 ## Identity & aesthetic
-13. **Name presentation** — "OddSense" everywhere, with odsens.com as the short URL? Or lean into "odsens" as the brand?
-14. **Existing art assets** — *(David: yes)* Oliver will gather a folder of source art (avatar at high res / original pixel size, banners, project icons, textures) into the repo (e.g. `assets/brand/`)?
-15. **Tone** — Playful/troll-humor (matches Metal Pipe Mace, Troll Resources) vs. polished portfolio? Probably both — but which leads?
-16. **Reference sites** — Any creator sites Oliver likes the look of (other modders' pages, game sites) we should use as inspiration?
+13. ~~**Name presentation**~~ — **Answered:** **OddSense** = Oliver (his username on the site) and his Minecraft character. **odsens** = the website/brand — distinct from the person and character.
+14. ~~**Existing art assets**~~ — **Answered:** Yes. Oliver will work with Claude in a separate **Claude Design** session to produce a `DESIGN.md`. Process + advantages documented in `docs/design-process.md`.
+15. ~~**Tone**~~ — **Answered:** **Playful and cartoony. Fun, relaxed, inviting.**
+16. ~~**Reference sites**~~ — **Answered:** No named references. After the functional spec is complete: abstract it into site/functionality types → Claude searches for examples → Oliver critiques good/bad. Process in `docs/design-process.md`.
 
 ## Technical / accounts
 17. ~~**Framework**~~ — **Answered:** Deferred until design spec settles; pick best fit.
@@ -48,10 +48,16 @@ Answered items get folded into `spec.md` and struck here.
 ## Future design-detail sessions (agreed, not yet scheduled)
 - **Skins section** — how skins are shown, viewer, download, metadata (from Q4)
 - **Notifications** — channels (email / Discord / in-app / push), which events, infrastructure (from Q11)
-- **Comments** — threading vs flat, reactions, moderation UX (from Q10)
+- **Comments** — threaded + likes UX, notification hooks, moderation UX (from Q10)
 - **Custom Orders** — intake form, scope, pricing, payment, communication, tying to Ko-fi Commissions (from Q12b)
 - **Asset IA** — categories, file types, pixel dimensions for `assets/brand/` (from Q14)
 
 ## Idea queue (not committed)
 - **Donor leaderboard** — ranks supporters by total tipped; **ties to site account names** (Google-authenticated users). Needs a way to link a Ko-fi payment to a site account (e.g. Ko-fi webhook `email`/`from_name` match, or a "link my Ko-fi" step / code in the tip message). Privacy: opt-in display name.
 - **Custom Orders** — see design session above.
+
+## Post-spec workstreams (agreed 2026-08-16)
+- **DESIGN.md** via Claude Design session with Oliver → `docs/design-process.md`
+- **Inspiration hunt** from abstracted functionality → `docs/design-process.md`
+- **Site management skills** (repo-committed `.claude/skills/`) → `docs/site-management-skills.md`
+- **Framework choice** — after design + functional spec
