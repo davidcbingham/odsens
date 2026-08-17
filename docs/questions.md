@@ -74,3 +74,8 @@ Answered items get folded into `spec.md` and struck here.
 35. **Comment limits** — placeholders in the design: 1000 chars, one link per comment. Confirm.
 36. **Under-13 line** on the Privacy page ("don't sign in") — needs David's call before ship.
 37. **Still-missing art**: project icons, in-game screenshots, rendered 3D skin busts (build-time via skinview3d).
+
+## From data-model design (2026-08-17) — see `docs/data-model.md`
+38. **Auto-hold on reports** — should a comment with ≥3 reports be auto-held pending review? (Proposed yes.)
+39. **CurseForge id mapping** — Oliver enters each CF project id/URL once in admin (simple, reliable) vs. auto-search by author via API. (Proposed manual; only a few projects.)
+40. **Comment edit window** — proposed 15 minutes; then no edits (delete only). OK?

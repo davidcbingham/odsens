@@ -8,6 +8,8 @@ Portfolio and project site for **OddSense** — Minecraft mods, datapacks, resou
 |---|---|
 | [docs/spec.md](docs/spec.md) | The project specification — purpose, identity, goals, functional scope, infra, aesthetic, privacy |
 | [docs/platform-audit.md](docs/platform-audit.md) | Which external platforms we pull from / embed (Modrinth, YouTube, CurseForge, Ko-fi…) and what stays native |
+| [docs/framework-decision.md](docs/framework-decision.md) | Stack decision: Next.js + Supabase, and why |
+| [docs/data-model.md](docs/data-model.md) | Tables, storage buckets, RLS outline, sync jobs, key flows |
 | [docs/design-process.md](docs/design-process.md) | How the design system (`DESIGN.md`) is produced with Claude Design and handed off to Claude Code |
 | [docs/claude-design-seed-prompt.md](docs/claude-design-seed-prompt.md) | The kickoff prompt for the Claude Design session |
 | [docs/site-management-skills.md](docs/site-management-skills.md) | Planned repo-committed Claude skills for maintaining the site |

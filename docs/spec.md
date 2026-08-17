@@ -152,6 +152,7 @@ See `docs/questions.md` — running list of open questions (answered items migra
 *Revision log*
 - 2026-08-16 — Initial draft from David's brief + Modrinth/Scratch public data.
 - 2026-08-16 — Folded in David's answers to Q1–3, 5–9; added platform audit (`platform-audit.md`).
+- 2026-08-17 — Data model + sync design: `docs/data-model.md`.
 - 2026-08-17 — Framework decided: Next.js + Supabase (`docs/framework-decision.md`).
 - 2026-08-17 — Design pass 2 landed: `DESIGN.md` v1.2 (§11), new screens; Q28–32 resolved; Q33–37 added.
 - 2026-08-16 — Claude Design export landed: `DESIGN.md` v1 (Crate Poster), prototypes in `design/`, art in `assets/brand/`.
