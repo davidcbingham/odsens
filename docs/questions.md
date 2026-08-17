@@ -87,4 +87,5 @@ Answered items get folded into `spec.md` and struck here.
 - [ ] Vercel project `odsens` linked to the GitHub repo; env vars per environment; `CRON_SECRET`
 - [ ] Ko-fi account (18+, StudioBing) with page `oddsense` if available (phase 2)
 - [ ] Resend account + verified sending domain (odsens.com) for admin emails
+- [ ] Docker runtime on David's Mac (OrbStack recommended) for local Supabase — see `docs/dev-tooling.md`
 - [ ] Decisions: Q33–40
