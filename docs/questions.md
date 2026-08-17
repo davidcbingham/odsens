@@ -84,7 +84,7 @@ Answered items get folded into `spec.md` and struck here.
 - [x] Google Cloud project + OAuth client + YouTube key — done, Supabase Google provider configured via `supabase config push` (`docs/setup-google-cloud.md`)
 - [ ] CurseForge for Studios API key → `.env`
 - [x] Supabase project **`odsens`** created (ref `dllbekulbimblrsrxuyv`, us-east-2) and linked from the repo (`supabase/config.toml`) — treated as **production**. Staging = **Supabase Branching** (decided; set up at first preview deploy)
-- [ ] Vercel project `odsens` linked to the GitHub repo; env vars per environment; `CRON_SECRET`
+- [x] Vercel project `odsens` linked (id `prj_fTdiX6oYxyQ8CnAmzSzKnCb74MkU`), Standard protection on, env vars seeded, `CRON_SECRET` generated
 - [ ] Ko-fi account (18+, StudioBing) with page `oddsense` if available (phase 2)
 - [ ] Resend account + verified sending domain (odsens.com) — DNS records at Squarespace; batch with the Vercel DNS cutover
 - [ ] **Discord**: confirm Oliver has his own server; create a private `#odsens-admin` channel + webhook URL → `.env` `DISCORD_WEBHOOK_URL` (also settable in admin Settings)

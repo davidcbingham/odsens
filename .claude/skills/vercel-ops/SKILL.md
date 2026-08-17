@@ -6,12 +6,12 @@ description: Vercel specialist for odsens.com — project config, environment va
 # vercel-ops
 
 ## Facts
-Project: odsens (StudioBing team) · Framework: Next.js App Router · Domain: odsens.com (registrar Squarespace, DNS → Vercel: A `76.76.21.21` / CNAME `cname.vercel-dns.com`, verify in dashboard) · Env var names: see `.env.example`.
+Project: **odsens** (team `studiobing`, id `prj_fTdiX6oYxyQ8CnAmzSzKnCb74MkU`; linked via `.vercel/`) · Framework: Next.js App Router · Node 24.x · Deployment Protection: Standard (open only when launching) · Domain: odsens.com (registrar Squarespace, DNS → Vercel: A `76.76.21.21` / CNAME `cname.vercel-dns.com`, verify in dashboard) · Env var names: see `.env.example`.
 
 ## Environments
 - **Preview**: every branch push; uses the **Supabase preview branch** for that PR (env vars injected by the Supabase↔Vercel integration) + test keys; `NEXT_PUBLIC_SITE_URL` = preview URL.
 - **Production**: `main` only; production Supabase; analytics on.
-- Env vars are set per-environment in the dashboard (or `vercel env pull/add`); never hardcode.
+- Env vars are set per-environment (`vercel env add NAME production --force` with the value on stdin; for **preview** the CLI prompts for a branch even with `--yes` → use the REST API `POST /v10/projects/<id>/env?upsert=true` with `target:["preview"]`, see `docs/dev-tooling.md`); never hardcode. `vercel env pull .env.vercel.local` to compare with `.env`.
 
 ## Cron (vercel.json)
 | path | schedule |
