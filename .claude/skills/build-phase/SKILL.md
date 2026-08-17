@@ -16,7 +16,7 @@ Initial build, a new phase (e.g. "Phase 2: Ko-fi"), or any change touching ≥2 
 1. **Restate scope** in ≤5 bullets; list spec/questions items that are unresolved → ask before building on an assumption.
 2. **Order the work** (default): migrations + RLS (`supabase-ops`) → server data layer + sync adapters (`backend-robustness`) → UI from `DESIGN.md` components (`design-fidelity`) → auth/uploads/webhooks hardening (`security-check`) → deploy config, env, cron (`vercel-ops`) → docs (`keep-docs` or inline).
 3. **Work in vertical slices** where possible (one feature end-to-end) rather than all-DB-then-all-UI; each slice = one PR with preview URL.
-4. **Gate each slice**: run the relevant specialist checklist and record pass/fail in the PR body. A slice doesn't merge with an open ❌.
+4. **Gate each slice — spawn the gate agents in parallel, in the background** (`.claude/agents/`): `design-fidelity-reviewer` (if UI touched), `security-reviewer` (if auth/uploads/webhooks/comments/admin touched), `backend-reviewer` (if server code touched), `supabase-reviewer` (if `supabase/` touched). Launch all applicable ones in one Agent call batch, keep working on the next slice while they run, then paste each verdict table into the PR body. After deploy, spawn `deploy-checker` on the preview URL. A slice doesn't merge with an open ❌; a second ❌ on the same item → stop and ask.
 5. **Freeze points**: after each phase, tag (`v0.x`), update `docs/spec.md` revision log, list what's deferred.
 6. **End of phase report**: what shipped, what's deferred, what Oliver should try, any new questions → `docs/questions.md`.
 

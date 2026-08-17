@@ -15,6 +15,7 @@ Ground rules
 - Secrets go in `.env` (gitignored); template in `.env.example`.
 
 Skills follow the hand-off protocol in `docs/skill-handoffs.md` (owns / does-not-own / triggers / stop-and-ask / hand-off note).
+Gate agents (in `.claude/agents/`, read-only, run in background/parallel): `design-fidelity-reviewer`, `security-reviewer`, `backend-reviewer`, `supabase-reviewer`, `deploy-checker` — spawn in a batch per slice, paste `GATE:` verdicts into the PR.
 Skills (in `.claude/skills/`): build specialists exist now — `build-phase` (foreman), `supabase-ops`, `vercel-ops`,
 `security-check`, `design-fidelity`, `backend-robustness`. Oliver's day-to-day team (`start-here`, `ship`, `whats-wrong`,
 `restyle`, `new-feature`, `db-change`, `add-content`, `sync-now`, `write-copy`, `stats`, `upkeep`, `keep-docs`) is spec'd in

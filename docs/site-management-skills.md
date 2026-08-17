@@ -115,6 +115,11 @@ and `/simplify` remain the generic layer underneath.
 | **`design-fidelity`** | Tokens-only CSS, component state parity with `DESIGN.md`, look rules, computed contrast, Playwright screenshots vs prototypes, voice | Screenshots + checklist in PR; deviations edit DESIGN.md |
 | **`backend-robustness`** | Idempotent sync, retries/timeouts/quotas, `sync_runs`, zod-validated actions and env, download route, notifications queue, fixture-based tests | Robustness checklist in PR |
 
+### Gate agents (`.claude/agents/`, exist now)
+`design-fidelity-reviewer` · `security-reviewer` · `backend-reviewer` · `supabase-reviewer` · `deploy-checker` — read-only,
+background, parallel-safe counterparts of the specialist gates. `build-phase`, `new-feature`, and `ship` spawn them in
+batches and paste the `GATE:` verdicts into the PR. See `docs/skill-handoffs.md` §4.
+
 ## 5. Later / optional
 - `moderate-cli` — bulk moderation from the terminal (only if the admin UI proves insufficient).
 - `orders` — help draft replies to custom-order requests in voice; track status.

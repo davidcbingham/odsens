@@ -50,5 +50,20 @@ Return to: <skill or human>   Blocking? yes/no
 | **upkeep** | dependency/platform updates, monthly checklist | features | major upgrade breaks build → `whats-wrong` · Supabase/Next major → follow `supabase-ops`/`vercel-ops` · ship → `ship` |
 | **keep-docs** | spec/questions/DESIGN changelog/data-model edits | anything else | contradiction found → **ask human** |
 
-## 4. Stop-and-ask list (no skill proceeds past these alone)
+## 4. Skills vs agents — which is which and why
+| Kind | Used for | Files |
+|---|---|---|
+| **Skill** (in-context, interactive) | orchestration and anything needing human confirms, edits, or a conversation: `build-phase`, `supabase-ops`, `vercel-ops`, `backend-robustness` (build mode), and all of Oliver's team | `.claude/skills/<name>/SKILL.md` |
+| **Agent** (subagent, background, parallel-safe, read-only) | the **gates**: verify and return a verdict without touching files: `design-fidelity-reviewer`, `security-reviewer`, `backend-reviewer`, `supabase-reviewer`, `deploy-checker` | `.claude/agents/<name>.md` |
+
+Rules for agents: read-only tools (Read/Grep/Glob/Bash for tests/screenshots; `deploy-checker` may WebFetch); they never
+edit, deploy, or merge; they return the standard `GATE:` verdict block, which the calling skill pastes into the PR. The
+caller launches all applicable gates **in one batch, in the background**, and keeps working. Skills call agents;
+agents never call skills — they name the owner in the verdict and the caller routes it. This keeps a human-visible
+checkpoint (the PR body) between verification and action.
+
+Oliver's helpers that are naturally agent-shaped later: `stats` (read-only report) and the diagnosis half of
+`whats-wrong` — add `stats-reporter` / `triage-agent` when those skills are written.
+
+## 5. Stop-and-ask list (no skill proceeds past these alone)
 Force-push · DROP table/column · delete Storage objects · production rollback · editing prod data by hand · publishing content · adding a colour/rule not in DESIGN.md · anything that changes what the site stores about people · a spec conflict · a missing secret value.
