@@ -19,7 +19,7 @@ description: Supabase specialist for odsens.com — schema migrations, RLS polic
 - Seed: `supabase/seed.sql` creates the settings row, an admin profile placeholder, and a couple of sample projects for local dev.
 
 ## Steps for a change
-1. Write migration (+ RLS + indexes + trigger if needed). 2. `supabase db reset` locally; run seed. 3. Regen types; fix TS errors. 4. Add/adjust tests that hit RLS as anon/user/mod/admin (Vitest against local Supabase). 5. Preview deploy uses the **staging** Supabase project (or branch); production via `supabase db push` only after preview verified. 6. Note reversibility in the PR.
+1. Write migration (+ RLS + indexes + trigger if needed). 2. `supabase db reset` locally; run seed. 3. Regen types; fix TS errors. 4. Add/adjust tests that hit RLS as anon/user/mod/admin (Vitest against local Supabase). 5. Preview deploys use a **Supabase preview branch** (Branching + GitHub/Vercel integrations; migrations auto-apply to the branch); production gets migrations when the PR merges to `main` (branching promotes) — verify in the dashboard; never `db push` by hand except to recover. 6. Note reversibility in the PR.
 
 ## Auth checklist
 Google provider enabled with client id/secret · Site URL + redirect URLs (prod, `*.vercel.app`, localhost) · email confirmations off (OAuth only) · `profiles` trigger creates row with null handle · middleware forces onboarding when handle is null · JWT contains no PII beyond sub.

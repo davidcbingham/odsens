@@ -9,7 +9,7 @@ description: Vercel specialist for odsens.com — project config, environment va
 Project: odsens (StudioBing team) · Framework: Next.js App Router · Domain: odsens.com (registrar Squarespace, DNS → Vercel: A `76.76.21.21` / CNAME `cname.vercel-dns.com`, verify in dashboard) · Env var names: see `.env.example`.
 
 ## Environments
-- **Preview**: every branch push; uses staging Supabase + test keys; `NEXT_PUBLIC_SITE_URL` = preview URL.
+- **Preview**: every branch push; uses the **Supabase preview branch** for that PR (env vars injected by the Supabase↔Vercel integration) + test keys; `NEXT_PUBLIC_SITE_URL` = preview URL.
 - **Production**: `main` only; production Supabase; analytics on.
 - Env vars are set per-environment in the dashboard (or `vercel env pull/add`); never hardcode.
 
