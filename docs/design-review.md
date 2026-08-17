@@ -60,3 +60,7 @@ Flags:
 1. Oliver answers #4, #9, #17, #18 (quick) — see `docs/questions.md` #28–31.
 2. Second Claude Design pass for the missing screens: **handle onboarding**, **comment actions/states**, **admin Settings + upload states**, **404/empty/loading**. Re-export → `design/claude-design-export/<date>/`.
 3. Verify Ko-fi preset-amount / overlay behaviour (#13) when the account exists.
+
+---
+## Pass 2 outcome (2026-08-17)
+All items in §C were addressed in `DESIGN.md` v1.2 / `design/claude-design-export/pass-2/`: handle onboarding + profile (8), bell cut from v1 (9), comment actions/states (10), admin Settings/Stats/Orders/upload states/gate (12), Ko-fi wrapper (13), 404/error/skeletons/empty/toasts (15), Privacy page + footer links (16), Shorts row (17), video facades (19). Item 11 (per-version changelog in the files table) and 14 (Custom Orders confirmation state) were **not** explicitly covered — carry to build or a pass 3. New open items → `docs/questions.md` #33–37.

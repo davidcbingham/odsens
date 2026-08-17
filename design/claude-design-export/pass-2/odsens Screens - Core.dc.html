@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#070B10; }
+  a { color:#8B86F5; text-decoration:none; }
+  a:hover { color:#B7B3FF; }
+</style>
+</helmet>
+<div style="background:#070B10;padding:48px;display:flex;flex-direction:column;gap:64px;font-family:'Space Grotesk',system-ui,sans-serif">
+
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:70ch">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.2em;color:#FFC61F">ODSENS.COM — CORE SCREENS</div>
+    <div style="font-family:'Bungee',sans-serif;font-size:34px;color:#fff;line-height:1">HOME · PROJECTS · PROJECT DETAIL</div>
+    <div style="font-size:16px;color:#9DA9BA;text-wrap:pretty">Desktop at 1280 and phone at 390, built from the system. Project names and counts are placeholders shaped like your real ones; icons and screenshots are reserved slots.</div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">01 — HOME / DESKTOP 1280</div>
+    <div data-screen-label="Home desktop" style="width:1280px;background:#0D131B;outline:2px solid #263242;color:#EEF1F6;overflow:hidden">
+      <div style="background:#151E29;border-bottom:2px solid #263242;padding:0 32px;display:flex;align-items:center;gap:24px;height:68px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <img src="assets/avatar.png" alt="OddSense avatar" style="width:40px;height:40px;object-fit:cover;border:2px solid #fff;display:block">
+          <div style="font-family:'Bungee',sans-serif;font-size:20px;color:#fff">ODSENS</div>
+        </div>
+        <div style="display:flex;gap:2px;align-items:center;margin-left:8px">
+          <div style="font-size:15px;font-weight:700;color:#fff;padding:10px 14px;box-shadow:inset 0 -3px 0 #FFC61F">Home</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Projects</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Videos</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Skins</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Art</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Commissions</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+          <div style="font-size:14px;font-weight:700;color:#EEF1F6;padding:11px 14px;outline:2px solid #3A4759">Sign in</div>
+          <div style="font-family:'Bungee',sans-serif;font-size:12px;background:#FFC61F;color:#2E2000;padding:12px 14px;box-shadow:3px 3px 0 #C08400">♥ SUPPORT</div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:stretch;border-bottom:2px solid #263242">
+        <div style="flex:1;background:#4B45D6;padding:44px 40px;display:flex;flex-direction:column;gap:20px;position:relative;overflow:hidden">
+          <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.12) 0 14px,transparent 14px 28px)"></div>
+          <div style="position:relative;display:flex;gap:10px;align-items:center">
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;background:#FFC61F;color:#2E2000;padding:6px 10px">★ ONLY ON ODSENS</div>
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#CFCCFF">NEW THIS WEEK</div>
+          </div>
+          <div style="position:relative;font-family:'Bungee',sans-serif;font-size:64px;line-height:.9;color:#fff">METAL PIPE<br>MACE</div>
+          <div style="position:relative;font-size:19px;color:#E4E2FF;max-width:38ch;text-wrap:pretty">A mace made out of a metal pipe. It does the sound. That is the whole mod.</div>
+          <div style="position:relative;display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding-top:4px">
+            <div style="font-family:'Bungee',sans-serif;font-size:15px;background:#FFC61F;color:#2E2000;padding:16px 22px;box-shadow:5px 5px 0 #C08400">DOWNLOAD</div>
+            <div style="font-size:15px;font-weight:700;color:#fff;padding:16px 20px;outline:2px solid rgba(255,255,255,.55)">See the project</div>
+          </div>
+          <div style="position:relative;display:flex;gap:8px;flex-wrap:wrap;padding-top:4px">
+            <div style="font-size:12px;font-weight:500;color:#fff;padding:6px 10px;outline:2px solid rgba(255,255,255,.4);border-radius:3px">1.21.x</div>
+            <div style="font-size:12px;font-weight:500;color:#fff;padding:6px 10px;outline:2px solid rgba(255,255,255,.4);border-radius:3px">Fabric</div>
+            <div style="font-size:12px;font-weight:500;color:#fff;padding:6px 10px;outline:2px solid rgba(255,255,255,.4);border-radius:3px">NeoForge</div>
+          </div>
+        </div>
+        <div style="width:440px;flex:none;background:#0D131B;border-left:2px solid #263242;display:flex;flex-direction:column">
+          <div style="flex:1;background:#111A24;display:grid;place-items:center;color:#4E5A6C;font-family:'Silkscreen',monospace;font-size:11px;min-height:240px;border-bottom:2px solid #263242">PROJECT SCREENSHOT 16:9</div>
+          <div style="padding:20px;display:flex;gap:14px;align-items:center">
+            <img src="assets/avatar.png" alt="" style="width:56px;height:56px;object-fit:cover;border:2px solid #fff;flex:none;display:block">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:15px;font-weight:700;color:#fff">OddSense makes things for Minecraft.</div>
+              <div style="font-size:14px;color:#9DA9BA">18 projects. 9,000-ish downloads. Mostly weapons and jokes.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:40px;display:flex;flex-direction:column;gap:20px;border-bottom:2px solid #263242">
+        <div style="display:flex;align-items:baseline;justify-content:space-between">
+          <div style="font-family:'Bungee',sans-serif;font-size:26px;color:#FFC61F">FEATURED PROJECTS</div>
+          <div style="font-size:15px;font-weight:700;color:#8B86F5">All 18 projects →</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px">
+          <div style="background:#151E29;outline:2px solid #263242;display:flex;flex-direction:column">
+            <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
+              <div style="width:56px;height:56px;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#4E5A6C">ICON</div>
+              <div style="font-family:'Bungee',sans-serif;font-size:17px;color:#fff;line-height:1.05">HEAVY SPEAR</div>
+              <div style="font-size:14px;color:#9DA9BA;line-height:1.5">Long reach, real weight, no shield.</div>
+            </div>
+            <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:11px 18px">
+              <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;background:#2A2680;color:#CFCCFF;padding:5px 9px"><span style="width:8px;height:8px;background:#8B86F5;display:block"></span>MOD</div>
+              <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">2,147 ↓</div>
+            </div>
+          </div>
+          <div style="background:#151E29;outline:2px solid #263242;display:flex;flex-direction:column">
+            <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
+              <div style="width:56px;height:56px;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#4E5A6C">ICON</div>
+              <div style="font-family:'Bungee',sans-serif;font-size:17px;color:#fff;line-height:1.05">PIXEL CHAMELEON</div>
+              <div style="font-size:14px;color:#9DA9BA;line-height:1.5">It hides. Sometimes too well.</div>
+            </div>
+            <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:11px 18px">
+              <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;background:#2A2680;color:#CFCCFF;padding:5px 9px"><span style="width:8px;height:8px;background:#8B86F5;display:block"></span>MOD</div>
+              <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">1,604 ↓</div>
+            </div>
+          </div>
+          <div style="background:#151E29;outline:2px solid #263242;display:flex;flex-direction:column">
+            <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
+              <div style="width:56px;height:56px;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#4E5A6C">ICON</div>
+              <div style="font-family:'Bungee',sans-serif;font-size:17px;color:#fff;line-height:1.05">DUCK CROSSHAIR</div>
+              <div style="font-size:14px;color:#9DA9BA;line-height:1.5">Your crosshair is a duck now.</div>
+            </div>
+            <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:11px 18px">
+              <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;background:#4A3505;color:#FFDA6B;padding:5px 9px"><span style="width:9px;height:8px;background:#FFC61F;display:block;clip-path:polygon(50% 0,100% 100%,0 100%)"></span>PACK</div>
+              <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">988 ↓</div>
+            </div>
+          </div>
+          <div style="background:#151E29;outline:2px solid #FFC61F;display:flex;flex-direction:column;position:relative">
+            <div style="position:absolute;top:-1px;left:-1px;font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.06em;background:#FFC61F;color:#2E2000;padding:5px 8px">★ ONLY ON ODSENS</div>
+            <div style="padding:18px;padding-top:38px;display:flex;flex-direction:column;gap:12px">
+              <div style="width:56px;height:56px;background:#0D131B;outline:2px solid #C08400;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#C08400">ICON</div>
+              <div style="font-family:'Bungee',sans-serif;font-size:17px;color:#fff;line-height:1.05">TROLL RESOURCES</div>
+              <div style="font-size:14px;color:#9DA9BA;line-height:1.5">Everything looks slightly wrong.</div>
+            </div>
+            <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:11px 18px">
+              <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;background:#4A3505;color:#FFDA6B;padding:5px 9px"><span style="width:9px;height:8px;background:#FFC61F;display:block;clip-path:polygon(50% 0,100% 100%,0 100%)"></span>PACK</div>
+              <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#FFC61F">412 ↓</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:40px;display:grid;grid-template-columns:1.5fr 1fr;gap:32px;border-bottom:2px solid #263242">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between">
+            <div style="font-family:'Bungee',sans-serif;font-size:26px;color:#FFC61F">LATEST VIDEOS</div>
+            <div style="font-size:15px;font-weight:700;color:#8B86F5">@OdSens on YouTube →</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="aspect-ratio:16/9;background:#111A24;outline:2px solid #263242;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:10px;color:#4E5A6C;position:relative">THUMBNAIL<div style="position:absolute;bottom:8px;right:8px;font-family:'Space Grotesk';font-size:11px;font-weight:700;background:#0D131B;color:#EEF1F6;padding:3px 6px">4:12</div></div>
+              <div style="font-size:15px;font-weight:700;color:#EEF1F6;line-height:1.35">I made a mace out of a metal pipe</div>
+              <div style="font-size:13px;color:#7C889A">12k views · 3 weeks ago</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="aspect-ratio:16/9;background:#111A24;outline:2px solid #263242;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:10px;color:#4E5A6C;position:relative">THUMBNAIL<div style="position:absolute;bottom:8px;right:8px;font-family:'Space Grotesk';font-size:11px;font-weight:700;background:#0D131B;color:#EEF1F6;padding:3px 6px">7:03</div></div>
+              <div style="font-size:15px;font-weight:700;color:#EEF1F6;line-height:1.35">Every datapack I have ever made, ranked</div>
+              <div style="font-size:13px;color:#7C889A">8.4k views · 1 month ago</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="font-family:'Bungee',sans-serif;font-size:26px;color:#FFC61F">FIND ME</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="background:#151E29;outline:2px solid #263242;padding:16px 18px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:12px"><div style="width:32px;height:32px;background:#17B94F"></div><div style="font-size:15px;font-weight:700;color:#EEF1F6">Modrinth</div></div><div style="font-size:13px;color:#9DA9BA">18 projects</div></div>
+            <div style="background:#151E29;outline:2px solid #263242;padding:16px 18px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:12px"><div style="width:32px;height:32px;background:#FFC61F"></div><div style="font-size:15px;font-weight:700;color:#EEF1F6">CurseForge</div></div><div style="font-size:13px;color:#9DA9BA">9 projects</div></div>
+            <div style="background:#151E29;outline:2px solid #263242;padding:16px 18px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:12px"><div style="width:32px;height:32px;background:#EEF1F6"></div><div style="font-size:15px;font-weight:700;color:#EEF1F6">YouTube</div></div><div style="font-size:13px;color:#9DA9BA">@OdSens</div></div>
+          </div>
+          <div style="background:#FFC61F;padding:18px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden">
+            <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.08) 0 10px,transparent 10px 20px)"></div>
+            <div style="position:relative;font-family:'Bungee',sans-serif;font-size:18px;color:#2E2000;line-height:1.1">TIP A DOLLAR</div>
+            <div style="position:relative;font-size:14px;color:#3D2B00">Keeps the mods free and the pipe loud.</div>
+            <div style="position:relative;display:flex;gap:8px"><div style="font-size:14px;font-weight:700;background:#2E2000;color:#FFC61F;padding:10px 14px">$1</div><div style="font-size:14px;font-weight:700;background:#2E2000;color:#FFC61F;padding:10px 14px">$3</div><div style="font-size:14px;font-weight:700;color:#2E2000;padding:10px 14px;outline:2px solid #2E2000">Other</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#0F1721;padding:28px 40px;display:flex;gap:48px;flex-wrap:wrap;align-items:flex-start">
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:240px">
+          <div style="font-family:'Bungee',sans-serif;font-size:17px;color:#fff">ODSENS</div>
+          <div style="font-size:14px;color:#7C889A">Mods and other odd things, made by OddSense. Not affiliated with Mojang.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">FIND ME</div><div style="font-size:14px;color:#8B86F5">Modrinth</div><div style="font-size:14px;color:#8B86F5">CurseForge</div><div style="font-size:14px;color:#8B86F5">YouTube</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">SITE</div><div style="font-size:14px;color:#8B86F5">Projects</div><div style="font-size:14px;color:#8B86F5">Custom orders</div><div style="font-size:14px;color:#8B86F5">Support</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">02 — PROJECTS GRID / DESKTOP 1280</div>
+    <div data-screen-label="Projects desktop" style="width:1280px;background:#0D131B;outline:2px solid #263242;color:#EEF1F6">
+      <div style="background:#151E29;border-bottom:2px solid #263242;padding:0 32px;display:flex;align-items:center;gap:24px;height:68px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <img src="assets/avatar.png" alt="" style="width:40px;height:40px;object-fit:cover;border:2px solid #fff;display:block">
+          <div style="font-family:'Bungee',sans-serif;font-size:20px;color:#fff">ODSENS</div>
+        </div>
+        <div style="display:flex;gap:2px;align-items:center;margin-left:8px">
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Home</div>
+          <div style="font-size:15px;font-weight:700;color:#fff;padding:10px 14px;box-shadow:inset 0 -3px 0 #FFC61F">Projects</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Videos</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Skins</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Art</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Commissions</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px;background:#0D131B;outline:2px solid #2C3A4B;padding:10px 12px;border-radius:3px;font-size:14px;color:#7C889A;width:180px">Search projects</div>
+          <div style="font-size:14px;font-weight:700;color:#EEF1F6;padding:11px 14px;outline:2px solid #3A4759">Sign in</div>
+        </div>
+      </div>
+
+      <div style="padding:36px 40px 24px;display:flex;flex-direction:column;gap:8px">
+        <div style="font-family:'Bungee',sans-serif;font-size:40px;color:#fff;line-height:1">PROJECTS</div>
+        <div style="font-size:17px;color:#9DA9BA">18 things. Some useful, some not.</div>
+      </div>
+
+      <div style="padding:0 40px 24px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#151E29;outline:2px solid #263242;padding:12px">
+          <div style="font-family:'Bungee',sans-serif;font-size:12px;background:#4B45D6;color:#fff;padding:10px 13px">ALL 18</div>
+          <div style="display:flex;align-items:center;gap:7px;font-family:'Bungee',sans-serif;font-size:12px;color:#C6CEDA;padding:10px 13px;outline:2px solid #2C3A4B"><span style="width:8px;height:8px;background:#8B86F5;display:block"></span>MODS 7</div>
+          <div style="display:flex;align-items:center;gap:7px;font-family:'Bungee',sans-serif;font-size:12px;color:#C6CEDA;padding:10px 13px;outline:2px solid #2C3A4B"><span style="width:8px;height:8px;background:#17B94F;display:block;transform:rotate(45deg)"></span>DATAPACKS 4</div>
+          <div style="display:flex;align-items:center;gap:7px;font-family:'Bungee',sans-serif;font-size:12px;color:#C6CEDA;padding:10px 13px;outline:2px solid #2C3A4B"><span style="width:9px;height:8px;background:#FFC61F;display:block;clip-path:polygon(50% 0,100% 100%,0 100%)"></span>PACKS 5</div>
+          <div style="display:flex;align-items:center;gap:7px;font-family:'Bungee',sans-serif;font-size:12px;color:#C6CEDA;padding:10px 13px;outline:2px solid #2C3A4B"><span style="width:8px;height:8px;background:#EEF1F6;display:block;border-radius:50%"></span>PLUGINS 2</div>
+          <div style="margin-left:auto;display:flex;gap:10px;align-items:center;font-size:14px;color:#9DA9BA">
+            <span>Version</span><span style="color:#EEF1F6;font-weight:700;padding:9px 12px;outline:2px solid #2C3A4B;border-radius:3px">1.21.x ▾</span>
+            <span>Sort</span><span style="color:#EEF1F6;font-weight:700;padding:9px 12px;outline:2px solid #2C3A4B;border-radius:3px">Downloads ▾</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;font-size:13px;color:#9DA9BA">
+          <span>Showing 12 of 18</span>
+          <span style="display:flex;align-items:center;gap:8px;background:#1E2938;color:#EEF1F6;padding:6px 10px;font-weight:700">1.21.x ✕</span>
+          <span style="color:#8B86F5;font-weight:700">Clear</span>
+        </div>
+      </div>
+
+      <div style="padding:0 40px 40px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+        <div style="background:#151E29;outline:2px solid #263242;display:flex;flex-direction:column">
+          <div style="padding:20px;display:flex;gap:14px;align-items:flex-start">
+            <div style="width:64px;height:64px;flex:none;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#4E5A6C">ICON</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:'Bungee',sans-serif;font-size:18px;color:#fff;line-height:1.05">METAL PIPE MACE</div>
+              <div style="font-size:14px;color:#9DA9BA;line-height:1.5">It does the sound.</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap"><span style="font-size:12px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">1.21.x</span><span style="font-size:12px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">Fabric</span></div>
+            </div>
+          </div>
+          <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:11px 20px">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;background:#2A2680;color:#CFCCFF;padding:5px 9px"><span style="width:8px;height:8px;background:#8B86F5;display:block"></span>MOD</div>
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">3,209 ↓</div>
+          </div>
+        </div>
+        <div style="background:#1A2432;outline:2px solid #8B86F5;display:flex;flex-direction:column;box-shadow:6px 6px 0 #2E2A9E">
+          <div style="padding:20px;display:flex;gap:14px;align-items:flex-start">
+            <div style="width:64px;height:64px;flex:none;background:#0D131B;outline:2px solid #4B45D6;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#8B86F5">ICON</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:'Bungee',sans-serif;font-size:18px;color:#fff;line-height:1.05">HEAVY SPEAR</div>
+              <div style="font-size:14px;color:#C6CEDA;line-height:1.5">Long reach, real weight, no shield.</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap"><span style="font-size:12px;color:#C6CEDA;padding:4px 8px;outline:2px solid #3A4759;border-radius:3px">1.21.x</span><span style="font-size:12px;color:#C6CEDA;padding:4px 8px;outline:2px solid #3A4759;border-radius:3px">Fabric</span><span style="font-size:12px;color:#C6CEDA;padding:4px 8px;outline:2px solid #3A4759;border-radius:3px">NeoForge</span></div>
+            </div>
+          </div>
+          <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;background:#131C27;border-top:2px solid #3A4759;padding:11px 20px">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;background:#2A2680;color:#CFCCFF;padding:5px 9px"><span style="width:8px;height:8px;background:#8B86F5;display:block"></span>MOD</div>
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">2,147 ↓</div>
+          </div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #FFC61F;display:flex;flex-direction:column;position:relative">
+          <div style="position:absolute;top:-1px;left:-1px;font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.06em;background:#FFC61F;color:#2E2000;padding:5px 8px">★ ONLY ON ODSENS</div>
+          <div style="padding:20px;padding-top:40px;display:flex;gap:14px;align-items:flex-start">
+            <div style="width:64px;height:64px;flex:none;background:#0D131B;outline:2px solid #C08400;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#C08400">ICON</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:'Bungee',sans-serif;font-size:18px;color:#fff;line-height:1.05">TROLL RESOURCES</div>
+              <div style="font-size:14px;color:#9DA9BA;line-height:1.5">Everything looks slightly wrong.</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap"><span style="font-size:12px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">1.21.x</span><span style="font-size:12px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">+2</span></div>
+            </div>
+          </div>
+          <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:11px 20px">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;background:#4A3505;color:#FFDA6B;padding:5px 9px"><span style="width:9px;height:8px;background:#FFC61F;display:block;clip-path:polygon(50% 0,100% 100%,0 100%)"></span>RESOURCE PACK</div>
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#FFC61F">412 ↓</div>
+          </div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #263242;display:flex;flex-direction:column">
+          <div style="padding:20px;display:flex;gap:14px;align-items:flex-start">
+            <div style="width:64px;height:64px;flex:none;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#4E5A6C">ICON</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:'Bungee',sans-serif;font-size:18px;color:#fff;line-height:1.05">PIXEL CHAMELEON</div>
+              <div style="font-size:14px;color:#9DA9BA;line-height:1.5">It hides. Sometimes too well.</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap"><span style="font-size:12px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">1.21.x</span><span style="font-size:12px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">Fabric</span></div>
+            </div>
+          </div>
+          <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:11px 20px">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;background:#2A2680;color:#CFCCFF;padding:5px 9px"><span style="width:8px;height:8px;background:#8B86F5;display:block"></span>MOD</div>
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">1,604 ↓</div>
+          </div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #263242;display:flex;flex-direction:column">
+          <div style="padding:20px;display:flex;gap:14px;align-items:flex-start">
+            <div style="width:64px;height:64px;flex:none;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#4E5A6C">ICON</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:'Bungee',sans-serif;font-size:18px;color:#fff;line-height:1.05">DUCK CROSSHAIR</div>
+              <div style="font-size:14px;color:#9DA9BA;line-height:1.5">Your crosshair is a duck now.</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap"><span style="font-size:12px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">1.21.x</span><span style="font-size:12px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">All loaders</span></div>
+            </div>
+          </div>
+          <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:11px 20px">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;background:#4A3505;color:#FFDA6B;padding:5px 9px"><span style="width:9px;height:8px;background:#FFC61F;display:block;clip-path:polygon(50% 0,100% 100%,0 100%)"></span>RESOURCE PACK</div>
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">988 ↓</div>
+          </div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #263242;display:flex;flex-direction:column">
+          <div style="padding:20px;display:flex;gap:14px;align-items:flex-start">
+            <div style="width:64px;height:64px;flex:none;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#4E5A6C">ICON</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:'Bungee',sans-serif;font-size:18px;color:#fff;line-height:1.05">MOB SPIN</div>
+              <div style="font-size:14px;color:#9DA9BA;line-height:1.5">Every mob spins. No reason given.</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap"><span style="font-size:12px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">1.20.x</span><span style="font-size:12px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">Datapack</span></div>
+            </div>
+          </div>
+          <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:11px 20px">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;background:#0F3D22;color:#7FE3A2;padding:5px 9px"><span style="width:8px;height:8px;background:#17B94F;display:block;transform:rotate(45deg)"></span>DATAPACK</div>
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">631 ↓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">03 — PROJECT DETAIL / DESKTOP 1280</div>
+    <div data-screen-label="Project detail desktop" style="width:1280px;background:#0D131B;outline:2px solid #263242;color:#EEF1F6">
+      <div style="background:#151E29;border-bottom:2px solid #263242;padding:0 32px;display:flex;align-items:center;gap:24px;height:68px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <img src="assets/avatar.png" alt="" style="width:40px;height:40px;object-fit:cover;border:2px solid #fff;display:block">
+          <div style="font-family:'Bungee',sans-serif;font-size:20px;color:#fff">ODSENS</div>
+        </div>
+        <div style="display:flex;gap:2px;align-items:center;margin-left:8px">
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Home</div>
+          <div style="font-size:15px;font-weight:700;color:#fff;padding:10px 14px;box-shadow:inset 0 -3px 0 #FFC61F">Projects</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Videos</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Skins</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Art</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;background:#4B45D6;outline:2px solid #3A4759"></div><div style="font-size:14px;font-weight:700;color:#EEF1F6">creeperfan9</div></div>
+        </div>
+      </div>
+
+      <div style="padding:20px 40px;font-size:13px;color:#7C889A;display:flex;gap:8px"><span style="color:#8B86F5;font-weight:700">Projects</span><span>/</span><span style="color:#8B86F5;font-weight:700">Mods</span><span>/</span><span>Metal Pipe Mace</span></div>
+
+      <div style="padding:0 40px 36px;display:grid;grid-template-columns:1fr 380px;gap:32px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:28px">
+          <div style="display:flex;gap:20px;align-items:flex-start">
+            <div style="width:104px;height:104px;flex:none;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:10px;color:#4E5A6C">ICON</div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="font-family:'Bungee',sans-serif;font-size:46px;line-height:.95;color:#fff">METAL PIPE MACE</div>
+              <div style="font-size:18px;color:#C6CEDA;max-width:52ch">A mace made out of a metal pipe. It does the sound. That is the whole mod.</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.06em;background:#2A2680;color:#CFCCFF;padding:6px 10px"><span style="width:9px;height:9px;background:#8B86F5;display:block"></span>MOD</div>
+                <span style="font-size:12px;color:#C6CEDA;padding:5px 9px;outline:2px solid #2C3A4B;border-radius:3px">1.21.4</span>
+                <span style="font-size:12px;color:#C6CEDA;padding:5px 9px;outline:2px solid #2C3A4B;border-radius:3px">1.21.1</span>
+                <span style="font-size:12px;color:#C6CEDA;padding:5px 9px;outline:2px solid #2C3A4B;border-radius:3px">Fabric</span>
+                <span style="font-size:12px;color:#C6CEDA;padding:5px 9px;outline:2px solid #2C3A4B;border-radius:3px">NeoForge</span>
+                <span style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F;letter-spacing:.1em">3,209 DOWNLOADS</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="aspect-ratio:16/9;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;color:#4E5A6C;font-family:'Silkscreen',monospace;font-size:11px">SCREENSHOT 1 / 6</div>
+            <div style="display:flex;gap:10px">
+              <div style="flex:1;aspect-ratio:16/10;background:#111A24;outline:2px solid #8B86F5"></div>
+              <div style="flex:1;aspect-ratio:16/10;background:#111A24;outline:2px solid #2C3A4B"></div>
+              <div style="flex:1;aspect-ratio:16/10;background:#111A24;outline:2px solid #2C3A4B"></div>
+              <div style="flex:1;aspect-ratio:16/10;background:#111A24;outline:2px solid #2C3A4B"></div>
+              <div style="flex:1;aspect-ratio:16/10;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;font-size:12px;color:#9DA9BA">+2</div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="font-family:'Bungee',sans-serif;font-size:24px;color:#FFC61F">ABOUT</div>
+            <div style="font-size:17px;color:#C6CEDA;line-height:1.7;max-width:66ch;text-wrap:pretty">The mace hits like a mace. The pipe sound plays on impact, at a volume I have decided is correct. There is no config file. There will not be a config file.</div>
+            <div style="font-size:17px;font-weight:700;color:#EEF1F6">What's in it</div>
+            <div style="font-size:17px;color:#C6CEDA;line-height:1.8;max-width:66ch">One weapon, craftable with three iron ingots and a stick. Enchantable. Slightly too loud.<br>Works in multiplayer. Works with shields, badly, which is the intended experience.</div>
+            <div style="background:#151E29;outline:2px solid #263242;padding:16px 18px;font-size:15px;color:#9DA9BA;display:flex;gap:12px;align-items:flex-start"><span style="font-family:'Silkscreen',monospace;font-size:10px;color:#FFC61F;letter-spacing:.1em;padding-top:2px">NOTE</span><span>Untested below 1.20. If it breaks, tell me in the comments and I'll probably fix it.</span></div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="font-family:'Bungee',sans-serif;font-size:24px;color:#FFC61F">VERSIONS &amp; FILES</div>
+            <div style="background:#151E29;outline:2px solid #263242;display:grid;grid-template-columns:1fr 1fr 1fr .8fr 130px;font-size:14px">
+              <div style="padding:11px 14px;background:#0F1721;border-bottom:2px solid #263242;font-weight:700;color:#9DA9BA">File</div>
+              <div style="padding:11px 14px;background:#0F1721;border-bottom:2px solid #263242;font-weight:700;color:#9DA9BA">Minecraft</div>
+              <div style="padding:11px 14px;background:#0F1721;border-bottom:2px solid #263242;font-weight:700;color:#9DA9BA">Loader</div>
+              <div style="padding:11px 14px;background:#0F1721;border-bottom:2px solid #263242;font-weight:700;color:#9DA9BA">Size</div>
+              <div style="padding:11px 14px;background:#0F1721;border-bottom:2px solid #263242;font-weight:700;color:#9DA9BA"></div>
+              <div style="padding:13px 14px;border-bottom:2px solid #1B2531;color:#EEF1F6;font-weight:700;display:flex;gap:8px;align-items:center">v1.3.0 <span style="font-family:'Silkscreen',monospace;font-size:9px;background:#0F3D22;color:#7FE3A2;padding:3px 6px;letter-spacing:.06em">LATEST</span></div>
+              <div style="padding:13px 14px;border-bottom:2px solid #1B2531;color:#C6CEDA">1.21.4</div>
+              <div style="padding:13px 14px;border-bottom:2px solid #1B2531;color:#C6CEDA">Fabric</div>
+              <div style="padding:13px 14px;border-bottom:2px solid #1B2531;color:#9DA9BA">184 KB</div>
+              <div style="padding:9px 14px;border-bottom:2px solid #1B2531"><span style="font-family:'Bungee',sans-serif;font-size:11px;background:#4B45D6;color:#fff;padding:9px 12px;box-shadow:3px 3px 0 #2E2A9E;display:inline-block">DOWNLOAD</span></div>
+              <div style="padding:13px 14px;border-bottom:2px solid #1B2531;color:#EEF1F6;font-weight:700">v1.3.0</div>
+              <div style="padding:13px 14px;border-bottom:2px solid #1B2531;color:#C6CEDA">1.21.1</div>
+              <div style="padding:13px 14px;border-bottom:2px solid #1B2531;color:#C6CEDA">NeoForge</div>
+              <div style="padding:13px 14px;border-bottom:2px solid #1B2531;color:#9DA9BA">191 KB</div>
+              <div style="padding:9px 14px;border-bottom:2px solid #1B2531"><span style="font-size:13px;font-weight:700;color:#EEF1F6;padding:9px 12px;outline:2px solid #3A4759;display:inline-block">Download</span></div>
+              <div style="padding:13px 14px;color:#9DA9BA">v1.2.1</div>
+              <div style="padding:13px 14px;color:#9DA9BA">1.20.x</div>
+              <div style="padding:13px 14px;color:#9DA9BA">Fabric</div>
+              <div style="padding:13px 14px;color:#7C889A">180 KB</div>
+              <div style="padding:9px 14px"><span style="font-size:13px;font-weight:700;color:#9DA9BA;padding:9px 12px;outline:2px solid #2C3A4B;display:inline-block">Download</span></div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;align-items:baseline;gap:12px">
+              <div style="font-family:'Bungee',sans-serif;font-size:24px;color:#FFC61F">COMMENTS</div>
+              <div style="font-size:14px;color:#7C889A">14</div>
+            </div>
+            <div style="background:#151E29;outline:2px solid #263242;padding:18px;display:flex;gap:14px;align-items:center">
+              <div style="width:40px;height:40px;flex:none;background:#4B45D6;outline:2px solid #3A4759"></div>
+              <div style="flex:1;background:#0D131B;outline:2px solid #2C3A4B;border-radius:3px;padding:13px 14px;font-size:15px;color:#7C889A">Say something about the mace…</div>
+              <div style="font-family:'Bungee',sans-serif;font-size:12px;background:#4B45D6;color:#fff;padding:14px 16px;box-shadow:4px 4px 0 #2E2A9E">POST</div>
+            </div>
+            <div style="display:flex;gap:12px">
+              <div style="width:40px;height:40px;flex:none;background:#17B94F;outline:2px solid #2C3A4B"></div>
+              <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+                <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:14px;font-weight:700;color:#EEF1F6">creeperfan9</span><span style="font-size:12px;color:#7C889A">2 days ago</span></div>
+                <div style="background:#1E2938;outline:2px solid #2C3A4B;padding:12px 14px;font-size:15px;color:#DCE3EC;line-height:1.55">this mace is unreasonably fun. the sound gets me every time</div>
+                <div style="display:flex;gap:8px;align-items:center"><div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#9DA9BA;padding:8px 11px;outline:2px solid #2C3A4B">♥ 12</div><div style="font-size:13px;font-weight:700;color:#8B86F5;padding:8px 6px">Reply</div></div>
+                <div style="display:flex;gap:12px;margin-top:6px;padding-left:16px;border-left:2px solid #263242">
+                  <div style="width:34px;height:34px;flex:none;background:#FFC61F;outline:2px solid #2C3A4B"></div>
+                  <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+                    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:14px;font-weight:700;color:#EEF1F6">OddSense</span><span style="font-family:'Silkscreen',monospace;font-size:9px;background:#FFC61F;color:#2E2000;padding:3px 6px;letter-spacing:.06em">CREATOR</span><span style="font-size:12px;color:#7C889A">1 day ago</span></div>
+                    <div style="background:#1E2938;outline:2px solid #3A4759;padding:12px 14px;font-size:15px;color:#DCE3EC">unreasonable is the goal</div>
+                    <div style="display:flex;gap:8px;align-items:center"><div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#0D131B;background:#8B86F5;padding:8px 11px">♥ 31 liked</div><div style="font-size:13px;font-weight:700;color:#8B86F5;padding:8px 6px">Reply</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px;position:relative">
+          <div style="background:#151E29;outline:2px solid #263242;padding:20px;display:flex;flex-direction:column;gap:12px">
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">GET IT</div>
+            <div style="font-family:'Bungee',sans-serif;font-size:15px;background:#4B45D6;color:#fff;padding:16px;box-shadow:5px 5px 0 #2E2A9E;text-align:center">DOWNLOAD 1.21.4</div>
+            <div style="font-size:13px;color:#7C889A;text-align:center">Fabric · 184 KB · v1.3.0</div>
+            <div style="height:2px;background:#263242;margin:4px 0"></div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;gap:12px;background:#0D131B;outline:2px solid #3A4759;padding:13px 14px"><div style="width:24px;height:24px;background:#17B94F;flex:none"></div><div style="font-size:15px;font-weight:700;color:#EEF1F6">Modrinth</div><div style="margin-left:auto;font-size:13px;color:#9DA9BA">2,904 ↓</div></div>
+              <div style="display:flex;align-items:center;gap:12px;background:#0D131B;outline:2px solid #3A4759;padding:13px 14px"><div style="width:24px;height:24px;background:#FFC61F;flex:none"></div><div style="font-size:15px;font-weight:700;color:#EEF1F6">CurseForge</div><div style="margin-left:auto;font-size:13px;color:#9DA9BA">305 ↓</div></div>
+            </div>
+            <div style="font-size:13px;color:#7C889A">Combined count includes direct downloads from here.</div>
+          </div>
+          <div style="background:#151E29;outline:2px solid #263242;padding:20px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">DETAILS</div>
+            <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#9DA9BA">Type</span><span style="color:#EEF1F6;font-weight:700">Mod</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#9DA9BA">Updated</span><span style="color:#EEF1F6;font-weight:700">3 weeks ago</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#9DA9BA">Licence</span><span style="color:#EEF1F6;font-weight:700">MIT</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#9DA9BA">Source</span><span style="color:#8B86F5;font-weight:700">GitHub</span></div>
+          </div>
+          <div style="background:#FFC61F;padding:18px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden">
+            <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.08) 0 10px,transparent 10px 20px)"></div>
+            <div style="position:relative;font-family:'Bungee',sans-serif;font-size:16px;color:#2E2000;line-height:1.15">LIKED IT? TIP A DOLLAR</div>
+            <div style="position:relative;display:flex;gap:8px"><div style="font-size:14px;font-weight:700;background:#2E2000;color:#FFC61F;padding:10px 14px">$1</div><div style="font-size:14px;font-weight:700;background:#2E2000;color:#FFC61F;padding:10px 14px">$3</div><div style="font-size:14px;font-weight:700;color:#2E2000;padding:10px 14px;outline:2px solid #2E2000">Other</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">04 — PHONE 390</div>
+    <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start">
+
+      <div data-screen-label="Home phone" style="width:390px;background:#0D131B;outline:2px solid #263242;color:#EEF1F6;display:flex;flex-direction:column">
+        <div style="background:#151E29;border-bottom:2px solid #263242;height:56px;padding:0 16px;display:flex;align-items:center;gap:12px">
+          <img src="assets/avatar.png" alt="" style="width:34px;height:34px;object-fit:cover;border:2px solid #fff;display:block">
+          <div style="font-family:'Bungee',sans-serif;font-size:17px;color:#fff">ODSENS</div>
+          <div style="margin-left:auto;width:44px;height:44px;outline:2px solid #3A4759;display:grid;place-items:center;gap:4px"><div style="width:18px;height:2px;background:#EEF1F6;box-shadow:0 5px 0 #EEF1F6,0 -5px 0 #EEF1F6"></div></div>
+        </div>
+        <div style="background:#4B45D6;padding:24px 20px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden">
+          <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.12) 0 12px,transparent 12px 24px)"></div>
+          <div style="position:relative;font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.12em;background:#FFC61F;color:#2E2000;padding:5px 8px;align-self:flex-start">★ ONLY ON ODSENS</div>
+          <div style="position:relative;font-family:'Bungee',sans-serif;font-size:36px;line-height:.92;color:#fff">METAL PIPE MACE</div>
+          <div style="position:relative;font-size:16px;color:#E4E2FF">It does the sound. That is the whole mod.</div>
+          <div style="position:relative;font-family:'Bungee',sans-serif;font-size:14px;background:#FFC61F;color:#2E2000;padding:15px;box-shadow:4px 4px 0 #C08400;text-align:center">DOWNLOAD</div>
+        </div>
+        <div style="aspect-ratio:16/9;background:#111A24;border-bottom:2px solid #263242;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:10px;color:#4E5A6C">SCREENSHOT</div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between"><div style="font-family:'Bungee',sans-serif;font-size:20px;color:#FFC61F">FEATURED</div><div style="font-size:14px;font-weight:700;color:#8B86F5">All 18 →</div></div>
+          <div style="background:#151E29;outline:2px solid #263242;display:flex;flex-direction:column">
+            <div style="padding:16px;display:flex;gap:12px;align-items:flex-start">
+              <div style="width:52px;height:52px;flex:none;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:8px;color:#4E5A6C">ICON</div>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="font-family:'Bungee',sans-serif;font-size:16px;color:#fff;line-height:1.05">HEAVY SPEAR</div><div style="font-size:14px;color:#9DA9BA">Long reach, real weight.</div></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:10px 16px">
+              <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;background:#2A2680;color:#CFCCFF;padding:5px 9px"><span style="width:8px;height:8px;background:#8B86F5;display:block"></span>MOD</div>
+              <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">2,147 ↓</div>
+            </div>
+          </div>
+          <div style="background:#151E29;outline:2px solid #FFC61F;display:flex;flex-direction:column;position:relative">
+            <div style="position:absolute;top:-1px;left:-1px;font-family:'Silkscreen',monospace;font-size:8px;background:#FFC61F;color:#2E2000;padding:4px 7px">★ ONLY ON ODSENS</div>
+            <div style="padding:16px;padding-top:34px;display:flex;gap:12px;align-items:flex-start">
+              <div style="width:52px;height:52px;flex:none;background:#0D131B;outline:2px solid #C08400;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:8px;color:#C08400">ICON</div>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="font-family:'Bungee',sans-serif;font-size:16px;color:#fff;line-height:1.05">TROLL RESOURCES</div><div style="font-size:14px;color:#9DA9BA">Everything looks slightly wrong.</div></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:10px 16px">
+              <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;background:#4A3505;color:#FFDA6B;padding:5px 9px"><span style="width:9px;height:8px;background:#FFC61F;display:block;clip-path:polygon(50% 0,100% 100%,0 100%)"></span>PACK</div>
+              <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#FFC61F">412 ↓</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end"><div style="width:52px;height:52px;background:#FFC61F;box-shadow:4px 4px 0 #C08400;display:grid;place-items:center;font-size:20px;color:#2E2000">♥</div></div>
+        </div>
+      </div>
+
+      <div data-screen-label="Projects phone" style="width:390px;background:#0D131B;outline:2px solid #263242;color:#EEF1F6;display:flex;flex-direction:column">
+        <div style="background:#151E29;border-bottom:2px solid #263242;height:56px;padding:0 16px;display:flex;align-items:center;gap:12px">
+          <img src="assets/avatar.png" alt="" style="width:34px;height:34px;object-fit:cover;border:2px solid #fff;display:block">
+          <div style="font-family:'Bungee',sans-serif;font-size:17px;color:#fff">ODSENS</div>
+          <div style="margin-left:auto;width:44px;height:44px;outline:2px solid #3A4759;display:grid;place-items:center"><div style="width:18px;height:2px;background:#EEF1F6;box-shadow:0 5px 0 #EEF1F6,0 -5px 0 #EEF1F6"></div></div>
+        </div>
+        <div style="padding:22px 20px 14px;display:flex;flex-direction:column;gap:6px">
+          <div style="font-family:'Bungee',sans-serif;font-size:30px;color:#fff;line-height:1">PROJECTS</div>
+          <div style="font-size:15px;color:#9DA9BA">18 things. Some useful, some not.</div>
+        </div>
+        <div style="padding:0 20px 14px;display:flex;flex-direction:column;gap:10px">
+          <div style="background:#0D131B;outline:2px solid #2C3A4B;border-radius:3px;padding:12px 14px;font-size:15px;color:#7C889A">Search projects</div>
+          <div style="display:flex;gap:8px;overflow:hidden">
+            <div style="font-family:'Bungee',sans-serif;font-size:11px;background:#4B45D6;color:#fff;padding:10px 12px;white-space:nowrap">ALL 18</div>
+            <div style="font-family:'Bungee',sans-serif;font-size:11px;color:#C6CEDA;padding:10px 12px;outline:2px solid #2C3A4B;white-space:nowrap">MODS 7</div>
+            <div style="font-family:'Bungee',sans-serif;font-size:11px;color:#C6CEDA;padding:10px 12px;outline:2px solid #2C3A4B;white-space:nowrap">DATAPACKS 4</div>
+            <div style="font-family:'Bungee',sans-serif;font-size:11px;color:#C6CEDA;padding:10px 12px;outline:2px solid #2C3A4B;white-space:nowrap">PA</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;font-size:13px;color:#9DA9BA"><span style="color:#EEF1F6;font-weight:700;padding:9px 12px;outline:2px solid #2C3A4B;border-radius:3px">Version: 1.21.x ▾</span><span style="color:#EEF1F6;font-weight:700;padding:9px 12px;outline:2px solid #2C3A4B;border-radius:3px">Sort ▾</span></div>
+        </div>
+        <div style="padding:0 20px 24px;display:flex;flex-direction:column;gap:14px">
+          <div style="background:#151E29;outline:2px solid #263242;display:flex;flex-direction:column">
+            <div style="padding:16px;display:flex;gap:12px;align-items:flex-start">
+              <div style="width:52px;height:52px;flex:none;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:8px;color:#4E5A6C">ICON</div>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="font-family:'Bungee',sans-serif;font-size:16px;color:#fff;line-height:1.05">METAL PIPE MACE</div><div style="font-size:14px;color:#9DA9BA">It does the sound.</div><div style="display:flex;gap:6px"><span style="font-size:11px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">1.21.x</span><span style="font-size:11px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">Fabric</span></div></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:10px 16px">
+              <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;background:#2A2680;color:#CFCCFF;padding:5px 9px"><span style="width:8px;height:8px;background:#8B86F5;display:block"></span>MOD</div>
+              <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">3,209 ↓</div>
+            </div>
+          </div>
+          <div style="background:#151E29;outline:2px solid #263242;display:flex;flex-direction:column">
+            <div style="padding:16px;display:flex;gap:12px;align-items:flex-start">
+              <div style="width:52px;height:52px;flex:none;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:8px;color:#4E5A6C">ICON</div>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="font-family:'Bungee',sans-serif;font-size:16px;color:#fff;line-height:1.05">PIXEL CHAMELEON</div><div style="font-size:14px;color:#9DA9BA">It hides. Sometimes too well.</div><div style="display:flex;gap:6px"><span style="font-size:11px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">1.21.x</span><span style="font-size:11px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">Fabric</span></div></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:10px 16px">
+              <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;background:#2A2680;color:#CFCCFF;padding:5px 9px"><span style="width:8px;height:8px;background:#8B86F5;display:block"></span>MOD</div>
+              <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">1,604 ↓</div>
+            </div>
+          </div>
+          <div style="background:#151E29;outline:2px solid #263242;display:flex;flex-direction:column">
+            <div style="padding:16px;display:flex;gap:12px;align-items:flex-start">
+              <div style="width:52px;height:52px;flex:none;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:8px;color:#4E5A6C">ICON</div>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="font-family:'Bungee',sans-serif;font-size:16px;color:#fff;line-height:1.05">MOB SPIN</div><div style="font-size:14px;color:#9DA9BA">Every mob spins. No reason.</div><div style="display:flex;gap:6px"><span style="font-size:11px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">1.20.x</span></div></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:10px 16px">
+              <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;background:#0F3D22;color:#7FE3A2;padding:5px 9px"><span style="width:8px;height:8px;background:#17B94F;display:block;transform:rotate(45deg)"></span>DATAPACK</div>
+              <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">631 ↓</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div data-screen-label="Project detail phone" style="width:390px;background:#0D131B;outline:2px solid #263242;color:#EEF1F6;display:flex;flex-direction:column">
+        <div style="background:#151E29;border-bottom:2px solid #263242;height:56px;padding:0 16px;display:flex;align-items:center;gap:12px">
+          <div style="font-size:15px;font-weight:700;color:#8B86F5">← Projects</div>
+          <div style="margin-left:auto;width:44px;height:44px;outline:2px solid #3A4759;display:grid;place-items:center"><div style="width:18px;height:2px;background:#EEF1F6;box-shadow:0 5px 0 #EEF1F6,0 -5px 0 #EEF1F6"></div></div>
+        </div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;gap:14px;align-items:center">
+            <div style="width:72px;height:72px;flex:none;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#4E5A6C">ICON</div>
+            <div style="font-family:'Bungee',sans-serif;font-size:26px;line-height:.95;color:#fff">METAL PIPE MACE</div>
+          </div>
+          <div style="font-size:16px;color:#C6CEDA;line-height:1.6">A mace made out of a metal pipe. It does the sound. That is the whole mod.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;background:#2A2680;color:#CFCCFF;padding:5px 9px"><span style="width:8px;height:8px;background:#8B86F5;display:block"></span>MOD</div>
+            <span style="font-size:11px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">1.21.x</span>
+            <span style="font-size:11px;color:#C6CEDA;padding:4px 8px;outline:2px solid #2C3A4B;border-radius:3px">Fabric</span>
+            <span style="font-family:'Silkscreen',monospace;font-size:9px;color:#17B94F;letter-spacing:.08em">3,209 ↓</span>
+          </div>
+        </div>
+        <div style="aspect-ratio:16/9;background:#111A24;border-top:2px solid #263242;border-bottom:2px solid #263242;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:10px;color:#4E5A6C">SCREENSHOT 1 / 6</div>
+        <div style="padding:14px 20px;display:flex;gap:8px">
+          <div style="flex:1;aspect-ratio:16/10;background:#111A24;outline:2px solid #8B86F5"></div>
+          <div style="flex:1;aspect-ratio:16/10;background:#111A24;outline:2px solid #2C3A4B"></div>
+          <div style="flex:1;aspect-ratio:16/10;background:#111A24;outline:2px solid #2C3A4B"></div>
+          <div style="flex:1;aspect-ratio:16/10;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;font-size:11px;color:#9DA9BA">+3</div>
+        </div>
+        <div style="padding:6px 20px 20px;display:flex;flex-direction:column;gap:20px">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="font-family:'Bungee',sans-serif;font-size:19px;color:#FFC61F">ABOUT</div>
+            <div style="font-size:16px;color:#C6CEDA;line-height:1.7">The mace hits like a mace. The pipe sound plays on impact, at a volume I have decided is correct. There is no config file.</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="font-family:'Bungee',sans-serif;font-size:19px;color:#FFC61F">FILES</div>
+            <div style="background:#151E29;outline:2px solid #263242;padding:14px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:700;color:#EEF1F6">v1.3.0</span><span style="font-family:'Silkscreen',monospace;font-size:9px;background:#0F3D22;color:#7FE3A2;padding:3px 6px">LATEST</span></div>
+              <div style="font-size:13px;color:#9DA9BA">1.21.4 · Fabric · 184 KB</div>
+              <div style="font-family:'Bungee',sans-serif;font-size:13px;background:#4B45D6;color:#fff;padding:14px;box-shadow:4px 4px 0 #2E2A9E;text-align:center">DOWNLOAD</div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:#0D131B;outline:2px solid #3A4759;padding:13px"><div style="width:20px;height:20px;background:#17B94F"></div><span style="font-size:14px;font-weight:700">Modrinth</span></div>
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:#0D131B;outline:2px solid #3A4759;padding:13px"><div style="width:20px;height:20px;background:#FFC61F"></div><span style="font-size:14px;font-weight:700">Curse</span></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="font-family:'Bungee',sans-serif;font-size:19px;color:#FFC61F">COMMENTS 14</div>
+            <div style="background:#151E29;outline:2px solid #263242;padding:16px;display:flex;flex-direction:column;gap:10px">
+              <div style="font-size:15px;color:#9DA9BA">Sign in to comment. Your handle is all anyone sees.</div>
+              <div style="font-size:15px;font-weight:700;background:#EEF1F6;color:#141A22;padding:13px;text-align:center">Continue with Google</div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <div style="width:36px;height:36px;flex:none;background:#17B94F;outline:2px solid #2C3A4B"></div>
+              <div style="display:flex;flex-direction:column;gap:6px;flex:1">
+                <div style="display:flex;gap:8px;align-items:baseline"><span style="font-size:14px;font-weight:700">creeperfan9</span><span style="font-size:12px;color:#7C889A">2d</span></div>
+                <div style="background:#1E2938;outline:2px solid #2C3A4B;padding:11px 13px;font-size:15px;color:#DCE3EC;line-height:1.5">this mace is unreasonably fun</div>
+                <div style="display:flex;gap:8px"><div style="font-size:13px;font-weight:700;color:#9DA9BA;padding:8px 11px;outline:2px solid #2C3A4B">♥ 12</div><div style="font-size:13px;font-weight:700;color:#8B86F5;padding:8px 6px">Reply</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="background:#0F1721;border-top:2px solid #263242;padding:18px 20px;display:flex;flex-direction:column;gap:8px">
+          <div style="font-family:'Bungee',sans-serif;font-size:15px;color:#fff">ODSENS</div>
+          <div style="font-size:13px;color:#7C889A">Made by OddSense. Not affiliated with Mojang.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400}}"></script>
+</body>
+</html>

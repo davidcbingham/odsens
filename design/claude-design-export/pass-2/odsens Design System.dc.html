@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#0D131B; }
+  a { color:#8B86F5; text-decoration:none; }
+  a:hover { color:#B7B3FF; }
+</style>
+</helmet>
+<div style="background:#0D131B;color:#EEF1F6;font-family:'Space Grotesk',system-ui,sans-serif;font-size:16px;line-height:1.6;padding:0 0 96px">
+
+  <div style="display:flex;align-items:stretch;border-bottom:2px solid #263242">
+    <div style="flex:1;padding:48px 56px;display:flex;flex-direction:column;gap:14px;background:#4B45D6;position:relative;overflow:hidden">
+      <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.12) 0 14px,transparent 14px 28px)"></div>
+      <div style="position:relative;font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.2em;color:#CFCCFF">DESIGN SYSTEM v1</div>
+      <div style="position:relative;font-family:'Bungee',sans-serif;font-size:60px;line-height:.92;color:#fff">ODSENS</div>
+      <div style="position:relative;font-size:18px;color:#E4E2FF;max-width:48ch;text-wrap:pretty">The visual system for odsens.com — where OddSense puts the mods, datapacks, resource packs and plugins. Blocky poster type, flat slabs, gold for the good stuff.</div>
+    </div>
+    <div style="width:280px;flex:none;background:#FFC61F;display:flex;flex-direction:column;justify-content:space-between;padding:24px;gap:20px">
+      <div style="font-family:'Bungee',sans-serif;font-size:14px;color:#2E2000;line-height:1.35">MADE BY<br>ODDSENSE</div>
+      <img src="assets/avatar.png" alt="OddSense avatar" style="width:100%;aspect-ratio:1;object-fit:cover;border:3px solid #fff;display:block">
+    </div>
+  </div>
+
+  <div style="padding:56px;display:flex;flex-direction:column;gap:76px;max-width:1280px">
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.2em;color:#FFC61F">01 — COLOR</div>
+        <h2 style="font-family:'Bungee',sans-serif;font-size:32px;margin:0;color:#fff;font-weight:400">DARK THEME (DEFAULT)</h2>
+        <p style="margin:0;color:#9DA9BA;max-width:64ch;text-wrap:pretty">Every value is lifted off the avatar: navy-black ground, indigo-violet armor, two golds from the crown, emerald from the crown gems, white outline. Emerald is a minor accent — it never carries a headline or a primary action.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px">
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:88px;background:#0D131B;outline:2px solid #263242"></div><div style="font-size:14px;font-weight:700">Ink</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#0D131B</div><div style="font-size:12px;color:#7C889A">page ground</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:88px;background:#151E29;outline:2px solid #263242"></div><div style="font-size:14px;font-weight:700">Slab</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#151E29</div><div style="font-size:12px;color:#7C889A">cards, panels</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:88px;background:#1E2938;outline:2px solid #263242"></div><div style="font-size:14px;font-weight:700">Slab Raised</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#1E2938</div><div style="font-size:12px;color:#7C889A">hover, inputs</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:88px;background:#263242"></div><div style="font-size:14px;font-weight:700">Line</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#263242</div><div style="font-size:12px;color:#7C889A">2px borders</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:88px;background:#EEF1F6"></div><div style="font-size:14px;font-weight:700">Chalk</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#EEF1F6</div><div style="font-size:12px;color:#7C889A">body text</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:88px;background:#9DA9BA"></div><div style="font-size:14px;font-weight:700">Mute</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#9DA9BA</div><div style="font-size:12px;color:#7C889A">secondary text</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px">
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:88px;background:#4B45D6"></div><div style="font-size:14px;font-weight:700">Indigo</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#4B45D6</div><div style="font-size:12px;color:#7C889A">primary — white text only</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:88px;background:#2E2A9E"></div><div style="font-size:14px;font-weight:700">Indigo Deep</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#2E2A9E</div><div style="font-size:12px;color:#7C889A">pressed, outlines</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:88px;background:#8B86F5"></div><div style="font-size:14px;font-weight:700">Indigo Lift</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#8B86F5</div><div style="font-size:12px;color:#7C889A">links on dark</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:88px;background:#FFC61F"></div><div style="font-size:14px;font-weight:700">Gold</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#FFC61F</div><div style="font-size:12px;color:#7C889A">accent, exclusives</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:88px;background:#C08400"></div><div style="font-size:14px;font-weight:700">Gold Deep</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#C08400</div><div style="font-size:12px;color:#7C889A">gold shadow / light text</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:88px;background:#17B94F"></div><div style="font-size:14px;font-weight:700">Emerald</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#17B94F</div><div style="font-size:12px;color:#7C889A">minor: success, counts</div></div>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:300px;background:#151E29;outline:2px solid #1F4A31;padding:18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#17B94F">CONTRAST — SAFE PAIRS</div>
+          <div style="font-size:14px;color:#9DA9BA;line-height:1.7">Chalk on Ink · Mute on Ink · Gold on Ink · White on Indigo · Indigo Lift on Ink · Ink on Gold · Ink on Emerald</div>
+        </div>
+        <div style="flex:1;min-width:300px;background:#151E29;outline:2px solid #4A2A2A;padding:18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#F0836B">NEVER</div>
+          <div style="font-size:14px;color:#9DA9BA;line-height:1.7">Indigo as text on Ink · Emerald as body text · gold text on a gold slab · badges told apart by hue alone — every badge carries a word and a shape.</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;padding-top:8px">
+        <div style="font-family:'Bungee',sans-serif;font-size:18px;color:#fff">LIGHT THEME (OPTIONAL, LATER)</div>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px">
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="height:60px;background:#F4F2EA;outline:2px solid #DCD6C6"></div><div style="font-size:13px;font-weight:700">Paper</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#F4F2EA</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="height:60px;background:#FFFFFF;outline:2px solid #DCD6C6"></div><div style="font-size:13px;font-weight:700">Card</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#FFFFFF</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="height:60px;background:#D9D3C3"></div><div style="font-size:13px;font-weight:700">Line</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#D9D3C3</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="height:60px;background:#141A22"></div><div style="font-size:13px;font-weight:700">Text</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#141A22</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="height:60px;background:#3A34C4"></div><div style="font-size:13px;font-weight:700">Indigo</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#3A34C4</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="height:60px;background:#8A6410"></div><div style="font-size:13px;font-weight:700">Gold Text</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A">#8A6410</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.2em;color:#FFC61F">02 — TYPE</div>
+        <h2 style="font-family:'Bungee',sans-serif;font-size:32px;margin:0;color:#fff;font-weight:400">THREE FACES, STRICT JOBS</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+        <div style="background:#151E29;outline:2px solid #263242;padding:22px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-family:'Bungee',sans-serif;font-size:30px;color:#fff;line-height:1">BUNGEE</div>
+          <div style="font-size:14px;color:#9DA9BA">Display. Page and project titles, section headers, wordmark. Always uppercase, tight leading (0.95–1.1). Never below 16px, never a paragraph, never more than six words.</div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #263242;padding:22px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-size:30px;font-weight:700;color:#fff;line-height:1.1">Space Grotesk</div>
+          <div style="font-size:14px;color:#9DA9BA">Everything readable. Body, descriptions, buttons, inputs, tables, version numbers. 400 prose, 500 UI, 700 subheads.</div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #263242;padding:22px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-family:'Silkscreen',monospace;font-size:22px;color:#FFC61F;line-height:1.2">SILKSCREEN</div>
+          <div style="font-size:14px;color:#9DA9BA">Pixel accent — micro-labels only. Eyebrows, download counts, badge text, section numbers. 10–12px, letter-spaced. Never a sentence.</div>
+        </div>
+      </div>
+      <div style="background:#151E29;outline:2px solid #263242;padding:28px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;align-items:baseline;gap:20px;flex-wrap:wrap"><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A;width:132px;flex:none">DISPLAY / 48</div><div style="font-family:'Bungee',sans-serif;font-size:48px;line-height:.95;color:#fff">METAL PIPE MACE</div></div>
+        <div style="display:flex;align-items:baseline;gap:20px;flex-wrap:wrap"><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A;width:132px;flex:none">TITLE / 32</div><div style="font-family:'Bungee',sans-serif;font-size:32px;line-height:1;color:#FFC61F">LATEST PROJECTS</div></div>
+        <div style="display:flex;align-items:baseline;gap:20px;flex-wrap:wrap"><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A;width:132px;flex:none">CARD / 20</div><div style="font-family:'Bungee',sans-serif;font-size:20px;color:#fff">PIXEL CHAMELEON</div></div>
+        <div style="display:flex;align-items:baseline;gap:20px;flex-wrap:wrap"><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A;width:132px;flex:none">SUBHEAD / 19</div><div style="font-size:19px;font-weight:700;color:#EEF1F6">Works on Fabric and NeoForge</div></div>
+        <div style="display:flex;align-items:baseline;gap:20px"><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A;width:132px;flex:none">BODY / 17</div><div style="font-size:17px;color:#C6CEDA;max-width:60ch;text-wrap:pretty">A mace made out of a metal pipe. It does the sound. That is the whole mod, and honestly it is enough. Body copy sits at 17px, 1.65 line-height, and never runs wider than 68 characters.</div></div>
+        <div style="display:flex;align-items:baseline;gap:20px"><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A;width:132px;flex:none">SMALL / 14</div><div style="font-size:14px;color:#9DA9BA">Version notes, file sizes, timestamps.</div></div>
+        <div style="display:flex;align-items:baseline;gap:20px"><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A;width:132px;flex:none">PIXEL / 11</div><div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.16em;color:#FFC61F">2,147 DOWNLOADS</div></div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.2em;color:#FFC61F">03 — SHAPE &amp; SPACE</div>
+        <h2 style="font-family:'Bungee',sans-serif;font-size:32px;margin:0;color:#fff;font-weight:400">FLAT SLABS, HARD EDGES</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div style="background:#151E29;outline:2px solid #263242;padding:22px;display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">SPACING — 4PX BASE</div>
+          <div style="display:flex;align-items:flex-end;gap:12px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:4px;height:4px;background:#4B45D6"></div><div style="font-size:11px;color:#7C889A">4</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:8px;height:8px;background:#4B45D6"></div><div style="font-size:11px;color:#7C889A">8</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:12px;height:12px;background:#4B45D6"></div><div style="font-size:11px;color:#7C889A">12</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:16px;height:16px;background:#4B45D6"></div><div style="font-size:11px;color:#7C889A">16</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:24px;height:24px;background:#4B45D6"></div><div style="font-size:11px;color:#7C889A">24</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:32px;height:32px;background:#4B45D6"></div><div style="font-size:11px;color:#7C889A">32</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:48px;height:48px;background:#4B45D6"></div><div style="font-size:11px;color:#7C889A">48</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:64px;height:64px;background:#4B45D6"></div><div style="font-size:11px;color:#7C889A">64</div></div>
+          </div>
+          <div style="font-size:14px;color:#9DA9BA">Card padding 20. Grid gap 20. Section gap 64–80. Page gutter 24 phone / 56 desktop. Max content width 1200.</div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #263242;padding:22px;display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">EDGES &amp; DEPTH</div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center"><div style="width:96px;height:64px;background:#1E2938;outline:2px solid #263242"></div><div style="font-size:12px;color:#9DA9BA">radius 0 — default</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center"><div style="width:96px;height:64px;background:#1E2938;outline:2px solid #263242;border-radius:3px"></div><div style="font-size:12px;color:#9DA9BA">radius 3 — inputs, chips</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center"><div style="width:96px;height:64px;background:#4B45D6;box-shadow:6px 6px 0 #2E2A9E"></div><div style="font-size:12px;color:#9DA9BA">offset block 6px</div></div>
+          </div>
+          <div style="font-size:14px;color:#9DA9BA">No blur shadows, no gradients on surfaces. Depth comes from flat offset blocks and 2px lines. The only texture allowed is the 45° diagonal hatch on indigo or gold slabs, at 12% black.</div>
+        </div>
+      </div>
+      <div style="background:#151E29;outline:2px solid #263242;padding:22px;display:flex;flex-direction:column;gap:14px">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">ICONOGRAPHY</div>
+        <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:center">
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center"><div style="width:48px;height:48px;background:#1E2938;outline:2px solid #3A4759;display:grid;place-items:center"><div style="width:20px;height:20px;background:#8B86F5"></div></div><div style="font-size:12px;color:#9DA9BA">mod ▣</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center"><div style="width:48px;height:48px;background:#1E2938;outline:2px solid #3A4759;display:grid;place-items:center"><div style="width:20px;height:20px;background:#17B94F;transform:rotate(45deg)"></div></div><div style="font-size:12px;color:#9DA9BA">datapack ◆</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center"><div style="width:48px;height:48px;background:#1E2938;outline:2px solid #3A4759;display:grid;place-items:center"><div style="width:20px;height:20px;background:#FFC61F;clip-path:polygon(50% 0,100% 100%,0 100%)"></div></div><div style="font-size:12px;color:#9DA9BA">resource pack ▲</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center"><div style="width:48px;height:48px;background:#1E2938;outline:2px solid #3A4759;display:grid;place-items:center"><div style="width:20px;height:20px;background:#EEF1F6;border-radius:50%"></div></div><div style="font-size:12px;color:#9DA9BA">plugin ●</div></div>
+          <div style="font-size:14px;color:#9DA9BA;max-width:46ch;text-wrap:pretty">Icons are 2px-stroke line icons on a 24px grid, square caps and joins, no rounded ends. Each project type also owns a solid glyph — square, diamond, triangle, circle — so type never depends on color. Brand marks (Modrinth, CurseForge, YouTube, Ko-fi) use official logos at their real colors inside a neutral slab.</div>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:28px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.2em;color:#FFC61F">04 — COMPONENTS</div>
+        <h2 style="font-family:'Bungee',sans-serif;font-size:32px;margin:0;color:#fff;font-weight:400">BUTTONS</h2>
+        <p style="margin:0;color:#9DA9BA;max-width:64ch">Minimum hit target 44px. Hover lifts the block shadow, active presses it flat. Focus is a 3px gold ring, always visible for keyboards.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;align-items:start">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A;padding-top:14px">PRIMARY</div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'Bungee',sans-serif;font-size:14px;background:#4B45D6;color:#fff;padding:14px 20px;box-shadow:4px 4px 0 #2E2A9E;text-align:center">DOWNLOAD</div><div style="font-size:12px;color:#7C889A">default</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'Bungee',sans-serif;font-size:14px;background:#5D57E8;color:#fff;padding:14px 20px;box-shadow:6px 6px 0 #2E2A9E;text-align:center;transform:translate(-2px,-2px)">DOWNLOAD</div><div style="font-size:12px;color:#7C889A">hover</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'Bungee',sans-serif;font-size:14px;background:#2E2A9E;color:#fff;padding:14px 20px;text-align:center;transform:translate(2px,2px)">DOWNLOAD</div><div style="font-size:12px;color:#7C889A">active</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'Bungee',sans-serif;font-size:14px;background:#22293A;color:#5D6779;padding:14px 20px;text-align:center">DOWNLOAD</div><div style="font-size:12px;color:#7C889A">disabled</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;align-items:start">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A;padding-top:14px">SECONDARY</div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:15px;font-weight:700;background:#151E29;color:#EEF1F6;padding:14px 20px;outline:2px solid #3A4759;text-align:center">Modrinth</div><div style="font-size:12px;color:#7C889A">default</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:15px;font-weight:700;background:#1E2938;color:#fff;padding:14px 20px;outline:2px solid #8B86F5;text-align:center">Modrinth</div><div style="font-size:12px;color:#7C889A">hover</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:15px;font-weight:700;background:#0D131B;color:#C6CEDA;padding:14px 20px;outline:2px solid #4B45D6;text-align:center">Modrinth</div><div style="font-size:12px;color:#7C889A">active</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:15px;font-weight:700;background:#151E29;color:#EEF1F6;padding:14px 20px;outline:3px solid #FFC61F;outline-offset:2px;text-align:center">Modrinth</div><div style="font-size:12px;color:#7C889A">focus ring</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;align-items:start">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7C889A;padding-top:14px">GHOST</div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:15px;font-weight:700;color:#8B86F5;padding:14px 8px">View gallery →</div><div style="font-size:12px;color:#7C889A">default</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:15px;font-weight:700;color:#B7B3FF;padding:14px 8px;box-shadow:inset 0 -2px 0 #B7B3FF">View gallery →</div><div style="font-size:12px;color:#7C889A">hover</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:15px;font-weight:700;color:#FFC61F;padding:14px 8px">View gallery →</div><div style="font-size:12px;color:#7C889A">active</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:15px;font-weight:700;color:#5D6779;padding:14px 8px">View gallery →</div><div style="font-size:12px;color:#7C889A">disabled</div></div>
+      </div>
+
+      <div style="height:2px;background:#263242"></div>
+
+      <h3 style="font-family:'Bungee',sans-serif;font-size:22px;margin:0;color:#fff;font-weight:400">BADGES &amp; CHIPS</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div style="background:#151E29;outline:2px solid #263242;padding:22px;display:flex;flex-direction:column;gap:14px">
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">TYPE BADGE — GLYPH + WORD, NEVER COLOR ALONE</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.08em;background:#2A2680;color:#CFCCFF;padding:7px 11px"><span style="width:9px;height:9px;background:#8B86F5;display:block"></span>MOD</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.08em;background:#0F3D22;color:#7FE3A2;padding:7px 11px"><span style="width:9px;height:9px;background:#17B94F;display:block;transform:rotate(45deg)"></span>DATAPACK</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.08em;background:#4A3505;color:#FFDA6B;padding:7px 11px"><span style="width:10px;height:9px;background:#FFC61F;display:block;clip-path:polygon(50% 0,100% 100%,0 100%)"></span>RESOURCE PACK</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.08em;background:#243040;color:#C6CEDA;padding:7px 11px"><span style="width:9px;height:9px;background:#EEF1F6;display:block;border-radius:50%"></span>PLUGIN</div>
+          </div>
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A;padding-top:6px">EXCLUSIVE BADGE — GOLD, HATCHED, CROWN GLYPH</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+            <div style="position:relative;overflow:hidden;display:flex;align-items:center;gap:8px;font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.1em;background:#FFC61F;color:#2E2000;padding:8px 12px;box-shadow:3px 3px 0 #C08400">
+              <span style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.09) 0 8px,transparent 8px 16px)"></span>
+              <span style="position:relative">★</span><span style="position:relative">ONLY ON ODSENS</span>
+            </div>
+            <div style="font-size:13px;color:#9DA9BA;max-width:26ch">Used once per card, top-left corner. Never on a project that also lives on Modrinth.</div>
+          </div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #263242;padding:22px;display:flex;flex-direction:column;gap:14px">
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">VERSION / LOADER CHIPS</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div style="font-size:12px;font-weight:500;color:#C6CEDA;padding:6px 10px;outline:2px solid #2C3A4B;border-radius:3px">1.21.4</div>
+            <div style="font-size:12px;font-weight:500;color:#C6CEDA;padding:6px 10px;outline:2px solid #2C3A4B;border-radius:3px">1.21.1</div>
+            <div style="font-size:12px;font-weight:500;color:#C6CEDA;padding:6px 10px;outline:2px solid #2C3A4B;border-radius:3px">1.20.x</div>
+            <div style="font-size:12px;font-weight:500;color:#0D131B;background:#8B86F5;padding:6px 10px;border-radius:3px">Fabric</div>
+            <div style="font-size:12px;font-weight:500;color:#C6CEDA;padding:6px 10px;outline:2px solid #2C3A4B;border-radius:3px">NeoForge</div>
+            <div style="font-size:12px;font-weight:500;color:#5D6779;padding:6px 10px;outline:2px solid #1E2938;border-radius:3px">Forge</div>
+          </div>
+          <div style="font-size:13px;color:#9DA9BA">Left to right: default, selected (filled), unavailable (dimmed, not clickable). Max four chips on a card, then “+2”.</div>
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A;padding-top:6px">FILTER BAR</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#0D131B;outline:2px solid #263242;padding:12px">
+            <div style="font-family:'Bungee',sans-serif;font-size:12px;background:#4B45D6;color:#fff;padding:9px 13px">ALL 18</div>
+            <div style="font-family:'Bungee',sans-serif;font-size:12px;color:#C6CEDA;padding:9px 13px;outline:2px solid #2C3A4B">MODS 7</div>
+            <div style="font-family:'Bungee',sans-serif;font-size:12px;color:#C6CEDA;padding:9px 13px;outline:2px solid #2C3A4B">DATAPACKS 4</div>
+            <div style="font-family:'Bungee',sans-serif;font-size:12px;color:#C6CEDA;padding:9px 13px;outline:2px solid #2C3A4B">PACKS 5</div>
+            <div style="font-family:'Bungee',sans-serif;font-size:12px;color:#C6CEDA;padding:9px 13px;outline:2px solid #2C3A4B">PLUGINS 2</div>
+            <div style="margin-left:auto;font-size:13px;color:#9DA9BA;display:flex;align-items:center;gap:8px">Version <span style="color:#EEF1F6;font-weight:700;padding:7px 10px;outline:2px solid #2C3A4B;border-radius:3px">Any ▾</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:2px;background:#263242"></div>
+
+      <h3 style="font-family:'Bungee',sans-serif;font-size:22px;margin:0;color:#fff;font-weight:400">PROJECT CARD</h3>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+        <div style="background:#151E29;outline:2px solid #263242;display:flex;flex-direction:column">
+          <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <div style="width:64px;height:64px;flex:none;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#4E5A6C">ICON</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="font-family:'Bungee',sans-serif;font-size:19px;color:#fff;line-height:1.05">HEAVY SPEAR</div>
+                <div style="font-size:14px;color:#9DA9BA;line-height:1.5">Long reach, real weight, no shield.</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div style="font-size:12px;font-weight:500;color:#C6CEDA;padding:5px 9px;outline:2px solid #2C3A4B;border-radius:3px">1.21.x</div>
+              <div style="font-size:12px;font-weight:500;color:#C6CEDA;padding:5px 9px;outline:2px solid #2C3A4B;border-radius:3px">Fabric</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:12px 20px">
+            <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.08em;background:#2A2680;color:#CFCCFF;padding:6px 10px"><span style="width:9px;height:9px;background:#8B86F5;display:block"></span>MOD</div>
+            <div style="font-family:'Silkscreen',monospace;font-size:11px;color:#17B94F">2,147 ↓</div>
+          </div>
+          <div style="font-size:12px;color:#7C889A;padding:10px 20px 14px">default</div>
+        </div>
+        <div style="background:#1A2432;outline:2px solid #8B86F5;display:flex;flex-direction:column;transform:translate(-3px,-3px);box-shadow:6px 6px 0 #2E2A9E">
+          <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <div style="width:64px;height:64px;flex:none;background:#0D131B;outline:2px solid #4B45D6;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#8B86F5">ICON</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="font-family:'Bungee',sans-serif;font-size:19px;color:#fff;line-height:1.05">DUCK CROSSHAIR</div>
+                <div style="font-size:14px;color:#C6CEDA;line-height:1.5">Your crosshair is a duck now.</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div style="font-size:12px;font-weight:500;color:#C6CEDA;padding:5px 9px;outline:2px solid #3A4759;border-radius:3px">1.21.x</div>
+              <div style="font-size:12px;font-weight:500;color:#C6CEDA;padding:5px 9px;outline:2px solid #3A4759;border-radius:3px">All loaders</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#131C27;border-top:2px solid #3A4759;padding:12px 20px">
+            <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.08em;background:#4A3505;color:#FFDA6B;padding:6px 10px"><span style="width:10px;height:9px;background:#FFC61F;display:block;clip-path:polygon(50% 0,100% 100%,0 100%)"></span>RESOURCE PACK</div>
+            <div style="font-family:'Silkscreen',monospace;font-size:11px;color:#17B94F">988 ↓</div>
+          </div>
+          <div style="font-size:12px;color:#7C889A;padding:10px 20px 14px">hover — lifts 3px, gains indigo edge</div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #FFC61F;display:flex;flex-direction:column;position:relative">
+          <div style="position:absolute;top:-1px;left:-1px;display:flex;align-items:center;gap:6px;font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.08em;background:#FFC61F;color:#2E2000;padding:6px 9px">★ ONLY ON ODSENS</div>
+          <div style="padding:20px;padding-top:44px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <div style="width:64px;height:64px;flex:none;background:#0D131B;outline:2px solid #C08400;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#C08400">ICON</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="font-family:'Bungee',sans-serif;font-size:19px;color:#fff;line-height:1.05">TROLL RESOURCES</div>
+                <div style="font-size:14px;color:#9DA9BA;line-height:1.5">Everything looks slightly wrong.</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div style="font-size:12px;font-weight:500;color:#C6CEDA;padding:5px 9px;outline:2px solid #2C3A4B;border-radius:3px">1.21.x</div>
+              <div style="font-size:12px;font-weight:500;color:#C6CEDA;padding:5px 9px;outline:2px solid #2C3A4B;border-radius:3px">+2</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#0F1721;border-top:2px solid #263242;padding:12px 20px">
+            <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.08em;background:#4A3505;color:#FFDA6B;padding:6px 10px"><span style="width:10px;height:9px;background:#FFC61F;display:block;clip-path:polygon(50% 0,100% 100%,0 100%)"></span>RESOURCE PACK</div>
+            <div style="font-family:'Silkscreen',monospace;font-size:11px;color:#FFC61F">412 ↓</div>
+          </div>
+          <div style="font-size:12px;color:#7C889A;padding:10px 20px 14px">exclusive — gold edge + corner badge</div>
+        </div>
+      </div>
+
+      <div style="height:2px;background:#263242"></div>
+
+      <h3 style="font-family:'Bungee',sans-serif;font-size:22px;margin:0;color:#fff;font-weight:400">GALLERY</h3>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px">
+        <div style="background:#151E29;outline:2px solid #263242;padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="aspect-ratio:16/9;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;color:#4E5A6C;font-family:'Silkscreen',monospace;font-size:11px">SCREENSHOT 1 / 6</div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;aspect-ratio:16/10;background:#0D131B;outline:2px solid #8B86F5"></div>
+            <div style="flex:1;aspect-ratio:16/10;background:#0D131B;outline:2px solid #2C3A4B"></div>
+            <div style="flex:1;aspect-ratio:16/10;background:#0D131B;outline:2px solid #2C3A4B"></div>
+            <div style="flex:1;aspect-ratio:16/10;background:#0D131B;outline:2px solid #2C3A4B"></div>
+            <div style="flex:1;aspect-ratio:16/10;background:#0D131B;outline:2px solid #2C3A4B;display:grid;place-items:center;font-size:12px;color:#9DA9BA">+2</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;font-size:14px;color:#9DA9BA">
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">RULES</div>
+          <div>Images sit on Ink with a 2px line — never cropped to a circle, never given a radius. Selected thumb takes the Indigo Lift edge. Screenshots keep <span style="color:#EEF1F6">image-rendering: pixelated</span> so Minecraft pixels stay crisp. Every image needs alt text; captions optional, 14px Mute.</div>
+          <div>Lightbox: full-bleed on Ink at 92% opacity, arrows are 44px squares, Esc closes, arrow keys move.</div>
+        </div>
+      </div>
+
+      <div style="height:2px;background:#263242"></div>
+
+      <h3 style="font-family:'Bungee',sans-serif;font-size:22px;margin:0;color:#fff;font-weight:400">COMMENTS</h3>
+      <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:20px;align-items:start">
+        <div style="background:#151E29;outline:2px solid #263242;padding:20px;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;gap:12px">
+            <div style="width:40px;height:40px;flex:none;background:#4B45D6;outline:2px solid #2C3A4B"></div>
+            <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+              <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:14px;font-weight:700;color:#EEF1F6">creeperfan9</span><span style="font-size:12px;color:#7C889A">2 days ago</span></div>
+              <div style="background:#1E2938;outline:2px solid #2C3A4B;padding:12px 14px;font-size:15px;color:#DCE3EC;line-height:1.55">this mace is unreasonably fun. the sound gets me every time</div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#9DA9BA;padding:8px 11px;outline:2px solid #2C3A4B">♥ 12</div>
+                <div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#0D131B;background:#8B86F5;padding:8px 11px">♥ 13 liked</div>
+                <div style="font-size:13px;font-weight:700;color:#8B86F5;padding:8px 6px">Reply</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;margin-left:52px;padding-left:16px;border-left:2px solid #263242">
+            <div style="width:34px;height:34px;flex:none;background:#FFC61F;outline:2px solid #2C3A4B"></div>
+            <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+              <div style="display:flex;gap:10px;align-items:baseline">
+                <span style="font-size:14px;font-weight:700;color:#EEF1F6">OddSense</span>
+                <span style="font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.08em;background:#FFC61F;color:#2E2000;padding:3px 6px">CREATOR</span>
+                <span style="font-size:12px;color:#7C889A">1 day ago</span>
+              </div>
+              <div style="background:#1E2938;outline:2px solid #3A4759;padding:12px 14px;font-size:15px;color:#DCE3EC;line-height:1.55">unreasonable is the goal</div>
+              <div style="display:flex;gap:8px;align-items:center"><div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#9DA9BA;padding:8px 11px;outline:2px solid #2C3A4B">♥ 31</div><div style="font-size:13px;font-weight:700;color:#8B86F5;padding:8px 6px">Reply</div></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;margin-left:52px;padding-left:16px;border-left:2px solid #263242;opacity:.85">
+            <div style="width:34px;height:34px;flex:none;background:#263242;outline:2px solid #2C3A4B"></div>
+            <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+              <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:14px;font-weight:700;color:#EEF1F6">you</span><span style="font-size:12px;color:#7C889A">just now</span></div>
+              <div style="background:#1E2938;outline:2px dashed #C08400;padding:12px 14px;font-size:15px;color:#9DA9BA;line-height:1.55;display:flex;flex-direction:column;gap:8px">
+                <div style="font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.1em;color:#FFC61F">⏳ HELD FOR REVIEW</div>
+                <div>Only you can see this until OddSense approves it. Usually quick.</div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:13px;color:#7C889A">Replies indent one level only — deeper replies stay flat and start with “@handle”.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div style="background:#151E29;outline:2px solid #263242;padding:20px;display:flex;flex-direction:column;gap:14px">
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">SIGN-IN PROMPT</div>
+            <div style="font-family:'Bungee',sans-serif;font-size:17px;color:#fff;line-height:1.15">SAY SOMETHING</div>
+            <div style="font-size:14px;color:#9DA9BA">Sign in with Google, pick a handle, done. Your name stays private — only the handle shows.</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <div style="font-size:15px;font-weight:700;background:#EEF1F6;color:#141A22;padding:13px 18px;outline:2px solid #fff">Continue with Google</div>
+            </div>
+          </div>
+          <div style="background:#151E29;outline:2px solid #263242;padding:20px;display:flex;flex-direction:column;gap:12px">
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">FLOATING SUPPORT BUTTON</div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="display:flex;align-items:center;gap:10px;font-family:'Bungee',sans-serif;font-size:13px;background:#FFC61F;color:#2E2000;padding:14px 18px;box-shadow:4px 4px 0 #C08400">♥ SUPPORT</div>
+              <div style="font-size:13px;color:#9DA9BA">Bottom-right, 24px inset. Hides while scrolling down, returns on scroll up. On phones it shrinks to a 48px gold square with the heart only.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:2px;background:#263242"></div>
+
+      <h3 style="font-family:'Bungee',sans-serif;font-size:22px;margin:0;color:#fff;font-weight:400">NAV &amp; FOOTER</h3>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="background:#151E29;border-bottom:2px solid #263242;padding:0 24px;display:flex;align-items:center;gap:28px;height:68px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <img src="assets/avatar.png" alt="" style="width:40px;height:40px;object-fit:cover;border:2px solid #fff;display:block">
+            <div style="font-family:'Bungee',sans-serif;font-size:20px;color:#fff">ODSENS</div>
+          </div>
+          <div style="display:flex;gap:4px;align-items:center;margin-left:12px">
+            <div style="font-size:15px;font-weight:700;color:#fff;padding:10px 14px;box-shadow:inset 0 -3px 0 #FFC61F">Projects</div>
+            <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Videos</div>
+            <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Skins</div>
+            <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Art</div>
+            <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Commissions</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+            <div style="position:relative;width:44px;height:44px;outline:2px solid #3A4759;display:grid;place-items:center">
+              <svg width="24" height="27" viewBox="0 0 24 27" fill="#EEF1F6" aria-hidden="true"><path d="M12 2.6c-3.6 0-6.1 2.7-6.1 6.4 0 4.3-.8 6.5-2.4 8.1-.6.7-.1 1.7.7 1.7h15.6c.8 0 1.3-1 .7-1.7-1.6-1.6-2.4-3.8-2.4-8.1 0-3.7-2.5-6.4-6.1-6.4z"/><path d="M12 25.2a3.9 3.9 0 0 0 3.9-3.9H8.1a3.9 3.9 0 0 0 3.9 3.9z"/></svg>
+              
+              
+              <div style="position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;background:#E1493B;outline:2px solid #151E29;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#fff;padding:0 3px">3</div>
+            </div>
+            <div style="font-size:14px;font-weight:700;color:#EEF1F6;padding:11px 14px;outline:2px solid #3A4759">Sign in</div>
+            <div style="font-family:'Bungee',sans-serif;font-size:12px;background:#FFC61F;color:#2E2000;padding:12px 14px;box-shadow:3px 3px 0 #C08400">♥ SUPPORT</div>
+          </div>
+        </div>
+        <div style="background:#0F1721;border-top:2px solid #263242;padding:28px 24px;display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start">
+          <div style="display:flex;flex-direction:column;gap:8px;min-width:220px">
+            <div style="font-family:'Bungee',sans-serif;font-size:17px;color:#fff">ODSENS</div>
+            <div style="font-size:14px;color:#7C889A">Mods and other odd things, made by OddSense. Not affiliated with Mojang.</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">FIND ME</div><div style="font-size:14px;color:#8B86F5">Modrinth</div><div style="font-size:14px;color:#8B86F5">CurseForge</div><div style="font-size:14px;color:#8B86F5">YouTube</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">SITE</div><div style="font-size:14px;color:#8B86F5">Projects</div><div style="font-size:14px;color:#8B86F5">Custom orders</div><div style="font-size:14px;color:#8B86F5">Support</div></div>
+        </div>
+        <div style="font-size:13px;color:#7C889A">Top bar is sticky, 68px desktop / 56px phone, and collapses nav links into a chunky square menu button under 900px. Active page carries a 3px gold underline — never color alone.</div>
+        <div style="display:flex;gap:20px;align-items:center;background:#151E29;outline:2px solid #263242;padding:18px 20px;flex-wrap:wrap">
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A;width:132px;flex:none">NOTIFICATION BELL</div>
+          <div style="display:flex;gap:16px;align-items:center">
+            <div style="position:relative;width:44px;height:44px;outline:2px solid #3A4759;display:grid;place-items:center">
+              <svg width="24" height="27" viewBox="0 0 24 27" fill="#EEF1F6" aria-hidden="true"><path d="M12 2.6c-3.6 0-6.1 2.7-6.1 6.4 0 4.3-.8 6.5-2.4 8.1-.6.7-.1 1.7.7 1.7h15.6c.8 0 1.3-1 .7-1.7-1.6-1.6-2.4-3.8-2.4-8.1 0-3.7-2.5-6.4-6.1-6.4z"/><path d="M12 25.2a3.9 3.9 0 0 0 3.9-3.9H8.1a3.9 3.9 0 0 0 3.9 3.9z"/></svg>
+              
+              
+              <div style="position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;background:#E1493B;outline:2px solid #151E29;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#fff;padding:0 3px">3</div>
+            </div>
+            <div style="position:relative;width:44px;height:44px;outline:2px solid #3A4759;display:grid;place-items:center">
+              <svg width="24" height="27" viewBox="0 0 24 27" fill="#EEF1F6" aria-hidden="true"><path d="M12 2.6c-3.6 0-6.1 2.7-6.1 6.4 0 4.3-.8 6.5-2.4 8.1-.6.7-.1 1.7.7 1.7h15.6c.8 0 1.3-1 .7-1.7-1.6-1.6-2.4-3.8-2.4-8.1 0-3.7-2.5-6.4-6.1-6.4z"/><path d="M12 25.2a3.9 3.9 0 0 0 3.9-3.9H8.1a3.9 3.9 0 0 0 3.9 3.9z"/></svg>
+              
+              
+              <div style="position:absolute;top:-6px;right:-8px;min-width:24px;height:20px;background:#E1493B;outline:2px solid #151E29;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#fff;padding:0 3px">12</div>
+            </div>
+            <div style="position:relative;width:44px;height:44px;outline:2px solid #2C3A4B;display:grid;place-items:center;opacity:.75">
+              <svg width="24" height="27" viewBox="0 0 24 27" fill="#9DA9BA" aria-hidden="true"><path d="M12 2.6c-3.6 0-6.1 2.7-6.1 6.4 0 4.3-.8 6.5-2.4 8.1-.6.7-.1 1.7.7 1.7h15.6c.8 0 1.3-1 .7-1.7-1.6-1.6-2.4-3.8-2.4-8.1 0-3.7-2.5-6.4-6.1-6.4z"/><path d="M12 25.2a3.9 3.9 0 0 0 3.9-3.9H8.1a3.9 3.9 0 0 0 3.9 3.9z"/></svg>
+              
+              
+            </div>
+          </div>
+          <div style="font-size:14px;color:#9DA9BA;flex:1;min-width:260px">Sits at the right end of the bar, left of Sign in. Square 44px, 2px line, outline bell. Unread count in a red square badge (`#E1493B`, white Silkscreen 9px, 2px slab-coloured outline) that clips to <span style="color:#EEF1F6">9+</span> above nine — the badge is redundant with the count, never colour alone. Empty state: mute bell, no badge, and the tooltip/aria label reads “No new notifications”. Opens a slab dropdown of replies and approvals; the badge clears on open, not on hover.</div>
+        </div>
+      </div>
+
+      <div style="height:2px;background:#263242"></div>
+
+      <h3 style="font-family:'Bungee',sans-serif;font-size:22px;margin:0;color:#fff;font-weight:400">ADMIN PARTS</h3>
+      <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:20px;align-items:start">
+        <div style="background:#151E29;outline:2px solid #263242;padding:20px;display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">FORM FIELD</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:13px;font-weight:700;color:#C6CEDA">Project title</div>
+            <div style="background:#0D131B;outline:2px solid #2C3A4B;border-radius:3px;padding:12px 14px;font-size:15px;color:#EEF1F6">Metal Pipe Mace</div>
+            <div style="font-size:12px;color:#7C889A">Shows as the page heading in Bungee caps.</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:13px;font-weight:700;color:#C6CEDA">Slug</div>
+            <div style="background:#0D131B;outline:2px solid #8B86F5;border-radius:3px;padding:12px 14px;font-size:15px;color:#EEF1F6">metal-pipe-mace</div>
+            <div style="font-size:12px;color:#8B86F5">focused</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:13px;font-weight:700;color:#C6CEDA">Download count</div>
+            <div style="background:#0D131B;outline:2px solid #C05A45;border-radius:3px;padding:12px 14px;font-size:15px;color:#EEF1F6">nine hundred</div>
+            <div style="font-size:12px;color:#F0836B">Needs to be a number. Digits only.</div>
+          </div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #263242;display:flex;flex-direction:column">
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A;padding:20px 20px 12px">MODERATION TABLE</div>
+          <div style="display:grid;grid-template-columns:1.4fr 1fr .8fr .9fr;gap:0;font-size:13px">
+            <div style="padding:10px 14px;background:#0F1721;border-top:2px solid #263242;border-bottom:2px solid #263242;font-weight:700;color:#9DA9BA">Comment</div>
+            <div style="padding:10px 14px;background:#0F1721;border-top:2px solid #263242;border-bottom:2px solid #263242;font-weight:700;color:#9DA9BA">On</div>
+            <div style="padding:10px 14px;background:#0F1721;border-top:2px solid #263242;border-bottom:2px solid #263242;font-weight:700;color:#9DA9BA">Status</div>
+            <div style="padding:10px 14px;background:#0F1721;border-top:2px solid #263242;border-bottom:2px solid #263242;font-weight:700;color:#9DA9BA">Do</div>
+            <div style="padding:12px 14px;color:#DCE3EC;border-bottom:2px solid #1B2531">“best pack ever fr”</div>
+            <div style="padding:12px 14px;color:#9DA9BA;border-bottom:2px solid #1B2531">Troll Resources</div>
+            <div style="padding:12px 14px;border-bottom:2px solid #1B2531"><span style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#FFDA6B;background:#4A3505;padding:4px 8px">HELD</span></div>
+            <div style="padding:12px 14px;border-bottom:2px solid #1B2531;display:flex;gap:6px"><span style="font-size:12px;font-weight:700;color:#0D131B;background:#17B94F;padding:5px 9px">Approve</span><span style="font-size:12px;font-weight:700;color:#F0836B;padding:5px 9px;outline:2px solid #4A2A2A">Delete</span></div>
+            <div style="padding:12px 14px;color:#DCE3EC;border-bottom:2px solid #1B2531">“does this work on 1.20?”</div>
+            <div style="padding:12px 14px;color:#9DA9BA;border-bottom:2px solid #1B2531">Heavy Spear</div>
+            <div style="padding:12px 14px;border-bottom:2px solid #1B2531"><span style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#7FE3A2;background:#0F3D22;padding:4px 8px">LIVE</span></div>
+            <div style="padding:12px 14px;border-bottom:2px solid #1B2531;display:flex;gap:6px"><span style="font-size:12px;font-weight:700;color:#C6CEDA;padding:5px 9px;outline:2px solid #2C3A4B">Reply</span><span style="font-size:12px;font-weight:700;color:#F0836B;padding:5px 9px;outline:2px solid #4A2A2A">Hide</span></div>
+          </div>
+          <div style="font-size:13px;color:#7C889A;padding:14px 20px">Admin keeps the palette but drops the poster type: labels in Space Grotesk, rows 44px tall, one accent per row max. Status is a word, never just a dot.</div>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.2em;color:#FFC61F">05 — VOICE &amp; TONE</div>
+        <h2 style="font-family:'Bungee',sans-serif;font-size:32px;margin:0;color:#fff;font-weight:400">DRY, SHORT, DEADPAN</h2>
+        <p style="margin:0;color:#9DA9BA;max-width:68ch;text-wrap:pretty">odsens talks like someone who thinks the joke is funnier if you don't point at it. State the thing. Stop. The mods are silly; the writing about them is calm. Never hype, never “epic”, never exclamation stacking.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div style="background:#151E29;outline:2px solid #1F4A31;padding:22px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#17B94F">DO</div>
+          <div style="font-size:15px;color:#DCE3EC;line-height:1.7">“A mace made out of a metal pipe. It does the sound.”<br>“Works on 1.21. Probably works on 1.20. Untested.”<br>“Only on odsens. Not going anywhere else.”<br>“Sign in to comment. Your handle is all anyone sees.”<br>“Held for review. Usually quick.”</div>
+          <div style="font-size:14px;color:#9DA9BA">Rules: one idea per sentence. Under 12 words where you can. Lowercase in UI labels, caps only in Bungee. Own the limits — “untested” is funnier than a promise.</div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #4A2A2A;padding:22px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#F0836B">DON'T</div>
+          <div style="font-size:15px;color:#DCE3EC;line-height:1.7">“The ULTIMATE mace experience!!! 🔥🔥”<br>“Revolutionary gameplay-changing mechanics.”<br>“Hey guys, welcome back to my website!”<br>“Please consider supporting me, it really helps!!”<br>“An error has occurred. Code 500.”</div>
+          <div style="font-size:14px;color:#9DA9BA">No emoji, no hype adjectives, no vlogger openers, no begging on the support panel, no robot error text. Errors talk like a person: “That file didn't upload. Try again?”</div>
+        </div>
+      </div>
+      <div style="background:#151E29;outline:2px solid #263242;padding:22px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">MOTION &amp; ACCESSIBILITY</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;font-size:14px;color:#9DA9BA;line-height:1.7">
+          <div>Motion is light and blocky: 120–180ms, ease-out, 2–4px moves. Cards lift, shadows deepen, chips snap. One idle animation per page maximum (the hero's slow crown gleam). Nothing loops in the corner of your eye. Honour <span style="color:#EEF1F6">prefers-reduced-motion</span> by killing transforms and keeping colour changes.</div>
+          <div>Every interactive thing gets a 44px target and a visible gold focus ring. Meaning never rides on colour alone — badges carry glyphs and words, statuses carry words, the active nav item carries an underline. Alt text on every project icon, screenshot and art piece. No real names, ages or locations anywhere: users appear as their chosen handle and picture only.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}"></script>
+</body>
+</html>

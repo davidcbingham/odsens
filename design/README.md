@@ -27,3 +27,23 @@ Open the `.dc.html` files in a browser to view the prototypes.
 - `assets/thumb-*.png` → `assets/brand/thumbnails/` (video thumbnails)
 
 If the design is iterated again in Claude Design, re-export into a dated subfolder here and update `DESIGN.md`.
+
+---
+
+## Pass 2 (2026-08-17) — `claude-design-export/pass-2/`
+
+Second Claude Design session: same Crate Poster direction, filling the coverage gaps the functional spec exposed.
+Claude Design project share URL: _(add)_
+
+| File | What |
+|---|---|
+| `handoff/DESIGN.md` | Spec as exported, v1.2 (canonical copy at repo-root `DESIGN.md`, paths repointed to `assets/brand/…`) |
+| `CHANGELOG.md` | What changed since v1 and why |
+| `odsens Screens - Accounts and Comments.dc.html` | Handle onboarding, handle/picture states, square crop, profile menu, Your profile, comment thread + every action and edge state |
+| `odsens Screens - Admin and States.dc.html` | Admin Settings / Stats / Orders / sign-in gate, upload well, 404, generic error, loading skeletons, empty states, toasts, support wrapper, video facades, Privacy page + footer |
+| `odsens Design System.dc.html`, `odsens Screens - Core.dc.html`, `odsens Screens - Sections.dc.html`, `Direction A/B/C - *.dc.html` | Carried forward from pass 1, unchanged |
+| `assets/`, `support.js`, `github.md` | Art the prototypes reference (canonical copies in `assets/brand/`) + export metadata / runtime |
+
+Highlights: `--orange #E8762A` added for CurseForge and source colours fixed app-wide (Modrinth green, CurseForge orange, direct indigo) · card and panel outlines lifted to `--line-soft` · user notification bell cut from v1 · Shorts row on Videos · mod actions only auto-show on held/reported comments, otherwise behind a `Moderate ON/OFF` toggle · new components: handle field, square toggle, picture upload + crop, toast, skeleton, upload well, stat tile, flat bar chart, video facade, profile menu, mod action row.
+
+Still missing before build: project icons, in-game screenshots, rendered 3D skin previews.

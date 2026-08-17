@@ -63,8 +63,14 @@ Answered items get folded into `spec.md` and struck here.
 - **Framework choice** — after design + functional spec
 
 ## From the DESIGN.md review pass (2026-08-16) — see `docs/design-review.md`
-28. **Card border contrast** — keep the quiet `--line` outlines (1.3:1, moody, on-brief) or lift card outlines toward `--line-strong`+ for visibility?
-29. **User notifications** — the design adds a bell/inbox for signed-in users (replies, likes, approvals). Keep in v1, or defer? (Feeds the Notifications design session.)
-30. **YouTube Shorts** — show on the Videos page (own rail?) or exclude?
-31. **Hero** — confirm the featured-project takeover (avatar strip, no 3D skin) is the intended home hero.
-32. **Second Claude Design pass** — needed for: handle onboarding, comment actions/states (edit/delete/report/mod actions/banned), admin Settings + upload states + Stats, 404/empty/loading, privacy page. When?
+28. ~~**Card border contrast**~~ — **Answered (pass 2):** Card/panel outlines lifted one step to `--line-soft #2C3A4B`; `--line` kept for internal dividers.
+29. ~~**User notifications**~~ — **Answered (pass 2):** **Cut from v1** — no user inbox; admin gets email. Bell spec retained for later.
+30. ~~**YouTube Shorts**~~ — **Answered (pass 2):** **Shorts row added** under the long-form grid (9:16 facades).
+31. ~~**Hero**~~ — **Answered (pass 2):** Unchanged in pass 2 (featured-project takeover hero) — treated as confirmed.
+32. ~~**Second Claude Design pass**~~ — **Answered (pass 2):** **Done 2026-08-17** — `design/claude-design-export/pass-2/`, `DESIGN.md` v1.2 §11.
+## From pass 2 (Claude Design's open items, 2026-08-17)
+33. **Ko-fi tip event** — what happens on webhook receipt in v1: supporters wall entry (handles only)? nothing yet? (Wall is a reserved slot.)
+34. **Handle validation heuristic** — how strictly to reject "looks like a real name / email"? Build decision; needs a rule (e.g. block `@`, block first+last capitalized pairs?).
+35. **Comment limits** — placeholders in the design: 1000 chars, one link per comment. Confirm.
+36. **Under-13 line** on the Privacy page ("don't sign in") — needs David's call before ship.
+37. **Still-missing art**: project icons, in-game screenshots, rendered 3D skin busts (build-time via skinview3d).

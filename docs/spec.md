@@ -82,7 +82,7 @@ that rather than calling everything a "mod."
 - **Projects** — grid/list, filterable by type (**mod / datapack / resource pack / plugin**) and MC version. Detail page per project with icon, gallery, markdown body, versions/files, download buttons (Modrinth / CurseForge / direct for exclusives), combined download count, comments. **Exclusive** projects badged as "only on odsens.com".
   - Project schema mirrors Modrinth: `slug, title, description (short), body (markdown), project_type, categories[], loaders[], game_versions[], icon, gallery[], versions[] {version_number, changelog, files[], game_versions, loaders, date}, downloads, source (modrinth | odsens)`.
 - **About** — who OddSense is (age-appropriate; see privacy notes below).
-- **Videos** — YouTube channel feed with embedded player.
+- **Videos** — YouTube channel feed with click-to-load facades + embedded player; **Shorts row** below long-form.
 - **Skins** — native section highlighting skins he's made (3D viewer, download). **Details deferred to a dedicated design discussion.**
 - **Art** — native section: profile pictures, thumbnails, and other original art.
 - ~~Games (Scratch)~~ — **excluded** per Oliver.
@@ -90,7 +90,7 @@ that rather than calling everything a "mod."
 - **Comments** — by signed-in users; stored in Supabase.
   - **Moderation mode is an admin setting**: *auto-publish for signed-in users* vs. *hold first-time commenters for approval*. Start permissive; tighten if abuse appears.
   - **Multiple moderators**: Oliver can grant mod access to others (e.g. David). Mods can delete/hide comments and ban users.
-  - **Notifications**: on/off toggle for new-comment alerts. Channels and infrastructure (email / Discord / in-app / push) to be settled in a dedicated design session.
+  - **Notifications**: v1 = **email to admins** with per-event toggles (new comment, reply to me, new order, new tip). **No user-facing inbox in v1** (bell cut in design pass 2). Channels beyond email later.
   - **Threaded replies** (so Oliver can respond in-thread) and **likes** on comments (feedback signal). Details in the comments design session.
 - **Admin UI** (auth-gated; Oliver + moderators/admins) — a menu with one section per hosted content type:
   - **Projects** — create/edit exclusive projects (Modrinth-shaped form: metadata, gallery, versions + file upload); curate synced Modrinth projects (feature / hide / reorder / extra art).
@@ -129,7 +129,7 @@ that rather than calling everything a "mod."
 ## 8. Aesthetic direction (early)
 
 - **Tone: playful and cartoony — fun, relaxed, inviting.** (Decided 2026-08-16.)
-- **Design system v1 exists: repo-root `DESIGN.md`** (from Oliver's Claude Design session, 2026-08-16). Direction **"Crate Poster"** — blocky poster type (Bungee) on flat colour slabs, hard 2px edges, offset block shadows, zero blur; body Space Grotesk, pixel accent Silkscreen. Palette sampled from the avatar (ink `#0D131B`, indigo `#4B45D6`, gold `#FFC61F`, emerald `#17B94F`). Prototypes in `design/claude-design-export/`. Reviewed → `docs/design-review.md` (v1.1). Inspiration hunt still to come.
+- **Design system v1 exists: repo-root `DESIGN.md`** (from Oliver's Claude Design session, 2026-08-16). Direction **"Crate Poster"** — blocky poster type (Bungee) on flat colour slabs, hard 2px edges, offset block shadows, zero blur; body Space Grotesk, pixel accent Silkscreen. Palette sampled from the avatar (ink `#0D131B`, indigo `#4B45D6`, gold `#FFC61F`, emerald `#17B94F`). Prototypes in `design/claude-design-export/`. Reviewed → `docs/design-review.md` (v1.1); **pass 2 → v1.2** adds accounts/onboarding, comment moderation states, admin settings/stats/orders, global states, privacy page (`design/claude-design-export/pass-2/`). Inspiration hunt still to come.
 - Palette from avatar: deep purple, gold, glowing green accent, near-black background, white outline highlights.
 - Pixel/blocky motifs (Minecraft-adjacent) used tastefully — chunky borders, pixel icons — but readable typography and clean layout.
 - Dark theme first (matches YouTube/Modrinth vibe). Light theme optional.
@@ -152,6 +152,7 @@ See `docs/questions.md` — running list of open questions (answered items migra
 *Revision log*
 - 2026-08-16 — Initial draft from David's brief + Modrinth/Scratch public data.
 - 2026-08-16 — Folded in David's answers to Q1–3, 5–9; added platform audit (`platform-audit.md`).
+- 2026-08-17 — Design pass 2 landed: `DESIGN.md` v1.2 (§11), new screens; Q28–32 resolved; Q33–37 added.
 - 2026-08-16 — Claude Design export landed: `DESIGN.md` v1 (Crate Poster), prototypes in `design/`, art in `assets/brand/`.
 - 2026-08-16 — Threaded comments + likes; naming model; tone; DESIGN.md/Claude Design process; inspiration-hunt process; site-management skills plan.
 - 2026-08-16 — Ko-fi chosen. Oliver's input: exclusive on-site projects (Modrinth-shaped schema, file hosting), CurseForge download totals, no Scratch, Skins + Art sections native. `.env.example` added.
