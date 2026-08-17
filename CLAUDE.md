@@ -2,7 +2,7 @@
 
 This is **odsens.com**, a portfolio site for OddSense (Minecraft creator). It is in the **planning/design phase** — read
 `docs/spec.md` first, then `docs/platform-audit.md`. **`DESIGN.md` at repo root is the visual
-source of truth** (v1, direction "Crate Poster"); prototypes are in `design/claude-design-export/pass-*/` (open the `.dc.html`
+source of truth** (v1.3, direction "Crate Poster"); prototypes are in `design/claude-design-export/pass-*/` (open the `.dc.html`
 files in a browser), source art in `assets/brand/`. Design process: `docs/design-process.md`.
 
 Ground rules

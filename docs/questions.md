@@ -99,9 +99,12 @@ Answered items get folded into `spec.md` and struck here.
 - [ ] Decisions: Q33–40
 
 ## From "Seen on" + Workrooms (2026-08-17)
-41. **Mention click behaviour** — embed the third-party video inline (facade) with an "on YouTube ↗" link (proposed), or always link out? *(Oliver)*
-42. **Claude Design pass 3?** — Seen on + Workrooms can be built from existing components per DESIGN.md §12; does Oliver want to art-direct them first? *(Oliver)*
+41. ~~**Mention click behaviour**~~ — **Answered (pass 3):** YouTube mentions embed inline (facade → player, indigo-lift outline, "on YouTube ↗" ghost link); other platforms link out.
+42. ~~**Claude Design pass 3?**~~ — **Answered (pass 3):** Pass 3 done 2026-08-17 → `DESIGN.md` v1.3 §12. No pass 4 needed before build.
 43. **Workroom email opt-in copy + privacy page line** — draft when Phase 2 starts.
 
-## Design pass 3 (queued 2026-08-17) — brief in `docs/claude-design-pass3-prompt.md`
-Notification matrix (site-level, decided) · Seen on (item row, Home strip, aggregate page, admin Mentions + Suggested) · Workrooms (P2, design-ahead) · Email + Discord templates · Supporters leaderboard · handle-guidance copy · privacy line · versions changelog · Custom Orders confirmation · nav order (Claude Design to propose). Lands in `design/claude-design-export/pass-3/` → `DESIGN.md` v1.3.
+## Design pass 3 — **landed 2026-08-17** (`design/claude-design-export/pass-3/`, `DESIGN.md` v1.3 §12)
+Answers to Claude Design's open items (build decisions, no re-pass): view counts refresh hourly (data model) · general mentions tagged with the ODSENS wordmark chip · suggested-mention source = YouTube search per project title (v1.5) · one Discord webhook in v1 (a second mod-channel webhook is a field, not a redesign) · leaderboard linking = hashed-email match (decided Q33) · **nav shows "Commissions" only when Phase 2 ships**.
+44. **Allay render** — Oliver to draw a pixel allay (Minecraft mob; same fan-content footing as the rest) for the email header (28px), Discord bot avatar, and Settings → Notifications. Also needed at build: official YouTube/TikTok/Twitch/Reddit marks (24px) from brand-guideline downloads. *(Oliver)*
+45. **Workroom limits** — confirm 25 MB/file, 200 MB/room; **max participants per room** (proposed 6). *(Phase 2)*
+46. **Future passes** — tell Claude Design to stop carrying pass-1/2 files forward (each pass re-adds ~12 MB of identical assets). Decide: self-contained snapshots (current) vs. delta-only exports.

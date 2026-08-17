@@ -79,7 +79,8 @@ that rather than calling everything a "mod."
 
 ## 5. Functional scope (initial thinking — to be confirmed)
 
-- **Home** — hero with avatar/brand, featured projects, latest activity, links to YouTube/Modrinth/CurseForge/Scratch.
+- **Nav (decided pass 3)** — wordmark = Home; Projects · Videos · Skins · Art · Seen on · (Commissions, Phase 2); Support = gold button; phone: burger, Support last.
+- **Home** — featured-project hero, featured projects, IN THE WILD strip, latest videos, Find-me links, compact tip panel.
 - **Projects** — grid/list, filterable by type (**mod / datapack / resource pack / plugin**) and MC version. Detail page per project with icon, gallery, markdown body, versions/files, download buttons (Modrinth / CurseForge / direct for exclusives), combined download count, comments. **Exclusive** projects badged as "only on odsens.com".
   - Project schema mirrors Modrinth: `slug, title, description (short), body (markdown), project_type, categories[], loaders[], game_versions[], icon, gallery[], versions[] {version_number, changelog, files[], game_versions, loaders, date}, downloads, source (modrinth | odsens)`.
 - **About** — who OddSense is (age-appropriate; see privacy notes below).
@@ -132,7 +133,7 @@ that rather than calling everything a "mod."
 ## 8. Aesthetic direction (early)
 
 - **Tone: playful and cartoony — fun, relaxed, inviting.** (Decided 2026-08-16.)
-- **Design system v1 exists: repo-root `DESIGN.md`** (from Oliver's Claude Design session, 2026-08-16). Direction **"Crate Poster"** — blocky poster type (Bungee) on flat colour slabs, hard 2px edges, offset block shadows, zero blur; body Space Grotesk, pixel accent Silkscreen. Palette sampled from the avatar (ink `#0D131B`, indigo `#4B45D6`, gold `#FFC61F`, emerald `#17B94F`). Prototypes in `design/claude-design-export/`. Reviewed → `docs/design-review.md` (v1.1); **pass 2 → v1.2** adds accounts/onboarding, comment moderation states, admin settings/stats/orders, global states, privacy page (`design/claude-design-export/pass-2/`). Inspiration hunt still to come.
+- **Design system v1 exists: repo-root `DESIGN.md`** (from Oliver's Claude Design session, 2026-08-16). Direction **"Crate Poster"** — blocky poster type (Bungee) on flat colour slabs, hard 2px edges, offset block shadows, zero blur; body Space Grotesk, pixel accent Silkscreen. Palette sampled from the avatar (ink `#0D131B`, indigo `#4B45D6`, gold `#FFC61F`, emerald `#17B94F`). Prototypes in `design/claude-design-export/`. Reviewed → `docs/design-review.md` (v1.1); **pass 2 → v1.2** adds accounts/onboarding, comment moderation states, admin settings/stats/orders, global states, privacy page (`design/claude-design-export/pass-2/`); **pass 3 → v1.3** adds Seen on, Workrooms (P2), notifications matrix, email/Discord templates (**the allay** as notification character), supporters leaderboard, nav order, How-comments-work page (`design/claude-design-export/pass-3/`). Inspiration hunt still to come.
 - Palette from avatar: deep purple, gold, glowing green accent, near-black background, white outline highlights.
 - Pixel/blocky motifs (Minecraft-adjacent) used tastefully — chunky borders, pixel icons — but readable typography and clean layout.
 - Dark theme first (matches YouTube/Modrinth vibe). Light theme optional.
@@ -155,6 +156,7 @@ See `docs/questions.md` — running list of open questions (answered items migra
 *Revision log*
 - 2026-08-16 — Initial draft from David's brief + Modrinth/Scratch public data.
 - 2026-08-16 — Folded in David's answers to Q1–3, 5–9; added platform audit (`platform-audit.md`).
+- 2026-08-17 — Design pass 3 landed: `DESIGN.md` v1.3 (Seen on, Workrooms, notifications matrix, allay templates, leaderboard, nav). Q41–42 resolved; Q44–46 added.
 - 2026-08-17 — Notifications designed (`docs/notifications.md`): admin-only, Discord + email, settings matrix.
 - 2026-08-17 — Added **Seen on** (v1) and **Workrooms** (Phase 2, with v1 schema hooks).
 - 2026-08-17 — Q33–40 decided (leaderboard handle+amount, structural handle validation, comment limits/edit window, auto-hold, manual CF ids, privacy defers to Google age rules).

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#070B10; }
+  a { color:#8B86F5; text-decoration:none; }
+  a:hover { color:#B7B3FF; }
+</style>
+</helmet>
+<div style="background:#070B10;padding:48px;display:flex;flex-direction:column;gap:64px;font-family:'Space Grotesk',system-ui,sans-serif">
+
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:70ch">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.2em;color:#FFC61F">ODSENS.COM — PASS 3 / PART 3</div>
+    <div style="font-family:'Bungee',sans-serif;font-size:34px;color:#fff;line-height:1">ADMIN: NOTIFICATIONS · ORDERS &amp; WORKROOMS</div>
+    <div style="font-size:16px;color:#9DA9BA;text-wrap:pretty">The notifications matrix replaces the four email switches — site-level, admin-only, Email + Discord. Orders gains workroom management and the "Create workroom" step.</div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">01 — ADMIN SETTINGS / NOTIFICATIONS MATRIX / DESKTOP 1280</div>
+    <div data-screen-label="Admin settings notifications matrix" style="width:1280px;background:#0D131B;outline:2px solid #2C3A4B;color:#EEF1F6;display:flex;min-height:900px">
+      <div style="width:220px;flex:none;background:#111A24;border-right:2px solid #2C3A4B;display:flex;flex-direction:column">
+        <div style="padding:18px 16px;border-bottom:2px solid #2C3A4B;display:flex;align-items:center;gap:10px">
+          <img src="assets/avatar.png" alt="" style="width:30px;height:30px;object-fit:cover;border:2px solid #fff;display:block">
+          <div style="font-family:'Bungee',sans-serif;font-size:15px;color:#fff">ADMIN</div>
+        </div>
+        <div style="display:flex;flex-direction:column;padding:8px 0">
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6;display:flex;justify-content:space-between"><span>Comments</span><span style="font-family:'Silkscreen',monospace;font-size:11px;color:#FFC61F">3</span></div>
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6">Projects</div>
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6">Skins</div>
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6">Art</div>
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6">Mentions</div>
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6">Orders &amp; Workrooms</div>
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6">Stats</div>
+          <div style="padding:13px 16px;font-size:15px;font-weight:700;color:#fff;background:#151E29;box-shadow:inset 4px 0 0 #FFC61F">Settings</div>
+        </div>
+        <div style="margin-top:auto;padding:16px;border-top:2px solid #2C3A4B;font-size:14px;color:#7C889A">Signed in as <span style="color:#EEF1F6;font-weight:700">@oddsense</span></div>
+      </div>
+      <div style="flex:1;padding:32px;display:flex;flex-direction:column;gap:24px;min-width:0">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:26px;font-weight:700;color:#fff">Settings — Notifications</div>
+          <div style="font-size:15px;color:#9DA9BA">Site-level. One grid for all admins, two channels. The allay picks events up and delivers them — everything sends as allay@odsens.com.</div>
+        </div>
+
+        <div style="background:#151E29;outline:2px solid #2C3A4B;padding:22px;display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;align-items:center;gap:10px"><div style="width:24px;height:24px;background:#111A24;outline:2px dashed #3A4759;flex:none"></div><div style="font-size:17px;font-weight:700;color:#fff">Where the allay delivers</div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:13px;font-weight:700;color:#C6CEDA">Discord webhook URL</div>
+              <div style="display:flex;gap:10px">
+                <div style="flex:1;background:#111A24;outline:2px solid #2C3A4B;border-radius:3px;padding:12px 13px;font-size:14px;color:#EEF1F6;letter-spacing:.1em">https://discord.com/api/webhooks/••••••••••••</div>
+                <div style="font-size:14px;font-weight:700;color:#EEF1F6;padding:12px 16px;outline:2px solid #3A4759;flex:none">Test</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:16px;height:16px;background:#17B94F;display:grid;place-items:center;color:#0A2413;font-size:11px;font-weight:700">✔</div><div style="font-size:13px;color:#7FE3A2">Sample sent. Check the channel.</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:13px;font-weight:700;color:#C6CEDA">Admin emails</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;background:#111A24;outline:2px solid #2C3A4B;border-radius:3px;padding:10px">
+                <div style="display:flex;align-items:center;gap:8px;background:#1E2938;outline:2px solid #2C3A4B;padding:7px 10px;font-size:13px;font-weight:700;color:#EEF1F6">admin@…com <span style="color:#9DA9BA">✕</span></div>
+                <div style="display:flex;align-items:center;gap:8px;background:#1E2938;outline:2px solid #2C3A4B;padding:7px 10px;font-size:13px;font-weight:700;color:#EEF1F6">dad@…com <span style="color:#9DA9BA">✕</span></div>
+                <div style="font-size:13px;color:#7C889A;padding:7px 4px">Type an address, press enter</div>
+              </div>
+              <div style="font-size:13px;color:#7C889A">Only what's typed here. Google emails are never reused silently.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#151E29;outline:2px solid #2C3A4B;padding:22px;display:flex;flex-direction:column;gap:16px">
+          <div style="font-size:17px;font-weight:700;color:#fff">What it picks up</div>
+          <div style="display:flex;flex-direction:column">
+            <div style="display:grid;grid-template-columns:1fr 190px 190px;background:#111A24;border-bottom:2px solid #2C3A4B">
+              <div style="padding:12px 14px"></div>
+              <div style="padding:12px 14px;font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.12em;color:#9DA9BA;text-align:center">EMAIL</div>
+              <div style="padding:12px 14px;font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.12em;color:#9DA9BA;text-align:center">DISCORD</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 190px 190px;border-bottom:2px solid #1B2531;align-items:center">
+              <div style="padding:14px;font-size:14px;font-weight:700;color:#EEF1F6">New comment</div>
+              <div style="padding:14px;display:flex;justify-content:center;align-items:center;gap:9px"><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7C889A">OFF</div><div style="width:22px;height:22px;background:#0D131B;outline:2px solid #3A4759"></div></div>
+              <div style="padding:14px;display:flex;justify-content:center;align-items:center;gap:9px"><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7FE3A2">ON</div><div style="width:22px;height:22px;background:#17B94F;outline:2px solid #17B94F;display:grid;place-items:center;color:#0A2413;font-size:14px;font-weight:700">✔</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 190px 190px;border-bottom:2px solid #1B2531;align-items:center">
+              <div style="padding:14px;font-size:14px;font-weight:700;color:#EEF1F6">Held for review</div>
+              <div style="padding:14px;display:flex;justify-content:center;align-items:center;gap:9px"><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7FE3A2">ON</div><div style="width:22px;height:22px;background:#17B94F;outline:2px solid #17B94F;display:grid;place-items:center;color:#0A2413;font-size:14px;font-weight:700">✔</div></div>
+              <div style="padding:14px;display:flex;justify-content:center;align-items:center;gap:9px"><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7FE3A2">ON</div><div style="width:22px;height:22px;background:#17B94F;outline:2px solid #17B94F;display:grid;place-items:center;color:#0A2413;font-size:14px;font-weight:700">✔</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 190px 190px;border-bottom:2px solid #1B2531;align-items:center">
+              <div style="padding:14px;font-size:14px;font-weight:700;color:#EEF1F6">Reported</div>
+              <div style="padding:14px;display:flex;justify-content:center;align-items:center;gap:9px"><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7FE3A2">ON</div><div style="width:22px;height:22px;background:#17B94F;outline:2px solid #17B94F;display:grid;place-items:center;color:#0A2413;font-size:14px;font-weight:700">✔</div></div>
+              <div style="padding:14px;display:flex;justify-content:center;align-items:center;gap:9px"><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7FE3A2">ON</div><div style="width:22px;height:22px;background:#17B94F;outline:2px solid #17B94F;display:grid;place-items:center;color:#0A2413;font-size:14px;font-weight:700">✔</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 190px 190px;border-bottom:2px solid #1B2531;align-items:center">
+              <div style="padding:14px;font-size:14px;font-weight:700;color:#EEF1F6">Sync failed / stale</div>
+              <div style="padding:14px;display:flex;justify-content:center;align-items:center;gap:9px"><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7FE3A2">ON</div><div style="width:22px;height:22px;background:#17B94F;outline:2px solid #17B94F;display:grid;place-items:center;color:#0A2413;font-size:14px;font-weight:700">✔</div></div>
+              <div style="padding:14px;display:flex;justify-content:center;align-items:center;gap:9px"><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7C889A">OFF</div><div style="width:22px;height:22px;background:#0D131B;outline:2px solid #3A4759"></div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 190px 190px;border-bottom:2px solid #1B2531;align-items:center;opacity:.45">
+              <div style="padding:14px;font-size:14px;font-weight:700;color:#9DA9BA;display:flex;align-items:center;gap:10px">Suggested mention <span style="font-family:'Silkscreen',monospace;font-size:9px;background:#243040;color:#9DA9BA;padding:2px 5px;letter-spacing:.06em">COMING LATER</span></div>
+              <div style="padding:14px;display:flex;justify-content:center"><div style="width:22px;height:22px;background:#0D131B;outline:2px solid #2C3A4B"></div></div>
+              <div style="padding:14px;display:flex;justify-content:center"><div style="width:22px;height:22px;background:#0D131B;outline:2px solid #2C3A4B"></div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 190px 190px;border-bottom:2px solid #1B2531;align-items:center;opacity:.45">
+              <div style="padding:14px;font-size:14px;font-weight:700;color:#9DA9BA;display:flex;align-items:center;gap:10px">New order <span style="font-family:'Silkscreen',monospace;font-size:9px;background:#243040;color:#9DA9BA;padding:2px 5px;letter-spacing:.06em">COMING LATER</span></div>
+              <div style="padding:14px;display:flex;justify-content:center"><div style="width:22px;height:22px;background:#0D131B;outline:2px solid #2C3A4B"></div></div>
+              <div style="padding:14px;display:flex;justify-content:center"><div style="width:22px;height:22px;background:#0D131B;outline:2px solid #2C3A4B"></div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 190px 190px;align-items:center;opacity:.45">
+              <div style="padding:14px;font-size:14px;font-weight:700;color:#9DA9BA;display:flex;align-items:center;gap:10px">New tip <span style="font-family:'Silkscreen',monospace;font-size:9px;background:#243040;color:#9DA9BA;padding:2px 5px;letter-spacing:.06em">COMING LATER</span></div>
+              <div style="padding:14px;display:flex;justify-content:center"><div style="width:22px;height:22px;background:#0D131B;outline:2px solid #2C3A4B"></div></div>
+              <div style="padding:14px;display:flex;justify-content:center"><div style="width:22px;height:22px;background:#0D131B;outline:2px solid #2C3A4B"></div></div>
+            </div>
+          </div>
+          <div style="font-size:14px;color:#9DA9BA">The allay works for admins only — commenters never get mail. Deliveries arrive from allay@odsens.com.</div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="font-family:'Bungee',sans-serif;font-size:14px;background:#4B45D6;color:#fff;padding:15px 20px;box-shadow:4px 4px 0 #2E2A9E">SAVE SETTINGS</div>
+          <div style="font-size:14px;color:#7C889A">Saves everything on this page.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">02 — NOTIFICATIONS MATRIX / PHONE 390</div>
+    <div data-screen-label="Notifications matrix phone" style="width:390px;background:#0D131B;outline:2px solid #2C3A4B;color:#EEF1F6;display:flex;flex-direction:column">
+      <div style="background:#151E29;border-bottom:2px solid #2C3A4B;height:56px;padding:0 16px;display:flex;align-items:center;gap:12px">
+        <div style="font-size:15px;font-weight:700;color:#8B86F5">← Settings</div>
+        <div style="font-size:15px;font-weight:700;color:#fff">Notifications</div>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:13px;font-weight:700;color:#C6CEDA">Discord webhook URL</div>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;background:#111A24;outline:2px solid #2C3A4B;border-radius:3px;padding:12px;font-size:13px;color:#EEF1F6;letter-spacing:.08em;overflow:hidden;white-space:nowrap">https://discord.com/api/•••••</div>
+            <div style="font-size:13px;font-weight:700;color:#EEF1F6;padding:12px 14px;outline:2px solid #3A4759;flex:none">Test</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:13px;font-weight:700;color:#C6CEDA">Admin emails</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;background:#111A24;outline:2px solid #2C3A4B;border-radius:3px;padding:8px">
+            <div style="display:flex;align-items:center;gap:6px;background:#1E2938;outline:2px solid #2C3A4B;padding:6px 9px;font-size:12px;font-weight:700;color:#EEF1F6">admin@…com <span style="color:#9DA9BA">✕</span></div>
+            <div style="display:flex;align-items:center;gap:6px;background:#1E2938;outline:2px solid #2C3A4B;padding:6px 9px;font-size:12px;font-weight:700;color:#EEF1F6">dad@…com <span style="color:#9DA9BA">✕</span></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;background:#151E29;outline:2px solid #2C3A4B">
+          <div style="padding:13px 14px;border-bottom:2px solid #1B2531;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:14px;font-weight:700;color:#EEF1F6">New comment</div>
+            <div style="display:flex;gap:20px">
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Silkscreen',monospace;font-size:10px;color:#9DA9BA;letter-spacing:.08em">EMAIL</span><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7C889A">OFF</div><div style="width:22px;height:22px;background:#0D131B;outline:2px solid #3A4759"></div></div>
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Silkscreen',monospace;font-size:10px;color:#9DA9BA;letter-spacing:.08em">DISCORD</span><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7FE3A2">ON</div><div style="width:22px;height:22px;background:#17B94F;outline:2px solid #17B94F;display:grid;place-items:center;color:#0A2413;font-size:13px;font-weight:700">✔</div></div>
+            </div>
+          </div>
+          <div style="padding:13px 14px;border-bottom:2px solid #1B2531;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:14px;font-weight:700;color:#EEF1F6">Held for review</div>
+            <div style="display:flex;gap:20px">
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Silkscreen',monospace;font-size:10px;color:#9DA9BA;letter-spacing:.08em">EMAIL</span><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7FE3A2">ON</div><div style="width:22px;height:22px;background:#17B94F;outline:2px solid #17B94F;display:grid;place-items:center;color:#0A2413;font-size:13px;font-weight:700">✔</div></div>
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Silkscreen',monospace;font-size:10px;color:#9DA9BA;letter-spacing:.08em">DISCORD</span><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7FE3A2">ON</div><div style="width:22px;height:22px;background:#17B94F;outline:2px solid #17B94F;display:grid;place-items:center;color:#0A2413;font-size:13px;font-weight:700">✔</div></div>
+            </div>
+          </div>
+          <div style="padding:13px 14px;border-bottom:2px solid #1B2531;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:14px;font-weight:700;color:#EEF1F6">Sync failed / stale</div>
+            <div style="display:flex;gap:20px">
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Silkscreen',monospace;font-size:10px;color:#9DA9BA;letter-spacing:.08em">EMAIL</span><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7FE3A2">ON</div><div style="width:22px;height:22px;background:#17B94F;outline:2px solid #17B94F;display:grid;place-items:center;color:#0A2413;font-size:13px;font-weight:700">✔</div></div>
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Silkscreen',monospace;font-size:10px;color:#9DA9BA;letter-spacing:.08em">DISCORD</span><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7C889A">OFF</div><div style="width:22px;height:22px;background:#0D131B;outline:2px solid #3A4759"></div></div>
+            </div>
+          </div>
+          <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;opacity:.45">
+            <div style="font-size:14px;font-weight:700;color:#9DA9BA">New tip</div>
+            <span style="font-family:'Silkscreen',monospace;font-size:9px;background:#243040;color:#9DA9BA;padding:2px 5px">COMING LATER</span>
+          </div>
+        </div>
+        <div style="font-size:13px;color:#9DA9BA">The allay works for admins only — commenters never get mail. Deliveries arrive from allay@odsens.com.</div>
+        <div style="font-family:'Bungee',sans-serif;font-size:13px;background:#4B45D6;color:#fff;padding:15px;box-shadow:4px 4px 0 #2E2A9E;text-align:center">SAVE SETTINGS</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">03 — ADMIN / ORDERS &amp; WORKROOMS / DESKTOP 1280</div>
+    <div data-screen-label="Admin orders and workrooms" style="width:1280px;background:#0D131B;outline:2px solid #2C3A4B;color:#EEF1F6;display:flex;min-height:640px">
+      <div style="width:220px;flex:none;background:#111A24;border-right:2px solid #2C3A4B;display:flex;flex-direction:column">
+        <div style="padding:18px 16px;border-bottom:2px solid #2C3A4B;display:flex;align-items:center;gap:10px">
+          <img src="assets/avatar.png" alt="" style="width:30px;height:30px;object-fit:cover;border:2px solid #fff;display:block">
+          <div style="font-family:'Bungee',sans-serif;font-size:15px;color:#fff">ADMIN</div>
+        </div>
+        <div style="display:flex;flex-direction:column;padding:8px 0">
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6;display:flex;justify-content:space-between"><span>Comments</span><span style="font-family:'Silkscreen',monospace;font-size:11px;color:#FFC61F">3</span></div>
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6">Projects</div>
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6">Skins</div>
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6">Art</div>
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6">Mentions</div>
+          <div style="padding:13px 16px;font-size:15px;font-weight:700;color:#fff;background:#151E29;box-shadow:inset 4px 0 0 #FFC61F">Orders &amp; Workrooms</div>
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6">Stats</div>
+          <div style="padding:13px 16px;font-size:15px;color:#EEF1F6">Settings</div>
+        </div>
+        <div style="margin-top:auto;padding:16px;border-top:2px solid #2C3A4B;font-size:14px;color:#7C889A">Signed in as <span style="color:#EEF1F6;font-weight:700">@oddsense</span></div>
+      </div>
+      <div style="flex:1;padding:32px;display:flex;flex-direction:column;gap:20px;min-width:0">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:26px;font-weight:700;color:#fff">Orders &amp; Workrooms</div>
+          <div style="font-size:15px;color:#9DA9BA">Every engagement, order to room to closed.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div style="font-family:'Bungee',sans-serif;font-size:12px;background:#4B45D6;color:#fff;padding:10px 13px">ALL 5</div>
+          <div style="font-family:'Bungee',sans-serif;font-size:12px;color:#C6CEDA;padding:10px 13px;outline:2px solid #2C3A4B">NEW 1</div>
+          <div style="font-family:'Bungee',sans-serif;font-size:12px;color:#C6CEDA;padding:10px 13px;outline:2px solid #2C3A4B">IN ROOMS 3</div>
+          <div style="font-family:'Bungee',sans-serif;font-size:12px;color:#C6CEDA;padding:10px 13px;outline:2px solid #2C3A4B">CLOSED 1</div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #2C3A4B;display:flex;flex-direction:column">
+          <div style="display:grid;grid-template-columns:1.2fr .8fr 1fr 1fr 190px;background:#111A24;border-bottom:2px solid #2C3A4B;font-size:13px;font-weight:700;color:#9DA9BA">
+            <div style="padding:11px 14px">Client</div>
+            <div style="padding:11px 14px">Type</div>
+            <div style="padding:11px 14px">Status</div>
+            <div style="padding:11px 14px">Last activity</div>
+            <div style="padding:11px 14px"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1.2fr .8fr 1fr 1fr 190px;border-bottom:2px solid #1B2531;align-items:center;font-size:14px">
+            <div style="padding:13px 14px;display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;background:#CC3A2A;outline:2px solid #2C3A4B;flex:none"></div><span style="color:#EEF1F6;font-weight:700">torchgirl</span></div>
+            <div style="padding:13px 14px;color:#C6CEDA">Mod</div>
+            <div style="padding:13px 14px"><span style="font-family:'Silkscreen',monospace;font-size:9px;background:#4A3505;color:#FFDA6B;padding:3px 6px;letter-spacing:.06em">NEW</span></div>
+            <div style="padding:13px 14px;color:#9DA9BA;display:flex;align-items:center;gap:8px">2 hours ago <span style="width:8px;height:8px;background:#FFC61F;display:block"></span></div>
+            <div style="padding:13px 14px;display:flex;justify-content:flex-end"><span style="font-size:13px;font-weight:700;color:#EEF1F6;padding:8px 12px;outline:2px solid #3A4759">Open order</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1.2fr .8fr 1fr 1fr 190px;border-bottom:2px solid #1B2531;align-items:center;font-size:14px">
+            <div style="padding:13px 14px;display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;background:#17B94F;outline:2px solid #2C3A4B;flex:none"></div><span style="color:#EEF1F6;font-weight:700">blockbuddy</span></div>
+            <div style="padding:13px 14px;color:#C6CEDA">Skin</div>
+            <div style="padding:13px 14px"><span style="font-size:11px;font-weight:700;background:#4B45D6;color:#fff;padding:4px 8px;letter-spacing:.04em">IN PROGRESS</span></div>
+            <div style="padding:13px 14px;color:#9DA9BA;display:flex;align-items:center;gap:8px">1 day ago <span style="width:8px;height:8px;background:#FFC61F;display:block"></span></div>
+            <div style="padding:13px 14px;display:flex;justify-content:flex-end"><span style="font-size:13px;font-weight:700;color:#0D131B;background:#8B86F5;padding:8px 12px">Open room</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1.2fr .8fr 1fr 1fr 190px;border-bottom:2px solid #1B2531;align-items:center;font-size:14px">
+            <div style="padding:13px 14px;display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;background:#8B86F5;outline:2px solid #2C3A4B;flex:none"></div><span style="color:#EEF1F6;font-weight:700">netherrose</span></div>
+            <div style="padding:13px 14px;color:#C6CEDA">Art</div>
+            <div style="padding:13px 14px"><span style="font-size:11px;font-weight:700;background:#4A3505;color:#FFDA6B;padding:4px 8px;letter-spacing:.04em">REVIEW</span></div>
+            <div style="padding:13px 14px;color:#9DA9BA">3 days ago</div>
+            <div style="padding:13px 14px;display:flex;justify-content:flex-end"><span style="font-size:13px;font-weight:700;color:#0D131B;background:#8B86F5;padding:8px 12px">Open room</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1.2fr .8fr 1fr 1fr 190px;border-bottom:2px solid #1B2531;align-items:center;font-size:14px">
+            <div style="padding:13px 14px;display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;background:#FFC61F;outline:2px solid #2C3A4B;flex:none"></div><span style="color:#EEF1F6;font-weight:700">quietcreeper</span></div>
+            <div style="padding:13px 14px;color:#C6CEDA">Pack</div>
+            <div style="padding:13px 14px"><span style="font-size:11px;font-weight:700;background:#4B45D6;color:#fff;padding:4px 8px;letter-spacing:.04em">QUOTE</span></div>
+            <div style="padding:13px 14px;color:#9DA9BA">1 week ago</div>
+            <div style="padding:13px 14px;display:flex;justify-content:flex-end"><span style="font-size:13px;font-weight:700;color:#0D131B;background:#8B86F5;padding:8px 12px">Open room</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1.2fr .8fr 1fr 1fr 190px;align-items:center;font-size:14px">
+            <div style="padding:13px 14px;display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;background:#3A4759;outline:2px solid #2C3A4B;flex:none"></div><span style="color:#9DA9BA;font-weight:700">endersmith</span></div>
+            <div style="padding:13px 14px;color:#9DA9BA">Skin</div>
+            <div style="padding:13px 14px"><span style="font-family:'Silkscreen',monospace;font-size:9px;background:#243040;color:#9DA9BA;padding:3px 6px;letter-spacing:.06em">CLOSED</span></div>
+            <div style="padding:13px 14px;color:#7C889A">June 2026</div>
+            <div style="padding:13px 14px;display:flex;justify-content:flex-end"><span style="font-size:13px;font-weight:700;color:#9DA9BA;padding:8px 12px;outline:2px solid #2C3A4B">Open room</span></div>
+          </div>
+        </div>
+        <div style="font-size:13px;color:#7C889A">The gold square marks unread activity. Rooms sort by last activity.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">04 — ADMIN / ORDER DETAIL → CREATE WORKROOM · ROOM CONTROLS</div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+      <div data-screen-label="Admin order detail create workroom" style="width:620px;background:#0D131B;outline:2px solid #2C3A4B;color:#EEF1F6;padding:28px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:34px;height:34px;background:#CC3A2A;outline:2px solid #2C3A4B"></div>
+          <div style="font-size:18px;font-weight:700;color:#fff">torchgirl</div>
+          <span style="font-family:'Silkscreen',monospace;font-size:9px;background:#4A3505;color:#FFDA6B;padding:3px 6px;letter-spacing:.06em">NEW</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          <div style="background:#151E29;outline:2px solid #2C3A4B;padding:12px;display:flex;flex-direction:column;gap:3px"><span style="font-family:'Silkscreen',monospace;font-size:9px;color:#7C889A;letter-spacing:.1em">TYPE</span><span style="font-size:14px;font-weight:700">Mod</span></div>
+          <div style="background:#151E29;outline:2px solid #2C3A4B;padding:12px;display:flex;flex-direction:column;gap:3px"><span style="font-family:'Silkscreen',monospace;font-size:9px;color:#7C889A;letter-spacing:.1em">VERSION</span><span style="font-size:14px;font-weight:700">1.21.x</span></div>
+          <div style="background:#151E29;outline:2px solid #2C3A4B;padding:12px;display:flex;flex-direction:column;gap:3px"><span style="font-family:'Silkscreen',monospace;font-size:9px;color:#7C889A;letter-spacing:.1em">LOADER</span><span style="font-size:14px;font-weight:700">Fabric</span></div>
+          <div style="background:#151E29;outline:2px solid #2C3A4B;padding:12px;display:flex;flex-direction:column;gap:3px"><span style="font-family:'Silkscreen',monospace;font-size:9px;color:#7C889A;letter-spacing:.1em">BUDGET</span><span style="font-size:14px;font-weight:700">No idea</span></div>
+        </div>
+        <div style="background:#111A24;outline:2px solid #2C3A4B;padding:16px;font-size:15px;color:#C6CEDA;line-height:1.6">A torch that screams when it burns out. Not loud. Just disappointed.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div style="font-family:'Bungee',sans-serif;font-size:13px;background:#4B45D6;color:#fff;padding:14px 17px;box-shadow:4px 4px 0 #2E2A9E">CREATE WORKROOM</div>
+          <div style="font-size:14px;font-weight:700;color:#EEF1F6;padding:14px 16px;outline:2px solid #3A4759">Reply by email</div>
+        </div>
+        <div style="font-size:13px;color:#7C889A;line-height:1.55">Create workroom opens a private room with torchgirl and DadSense in it, and moves this order to BRIEF. Reply by email opens your mail app — their address never shows on the site.</div>
+      </div>
+      <div data-screen-label="Admin room controls" style="width:400px;background:#0D131B;outline:2px solid #2C3A4B;color:#EEF1F6;padding:28px;display:flex;flex-direction:column;gap:16px">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#8B86F5">ROOM CONTROLS (ADMIN, IN-ROOM)</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:13px;font-weight:700;color:#C6CEDA">Add participant by handle</div>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;background:#111A24;outline:2px solid #2C3A4B;border-radius:3px;padding:11px 12px;font-size:14px;color:#7C889A">@handle</div>
+            <div style="font-size:13px;font-weight:700;color:#EEF1F6;padding:11px 14px;outline:2px solid #3A4759;flex:none">Add</div>
+          </div>
+          <div style="font-size:12px;color:#7C889A">They see everything in the room from the moment they're added.</div>
+        </div>
+        <div style="height:2px;background:#263242"></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:14px;font-weight:700;color:#F0836B;padding:12px 14px;outline:2px solid #4A2A2A;text-align:center">Close room</div>
+          <div style="font-size:12px;color:#7C889A">Read-only for everyone. Files stay downloadable. Undo from this same spot.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400}}"></script>
+</body>
+</html>

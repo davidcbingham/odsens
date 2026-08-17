@@ -64,3 +64,6 @@ Flags:
 ---
 ## Pass 2 outcome (2026-08-17)
 All items in §C were addressed in `DESIGN.md` v1.2 / `design/claude-design-export/pass-2/`: handle onboarding + profile (8), bell cut from v1 (9), comment actions/states (10), admin Settings/Stats/Orders/upload states/gate (12), Ko-fi wrapper (13), 404/error/skeletons/empty/toasts (15), Privacy page + footer links (16), Shorts row (17), video facades (19). Item 11 (per-version changelog in the files table) and 14 (Custom Orders confirmation state) were **not** explicitly covered — carry to build or a pass 3. New open items → `docs/questions.md` #33–37.
+
+## Pass 3 outcome (2026-08-17)
+All brief items delivered in `DESIGN.md` v1.3 §12 (Seen on ×4 surfaces + admin, Workrooms with 5 states, notifications matrix, email/Discord templates, leaderboard, handle guidance, privacy line, How comments work, changelog expander, orders confirmation, nav). Integrity verified (v1.1/v1.2 corrections, `assets/brand` paths). No pass 4 required before build; remaining items are build decisions (Q44–46). Build note: hide "Commissions" nav item until Phase 2.

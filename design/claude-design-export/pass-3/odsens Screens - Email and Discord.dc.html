@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#070B10; }
+  a { color:#8B86F5; text-decoration:none; }
+  a:hover { color:#B7B3FF; }
+</style>
+</helmet>
+<div style="background:#070B10;padding:48px;display:flex;flex-direction:column;gap:64px;font-family:'Space Grotesk',system-ui,sans-serif">
+
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:70ch">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.2em;color:#FFC61F">ODSENS.COM — PASS 3 / PART 4</div>
+    <div style="font-family:'Bungee',sans-serif;font-size:34px;color:#fff;line-height:1">EMAIL + DISCORD TEMPLATES</div>
+    <div style="font-size:16px;color:#9DA9BA;text-wrap:pretty">Email-safe: ink background, slab card, 0 radius, 2px solid borders, no shadows, no hatch, no motion. The ODSENS wordmark ships as an image; display type falls back to Impact / Arial Black, body to Arial. One bulletproof button per mail. Built later with React Email.</div>
+    <div style="font-size:16px;color:#9DA9BA;text-wrap:pretty">Sender: <b style="color:#EEF1F6">allay@odsens.com</b>. The allay is Minecraft's delivery mob — give it something to watch and it brings you what drops. The notification system speaks as it: it picks comments up, holds the ones under review, and comes back empty-handed when a sync fails. The character carries the copy; nothing explains the joke.</div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">01 — EMAILS / 600PX, GMAIL-SAFE</div>
+    <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start">
+
+      <div data-screen-label="Email new comment" style="width:600px;background:#0D131B;border:2px solid #263242;font-family:Arial,Helvetica,sans-serif;color:#EEF1F6">
+        <div style="padding:24px 28px;border-bottom:2px solid #263242;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:28px;height:28px;background:#151E29;border:2px solid #263242"></div><div style="font-family:'Arial Black',Impact,sans-serif;font-size:20px;letter-spacing:.02em;color:#fff">ODSENS</div></div>
+          <div style="font-size:11px;color:#7C889A;letter-spacing:.1em">SPRITE + WORDMARK = IMAGES</div>
+        </div>
+        <div style="padding:10px 28px;background:#151E29;border-bottom:2px solid #263242;font-size:12px;color:#7C889A">From: the allay &lt;allay@odsens.com&gt;</div>
+        <div style="padding:28px;display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Arial Black',Impact,sans-serif;font-size:22px;color:#fff;line-height:1.15">NEW COMMENT</div>
+          <div style="font-size:15px;color:#9DA9BA;line-height:1.6">The allay picked this up on <b style="color:#EEF1F6">Metal Pipe Mace</b>, from <b style="color:#EEF1F6">creeperfan9</b>:</div>
+          <div style="background:#151E29;border:2px solid #2C3A4B;padding:16px 18px;font-size:15px;color:#DCE3EC;line-height:1.6">"this mace is unreasonably fun. the sound gets me every time"</div>
+          <div><span style="display:inline-block;background:#4B45D6;color:#ffffff;font-family:'Arial Black',Impact,sans-serif;font-size:14px;padding:14px 22px;text-decoration:none">VIEW COMMENT</span></div>
+        </div>
+        <div style="padding:20px 28px;border-top:2px solid #263242;font-size:12px;color:#7C889A;line-height:1.6">The allay emails you because comment mail is on. <span style="color:#8B86F5;text-decoration:underline">Manage in Settings.</span><br>— the allay. It picks things up and brings them to you. That's the whole job.</div>
+      </div>
+
+      <div data-screen-label="Email held for review" style="width:600px;background:#0D131B;border:2px solid #263242;font-family:Arial,Helvetica,sans-serif;color:#EEF1F6">
+        <div style="padding:24px 28px;border-bottom:2px solid #263242;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:28px;height:28px;background:#151E29;border:2px solid #263242"></div><div style="font-family:'Arial Black',Impact,sans-serif;font-size:20px;letter-spacing:.02em;color:#fff">ODSENS</div></div>
+          <div style="font-size:11px;color:#7C889A;letter-spacing:.1em">SPRITE + WORDMARK = IMAGES</div>
+        </div>
+        <div style="padding:10px 28px;background:#151E29;border-bottom:2px solid #263242;font-size:12px;color:#7C889A">From: the allay &lt;allay@odsens.com&gt;</div>
+        <div style="padding:28px;display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Arial Black',Impact,sans-serif;font-size:22px;color:#FFC61F;line-height:1.15">HELD FOR REVIEW</div>
+          <div style="font-size:15px;color:#9DA9BA;line-height:1.6">First comment from <b style="color:#EEF1F6">netherrose</b>, on <b style="color:#EEF1F6">Heavy Spear</b>. The allay is holding it until you decide:</div>
+          <div style="background:#151E29;border:2px solid #C08400;padding:16px 18px;font-size:15px;color:#DCE3EC;line-height:1.6">"does this work with the shield rework mod?"</div>
+          <div style="display:flex;gap:12px">
+            <span style="display:inline-block;background:#FFC61F;color:#2E2000;font-family:'Arial Black',Impact,sans-serif;font-size:14px;padding:14px 22px;text-decoration:none">APPROVE</span>
+            <span style="display:inline-block;border:2px solid #3A4759;color:#EEF1F6;font-size:14px;font-weight:bold;padding:12px 20px;text-decoration:none">View</span>
+          </div>
+        </div>
+        <div style="padding:20px 28px;border-top:2px solid #263242;font-size:12px;color:#7C889A;line-height:1.6">The allay emails you because held-comment mail is on. <span style="color:#8B86F5;text-decoration:underline">Manage in Settings.</span><br>— the allay, still holding the comment. It can hold it all day. Approve is one click.</div>
+      </div>
+
+      <div data-screen-label="Email sync failed" style="width:600px;background:#0D131B;border:2px solid #263242;font-family:Arial,Helvetica,sans-serif;color:#EEF1F6">
+        <div style="padding:24px 28px;border-bottom:2px solid #263242;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:28px;height:28px;background:#151E29;border:2px solid #263242"></div><div style="font-family:'Arial Black',Impact,sans-serif;font-size:20px;letter-spacing:.02em;color:#fff">ODSENS</div></div>
+          <div style="font-size:11px;color:#7C889A;letter-spacing:.1em">SPRITE + WORDMARK = IMAGES</div>
+        </div>
+        <div style="padding:10px 28px;background:#151E29;border-bottom:2px solid #263242;font-size:12px;color:#7C889A">From: the allay &lt;allay@odsens.com&gt;</div>
+        <div style="padding:28px;display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Arial Black',Impact,sans-serif;font-size:22px;color:#CC3A2A;line-height:1.15">SYNC FAILED</div>
+          <div style="font-size:15px;color:#9DA9BA;line-height:1.6">The allay came back empty-handed. Modrinth counts haven't updated in <b style="color:#EEF1F6">26 hours</b>.</div>
+          <div style="background:#151E29;border:2px solid #4A2A2A;padding:16px 18px;font-size:14px;color:#DCE3EC;font-family:'Courier New',monospace">Cause: 429 rate limit on /v2/project/metal-pipe-mace</div>
+          <div style="font-size:15px;color:#9DA9BA;line-height:1.6">The site keeps showing the last good numbers. Nothing is on fire.</div>
+          <div><span style="display:inline-block;background:#4B45D6;color:#ffffff;font-family:'Arial Black',Impact,sans-serif;font-size:14px;padding:14px 22px;text-decoration:none">VIEW STATS</span></div>
+        </div>
+        <div style="padding:20px 28px;border-top:2px solid #263242;font-size:12px;color:#7C889A;line-height:1.6">The allay emails you because sync mail is on. <span style="color:#8B86F5;text-decoration:underline">Manage in Settings.</span><br>— the allay. It'll keep trying. This usually fixes itself.</div>
+      </div>
+
+      <div data-screen-label="Email plain text version" style="width:600px;background:#111A24;border:2px solid #263242;padding:28px;font-family:'Courier New',monospace;font-size:14px;color:#C6CEDA;line-height:1.7">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#8B86F5;padding-bottom:14px">PLAIN-TEXT VERSION — HELD FOR REVIEW</div>
+        From: the allay &lt;allay@odsens.com&gt;<br><br>
+        ODSENS<br><br>
+        HELD FOR REVIEW<br><br>
+        First comment from netherrose, on Heavy Spear.<br>
+        The allay is holding it until you decide:<br><br>
+        &gt; does this work with the shield rework mod?<br><br>
+        Approve: https://odsens.com/admin/comments/1842<br>
+        View: https://odsens.com/projects/heavy-spear#comments<br><br>
+        --<br>
+        The allay emails you because held-comment mail is on.<br>
+        Manage: https://odsens.com/admin/settings<br>
+        It can hold it all day. Approve is one click.
+      </div>
+
+      <div data-screen-label="Allay imagery note" style="width:400px;background:#0D131B;outline:2px solid #263242;padding:24px;display:flex;flex-direction:column;gap:14px;color:#EEF1F6;font-family:'Space Grotesk',system-ui,sans-serif">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#8B86F5">IMAGERY — ONE ASSET, PENDING</div>
+        <div style="width:96px;height:96px;background:#111A24;outline:2px dashed #3A4759;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#4E5A6C;text-align:center">PIXEL ALLAY<br>RENDER</div>
+        <div style="font-size:14px;color:#9DA9BA;line-height:1.6">One pixel render of the allay, integer-scaled. Used at 28px in the email header beside the wordmark, as the Discord bot avatar, and small on Settings → Notifications. Nowhere else — it belongs to the notification system, not the brand.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">02 — DISCORD EMBEDS / IN CHANNEL</div>
+    <div style="font-size:15px;color:#9DA9BA;max-width:78ch;line-height:1.6">The webhook bot posts as <b style="color:#EEF1F6">allay</b>, with the allay face render as its avatar (placeholder circle below). Colour bar: indigo default · gold for held / reported · alert for failures. Title, project, excerpt, a "View" link. Discord renders the embed; we only control the fields.</div>
+    <div data-screen-label="Discord channel embeds" style="width:760px;background:#313338;border:2px solid #263242;padding:24px;display:flex;flex-direction:column;gap:20px;font-family:'Space Grotesk',system-ui,sans-serif">
+      <div style="display:flex;gap:14px">
+        <div style="width:40px;height:40px;border-radius:50%;background:#8FE4F2;border:2px solid #263242;flex:none;display:grid;place-items:center"><div style="width:14px;height:10px;background:#1E2938"></div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0">
+          <div style="display:flex;gap:8px;align-items:baseline"><span style="font-size:15px;font-weight:700;color:#F2F3F5">allay</span><span style="font-size:10px;font-weight:700;background:#5865F2;color:#fff;padding:2px 5px;border-radius:3px">BOT</span><span style="font-size:12px;color:#949BA4">Today at 3:12 PM</span></div>
+          <div style="background:#2B2D31;border-left:4px solid #4B45D6;border-radius:4px;padding:12px 16px;max-width:440px;display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:14px;font-weight:700;color:#F2F3F5">New comment — Metal Pipe Mace</div>
+            <div style="font-size:14px;color:#DBDEE1;line-height:1.5">creeperfan9: "this mace is unreasonably fun. the sound gets me every time"</div>
+            <div style="font-size:14px;color:#00A8FC">View comment</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px">
+        <div style="width:40px;height:40px;border-radius:50%;background:#8FE4F2;border:2px solid #263242;flex:none;display:grid;place-items:center"><div style="width:14px;height:10px;background:#1E2938"></div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0">
+          <div style="display:flex;gap:8px;align-items:baseline"><span style="font-size:15px;font-weight:700;color:#F2F3F5">allay</span><span style="font-size:10px;font-weight:700;background:#5865F2;color:#fff;padding:2px 5px;border-radius:3px">BOT</span><span style="font-size:12px;color:#949BA4">Today at 3:40 PM</span></div>
+          <div style="background:#2B2D31;border-left:4px solid #FFC61F;border-radius:4px;padding:12px 16px;max-width:440px;display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:14px;font-weight:700;color:#F2F3F5">Held for review — Heavy Spear</div>
+            <div style="font-size:14px;color:#DBDEE1;line-height:1.5">First comment from netherrose: "does this work with the shield rework mod?"</div>
+            <div style="font-size:14px;color:#00A8FC">View in admin</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px">
+        <div style="width:40px;height:40px;border-radius:50%;background:#8FE4F2;border:2px solid #263242;flex:none;display:grid;place-items:center"><div style="width:14px;height:10px;background:#1E2938"></div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0">
+          <div style="display:flex;gap:8px;align-items:baseline"><span style="font-size:15px;font-weight:700;color:#F2F3F5">allay</span><span style="font-size:10px;font-weight:700;background:#5865F2;color:#fff;padding:2px 5px;border-radius:3px">BOT</span><span style="font-size:12px;color:#949BA4">Today at 4:02 PM</span></div>
+          <div style="background:#2B2D31;border-left:4px solid #CC3A2A;border-radius:4px;padding:12px 16px;max-width:440px;display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:14px;font-weight:700;color:#F2F3F5">Sync failed — Modrinth</div>
+            <div style="font-size:14px;color:#DBDEE1;line-height:1.5">Counts stale for 26 hours. Cause: 429 rate limit. Last good numbers still showing.</div>
+            <div style="font-size:14px;color:#00A8FC">View stats</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400}}"></script>
+</body>
+</html>

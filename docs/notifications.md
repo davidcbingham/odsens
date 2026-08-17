@@ -64,3 +64,6 @@ Provider note: Resend chosen over Postmark for fit (tiny admin-only volume, Reac
 - The Vercel-integration API key is **send-only** (can't list domains/logs) — fine for the app; use the Resend dashboard for logs.
 - **Gaps:** no `_dmarc` record yet (add `TXT _dmarc.odsens.com "v=DMARC1; p=none; rua=mailto:david@studiobing.com"`); no MX on `odsens.com` root, so **allay@ can't receive replies** — add Squarespace email forwarding allay@odsens.com → david@studiobing.com (or Resend Receiving) and set `Reply-To` accordingly.
 - Not used: Resend↔Supabase SMTP (Supabase Auth sends no email for us). Resend MCP deferred; if added later, sending is gated by the stop-and-ask list.
+
+## Character (design pass 3)
+Notifications speak as **the allay** (Minecraft's item-delivery mob) — dry, never explaining the joke: new comment → "The allay picked this up on…"; held → "The allay is holding it until you decide"; sync failure → "The allay came back empty-handed. It'll keep trying." Settings panel titles: "Where the allay delivers" / "What it picks up". Discord bot posts as **allay** with a pixel allay avatar (asset pending from Oliver, Q44). Templates + Discord embeds: `design/claude-design-export/pass-3/odsens Screens - Email and Discord.dc.html`, rules in `DESIGN.md` §12.1.

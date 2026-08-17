@@ -1,0 +1,46 @@
+Design pass 3 — files to add/change (paths relative to repo root)
+
+MODIFIED (2)
+  DESIGN.md                        v1.2 -> v1.3: note block updated; nav order + bell removal folded into §5; handle name-detection removed in §11.1; "Email me about" retired in §11.3; footer Site column updated in §11.6; new §12 appended (~9 KB). assets/brand/… paths untouched; all v1.1/v1.2 corrections preserved.
+  design/README.md                 appended "Pass 3 (2026-08-17)" section only. Nothing above it touched.
+
+ADDED — design/claude-design-export/pass-3/
+  design/claude-design-export/pass-3/.thumbnail
+  design/claude-design-export/pass-3/CHANGELOG.md
+  design/claude-design-export/pass-3/Direction A - Pixel Crown.dc.html
+  design/claude-design-export/pass-3/Direction B - Soft Blocky.dc.html
+  design/claude-design-export/pass-3/Direction C - Crate Poster.dc.html
+  design/claude-design-export/pass-3/github.md
+  design/claude-design-export/pass-3/odsens Design System.dc.html
+  design/claude-design-export/pass-3/odsens Screens - Accounts and Comments.dc.html
+  design/claude-design-export/pass-3/odsens Screens - Admin Pass 3.dc.html
+  design/claude-design-export/pass-3/odsens Screens - Admin and States.dc.html
+  design/claude-design-export/pass-3/odsens Screens - Core.dc.html
+  design/claude-design-export/pass-3/odsens Screens - Email and Discord.dc.html
+  design/claude-design-export/pass-3/odsens Screens - Sections.dc.html
+  design/claude-design-export/pass-3/odsens Screens - Seen On.dc.html
+  design/claude-design-export/pass-3/odsens Screens - Support and Leftovers.dc.html
+  design/claude-design-export/pass-3/odsens Screens - Workrooms and Seen On.dc.html
+  design/claude-design-export/pass-3/support.js
+  design/claude-design-export/pass-3/handoff/DESIGN.md
+  design/claude-design-export/pass-3/assets/art-crowned-duck.png
+  design/claude-design-export/pass-3/assets/art-esc0m14.png
+  design/claude-design-export/pass-3/assets/art-galaxy.png
+  design/claude-design-export/pass-3/assets/art-jgpixel.png
+  design/claude-design-export/pass-3/assets/art-mctry.png
+  design/claude-design-export/pass-3/assets/art-mrhams.png
+  design/claude-design-export/pass-3/assets/art-mysterious2.png
+  design/claude-design-export/pass-3/assets/avatar.png
+  design/claude-design-export/pass-3/assets/skin-angelducky.png
+  design/claude-design-export/pass-3/assets/skin-basicsquid.png
+  design/claude-design-export/pass-3/assets/skin-brick.png
+  design/claude-design-export/pass-3/assets/skin-emoduck.png
+  design/claude-design-export/pass-3/assets/skin-feltur.png
+  design/claude-design-export/pass-3/assets/skin-kitsune.png
+  design/claude-design-export/pass-3/assets/skin-me.png
+  design/claude-design-export/pass-3/assets/skin-redsuitedducky.png
+  design/claude-design-export/pass-3/assets/thumb-everydisability.png
+  design/claude-design-export/pass-3/assets/thumb-frog.png
+  design/claude-design-export/pass-3/assets/thumb-witherhunt.png
+
+Total: 2 modified, 37 added. Nothing deleted or renamed. Nothing under docs/, assets/brand/, README.md, CLAUDE.md, .env*, or the pass-1/pass-2 exports touched. No package.json, build config, or app code.

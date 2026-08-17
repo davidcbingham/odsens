@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#070B10; }
+  a { color:#8B86F5; text-decoration:none; }
+  a:hover { color:#B7B3FF; }
+</style>
+</helmet>
+<div style="background:#070B10;padding:48px;display:flex;flex-direction:column;gap:64px;font-family:'Space Grotesk',system-ui,sans-serif">
+
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:70ch">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.2em;color:#FFC61F">ODSENS.COM — PASS 3 / PART 1</div>
+    <div style="font-family:'Bungee',sans-serif;font-size:34px;color:#fff;line-height:1">WORKROOMS · SEEN ON</div>
+    <div style="font-size:16px;color:#9DA9BA;text-wrap:pretty">Private commission workrooms (active, new, review, delivered, closed) and the SEEN ON row on project detail. Nav proposal at the top. Everything reuses v1.2 components; new pieces are the PRIVATE badge, milestone pills, participants row, client upload well, and mention card.</div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">00 — NAV / PROPOSED ORDER</div>
+    <div style="font-size:15px;color:#9DA9BA;max-width:78ch;line-height:1.6">Proposal: the wordmark is the Home link, so the Home item goes. Desktop row: <b style="color:#EEF1F6">Projects · Videos · Skins · Art · Seen on · Commissions</b>. Support never joins the row — it stays the gold button. On phone everything collapses behind the existing burger, same order, Support last; nothing stays inline.</div>
+    <div data-screen-label="Nav proposed desktop" style="width:1280px;background:#151E29;outline:2px solid #263242;padding:0 32px;display:flex;align-items:center;gap:24px;height:68px;color:#EEF1F6">
+      <div style="display:flex;align-items:center;gap:12px">
+        <img src="assets/avatar.png" alt="OddSense avatar" style="width:40px;height:40px;object-fit:cover;border:2px solid #fff;display:block">
+        <div style="font-family:'Bungee',sans-serif;font-size:20px;color:#fff">ODSENS</div>
+      </div>
+      <div style="display:flex;gap:2px;align-items:center;margin-left:8px">
+        <div style="font-size:15px;font-weight:700;color:#fff;padding:10px 14px;box-shadow:inset 0 -3px 0 #FFC61F">Projects</div>
+        <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Videos</div>
+        <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Skins</div>
+        <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Art</div>
+        <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Seen on</div>
+        <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Commissions</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+        <div style="font-size:14px;font-weight:700;color:#EEF1F6;padding:11px 14px;outline:2px solid #3A4759">Sign in</div>
+        <div style="font-family:'Bungee',sans-serif;font-size:12px;background:#FFC61F;color:#2E2000;padding:12px 14px;box-shadow:3px 3px 0 #C08400">♥ SUPPORT</div>
+      </div>
+    </div>
+    <div data-screen-label="Nav proposed phone menu" style="width:390px;background:#0D131B;outline:2px solid #263242;color:#EEF1F6">
+      <div style="background:#151E29;border-bottom:2px solid #263242;height:56px;padding:0 16px;display:flex;align-items:center;gap:12px">
+        <img src="assets/avatar.png" alt="" style="width:34px;height:34px;object-fit:cover;border:2px solid #fff;display:block">
+        <div style="font-family:'Bungee',sans-serif;font-size:17px;color:#fff">ODSENS</div>
+        <div style="margin-left:auto;width:44px;height:44px;background:#4B45D6;display:grid;place-items:center;color:#fff;font-size:16px;font-weight:700">✕</div>
+      </div>
+      <div style="display:flex;flex-direction:column;padding:8px 0">
+        <div style="font-size:16px;font-weight:700;color:#fff;padding:14px 20px;box-shadow:inset 4px 0 0 #FFC61F;background:#151E29">Projects</div>
+        <div style="font-size:16px;font-weight:500;color:#C6CEDA;padding:14px 20px">Videos</div>
+        <div style="font-size:16px;font-weight:500;color:#C6CEDA;padding:14px 20px">Skins</div>
+        <div style="font-size:16px;font-weight:500;color:#C6CEDA;padding:14px 20px">Art</div>
+        <div style="font-size:16px;font-weight:500;color:#C6CEDA;padding:14px 20px">Seen on</div>
+        <div style="font-size:16px;font-weight:500;color:#C6CEDA;padding:14px 20px">Commissions</div>
+        <div style="margin:10px 20px 16px;font-family:'Bungee',sans-serif;font-size:13px;background:#FFC61F;color:#2E2000;padding:14px;box-shadow:4px 4px 0 #C08400;text-align:center">♥ SUPPORT</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">01 — WORKROOM / DESKTOP 1280 / ACTIVE</div>
+    <div data-screen-label="Workroom desktop active" style="width:1280px;background:#0D131B;outline:2px solid #263242;color:#EEF1F6">
+      <div style="background:#151E29;border-bottom:2px solid #263242;padding:0 32px;display:flex;align-items:center;gap:24px;height:68px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <img src="assets/avatar.png" alt="" style="width:40px;height:40px;object-fit:cover;border:2px solid #fff;display:block">
+          <div style="font-family:'Bungee',sans-serif;font-size:20px;color:#fff">ODSENS</div>
+        </div>
+        <div style="display:flex;gap:2px;align-items:center;margin-left:8px">
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Projects</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Videos</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Skins</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Art</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Seen on</div>
+          <div style="font-size:15px;font-weight:500;color:#9DA9BA;padding:10px 14px">Commissions</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;outline:2px solid #3A4759"><div style="width:28px;height:28px;background:#17B94F"></div><div style="font-size:14px;font-weight:700;color:#EEF1F6">blockbuddy</div><div style="font-size:11px;color:#7C889A">▾</div></div>
+        </div>
+      </div>
+
+      <div style="padding:20px 40px 0;font-size:13px;color:#7C889A;display:flex;gap:8px"><span style="color:#8B86F5;font-weight:700">Your orders</span><span>/</span><span>Duck Knight skin</span></div>
+
+      <div style="padding:20px 40px 32px;display:flex;flex-direction:column;gap:14px;border-bottom:2px solid #263242">
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px;font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.1em;background:#4A3505;color:#FFDA6B;padding:7px 11px;box-shadow:3px 3px 0 #2E2000">
+            <span style="display:inline-flex;flex-direction:column;align-items:center"><span style="width:7px;height:5px;border:2px solid #FFDA6B;border-bottom:none;display:block"></span><span style="width:12px;height:8px;background:#FFDA6B;display:block"></span></span>
+            PRIVATE
+          </div>
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">WORKROOM · CUSTOM SKIN</div>
+        </div>
+        <div style="font-family:'Bungee',sans-serif;font-size:40px;line-height:.95;color:#fff">DUCK KNIGHT SKIN</div>
+        <div style="font-size:16px;color:#9DA9BA">Private workroom. Payment happens on Ko-fi. No contracts, no invoices yet.</div>
+      </div>
+
+      <div style="padding:32px 40px 40px;display:grid;grid-template-columns:1fr 380px;gap:32px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:28px">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;align-items:baseline;gap:12px">
+              <div style="font-family:'Bungee',sans-serif;font-size:24px;color:#FFC61F">UPDATES</div>
+              <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.1em;color:#7C889A">3 POSTS</div>
+            </div>
+            <div style="background:#151E29;outline:2px solid #2C3A4B;padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.14em;color:#7C889A">WIP · UPDATE 2</div>
+              <div style="display:flex;gap:10px;align-items:center">
+                <img src="assets/avatar.png" alt="" style="width:40px;height:40px;object-fit:cover;border:2px solid #fff;display:block">
+                <span style="font-size:14px;font-weight:700;color:#EEF1F6">OddSense</span>
+                <span style="font-family:'Silkscreen',monospace;font-size:9px;background:#FFC61F;color:#2E2000;padding:3px 6px;letter-spacing:.06em">CREATOR</span>
+                <span style="font-size:12px;color:#7C889A">2 days ago</span>
+              </div>
+              <div style="font-size:16px;color:#DCE3EC;line-height:1.65;max-width:64ch">Helmet's done. Went with the bucket shape. The plume is a problem I'm enjoying. Cape colour test in the second shot — tell me if the red is too much.</div>
+              <div style="display:flex;gap:10px">
+                <div style="flex:1;aspect-ratio:16/10;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:10px;color:#4E5A6C">WIP SHOT 1</div>
+                <div style="flex:1;aspect-ratio:16/10;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:10px;color:#4E5A6C">WIP SHOT 2</div>
+              </div>
+            </div>
+            <div style="background:#151E29;outline:2px solid #2C3A4B;padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.14em;color:#7C889A">WIP · UPDATE 1</div>
+              <div style="display:flex;gap:10px;align-items:center">
+                <img src="assets/avatar.png" alt="" style="width:40px;height:40px;object-fit:cover;border:2px solid #fff;display:block">
+                <span style="font-size:14px;font-weight:700;color:#EEF1F6">OddSense</span>
+                <span style="font-family:'Silkscreen',monospace;font-size:9px;background:#FFC61F;color:#2E2000;padding:3px 6px;letter-spacing:.06em">CREATOR</span>
+                <span style="font-size:12px;color:#7C889A">1 week ago</span>
+              </div>
+              <div style="font-size:16px;color:#DCE3EC;line-height:1.65;max-width:64ch">Blocked out the base colours. Gold trim stays. Started from your reference zip — the third photo is doing most of the work.</div>
+              <div style="display:flex;gap:10px">
+                <div style="width:calc(50% - 5px);aspect-ratio:16/10;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:10px;color:#4E5A6C">WIP SHOT</div>
+              </div>
+            </div>
+            <div style="background:#111A24;outline:2px solid #2C3A4B;padding:20px;display:flex;flex-direction:column;gap:12px">
+              <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.14em;color:#FFC61F">THE BRIEF</div>
+              <div style="display:flex;gap:10px;align-items:center">
+                <div style="width:40px;height:40px;background:#17B94F;outline:2px solid #2C3A4B"></div>
+                <span style="font-size:14px;font-weight:700;color:#EEF1F6">blockbuddy</span>
+                <span style="font-size:12px;color:#7C889A">3 weeks ago</span>
+              </div>
+              <div style="font-size:16px;color:#C6CEDA;line-height:1.65;max-width:64ch">A duck in knight armour. Gold trim, serious face, silly everything else. Slim model. Budget around $25.</div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;align-items:baseline;gap:12px">
+              <div style="font-family:'Bungee',sans-serif;font-size:24px;color:#FFC61F">COMMENTS</div>
+              <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.1em;color:#7C889A">4 TOTAL · MEMBERS ONLY</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="background:#151E29;outline:2px solid #2C3A4B;padding:18px;display:flex;gap:14px;align-items:center">
+                <div style="width:40px;height:40px;flex:none;background:#17B94F;outline:2px solid #3A4759"></div>
+                <div style="flex:1;background:#0D131B;outline:2px solid #2C3A4B;border-radius:3px;padding:13px 14px;font-size:15px;color:#7C889A">Say something about the knight…</div>
+                <div style="font-family:'Bungee',sans-serif;font-size:12px;background:#4B45D6;color:#fff;padding:14px 16px;box-shadow:4px 4px 0 #2E2A9E">POST</div>
+              </div>
+              <div style="font-size:13px;color:#7C889A">Only people in this room can see this.</div>
+            </div>
+            <div style="display:flex;gap:12px">
+              <div style="width:40px;height:40px;flex:none;background:#17B94F;outline:2px solid #2C3A4B"></div>
+              <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+                <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:14px;font-weight:700;color:#EEF1F6">blockbuddy</span><span style="font-size:12px;color:#7C889A">1 day ago</span></div>
+                <div style="background:#1E2938;outline:2px solid #2C3A4B;padding:12px 14px;font-size:15px;color:#DCE3EC;line-height:1.55">the red is exactly enough. keep the plume weird</div>
+                <div style="display:flex;gap:8px;align-items:center"><div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#9DA9BA;padding:8px 11px;outline:2px solid #2C3A4B">♥ 1</div><div style="font-size:13px;font-weight:700;color:#8B86F5;padding:8px 6px">Reply</div></div>
+                <div style="display:flex;gap:12px;margin-top:6px;padding-left:16px;border-left:2px solid #263242">
+                  <img src="assets/avatar.png" alt="" style="width:34px;height:34px;object-fit:cover;border:2px solid #fff;display:block;flex:none">
+                  <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+                    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:14px;font-weight:700;color:#EEF1F6">OddSense</span><span style="font-family:'Silkscreen',monospace;font-size:9px;background:#FFC61F;color:#2E2000;padding:3px 6px;letter-spacing:.06em">CREATOR</span><span style="font-size:12px;color:#7C889A">1 day ago</span></div>
+                    <div style="background:#1E2938;outline:2px solid #3A4759;padding:12px 14px;font-size:15px;color:#DCE3EC">the plume stays weird</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="background:#151E29;outline:2px solid #2C3A4B;padding:20px;display:flex;flex-direction:column;gap:12px">
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">STATUS</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:10px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;background:#0F3D22;color:#7FE3A2;padding:7px 11px">BRIEF ✔</div></div>
+              <div style="display:flex;align-items:center;gap:10px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;background:#0F3D22;color:#7FE3A2;padding:7px 11px">QUOTE ✔</div></div>
+              <div style="display:flex;align-items:center;gap:10px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;background:#4B45D6;color:#fff;padding:7px 11px;box-shadow:3px 3px 0 #2E2A9E">IN PROGRESS</div><div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.1em;color:#8B86F5">NOW</div></div>
+              <div style="display:flex;align-items:center;gap:10px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#7C889A;padding:7px 11px;outline:2px solid #2C3A4B">REVIEW</div></div>
+              <div style="display:flex;align-items:center;gap:10px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#7C889A;padding:7px 11px;outline:2px solid #2C3A4B">DELIVERED</div></div>
+              <div style="display:flex;align-items:center;gap:10px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#7C889A;padding:7px 11px;outline:2px solid #2C3A4B">CLOSED</div></div>
+            </div>
+          </div>
+
+          <div style="background:#151E29;outline:2px solid #2C3A4B;padding:20px;display:flex;flex-direction:column;gap:12px">
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">FILES</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:10px;background:#0D131B;outline:2px solid #2C3A4B;padding:11px 12px">
+                <div style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1">
+                  <div style="font-size:14px;font-weight:700;color:#EEF1F6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">duck-knight-wip-2.png</div>
+                  <div style="font-size:12px;color:#7C889A">OddSense · 1.4 MB</div>
+                </div>
+                <div style="font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.06em;background:#2A2680;color:#CFCCFF;padding:3px 6px;flex:none">WIP</div>
+                <div style="font-size:12px;font-weight:700;color:#EEF1F6;padding:8px 10px;outline:2px solid #3A4759;flex:none">Get</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;background:#0D131B;outline:2px solid #2C3A4B;padding:11px 12px">
+                <div style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1">
+                  <div style="font-size:14px;font-weight:700;color:#EEF1F6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">reference-photos.zip</div>
+                  <div style="font-size:12px;color:#7C889A">blockbuddy · 18 MB</div>
+                </div>
+                <div style="font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.06em;background:#243040;color:#EEF1F6;padding:3px 6px;flex:none">BRIEF</div>
+                <div style="font-size:12px;font-weight:700;color:#EEF1F6;padding:8px 10px;outline:2px solid #3A4759;flex:none">Get</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;background:#0D131B;outline:2px solid #2C3A4B;padding:11px 12px">
+                <div style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1">
+                  <div style="font-size:14px;font-weight:700;color:#EEF1F6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">brief.md</div>
+                  <div style="font-size:12px;color:#7C889A">blockbuddy · 2 KB</div>
+                </div>
+                <div style="font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.06em;background:#243040;color:#EEF1F6;padding:3px 6px;flex:none">BRIEF</div>
+                <div style="font-size:12px;font-weight:700;color:#EEF1F6;padding:8px 10px;outline:2px solid #3A4759;flex:none">Get</div>
+              </div>
+            </div>
+            <div style="border:2px dashed #3A4759;padding:18px;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center">
+              <div style="font-size:14px;font-weight:700;color:#EEF1F6">Drop a file here</div>
+              <div style="font-size:13px;color:#8B86F5;font-weight:700">or pick one</div>
+            </div>
+            <div style="font-size:12px;color:#7C889A;line-height:1.5">png · jpg · webp · zip · txt · md · pdf. 25 MB per file, 200 MB per room.</div>
+          </div>
+
+          <div style="background:#151E29;outline:2px solid #2C3A4B;padding:20px;display:flex;flex-direction:column;gap:12px">
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">PARTICIPANTS</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <img src="assets/avatar.png" alt="" style="width:34px;height:34px;object-fit:cover;border:2px solid #fff;display:block;flex:none">
+              <div style="font-size:14px;font-weight:700;color:#EEF1F6">OddSense</div>
+              <div style="margin-left:auto;font-family:'Silkscreen',monospace;font-size:9px;background:#FFC61F;color:#2E2000;padding:3px 6px;letter-spacing:.06em">CREATOR</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;background:#17B94F;outline:2px solid #2C3A4B;flex:none"></div>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <div style="font-size:14px;font-weight:700;color:#EEF1F6">blockbuddy</div>
+                <div style="display:flex;align-items:center;gap:7px"><div style="width:16px;height:16px;background:#17B94F;display:grid;place-items:center;color:#0A2413;font-size:11px;font-weight:700">✔</div><div style="font-family:'Silkscreen',monospace;font-size:10px;color:#7FE3A2;letter-spacing:.08em">EMAIL ON</div></div>
+              </div>
+              <div style="margin-left:auto;font-family:'Silkscreen',monospace;font-size:9px;background:#243040;color:#EEF1F6;padding:3px 6px;letter-spacing:.06em">CLIENT</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;background:#4B45D6;outline:2px solid #2C3A4B;flex:none"></div>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <div style="font-size:14px;font-weight:700;color:#EEF1F6">DadSense</div>
+                <div style="font-size:12px;color:#7C889A">here to keep things safe</div>
+              </div>
+              <div style="margin-left:auto;font-family:'Silkscreen',monospace;font-size:9px;background:#2A2680;color:#CFCCFF;padding:3px 6px;letter-spacing:.06em">MOD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">02 — WORKROOM STATES</div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+
+      <div data-screen-label="Workroom state new" style="width:400px;background:#0D131B;outline:2px solid #263242;padding:24px;display:flex;flex-direction:column;gap:14px;color:#EEF1F6">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#8B86F5">STATE — BRAND NEW ROOM</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;background:#4B45D6;color:#fff;padding:6px 10px;box-shadow:3px 3px 0 #2E2A9E">BRIEF</div>
+          <div style="font-size:12px;font-weight:700;color:#7C889A;padding:6px 10px;outline:2px solid #2C3A4B">QUOTE</div>
+          <div style="font-size:12px;font-weight:700;color:#7C889A;padding:6px 10px;outline:2px solid #2C3A4B">IN PROGRESS</div>
+        </div>
+        <div style="background:#111A24;outline:2px solid #2C3A4B;padding:16px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.14em;color:#FFC61F">THE BRIEF</div>
+          <div style="font-size:15px;color:#C6CEDA;line-height:1.6">A duck in knight armour. Gold trim, serious face, silly everything else.</div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #2C3A4B;padding:18px;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center">
+          <div style="font-family:'Bungee',sans-serif;font-size:16px;color:#fff">NOTHING HERE YET</div>
+          <div style="font-size:14px;color:#9DA9BA">First update coming. Usually within a few days.</div>
+        </div>
+        <div style="font-size:13px;color:#7C889A">Files: just the brief. Comments open.</div>
+      </div>
+
+      <div data-screen-label="Workroom state review" style="width:400px;background:#0D131B;outline:2px solid #263242;padding:24px;display:flex;flex-direction:column;gap:14px;color:#EEF1F6">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#8B86F5">STATE — REVIEW (CLIENT VIEW)</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;background:#0F3D22;color:#7FE3A2;padding:6px 10px">IN PROGRESS ✔</div>
+          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;background:#4B45D6;color:#fff;padding:6px 10px;box-shadow:3px 3px 0 #2E2A9E">REVIEW</div>
+          <div style="font-size:12px;font-weight:700;color:#7C889A;padding:6px 10px;outline:2px solid #2C3A4B">DELIVERED</div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #C08400;padding:18px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.14em;color:#FFC61F">⏳ READY FOR REVIEW</div>
+          <div style="font-size:15px;color:#C6CEDA;line-height:1.55">Look it over. Done, or changes?</div>
+          <div style="display:flex;gap:10px">
+            <div style="font-family:'Bungee',sans-serif;font-size:13px;background:#4B45D6;color:#fff;padding:13px 15px;box-shadow:4px 4px 0 #2E2A9E">MARK AS DONE</div>
+            <div style="font-size:14px;font-weight:700;color:#EEF1F6;padding:13px 15px;outline:2px solid #3A4759">Ask for changes</div>
+          </div>
+        </div>
+        <div style="font-size:13px;color:#7C889A">The pair shows only to the client, only in REVIEW.</div>
+      </div>
+
+      <div data-screen-label="Workroom state delivered" style="width:400px;background:#0D131B;outline:2px solid #263242;padding:24px;display:flex;flex-direction:column;gap:14px;color:#EEF1F6">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#8B86F5">STATE — DELIVERED</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;background:#0F3D22;color:#7FE3A2;padding:6px 10px">REVIEW ✔</div>
+          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;background:#4B45D6;color:#fff;padding:6px 10px;box-shadow:3px 3px 0 #2E2A9E">DELIVERED</div>
+          <div style="font-size:12px;font-weight:700;color:#7C889A;padding:6px 10px;outline:2px solid #2C3A4B">CLOSED</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;background:#151E29;outline:2px solid #C08400;padding:12px">
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1">
+              <div style="font-size:14px;font-weight:700;color:#EEF1F6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">duck-knight-final.png</div>
+              <div style="font-size:12px;color:#7C889A">OddSense · 64×64 · 3 KB</div>
+            </div>
+            <div style="font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.06em;background:#4A3505;color:#FFDA6B;padding:3px 6px;flex:none">DELIVERABLE</div>
+            <div style="font-family:'Bungee',sans-serif;font-size:11px;background:#FFC61F;color:#2E2000;padding:10px 12px;box-shadow:3px 3px 0 #C08400;flex:none">DOWNLOAD</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:#0D131B;outline:2px solid #2C3A4B;padding:11px 12px">
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1">
+              <div style="font-size:14px;font-weight:700;color:#EEF1F6">duck-knight-wip-2.png</div>
+              <div style="font-size:12px;color:#7C889A">OddSense · 1.4 MB</div>
+            </div>
+            <div style="font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.06em;background:#2A2680;color:#CFCCFF;padding:3px 6px;flex:none">WIP</div>
+            <div style="font-size:12px;font-weight:700;color:#EEF1F6;padding:8px 10px;outline:2px solid #3A4759;flex:none">Get</div>
+          </div>
+        </div>
+        <div style="font-size:13px;color:#7C889A">Deliverables pin to the top of FILES with the gold treatment.</div>
+      </div>
+
+      <div data-screen-label="Workroom state closed" style="width:400px;background:#0D131B;outline:2px solid #263242;padding:24px;display:flex;flex-direction:column;gap:14px;color:#EEF1F6">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#8B86F5">STATE — CLOSED / READ-ONLY</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;background:#0F3D22;color:#7FE3A2;padding:6px 10px">DELIVERED ✔</div>
+          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;background:#243040;color:#EEF1F6;padding:6px 10px">CLOSED</div>
+        </div>
+        <div style="background:#111A24;outline:2px solid #2C3A4B;padding:18px;display:flex;flex-direction:column;gap:8px">
+          <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.14em;color:#7C889A">CLOSED</div>
+          <div style="font-size:15px;color:#9DA9BA;line-height:1.55">This room is closed. Files stay downloadable.</div>
+        </div>
+        <div style="font-size:13px;color:#7C889A">The composer is gone. Posts, comments and files remain readable.</div>
+      </div>
+
+      <div data-screen-label="Workroom email opt-in" style="width:400px;background:#0D131B;outline:2px solid #263242;padding:24px;display:flex;flex-direction:column;gap:14px;color:#EEF1F6">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#8B86F5">FIRST ENTRY — EMAIL OPT-IN</div>
+        <div style="background:#151E29;outline:2px solid #2C3A4B;padding:18px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="font-size:15px;font-weight:700;color:#EEF1F6">Get an email when OddSense posts here?</div>
+            <div style="display:flex;align-items:center;gap:8px;flex:none"><div style="font-family:'Silkscreen',monospace;font-size:11px;color:#7FE3A2">ON</div><div style="width:22px;height:22px;background:#17B94F;outline:2px solid #17B94F;display:grid;place-items:center;color:#0A2413;font-size:14px;font-weight:700">✔</div></div>
+          </div>
+          <div style="font-size:13px;color:#7C889A;line-height:1.5">One email per update. Your address stays between you and the site.</div>
+        </div>
+        <div style="font-size:13px;color:#7C889A">Shows once on first entry; afterwards it lives on your own participants row.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">03 — WORKROOM / PHONE 390</div>
+    <div data-screen-label="Workroom phone" style="width:390px;background:#0D131B;outline:2px solid #263242;color:#EEF1F6;display:flex;flex-direction:column">
+      <div style="background:#151E29;border-bottom:2px solid #263242;height:56px;padding:0 16px;display:flex;align-items:center;gap:12px">
+        <div style="font-size:15px;font-weight:700;color:#8B86F5">← Your orders</div>
+        <div style="margin-left:auto;width:44px;height:44px;outline:2px solid #3A4759;display:grid;place-items:center"><div style="width:18px;height:2px;background:#EEF1F6;box-shadow:0 5px 0 #EEF1F6,0 -5px 0 #EEF1F6"></div></div>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:12px;border-bottom:2px solid #263242">
+        <div style="display:flex;align-items:center;gap:8px;font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.1em;background:#4A3505;color:#FFDA6B;padding:6px 9px;box-shadow:3px 3px 0 #2E2000;align-self:flex-start">
+          <span style="display:inline-flex;flex-direction:column;align-items:center"><span style="width:6px;height:4px;border:2px solid #FFDA6B;border-bottom:none;display:block"></span><span style="width:10px;height:7px;background:#FFDA6B;display:block"></span></span>
+          PRIVATE
+        </div>
+        <div style="font-family:'Bungee',sans-serif;font-size:26px;line-height:.95;color:#fff">DUCK KNIGHT SKIN</div>
+        <div style="font-size:14px;color:#9DA9BA;line-height:1.5">Private workroom. Payment happens on Ko-fi.</div>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
+        <div style="background:#151E29;outline:2px solid #2C3A4B;padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">WIP · UPDATE 2</div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <img src="assets/avatar.png" alt="" style="width:34px;height:34px;object-fit:cover;border:2px solid #fff;display:block">
+            <span style="font-size:14px;font-weight:700;color:#EEF1F6">OddSense</span>
+            <span style="font-family:'Silkscreen',monospace;font-size:8px;background:#FFC61F;color:#2E2000;padding:3px 5px">CREATOR</span>
+            <span style="font-size:12px;color:#7C889A">2d</span>
+          </div>
+          <div style="font-size:15px;color:#DCE3EC;line-height:1.6">Helmet's done. Went with the bucket shape. The plume is a problem I'm enjoying.</div>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;aspect-ratio:16/10;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#4E5A6C">WIP 1</div>
+            <div style="flex:1;aspect-ratio:16/10;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:9px;color:#4E5A6C">WIP 2</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:'Bungee',sans-serif;font-size:19px;color:#FFC61F">STATUS</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <div style="font-size:11px;font-weight:700;background:#0F3D22;color:#7FE3A2;padding:6px 9px">BRIEF ✔</div>
+            <div style="font-size:11px;font-weight:700;background:#0F3D22;color:#7FE3A2;padding:6px 9px">QUOTE ✔</div>
+            <div style="font-size:11px;font-weight:700;background:#4B45D6;color:#fff;padding:6px 9px;box-shadow:3px 3px 0 #2E2A9E">IN PROGRESS</div>
+            <div style="font-size:11px;font-weight:700;color:#7C889A;padding:6px 9px;outline:2px solid #2C3A4B">REVIEW</div>
+            <div style="font-size:11px;font-weight:700;color:#7C889A;padding:6px 9px;outline:2px solid #2C3A4B">DELIVERED</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:'Bungee',sans-serif;font-size:19px;color:#FFC61F">FILES</div>
+          <div style="display:flex;align-items:center;gap:10px;background:#0D131B;outline:2px solid #2C3A4B;padding:11px 12px">
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1">
+              <div style="font-size:14px;font-weight:700;color:#EEF1F6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">duck-knight-wip-2.png</div>
+              <div style="font-size:12px;color:#7C889A">OddSense · 1.4 MB</div>
+            </div>
+            <div style="font-family:'Silkscreen',monospace;font-size:9px;background:#2A2680;color:#CFCCFF;padding:3px 6px;flex:none">WIP</div>
+            <div style="font-size:12px;font-weight:700;color:#EEF1F6;padding:8px 10px;outline:2px solid #3A4759;flex:none">Get</div>
+          </div>
+          <div style="border:2px dashed #3A4759;padding:16px;text-align:center;font-size:14px;font-weight:700;color:#EEF1F6">Drop a file here <span style="color:#8B86F5">or pick one</span></div>
+          <div style="font-size:12px;color:#7C889A">png · jpg · webp · zip · txt · md · pdf. 25 MB per file, 200 MB per room.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:'Bungee',sans-serif;font-size:19px;color:#FFC61F">PARTICIPANTS</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <img src="assets/avatar.png" alt="" style="width:30px;height:30px;object-fit:cover;border:2px solid #fff;display:block;flex:none">
+            <div style="font-size:14px;font-weight:700;color:#EEF1F6">OddSense</div>
+            <div style="margin-left:auto;font-family:'Silkscreen',monospace;font-size:8px;background:#FFC61F;color:#2E2000;padding:3px 5px">CREATOR</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:30px;height:30px;background:#17B94F;outline:2px solid #2C3A4B;flex:none"></div>
+            <div style="font-size:14px;font-weight:700;color:#EEF1F6">blockbuddy</div>
+            <div style="margin-left:auto;font-family:'Silkscreen',monospace;font-size:8px;background:#243040;color:#EEF1F6;padding:3px 5px">CLIENT</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:30px;height:30px;background:#4B45D6;outline:2px solid #2C3A4B;flex:none"></div>
+            <div style="display:flex;flex-direction:column;gap:1px"><div style="font-size:14px;font-weight:700;color:#EEF1F6">DadSense</div><div style="font-size:11px;color:#7C889A">here to keep things safe</div></div>
+            <div style="margin-left:auto;font-family:'Silkscreen',monospace;font-size:8px;background:#2A2680;color:#CFCCFF;padding:3px 5px">MOD</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-family:'Bungee',sans-serif;font-size:19px;color:#FFC61F">COMMENTS</div>
+          <div style="background:#151E29;outline:2px solid #2C3A4B;padding:14px;display:flex;gap:10px;align-items:center">
+            <div style="flex:1;background:#0D131B;outline:2px solid #2C3A4B;border-radius:3px;padding:12px;font-size:14px;color:#7C889A">Say something…</div>
+            <div style="font-family:'Bungee',sans-serif;font-size:11px;background:#4B45D6;color:#fff;padding:13px 14px;box-shadow:3px 3px 0 #2E2A9E">POST</div>
+          </div>
+          <div style="font-size:12px;color:#7C889A">Only people in this room can see this.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">04 — SEEN ON / PROJECT DETAIL SECTION / DESKTOP 1280</div>
+    <div style="font-size:15px;color:#9DA9BA;max-width:78ch;line-height:1.6">Sits between VERSIONS &amp; FILES and COMMENTS. Mention cards are the video facade plus a creator line. YouTube embeds inline on click; every other platform links out. No mentions → the section doesn't render.</div>
+    <div data-screen-label="Project detail Seen on desktop" style="width:1280px;background:#0D131B;outline:2px solid #263242;color:#EEF1F6">
+      <div style="padding:12px 40px;border-bottom:2px dashed #263242;font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#4E5A6C">CROP — METAL PIPE MACE, BELOW VERSIONS &amp; FILES</div>
+      <div style="padding:32px 40px 40px;display:grid;grid-template-columns:1fr 380px;gap:32px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:28px">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;align-items:baseline;gap:12px">
+              <div style="font-family:'Bungee',sans-serif;font-size:24px;color:#FFC61F">SEEN ON</div>
+              <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.1em;color:#7C889A">4 MENTIONS</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+              <div style="background:#151E29;outline:2px solid #2C3A4B;display:flex;flex-direction:column">
+                <div style="aspect-ratio:16/9;background:#111A24;border-bottom:2px solid #263242;position:relative;display:grid;place-items:center">
+                  <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#4E5A6C;position:absolute;top:12px;left:12px">THUMBNAIL</div>
+                  <div style="width:64px;height:64px;background:#4B45D6;box-shadow:4px 4px 0 #2E2A9E;display:grid;place-items:center"><div style="width:0;height:0;border-top:11px solid transparent;border-bottom:11px solid transparent;border-left:18px solid #fff;margin-left:4px"></div></div>
+                  <div style="position:absolute;right:10px;bottom:10px;font-family:'Silkscreen',monospace;font-size:11px;color:#fff;background:#0D131B;outline:2px solid #2C3A4B;padding:4px 7px">8:41</div>
+                  <div style="position:absolute;left:10px;bottom:10px;font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.08em;color:#EEF1F6;background:rgba(13,19,27,.85);padding:4px 7px">CLICK TO LOAD YOUTUBE</div>
+                </div>
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:10px">
+                  <div style="width:26px;height:26px;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;flex:none"><div style="width:14px;height:10px;background:#FF0000"></div></div>
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <div style="font-size:14px;font-weight:700;color:#EEF1F6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PixelPete tried the pipe mace</div>
+                    <div style="display:flex;gap:8px;align-items:baseline"><span style="font-family:'Silkscreen',monospace;font-size:11px;color:#17B94F;letter-spacing:.06em">212K VIEWS</span><span style="font-size:12px;color:#7C889A">May 2026</span></div>
+                  </div>
+                </div>
+              </div>
+              <div style="background:#151E29;outline:2px solid #2C3A4B;display:flex;flex-direction:column">
+                <div style="aspect-ratio:16/9;background:#111A24;border-bottom:2px solid #263242;position:relative;display:grid;place-items:center">
+                  <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#4E5A6C;position:absolute;top:12px;left:12px">THUMBNAIL</div>
+                  <div style="width:64px;height:64px;background:#4B45D6;box-shadow:4px 4px 0 #2E2A9E;display:grid;place-items:center"><div style="width:0;height:0;border-top:11px solid transparent;border-bottom:11px solid transparent;border-left:18px solid #fff;margin-left:4px"></div></div>
+                  <div style="position:absolute;right:10px;bottom:10px;font-family:'Silkscreen',monospace;font-size:11px;color:#fff;background:#0D131B;outline:2px solid #2C3A4B;padding:4px 7px">0:54</div>
+                  <div style="position:absolute;left:10px;bottom:10px;font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.08em;color:#EEF1F6;background:rgba(13,19,27,.85);padding:4px 7px">CLICK TO LOAD YOUTUBE</div>
+                </div>
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:10px">
+                  <div style="width:26px;height:26px;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;flex:none"><div style="width:14px;height:10px;background:#FF0000"></div></div>
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <div style="font-size:14px;font-weight:700;color:#EEF1F6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">sound test (Short) — craftyNora</div>
+                    <div style="display:flex;gap:8px;align-items:baseline"><span style="font-family:'Silkscreen',monospace;font-size:11px;color:#17B94F;letter-spacing:.06em">890K VIEWS</span><span style="font-size:12px;color:#7C889A">June 2026</span></div>
+                  </div>
+                </div>
+              </div>
+              <div style="background:#151E29;outline:2px solid #2C3A4B;display:flex;flex-direction:column">
+                <div style="aspect-ratio:16/9;background:#111A24;border-bottom:2px solid #263242;position:relative;display:grid;place-items:center">
+                  <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#4E5A6C;position:absolute;top:12px;left:12px">CLIP THUMBNAIL</div>
+                  <div style="position:absolute;right:10px;top:10px;font-size:14px;font-weight:700;color:#EEF1F6;background:rgba(13,19,27,.85);padding:4px 8px">↗</div>
+                  <div style="position:absolute;left:10px;bottom:10px;font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.08em;color:#EEF1F6;background:rgba(13,19,27,.85);padding:4px 7px">WATCH ON TWITCH</div>
+                </div>
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:10px">
+                  <div style="width:26px;height:26px;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;flex:none"><div style="width:12px;height:12px;background:#9146FF"></div></div>
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <div style="font-size:14px;font-weight:700;color:#EEF1F6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">grumbo can't stop hitting the wall</div>
+                    <div style="display:flex;gap:8px;align-items:baseline"><span style="font-family:'Silkscreen',monospace;font-size:11px;color:#17B94F;letter-spacing:.06em">31K VIEWS</span><span style="font-size:12px;color:#7C889A">June 2026</span></div>
+                  </div>
+                </div>
+              </div>
+              <div style="background:#151E29;outline:2px solid #2C3A4B;display:flex;flex-direction:column">
+                <div style="aspect-ratio:16/9;background:#111A24;border-bottom:2px solid #263242;position:relative;display:grid;place-items:center">
+                  <div style="font-family:'Silkscreen',monospace;font-size:10px;color:#4E5A6C;position:absolute;top:12px;left:12px">THUMBNAIL</div>
+                  <div style="position:absolute;right:10px;top:10px;font-size:14px;font-weight:700;color:#EEF1F6;background:rgba(13,19,27,.85);padding:4px 8px">↗</div>
+                  <div style="position:absolute;left:10px;bottom:10px;font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.08em;color:#EEF1F6;background:rgba(13,19,27,.85);padding:4px 7px">WATCH ON TIKTOK</div>
+                </div>
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:10px">
+                  <div style="width:26px;height:26px;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;flex:none"><div style="width:12px;height:12px;background:#EEF1F6"></div></div>
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <div style="font-size:14px;font-weight:700;color:#EEF1F6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">minecraft mods that are just sounds — beelo</div>
+                    <div style="display:flex;gap:8px;align-items:baseline"><span style="font-family:'Silkscreen',monospace;font-size:11px;color:#17B94F;letter-spacing:.06em">1.1M VIEWS</span><span style="font-size:12px;color:#7C889A">July 2026</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#8B86F5">STATE — YOUTUBE CARD AFTER CLICK</div>
+              <div style="background:#151E29;outline:2px solid #8B86F5;display:flex;flex-direction:column">
+                <div style="aspect-ratio:16/9;background:#000;display:grid;place-items:center;font-family:'Silkscreen',monospace;font-size:11px;color:#4E5A6C;border-bottom:2px solid #263242">YOUTUBE PLAYER — LOADED ON CLICK</div>
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:10px">
+                  <div style="width:26px;height:26px;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;flex:none"><div style="width:14px;height:10px;background:#FF0000"></div></div>
+                  <div style="font-size:14px;font-weight:700;color:#EEF1F6">PixelPete tried the pipe mace</div>
+                  <div style="margin-left:auto;font-size:14px;font-weight:700;color:#8B86F5">on YouTube ↗</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:12px;opacity:.5">
+            <div style="font-family:'Bungee',sans-serif;font-size:24px;color:#FFC61F">COMMENTS</div>
+            <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.1em;color:#7C889A">14 TOTAL</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="background:#151E29;outline:2px solid #2C3A4B;padding:20px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">DETAILS</div>
+            <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#9DA9BA">Type</span><span style="color:#EEF1F6;font-weight:700">Mod</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#9DA9BA">Updated</span><span style="color:#EEF1F6;font-weight:700">3 weeks ago</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#9DA9BA">Licence</span><span style="color:#EEF1F6;font-weight:700">MIT</span></div>
+          </div>
+          <div style="background:#FFC61F;padding:18px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden">
+            <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.08) 0 10px,transparent 10px 20px)"></div>
+            <div style="position:relative;font-family:'Bungee',sans-serif;font-size:16px;color:#2E2000;line-height:1.15">LIKED IT? TIP A DOLLAR</div>
+            <div style="position:relative;display:flex;gap:8px"><div style="font-size:14px;font-weight:700;background:#2E2000;color:#FFC61F;padding:10px 14px">$1</div><div style="font-size:14px;font-weight:700;background:#2E2000;color:#FFC61F;padding:10px 14px">$3</div><div style="font-size:14px;font-weight:700;color:#2E2000;padding:10px 14px;outline:2px solid #2E2000">Other</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.18em;color:#7C889A">05 — SEEN ON / PHONE 390 + FOOTER LINE</div>
+    <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start">
+      <div data-screen-label="Seen on phone section" style="width:390px;background:#0D131B;outline:2px solid #263242;color:#EEF1F6;padding:20px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:baseline;gap:10px">
+          <div style="font-family:'Bungee',sans-serif;font-size:19px;color:#FFC61F">SEEN ON</div>
+          <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.1em;color:#7C889A">4 MENTIONS</div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #2C3A4B;display:flex;flex-direction:column">
+          <div style="aspect-ratio:16/9;background:#111A24;border-bottom:2px solid #263242;position:relative;display:grid;place-items:center">
+            <div style="width:56px;height:56px;background:#4B45D6;box-shadow:4px 4px 0 #2E2A9E;display:grid;place-items:center"><div style="width:0;height:0;border-top:9px solid transparent;border-bottom:9px solid transparent;border-left:15px solid #fff;margin-left:3px"></div></div>
+            <div style="position:absolute;right:8px;bottom:8px;font-family:'Silkscreen',monospace;font-size:10px;color:#fff;background:#0D131B;outline:2px solid #2C3A4B;padding:3px 6px">8:41</div>
+            <div style="position:absolute;left:8px;bottom:8px;font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.06em;color:#EEF1F6;background:rgba(13,19,27,.85);padding:3px 6px">CLICK TO LOAD YOUTUBE</div>
+          </div>
+          <div style="padding:12px 14px;display:flex;align-items:center;gap:10px">
+            <div style="width:24px;height:24px;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;flex:none"><div style="width:12px;height:9px;background:#FF0000"></div></div>
+            <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+              <div style="font-size:14px;font-weight:700;color:#EEF1F6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PixelPete tried the pipe mace</div>
+              <div style="display:flex;gap:8px"><span style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">212K VIEWS</span><span style="font-size:12px;color:#7C889A">May 2026</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="background:#151E29;outline:2px solid #2C3A4B;display:flex;flex-direction:column">
+          <div style="aspect-ratio:16/9;background:#111A24;border-bottom:2px solid #263242;position:relative;display:grid;place-items:center">
+            <div style="position:absolute;right:8px;top:8px;font-size:13px;font-weight:700;color:#EEF1F6;background:rgba(13,19,27,.85);padding:3px 7px">↗</div>
+            <div style="position:absolute;left:8px;bottom:8px;font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:.06em;color:#EEF1F6;background:rgba(13,19,27,.85);padding:3px 6px">WATCH ON TIKTOK</div>
+          </div>
+          <div style="padding:12px 14px;display:flex;align-items:center;gap:10px">
+            <div style="width:24px;height:24px;background:#111A24;outline:2px solid #2C3A4B;display:grid;place-items:center;flex:none"><div style="width:11px;height:11px;background:#EEF1F6"></div></div>
+            <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+              <div style="font-size:14px;font-weight:700;color:#EEF1F6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">minecraft mods that are just sounds</div>
+              <div style="display:flex;gap:8px"><span style="font-family:'Silkscreen',monospace;font-size:10px;color:#17B94F">1.1M VIEWS</span><span style="font-size:12px;color:#7C889A">July 2026</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div data-screen-label="Footer with affiliation line" style="width:640px;background:#0F1721;outline:2px solid #263242;padding:28px 32px;display:flex;flex-direction:column;gap:14px;color:#EEF1F6">
+        <div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#8B86F5">FOOTER — NEW DRY LINE</div>
+        <div style="display:flex;gap:48px;flex-wrap:wrap;align-items:flex-start">
+          <div style="display:flex;flex-direction:column;gap:8px;min-width:220px">
+            <div style="font-family:'Bungee',sans-serif;font-size:17px;color:#fff">ODSENS</div>
+            <div style="font-size:14px;color:#7C889A;line-height:1.55">Mods and other odd things, made by OddSense. Not affiliated with Mojang.<br>Creators featuring the mods aren't affiliated with odsens.</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:.14em;color:#7C889A">SITE</div><div style="font-size:14px;color:#8B86F5">Projects</div><div style="font-size:14px;color:#8B86F5">Seen on</div><div style="font-size:14px;color:#8B86F5">Custom orders</div><div style="font-size:14px;color:#8B86F5">Support</div><div style="font-size:14px;color:#8B86F5">How comments work</div><div style="font-size:14px;color:#8B86F5">Privacy</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400}}"></script>
+</body>
+</html>

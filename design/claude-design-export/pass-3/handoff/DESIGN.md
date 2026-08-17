@@ -1,9 +1,5 @@
 # odsens.com — Design System (v1.3)
 
-> v1.3 (2026-08-17): feature pass — Seen on / mentions, workrooms, notifications matrix, email + Discord templates, supporters leaderboard; see §12 and `design/claude-design-export/pass-3/CHANGELOG.md`.
-> v1.2 (2026-08-17): coverage pass — accounts/onboarding, comment moderation, admin settings/stats/orders, global states, privacy; see §11 and `design/claude-design-export/pass-2/CHANGELOG.md`.
-> v1.1 (2026-08-16): review-pass corrections — see `docs/design-review.md`. Contrast numbers computed; `--alert` token added; type minimums clarified; fonts self-hosted.
-
 Spec for building odsens.com. Design only — no framework decisions here.
 
 - **OddSense** — the person and the Minecraft character. The username shown on the site.
@@ -19,7 +15,7 @@ Direction: **Crate Poster** — blocky poster type on flat colour slabs, hard 2p
 
 ## 1. Colour tokens
 
-Palette is sampled from the OddSense avatar (`assets/brand/avatar/oddsense-avatar-5000.png`): navy-black ground, indigo-violet armour, two crown golds, emerald crown gems, white outline.
+Palette is sampled from the OddSense avatar (`assets/avatar.png`): navy-black ground, indigo-violet armour, two crown golds, emerald crown gems, white outline.
 
 ### Dark (default)
 
@@ -51,8 +47,8 @@ Palette is sampled from the OddSense avatar (`assets/brand/avatar/oddsense-avata
 | `--danger` | `#F0836B` | destructive text |
 | `--danger-line` | `#4A2A2A` | destructive border |
 | `--danger-field` | `#C05A45` | invalid input border |
-| `--alert` | `#CC3A2A` | alert fills behind white micro-text — passes 4.5:1 (was `#E1493B` at 4.0) |
-| `--orange` | `#E8762A` | CurseForge in charts and source rows only |
+| `--alert` | `#CC3A2A` | red/alert **fills** behind white micro-text (replaces `#E1493B`, which failed contrast) |
+| `--orange` | `#E8762A` | CurseForge, in charts and source rows only |
 | `--white` | `#FFFFFF` | avatar/image outline |
 
 Emerald is a **minor** accent — it comes from the crown gems, not from glowing eyes. It never carries a headline, a primary action, or a hero.
@@ -64,18 +60,18 @@ Emerald is a **minor** accent — it comes from the crown gems, not from glowing
 ### Contrast rules
 
 - Safe: chalk/mute/gold/indigo-lift on ink; white on indigo; ink on gold; ink on emerald.
-- Never: `--indigo` as text on `--ink` (2.8:1); emerald as body text; gold text on a gold slab.
+- Never: `--indigo` as text on `--ink` (**2.8:1**); emerald as body text; gold text on a gold slab; white micro-text on the old `#E1493B` — use `--alert #CC3A2A`.
 - Never encode meaning in colour alone. Type badges carry a glyph **and** a word; statuses are spelled out; the active nav item carries a 3px gold underline.
 
 ---
 
 ## 2. Typography
 
-Three faces, strict jobs: `Bungee`, `Space Grotesk` (400/500/700), `Silkscreen` (400/700). All are Google Fonts (OFL) — **self-host the WOFF2 files** in the build; no CDN request.
+Three faces, strict jobs. All three are **self-hosted woff2** — no font CDN, no external request on load: `Bungee`, `Space Grotesk` (400/500/700), `Silkscreen` (400/700).
 
-- **Bungee** — display only. Page titles, project titles, section headers, primary button labels, wordmark. Always uppercase, leading 0.9–1.1, max ~6 words, never a paragraph. Never below 16px for titles; 12–15px allowed only for button, filter, and support-button labels.
+- **Bungee** — display only. Page titles, project titles, section headers, primary button labels, wordmark. Always uppercase, leading 0.9–1.1, max ~6 words, **16px floor for titles**; 12–15px is allowed **only** on button, filter and support-button labels. Never a paragraph.
 - **Space Grotesk** — everything readable. Body, descriptions, nav links, inputs, tables, version numbers, admin UI. 400 prose / 500 UI / 700 subheads.
-- **Silkscreen** — pixel accent, micro-labels only. Eyebrows, download counts, badge text, section numbers. **10–12px** (10px floor; ≥11px when the label carries information the user needs — counts, HELD FOR REVIEW, unread count), letter-spacing .08–.2em. Never a sentence.
+- **Silkscreen** — pixel accent, micro-labels only. Eyebrows, download counts, badge text, section numbers. **Floor is 10px, and ≥11px whenever the label carries information** (download counts, HELD FOR REVIEW, unread/held counts, statuses). Letter-spacing .08–.2em. Never a sentence.
 
 | Role | Size / face | Notes |
 |---|---|---|
@@ -87,7 +83,7 @@ Three faces, strict jobs: `Bungee`, `Space Grotesk` (400/500/700), `Silkscreen` 
 | Subhead | 19px Space Grotesk 700 | |
 | Body | 17px / 1.65–1.7, max 68ch | 16px on phone |
 | Small | 13–14px | meta, captions |
-| Pixel label | 10–12px Silkscreen | uppercase, letter-spaced; ≥11px if informational |
+| Pixel label | 10–11px Silkscreen (11px if informational) | uppercase, letter-spaced |
 
 ---
 
@@ -96,7 +92,7 @@ Three faces, strict jobs: `Bungee`, `Space Grotesk` (400/500/700), `Silkscreen` 
 - Spacing scale, 4px base: 4 · 8 · 12 · 16 · 20 · 24 · 32 · 40 · 48 · 64 · 80.
 - Card padding 20. Grid gap 20 (16–18 on dense grids). Section gap 64–80. Page gutter 24 phone / 40–56 desktop. Max content width 1200–1280.
 - Radius: **0** everywhere by default; **3px** for inputs and version/loader chips only. Nothing is a pill except nothing.
-- Borders are 2px, drawn as `outline` on cards so they never shift layout. **Card and panel outlines use `--line-soft #2C3A4B`** (lifted one step in v1.2 for visibility on dark); `--line` stays for internal dividers, footer strips and thin rules. 3px white border on avatars and portraits.
+- Borders are 2px, drawn as `outline` on cards so they never shift layout. **Card and panel outlines are `--line-soft #2C3A4B`** (lifted one step in v1.2 for visibility on dark); `--line` stays for internal dividers, footer strips and thin rules. 3px white border on avatars and portraits.
 - Depth: flat offset blocks only — `box-shadow: 4px 4px 0 <deep>` (5–6px on hero/large). No blur, no gradient surfaces, no glows.
 - The one texture: 45° diagonal hatch at 8–12% black, only on indigo or gold slabs.
 
@@ -121,7 +117,7 @@ Minimum hit target 44px everywhere. Focus is a 3px `--gold` ring with 2px offset
 
 **Type badge.** Glyph + word. 11px 700, letter-spacing .06–.08em, 7×11px padding, square. mod → indigo-wash/`#CFCCFF`; datapack → emerald-wash/emerald-soft; resource pack → gold-wash/gold-bright; plugin → `#243040`/chalk.
 
-**Exclusive badge.** "★ ONLY ON ODSENS", Silkscreen 10px, gold fill, gold-ink text, hatch overlay, `3px 3px 0 --gold-deep`. Sits in the card's top-left corner (overlapping the border by 1px) and the card gains a gold outline. One per card. Never on a project that also lives on Modrinth or CurseForge.
+**Exclusive badge.** "★ ONLY ON ODSENS", Silkscreen 9–10px, gold fill, gold-ink text, hatch overlay, `3px 3px 0 --gold-deep`. Sits in the card's top-left corner (overlapping the border by 1px) and the card gains a gold outline. One per card. Never on a project that also lives on Modrinth or CurseForge.
 
 **Version / loader chip.** 12px 500, 3px radius, 2px `--line-soft`, transparent fill. Selected: `--indigo-lift` fill with ink text. Unavailable: dim text, `--slab-raised` border, not clickable. Max four per card, then `+N`.
 
@@ -143,7 +139,7 @@ Minimum hit target 44px everywhere. Focus is a 3px `--gold` ring with 2px offset
 
 **Nav.** Sticky top bar, 68px desktop / 56px phone, `--slab` with 2px bottom line. Avatar (40px, white border) + `ODSENS` wordmark, then links in Space Grotesk (v1.3 order: Projects · Videos · Skins · Art · Seen on · Commissions — the wordmark is the Home link, there is no Home item); active link is white 700 with a 3px gold underline (inset shadow). Right side: search (projects page), Sign in / signed-in handle, gold support button. Under 900px links collapse into a 44px square menu button.
 
-**Notification bell — cut from v1.** No user inbox in the first release: replies and approvals are found by revisiting the thread, and the admin side gets email instead (see §11.3 Settings). The v1.1 spec is kept in git history; if it returns it uses `--alert` for the count badge.
+**Notification bell — cut from v1.** No user inbox in the first release. Replies and approvals are found by revisiting the thread; the admin side gets email instead (see Settings). If it returns later it uses `--alert #CC3A2A` for the count badge, never the old red.
 
 **Footer.** `--slab-foot`, 2px top line, three columns: wordmark + one dry line ("Mods and other odd things, made by OddSense. Not affiliated with Mojang."), "Find me" links, "Site" links. Silkscreen column headers.
 
@@ -159,7 +155,7 @@ Minimum hit target 44px everywhere. Focus is a 3px `--gold` ring with 2px offset
 2. **Projects** — page title + count line, search, filter bar (type counts + version + sort), active-filter chips, 3-up card grid (1-up phone). Empty state: "Nothing matches that. Try fewer filters."
 3. **Project detail** — breadcrumb; 104px icon + 46px Bungee title + description + badge/chips/count row; gallery; ABOUT (markdown: h2/h3 in Bungee gold, body 17px, lists, note callout with a Silkscreen NOTE tag); VERSIONS & FILES table (file, Minecraft, loader, size, Download — the word "Download", never "Get"); comments with composer. Right rail: sticky "GET IT" panel (big primary download + file meta + Modrinth/CurseForge rows with their own counts + a line explaining the combined count), DETAILS list (type, updated, licence, source), gold tip panel. Phone stacks: header, gallery, about, files, comments; download panel becomes a section, not a sticky bar.
 4. **Videos** — big embedded player, Bungee title, view/date meta, dry blurb, "Up next" list at right (132px thumbs, selected item gets the indigo-lift outline). Grid of older videos below on phone.
-5. **Skins** (reserved style) — **every skin slot is a 3D render of the skin model, never a profile picture and never the flat texture.** The big panel is a live spinnable viewer (controls: spin / walk / front-back on a solid slab inside the viewer); the 4-up grid shows rendered busts in 3:4 slots with the 64×64 source PNG pinned small in the corner for reference. Name + description + DOWNLOAD PNG + Slim toggle sit under the viewer; selected card takes the indigo-lift outline; exclusive badge available here too. **The mockups cannot render 3D — those slots are labelled placeholders.** Build them with a browser skin viewer (e.g. skinview3d) reading `assets/brand/skins/skin-*.png`; the same renderer should generate the grid busts (a cached PNG render per skin is fine).
+5. **Skins** (reserved style) — **every skin slot is a 3D render of the skin model, never a profile picture and never the flat texture.** The big panel is a live spinnable viewer (controls: spin / walk / front-back on a solid slab inside the viewer); the 4-up grid shows rendered busts in 3:4 slots with the 64×64 source PNG pinned small in the corner for reference. Name + description + DOWNLOAD PNG + Slim toggle sit under the viewer; selected card takes the indigo-lift outline; exclusive badge available here too. **The mockups cannot render 3D — those slots are labelled placeholders.** Build them with a browser skin viewer (e.g. skinview3d) reading `assets/skin-*.png`; the same renderer should generate the grid busts (a cached PNG render per skin is fine).
 6. **Art** — filter row (all / avatars / thumbnails / icons), then a column-flow masonry where **each piece keeps its own dimensions**: images render at natural aspect ratio (`height: auto`, never cropped, never forced into a square), so wide thumbnails and tall squares pack flush with one 18px gutter. Four columns desktop, two phone, one under 480. Lightbox with title, year and optional download.
 7. **Support** — gold hatched panel with $1 / $3 / $5 / Other (one preselected) and a single send button, so tipping is one or two clicks; Ko-fi handles the payment; "What it pays for" slab in plain copy; reserved dashed slot for the future supporters wall (handles only, no amounts).
 8. **Custom orders** — type selector (mod / plugin / skin / pack / art), handle, "What do you want made" textarea with a helper line, then Minecraft version + **loader** + budget ("no idea is a valid answer"). The loader dropdown (Fabric / NeoForge / Forge / Paper / Spigot) renders **only when the type is mod or plugin** and is hidden for skin, pack and art; it carries a Silkscreen "MOD / PLUGIN ONLY" tag and a helper line. Then a public-posting checkbox, SEND IT, and an honest expectation line ("I reply in a few days. No promises, no invoices yet.").
@@ -198,16 +194,16 @@ odsens talks like someone who thinks the joke is funnier if you don't point at i
 - 44px minimum targets; visible 3px gold focus ring on every interactive element.
 - Meaning never rides on colour alone (glyph + word on badges, worded statuses, underlined active nav).
 - Alt text on every project icon, screenshot, skin and art piece.
-- Body text ≥16px, never below 13px for prose/UI text; Silkscreen labels 10px floor, ≥11px when informational.
+- Body text ≥16px, never below 13px anywhere; Silkscreen only for short uppercase labels.
 - Headings in document order; the Bungee hero is the `h1`.
 - Handles only — never render a real name, age or location, and don't accept them in a handle field.
 
 ## 10. Assets
 
-- `assets/brand/avatar/oddsense-avatar-5000.png` — OddSense avatar (5000×5000 PNG). Source of the palette. Used at 40px in nav, 56px in the home intro strip, and full-size in the Art gallery.
-- `assets/brand/art/art-*.png` — commissioned PFPs and renders (crowned duck, McTry, MrHams, ESC0M14, Galaxy, JG, two Minecraft renders). Feeding the Art gallery.
-- `assets/brand/skins/skin-*.png` — eight 64×64 skin files (Me, Kitsune, Angel Ducky, Red Suited Ducky, Emo Duck, Basic Squid, Feltur, Brick Block). These are **source textures**, not display images: the site renders them as 3D models. Only the small corner reference thumbs use them flat, at integer scale with `image-rendering: pixelated`.
-- `assets/brand/thumbnails/thumb-*.png` — video thumbnails (every-effect, wither hunt, frog).
+- `assets/avatar.png` — OddSense avatar (5000×5000 PNG). Source of the palette. Used at 40px in nav, 56px in the home intro strip, and full-size in the Art gallery.
+- `assets/art-*.png` — commissioned PFPs and renders (crowned duck, McTry, MrHams, ESC0M14, Galaxy, JG, two Minecraft renders). Feeding the Art gallery.
+- `assets/skin-*.png` — eight 64×64 skin files (Me, Kitsune, Angel Ducky, Red Suited Ducky, Emo Duck, Basic Squid, Feltur, Brick Block). These are **source textures**, not display images: the site renders them as 3D models. Only the small corner reference thumbs use them flat, at integer scale with `image-rendering: pixelated`.
+- `assets/thumb-*.png` — video thumbnails (every-effect, wither hunt, frog).
 - Still needed: project icons, in-game project screenshots, and rendered 3D skin previews for the Skins viewer.
 
 ---
