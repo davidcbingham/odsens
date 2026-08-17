@@ -38,3 +38,25 @@ Also: `can_comment(target_type, target_id)` SQL helper (security definer) for co
 ## Consequences
 - 00–05, `_registry.md`, `docs/data-model.md` (§2/§4: `rate_limit_hits`, views `comments_public`/`site_settings_public`, `comments_set_status()`, `can_comment()`, RPCs, `profiles.handle_changed_at`, `site_settings.owner_profile_id`, RLS rows), `DESIGN.md` §12.7 (build clarifications: C20 copy, chips, empty/toast/StatusPill/SyncStatus/nav metrics/VideoFacade sizes/N TOTAL/comments_closed_default label/`--ink-deep`), `docs/spec.md` (About page struck; comments v1 = projects), and the gate agents are amended in the same PR.
 - Three items flagged for David (C7 roles, About page removal, `users` aggregate metric) — **all confirmed 2026-08-17**.
+
+## Amendment A (2026-08-17) — items from the post-reconciliation gate dry-run
+| # | Decision |
+|---|---|
+| A1 | `CommentThread` is **one client file** `components/comments/CommentThread.tsx`; `CommentList`/`CommentThread.List.tsx` do not exist (registry + 00 align). |
+| A2 | Moderator view of held/reported comments in the public thread = **mods-only client read** via RPC `moderator_thread(target_type, target_id)` (security definer; requires `is_moderator()`; returns held/hidden/reported rows + `is_first_comment` + `report_count`). Allowed exception to INV-09 / 03 C-17. `comments_public` unchanged. |
+| A3 | `site_settings_public` **also exposes `moderation_mode`** (non-sensitive). `postComment` reads it via the RLS server client; the client optimistic-insert rule uses it. |
+| A4 | `rate_limit_ok(scope,key,max,window)` counts **only `rate_limit_hits`**; every rate-limited action records a hit; table + RPC created in S1.1. |
+| A5 | T-RLS-126 and T-ACT-69 belong to the **S1.4** row. |
+| A6 | Moderators may `deleteComment` on others' comments (sets `moderated_by`) — security-reviewer moderator set = `moderateComment, banUser, renameUserHandle, deleteComment(others)`. |
+| A7 | New client component **`ProjectGrid`** (`components/projects/ProjectGrid.tsx`, 'use client') owns filter/search/sort state over the ISR-provided list, renders `ProjectCard`s, "Showing n of N", and the empty state; `FilterBar`/`SearchBox`/`ActiveFilterChips` are its children. Add to registry/03/02/client-island list. |
+| A8 | `sync.failed`/`sync.stale` emission starts in **S1.5** (04 job preamble gets the qualifier); jobs in S1.2 log only. |
+| A9 | `robots.txt` = S0 (T-E2E-45a); `sitemap.xml` = S1.2 (T-E2E-45b). |
+| A10 | `TrackedLink` + Vercel Analytics custom events start in **S1.2** (`download`); `tip_click`/`sign_in`/`video_play` wired in their slices; 00 S1.2 scope updated. |
+| A11 | Feature/hide/reorder controls live on `/admin/projects` (list, `ReorderableList`); `curateProject` gains a batch shape `reorder: [{project_id, featured_order}]` (one call, one revalidate); per-project extras (extra gallery, notes, CF id) on `/admin/projects/[id]`. |
+| A12 | Markdown sanitisation uses **`rehype-sanitize`** (added to the INV-78 allowlist; no further ADR). |
+| A13 | S0 CI `build` job uploads `build-output.txt` as an artifact; `frontend-reviewer` compares a PR's route table against `main`'s latest artifact (rule in 01 INV-10, 05 CI-4, 00 S0). |
+| A14 | `HASH_SECRET` is required from **S1.1**. `email_hash` is **not** set by the DB trigger (it cannot read env); `/auth/callback` (server, service client) sets `profiles.email_hash` when null. Update 04 A3, data-model, 05 T-RLS-125/T-UNIT-23. |
+| A15 | No `getSession()`. `lib/auth.ts` exports `getViewer()` (built on `getUser()`), `requireRole()`, `safeNext()`. |
+| A16 | `tip_click` payload = 04 §5.6 (`{amount?: 1|3|5|'other'; from: support|tip-panel|floating}`); nav Support button is a plain link (no event). |
+| A17 | Registry: `/auth/callback`, `/auth/sign-out` under `app/auth/**` (not `(public)`); add `lib/supabase/types.ts` to Modules; S1.7 depends on S1.1, S1.3. |
+| A18 | `InlineConfirm` first use = S1.1 (`/profile` Delete account). |
