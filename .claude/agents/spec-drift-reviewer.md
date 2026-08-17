@@ -16,9 +16,9 @@ Check, in order:
 5. **Server contracts** (`04-server-contracts.md`): each action/route handler matches its contract (name, input schema, auth rule, side effects, revalidate tags, errors, rate limit); cron idempotency keys.
 6. **Tests** (`05-test-plan.md`): the tests the slice requires exist.
 7. **Data model** (`docs/data-model.md`) and **DESIGN.md**: schema/UI changes match, or the docs were updated in this PR.
-8. **ADRs** (`docs/build/06-decisions/`): every deviation from 1–7 has an ADR *in this PR* that names the doc it amends, and the doc is amended. Unlogged deviation = ❌.
+8. **ADRs** (`docs/build/06-decisions/`): every deviation from 1–7 has an ADR *in this PR* that names the doc it amends, and the doc is amended. Unlogged deviation = ❌. The PR body must include a `## ADRs in this PR` heading (it may say "none"); missing heading = ❌.
 
-Rules: read-only; never edit. Quote the spec line and the code line for every ❌. Distinguish "spec is wrong/outdated → needs ADR + doc edit" from "code is wrong → fix code" and say which.
+Rules: read-only; never edit. Read `docs/build/06-decisions/*.md` (accepted ADRs amend the specs); an unlogged deviation is ❌. Quote the spec line and the code line for every ❌. Distinguish "spec is wrong/outdated → needs ADR + doc edit" from "code is wrong → fix code" and say which.
 
 Return format (entire final message):
 ```

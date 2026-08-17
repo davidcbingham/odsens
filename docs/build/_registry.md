@@ -1,5 +1,9 @@
 # Build Registry — shared backbone for the engineering specs (00–06)
 
+Status: DRAFT v0.3 (2026-08-17) — becomes v1.0 at freeze
+
+Decisions: `06-decisions/ADR-0001-engineering-spec-baseline.md` (baseline) · `06-decisions/ADR-0002-spec-reconciliation.md` (contradictions C1–C22 + OPEN defaults 13–80; **binding for every name below**). Numbering per `06-decisions/README.md`; pre-assigned slugs only (`signed-uploads`, `shorts-detection`, `branching-preview-env`, `csp-unsafe-inline`, `component-preview`, `derived-tokens`, `handle-rename-rls`, `account-deletion`).
+
 Purpose: one place for **IDs and names** so every spec doc, PR, ADR, and gate uses the same words. Authors of 00–05
 MUST use these IDs verbatim. If something is missing here, add it here first (PR touching `_registry.md`), then use it.
 
@@ -14,20 +18,20 @@ MUST use these IDs verbatim. If something is missing here, add it here first (PR
 | Server action / handler | `verbNoun` in `lib/actions/<area>.ts` or `app/api/...` | `postComment`, `/api/cron/sync-modrinth` |
 | Table | as in `docs/data-model.md` | `project_overrides` |
 | Event kind | as in `docs/notifications.md` | `comment.held` |
-| Test | `T-<layer>-<n>` (layers: RLS, ACT, ADP, E2E, UNIT) | `T-RLS-12` |
+| Test | `T-<layer>-<n>` (layers: RLS, ACT, ADP, E2E, UNIT) — numbers owned by 05 (H-13, append-only; RA-10 mapping) | `T-RLS-12` |
 | ADR | `ADR-<nnnn>-<slug>.md` | `ADR-0003-shorts-detection.md` |
 
 ## Slices (v1 = Phase 1) — order is dependency order
 | ID | Name | One-line scope | Depends on |
 |---|---|---|---|
-| **S0** | Scaffold | Next.js App Router + TS + pnpm; `styles/tokens.css` from DESIGN.md §1; self-hosted fonts; base layout (nav/footer per DESIGN.md §5 + §12.2 nav order, Commissions hidden); `not-found`/`error`/`loading` shells; `lib/env.ts` (zod); Supabase clients (`lib/supabase/{server,client,admin}.ts`); local Supabase + first migration (helpers only); CI (lint/typecheck/test/build); Playwright + axe harness; `ship` + `keep-docs` skills; vercel.json (empty cron list); preview deploy green | — |
-| **S1.1** | Accounts | `profiles` + roles + `site_settings` (+ trigger on auth.users); Google sign-in; middleware forcing onboarding; `/welcome` handle onboarding (structural validation, reserved handles, availability RPC, avatar upload+crop); profile menu; `/profile`; `/privacy`, `/how-comments-work`; admin gate `/admin` (role check) | S0 |
+| **S0** | Scaffold | Next.js App Router + TS + pnpm; `styles/tokens.css` from DESIGN.md §1; self-hosted fonts; route groups `app/(public)/` (layout: nav/footer per DESIGN.md §5 + §12.2 nav order, Commissions hidden, `ViewerProvider`), `app/(onboarding)/`, `app/admin/`; placeholder pages for nav targets (ADR-0002 C20); `not-found`/`error`/`global-error`/`loading` shells; `/robots.txt`; `/dev/components`; `lib/env.ts` (zod) + `lib/env/public.ts`, `lib/log.ts`, `lib/flags.ts`, `lib/auth.ts` (`safeNext`); Supabase clients (`lib/supabase/{server,client,admin,anon}.ts`); local Supabase + first migration (helpers only); CI (lint/typecheck/test/build); Playwright + axe harness; `ship` + `keep-docs` skills; vercel.json (empty cron list); preview deploy green | — |
+| **S1.1** | Accounts | `profiles` + roles + `site_settings` (+ trigger on auth.users); Google sign-in; middleware forcing onboarding; `/welcome` handle onboarding (structural validation, reserved handles, availability RPC, avatar upload+crop); profile menu; `/profile`; `deleteAccount`; `rate_limit_hits` + `rate_limit_ok`; `/privacy`, `/how-comments-work`; admin gate `/admin` (role check; roles bootstrapped by SQL until S1.5 — **no `/admin/settings` stub**, ADR-0002 C2) | S0 |
 | **S1.2** | Projects (synced) | `projects/project_versions/project_files/project_links/project_overrides`; Modrinth adapter + `/api/cron/sync-modrinth`; CurseForge counts adapter + cron; `/projects` grid + filter bar + search; `/projects/[slug]` detail (icon, gallery+lightbox, ABOUT markdown, VERSIONS & FILES with changelog expander, GET IT rail with combined count, DETAILS); Home featured hero + Featured 4-up; admin `/admin/projects` curate (feature/hide/reorder/extra gallery/notes, CF id entry); `sync_runs`; ISR + tags | S0 |
-| **S1.3** | Exclusive projects | admin create/edit exclusive project (Modrinth-shaped form, draft→published), `project-media` + `project-files` buckets, upload well, `/api/download/[fileId]` (signed URL + counters + log), `project_downloads`, exclusive badge, direct download button | S1.2 |
+| **S1.3** | Exclusive projects | admin create/edit exclusive project (Modrinth-shaped form, draft→published), `project-media` + `project-files` buckets (two-phase signed uploads), `uploadProjectMedia` + `uploadProjectFile` (ADR-0002 C10; S1.2 gallery = Modrinth URLs only), `HASH_SECRET`, upload well, `/api/download/[fileId]` (signed URL + counters + log), `project_downloads`, exclusive badge, direct download button | S1.2 |
 | **S1.4** | Comments | `comments/comment_likes/comment_reports`; actions `postComment/editComment/deleteComment/toggleLike/reportComment/moderateComment/banUser`; moderation mode logic + auto-hold ≥3 reports + 15-min edit window + limits (1000 chars, 1 link) + SQL rate limit; `CommentThread` UI with all DESIGN.md states; sign-in prompt; admin `/admin/comments` queue; `notification_events` written (`comment.new/held/reported/reply/approved`) — no delivery yet | S1.1, S1.2 |
-| **S1.5** | Notifications | `notification_recipients`, `notification_matrix`; `/admin/settings` (moderation mode, matrix, Discord webhook + Test, admin emails); `/api/cron/notify` fan-out + deliver (`deliver/discord.ts`, `deliver/email.ts` via Resend + React Email allay templates: CommentNew, CommentHeld, CommentReported, SyncFailed + text versions); `sync.failed/stale` events from S1.2 jobs | S1.4 |
-| **S1.6** | Videos | `videos`; YouTube adapter (RSS + Data API) + `/api/cron/sync-youtube`; `/videos` (facade player, Up next, Shorts row); Home Latest videos 2-up | S0 |
-| **S1.7** | Skins + Art | `skins`, `art`; buckets `skins`, `art`; admin `/admin/skins`, `/admin/art` (add/edit, upload); skinview3d viewer (client, lazy) + cached bust render job; `/skins`; `/art` (masonry natural aspect, filter row, lightbox) | S1.1 |
+| **S1.5** | Notifications | `notification_recipients`, `notification_matrix`; **whole** `/admin/settings` (moderation mode, matrix, Discord webhook + Test, admin emails, moderators table + `setUserRole` — ADR-0002 C2); `/api/cron/notify` fan-out + deliver (`deliver/discord.ts`, `deliver/email.ts` via Resend + React Email allay templates: CommentNew, CommentHeld, CommentReported, SyncFailed + text versions); `sync.failed/stale` events from S1.2 jobs | S1.4 |
+| **S1.6** | Videos | `videos`; YouTube adapter (RSS + Data API) + `/api/cron/sync-youtube`; `/videos` (facade player, Up next, Shorts row); Home Latest videos 2-up; `updateVideo` (admin hide from `/admin` dashboard) | S0, S1.5 (plan order — `sync.failed` emission via `lib/notify/emit.ts`) |
+| **S1.7** | Skins + Art | `skins`, `art`; buckets `skins`, `art`; skin download via `/api/download/[fileId]` kind `skin` + RPC `record_skin_download` (ADR-0002 C8); admin `/admin/skins`, `/admin/art` (add/edit, upload); skinview3d viewer (client, lazy) + cached bust render job; `/skins`; `/art` (masonry natural aspect, filter row, lightbox) | S1.1 |
 | **S1.8** | Seen on | `mentions`; admin `/admin/mentions` (paste URL → metadata fetch via YouTube oEmbed/Data API + OG fallback → assign → publish; table feature/hide/reorder; Suggested tab UI stub); SEEN ON row on project detail; Home IN THE WILD strip + reach line; `/seen-on` page (stat tiles, filters, grid); `/api/cron/refresh-mentions` view counts; footer line | S1.2, S1.6 |
 | **S1.9** | Stats + Support | `stats_daily` + `/api/cron/stats-snapshot`; admin `/admin/stats` (tiles + flat SVG bar chart); `/support` (amount picker wrapper → Ko-fi panel slot, "what it pays for", leaderboard block in **empty state**, floating support button site-wide); custom events (Vercel Analytics) | S1.2, S1.4 |
 | **S1.10** | Launch | Supabase Branching + Vercel integration verified; DNS cutover (odsens.com → Vercel; Resend DMARC/inbound); Deployment Protection off for prod; Sentry; Web Analytics + Speed Insights; `deploy-checker` pass; seed real content (Oliver's skins/art); Oliver's laptop setup; `start-here` + remaining Oliver skills written; `CLAUDE.md` build-time version; tag `v1.0.0` | all S1.x |
@@ -35,43 +39,78 @@ MUST use these IDs verbatim. If something is missing here, add it here first (PR
 Phase 2 (outline only; detailed when approached): **S2.1** Ko-fi webhook + `kofi_events`/`supporters` + leaderboard live · **S2.2** Custom Orders intake (`orders`, `/commissions`, confirmation, "Your orders", nav item shown) · **S2.3** Workrooms (`workrooms/*`, `/workrooms/[id]`, admin Orders & Workrooms, client email opt-in via `notification_prefs`) · **S2.4** Suggested mentions (YouTube search cron) · **S2.5** in-app notifications (bell/inbox).
 
 ## Route registry (v1)
-Public: `/` · `/projects` · `/projects/[slug]` · `/videos` · `/skins` · `/art` · `/seen-on` · `/support` · `/privacy` · `/how-comments-work` · `/welcome` (auth, onboarding) · `/profile` (auth) · `/auth/callback` (Supabase OAuth code exchange) · `/auth/sign-out` (POST)
-Admin (role ≥ moderator unless noted): `/admin` (gate/dashboard) · `/admin/projects` · `/admin/projects/new` · `/admin/projects/[id]` · `/admin/comments` · `/admin/skins` · `/admin/art` · `/admin/mentions` · `/admin/stats` · `/admin/settings` (admin only)
-API: `/api/download/[fileId]` · `/api/cron/sync-modrinth` · `/api/cron/sync-curseforge` · `/api/cron/sync-youtube` · `/api/cron/refresh-mentions` · `/api/cron/stats-snapshot` · `/api/cron/notify` · `/api/webhooks/kofi` (S2.1) · `/api/og` (optional OG image)
-Rendering: public content pages = ISR (`revalidate` 600 + tags `projects`, `project:<slug>`, `videos`, `skins`, `art`, `mentions`, `settings`); anything reading a session = dynamic; admin + API = dynamic.
+Public (`app/(public)/`): `/` · `/projects` · `/projects/[slug]` · `/videos` · `/skins` · `/art` · `/seen-on` · `/support` · `/privacy` · `/how-comments-work` · `/profile` (auth) · `/auth/callback` (Supabase OAuth code exchange; ADR-0002 C18) · `/auth/sign-out` (POST form) · `/robots.txt` (`app/robots.ts`, S0) · `/sitemap.xml` (`app/sitemap.ts`, S1.2). **No `/auth/sign-in` route** — sign-in is the client `GoogleSignInButton` (ADR-0002 C3).
+Onboarding (`app/(onboarding)/`): `/welcome` (auth, handle onboarding).
+Placeholders (S0, ADR-0002 C20): `/projects`, `/videos`, `/skins`, `/art`, `/seen-on`, `/support` ship as title + "Not yet. Soon." until their slice replaces them.
+Admin (`app/admin/*`, `AdminShell` layout; read = role ≥ moderator; wrong role → `notFound()`, anon → `AdminGate`, ADR-0002 C4): `/admin` (gate/dashboard incl. video hide list) · `/admin/projects` · `/admin/projects/new` · `/admin/projects/[id]` · `/admin/comments` · `/admin/skins` · `/admin/art` · `/admin/mentions` · `/admin/stats` · `/admin/settings` (admin only, S1.5). Sidebar order: Comments · Projects · Skins · Art · Mentions · Stats · Settings. No `/admin/videos`.
+API (`app/api/*`): `/api/download/[fileId]` (GET only; kinds `project_file` S1.3 · `skin` S1.7 · `workroom_file` S2.3) · `/api/cron/sync-modrinth` · `/api/cron/sync-curseforge` · `/api/cron/sync-youtube` · `/api/cron/refresh-mentions` · `/api/cron/stats-snapshot` · `/api/cron/notify` · `/api/webhooks/kofi` (S2.1). Cron `maxDuration`: 300 (sync/stats/refresh), 60 (`notify`) — ADR-0002 C15. **No `/api/og` in v1** (static `public/brand/og-default.png`, ADR-0002 #22).
+Non-production: `/dev/components` (dev-only component preview, `notFound()` on Vercel; S0, ADR-0002 #44) · `/__test/throw` (E2E-only when `E2E=1`; ADR-0002 #74).
+Phase 2: `/profile/orders` (S2.2) · `/commissions` (S2.2) · `/workrooms/[id]` (S2.3) · `/admin/orders`, `/admin/orders/[id]` (S2.2/S2.3) · cron `/api/cron/sync-mentions` → job `syncMentionsSuggested` (S2.4).
+Route files: `app/layout.tsx` (html/body/fonts/tokens only) · `app/(public)/layout.tsx` (`Nav`, `Footer`, `FloatingSupportButton`, `ViewerProvider`) · `app/(onboarding)/layout.tsx` + `app/(onboarding)/welcome/page.tsx` · `app/admin/layout.tsx` (`AdminShell`) · `middleware.ts` (02 §3 M1–M8) · `app/error.tsx` + `app/global-error.tsx` (only `'use client'` route files) · `app/not-found.tsx`.
+Rendering: public content pages = ISR (`revalidate` 600 + tags `projects`, `project:<slug>`, `videos`, `skins`, `art`, `mentions`, `settings`); `/privacy`, `/how-comments-work` = ISR(600; no data reads); session-aware UI on ISR pages = client seam (`ViewerProvider` + `CommentThread` under RLS, ADR-0002 C1 — no PPR); anything reading a session server-side = dynamic; admin + API = dynamic.
 
-## Component registry (v1) — DESIGN.md name → PascalCase
-Layout: `Nav`, `Footer`, `FloatingSupportButton`, `Toast`, `Skeleton*` (`ProjectCardSkeleton`, `ProjectDetailSkeleton`, `CommentThreadSkeleton`)
-Primitives: `Button` (primary|secondary|ghost|gold), `TypeBadge`, `ExclusiveBadge`, `PrivateBadge`(P2), `Chip` (version/loader), `Toggle` (square ON/OFF), `Field` (admin input), `Select`, `Table` (admin), `StatusPill`, `StatTile`, `FlatBarChart`, `Markdown`, `PixelLabel` (Silkscreen eyebrow)
+## Component registry (v1) — DESIGN.md name → PascalCase (S/C marks owned by 03 §2; client-island list = 03 §1.4 C-16a table, machine-readable between `client-islands:begin/end`, checked by `scripts/check-client-islands.mjs`)
+Layout: `Nav` (+ `NavLinks` `Nav.Links.tsx` C, `NavMenuButton` `Nav.MenuButton.tsx` C), `Footer`, `FloatingSupportButton`, `SkipLink`, `Toast` (+ `ToastProvider`, `useToast`; one-at-a-time), `Skeleton` (base) + `ProjectCardSkeleton`, `ProjectDetailSkeleton`, `CommentThreadSkeleton`. Dropped: `NavSession`, `Nav.Viewer`, `CommentThreadSection` (ADR-0002 C1).
+Primitives: `Button` (primary|secondary|ghost|gold|gold-ink; pending = disabled look + `aria-busy`), `TypeBadge`, `ExclusiveBadge`, `PrivateBadge`(P2), `Chip` (version/loader), `Toggle` (square ON/OFF), `Field` (admin input), `Select`, `Table` (admin), `StatusPill` (statuses `held|live|hidden|featured|draft|published|new|replied|closed|not-set|suggested|first-comment|stale|failed`; fills per 03 / ADR-0002 #47), `StatTile`, `FlatBarChart`, `Markdown`, `PixelLabel` (Silkscreen eyebrow), `NoteCallout`, `SectionTitle`, `Avatar` (default = `--slab-sunk` square + first char), `Icon`, `PlatformMark`, `SourceSwatch`, `GoogleSignInButton` (C), `EmptyState`, `InlineConfirm` (C), `TrackedLink` (C), `SearchBox` (C, 250 ms debounce), `Breadcrumb`
 Projects: `ProjectCard`, `FilterBar`, `ActiveFilterChips`, `Gallery` + `Lightbox`, `VersionsTable` (+ `ChangelogExpander`), `GetItPanel`, `DetailsList`, `TipPanel`, `FeaturedHero`
-Comments: `CommentThread`, `Comment`, `Reply`, `Composer`, `LikeButton`, `ModActionRow`, `HeldNotice`, `SignInPrompt`, `ReportPicker`
-Accounts: `HandleField`, `AvatarUpload` (+ crop), `ProfileMenu`, `OnboardingPanel`
-Videos: `VideoFacade`, `UpNextList`, `ShortsRow`
-Skins/Art: `SkinViewer3D`, `SkinCard`, `ArtMasonry`, `ArtCard`
+Comments: `CommentThread` (server shell) + `CommentList` (`CommentThread.List.tsx`, C leaf), `Comment` (not split), `Reply`, `Composer`, `LikeButton`, `ModActionRow`, `HeldNotice`, `SignInPrompt`, `ReportPicker`
+Accounts: `ViewerProvider` (+ `useViewer()`, `components/accounts/`, C), `HandleField`, `AvatarUpload` (+ crop), `ProfileMenu`, `OnboardingPanel`
+Videos: `VideoFacade` (sizes 88/44/56; `variant=upnext`), `VideoCard`, `UpNextList`, `ShortsRow`
+Skins/Art: `SkinViewer3D`, `SkinCard`, `ArtMasonry` + `ArtMasonryLightbox` (`ArtMasonry.Lightbox.tsx`, C), `ArtCard`
 Seen on: `MentionCard`, `ReachLine`, `SeenOnRow`, `InTheWildStrip`, `MentionPreview` (admin)
-Support: `AmountPicker`, `KofiPanelSlot`, `Leaderboard` (+ `LeaderboardRow`)
-Admin: `AdminShell` (sidebar), `UploadWell` (+ client variant P2), `NotificationMatrix`, `AdminGate`, `SyncStatus`
+Support: `AmountPicker`, `KofiPanelSlot` (iframe 712/620, mounts in place), `Leaderboard` (+ `LeaderboardRow`)
+Admin: `AdminShell` (sidebar) + `AdminNav` (`AdminShell.Nav.tsx`, C), `UploadWell` (+ client variant P2), `NotificationMatrix`, `AdminGate` ("Admins only" + Google button, anon only), `SyncStatus` (= `Table`+`StatusPill`+`Button`+`SourceSwatch`), `ReorderableList` (C)
 Email (`emails/`): `EmailLayout`, `EmailButton`, `EmailBadge`, templates `CommentNew`, `CommentHeld`, `CommentReported`, `SyncFailed`
+Phase 2: `MilestonePills`, `ParticipantsRow`, `WorkroomPost`, `WorkroomFilesList`, `WorkroomStatusRail`, `EmailOptInPanel` (`components/workrooms/`); `OrderForm`, `OrderConfirmation`, `OrdersTable`, `OrderDetail` (`components/orders/`)
+Derived tokens: 03 §9 list (`--indigo-hover … --hatch` + non-colour tokens) + `--ink-deep #0A0F16` (ADR-0002 #45).
 
 ## Server contract registry (v1) — names only; shapes in 04
-Actions (`lib/actions/*.ts`): `completeOnboarding`, `updateProfile`, `checkHandle` (RPC), `postComment`, `editComment`, `deleteComment`, `toggleLike`, `reportComment`, `moderateComment`, `banUser`, `updateSettings`, `testDiscordWebhook`, `createExclusiveProject`, `updateExclusiveProject`, `publishProject`, `uploadProjectMedia`, `uploadProjectFile`, `curateProject` (override upsert), `setProjectLink`, `createSkin`, `updateSkin`, `createArt`, `updateArt`, `createMention`, `fetchMentionPreview`, `updateMention`, `triggerSync`
-Route handlers: the API list above.
-Jobs (`lib/jobs/*.ts`): `syncModrinth`, `syncCurseforge`, `syncYoutube`, `refreshMentions`, `snapshotStats`, `notifyFanOut`, `notifyDeliver`, `renderSkinBust`
-Adapters (`lib/adapters/*.ts`): `modrinth`, `curseforge`, `youtube`, `oembed`, `resend`, `discord`
+Actions (`lib/actions/<area>.ts`; files `accounts, comments, settings, projects, uploads, skins, art, mentions, videos, admin, result.ts`; input schema export `<actionName>Input`; role per ADR-0002 C7 — **admin** for curation/sync/media/mentions/videos/skins/art/exclusive, **moderator** for comment moderation):
+- accounts: `completeOnboarding`, `updateProfile` (own handle rename via service client, 1 per 7 days), `checkHandle` (RPC), `deleteAccount` (S1.1)
+- comments: `postComment`, `editComment` (sets `edited_at`), `deleteComment`, `toggleLike` (revalidates `project:<slug>`), `reportComment` (10/h), `moderateComment` (mod), `banUser` (mod, no cascade), `renameUserHandle` (mod, S1.4)
+- settings: `updateSettings`, `testDiscordWebhook`, `setUserRole` (S1.5)
+- projects/uploads: `createExclusiveProject`, `updateExclusiveProject`, `publishProject` (needs icon + ≥1 version with ≥1 file), `uploadProjectMedia` (S1.3), `uploadProjectFile`, `curateProject` (override upsert), `setProjectLink`
+- skins/art/mentions/videos/admin: `createSkin`, `updateSkin`, `createArt`, `updateArt`, `createMention`, `fetchMentionPreview`, `updateMention`, `updateVideo` (S1.6), `triggerSync` (`lib/actions/admin.ts`)
+Result shape (`lib/actions/result.ts`): `ActionResult<T> = {ok:true,data:T} | {ok:false,error:{code,message,field?,issues?}}`; route handlers return the same JSON on error (cron 401, download 429 + `Retry-After: 60`; HEAD/others on download → 405) — ADR-0002 C14/C17. `ActionErrorCode` union per 04 §7 incl. `unauthorized`, `job_failed`, `rate_limited`, `too_many_links`, `comments_closed`, `edit_window_expired`, `handle_taken`, `handle_reserved`, `precondition_failed`, `upstream_error`, `storage_error`, `internal`. Types: `CommentView` (`lib/data/comments.ts`), `JobSummary` (`lib/jobs/types.ts`), `AdapterError` (`lib/adapters/http.ts`).
+Route handlers: the API list above; `/api/download/[fileId]` resolves kinds via `lib/files.ts resolveDownloadable`.
+Jobs (`lib/jobs/*.ts`): `syncModrinth`, `syncCurseforge`, `syncYoutube`, `refreshMentions`, `snapshotStats`, `notifyFanOut`, `notifyDeliver`, `renderSkinBust`; P2 `syncMentionsSuggested`. Runner emits `sync.failed` per 04 J-F; `sync.stale` from `notifyFanOut` F0. `sync_runs.source` ∈ `modrinth, curseforge, youtube, mentions, stats, notify, skins`. Constants `lib/jobs/constants.ts`.
+Adapters (`lib/adapters/*.ts`): `modrinth`, `curseforge`, `youtube`, `oembed`, `resend`, `discord`, `http` (`fetchJson`); factory `create<Adapter>({fetch, env})`; export names per 04 §11.1 (`listUserProjects, listVersions, mapProject, mapVersion, mapProjectType, getMod, searchBySlug, parseRef, fetchRss, listVideos, listUploads, channelStats, parseDuration, pickThumbnail, isShort, mapVideo, oembed, videoIdFromUrl, fetchOpenGraph, assertPublicHost, detectPlatform, sendEmail, postEmbed`).
+Notify (`lib/notify/`): `emit.ts` `emit(kind, …)` · `matrix.ts` `matrixDefaults` · `constants.ts` · `deliver/{email,discord}.ts` implement `Deliverer`. Discord recipient `address` = webhook URL (masked) — ADR-0002 C9.
+SQL: RPCs `check_handle(text)`, `record_download(uuid,text,text)`, `record_skin_download(uuid)`, `purge_project_downloads(int)`, `purge_rate_limit_hits(int)`, `rate_limit_ok(text,text,int,interval)`; helpers `is_admin()`, `is_moderator()`, `can_comment(target_type, target_id)` (security definer); trigger fns `handle_new_user()`, `set_updated_at()`, `comments_set_status()` (BEFORE INSERT on `comments`).
+Rate limits: `lib/rate-limit.ts` `assertRateLimit(scope,key,max,window)` over `rate_limit_hits`; scopes = 04 §5.5 rows.
+Hashing (`lib/hash.ts`, ADR-0002 C13): `ipHash = HMAC-SHA256(HASH_SECRET, ip|utcDay)`; `email_hash = HMAC-SHA256(HASH_SECRET, lower(email))`.
+Logging: `lib/log.ts` `log.info/warn/error({job?|action?, id, msg, meta?})`.
+Analytics (`lib/analytics.ts` `trackEvent`, ADR-0002 C12 — only these four): `download {project, source, from}` · `tip_click {amount?, from}` · `video_play {youtube_id, kind}` · `sign_in {from}`.
+Env (`lib/env.ts` zod; browser-safe names in `lib/env/public.ts`): boot-required = `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `CRON_SECRET`, `MODRINTH_USER`, `MODRINTH_USER_AGENT`, `YOUTUBE_CHANNEL_ID` · optional-with-degradation = `YOUTUBE_API_KEY`, `CURSEFORGE_API_KEY`, `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL`, `DISCORD_WEBHOOK_URL`, `KOFI_PAGE` (seeds `site_settings.kofi_page` only) · `HASH_SECRET` (S1.3, server-only, ≥32 bytes) · `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` (S1.10) · `E2E` · test-only `MODRINTH_API_BASE`, `CURSEFORGE_API_BASE`, `YOUTUBE_API_BASE`, `YOUTUBE_RSS_BASE`, `OEMBED_BASE`, `DISCORD_API_BASE`, `RESEND_API_BASE` (fixture server :4010) · `CURSEFORGE_MEMBER` removed (unused in v1) · P2 `KOFI_WEBHOOK_VERIFICATION_TOKEN`.
+Modules (`lib/`, per ADR-0002 C16 — 01 split): `supabase/{server,client,admin,anon}.ts` · `env.ts`, `env/public.ts` · `log.ts` · `flags.ts` (`FLAGS`) · `hash.ts` · `files.ts` (path builders, signed URLs, `reencodeAvatar`, `resolveDownloadable`) · `rate-limit.ts` · `auth.ts` (`safeNext`) · `format/*.ts` · `validation/{handle,comment,moderation,files,slug}.ts` (`comment.ts` = `commentBodySchema, stripHtml, countLinks, linkify, commentErrorLine`; `files.ts` = `sniffMime, pngDimensions, isSkinTexture, sanitizeFilename, UPLOAD_KINDS, validateUpload`) · `data/<area>.ts` (`projects, videos, skins, art, mentions, comments, settings, stats, profiles`) · `markdown.ts` · `versions.ts` · `analytics.ts` · `support.ts` · `stats.ts` · `settings/matrixDiff.ts` · `skins/render.ts` · `actions/result.ts` · `notify/*` · `jobs/*` · `adapters/*`. **Dropped:** `lib/uploads.ts`, `lib/handles.ts`, `lib/format.ts`, `lib/comments/errors.ts`.
+Constants: `RESERVED_HANDLES` (04 H3), `RESERVED_SLUGS`, `AUTO_HOLD_REPORTS`, `EDIT_WINDOW_MS`, `SCOPES`, `UPLOAD_KINDS`, `FLAGS`.
+Storage paths (ADR-0002 C16): `avatars/{profile_id}/{hash}.webp` · `project-media/{project_id}/{icon|gallery}/{hash}.{ext}` · `project-files/{project_id}/{version_id}/{filename}`.
 
 ## Table registry (v1) — from `docs/data-model.md`
-`profiles` (+ view `public_profiles`), `site_settings`, `projects` (+ view `projects_public`), `project_versions`, `project_files`, `project_links`, `project_overrides`, `project_downloads`, `videos`, `skins`, `art`, `comments`, `comment_likes`, `comment_reports`, `notification_events`, `notification_recipients`, `notification_matrix`, `mentions`, `stats_daily`, `sync_runs`. Buckets: `avatars`, `project-files` (private), `project-media`, `skins`, `art`.
+`profiles` (+ view `public_profiles`; `handle_changed_at timestamptz null`), `site_settings` (+ view `site_settings_public` = `comments_closed_default, kofi_page, owner_profile_id`, readable by all — ADR-0002 C6; `owner_profile_id uuid null` for CREATOR tag), `projects` (+ view `projects_public`), `project_versions`, `project_files`, `project_links`, `project_overrides`, `project_downloads`, `videos`, `skins`, `art`, `comments` (+ view `comments_public`, S1.4; `target_type` kept, v1 threads = projects only — ADR-0002 C21), `comment_likes`, `comment_reports`, `notification_events`, `notification_recipients` (`updated_at`; unique `(event_id, channel, coalesce(address,''))`), `notification_matrix`, `mentions`, `stats_daily`, `sync_runs`, `rate_limit_hits` (S1.1, service-role only). RLS rows for notification/rate-limit tables per data-model §4.
+Conventions: `stats_daily.entity_id` site sentinel `00000000-0000-0000-0000-000000000000`; `stats_daily.metric` ∈ `downloads, direct_downloads_day, views, subs, comments, comments_held, likes, users (aggregate count only — ADR-0002 #68), reach, mentions, tips`.
+Buckets: `avatars` (1 MB), `project-files` (private, 100 MB; `config.toml` `file_size_limit = "100MiB"`), `project-media` (5 MB), `skins` (64 KB texture / 512 KB bust), `art` (10 MB).
 Phase 2: `orders`, `workrooms`, `workroom_members`, `workroom_posts`, `workroom_files`, `kofi_events`, `supporters`, `notification_prefs`; bucket `workroom-files` (private).
 
-## Repo layout (from `docs/framework-decision.md`, refined)
+## Repo layout (from `docs/framework-decision.md`, refined; ADR-0002 C5/C16)
 ```
-app/                     routes (public), app/admin/*, app/api/*
+app/layout.tsx           html/body/fonts/tokens only; app/error.tsx app/global-error.tsx app/not-found.tsx
+app/(public)/            layout (Nav/Footer/FloatingSupportButton/ViewerProvider) + public routes; app/robots.ts app/sitemap.ts
+app/(onboarding)/        layout + welcome/
+app/admin/               AdminShell layout + admin routes
+app/api/                 download/, cron/*, webhooks/
+app/dev/components/      dev-only preview; app/__test/throw (E2E=1)
+middleware.ts            02 §3 M1–M8
 components/<area>/       one folder per registry group above; each component = Name.tsx + Name.module.css
-lib/actions/ lib/jobs/ lib/adapters/ lib/supabase/ lib/notify/deliver/ lib/env.ts lib/markdown.ts lib/auth.ts
-emails/                  React Email templates + preview
-styles/tokens.css styles/globals.css   public/fonts/ public/brand/
+lib/                     actions/ jobs/ adapters/ supabase/ notify/(deliver/) data/ validation/ format/ env.ts env/public.ts
+                         log.ts flags.ts hash.ts files.ts rate-limit.ts auth.ts markdown.ts versions.ts analytics.ts
+                         support.ts stats.ts settings/ skins/
+emails/                  components/ templates/ preview/  (React Email)
+styles/tokens.css styles/globals.css   public/fonts/ public/brand/{marks,email,og-default.png}
 supabase/migrations/ supabase/seed.sql supabase/config.toml
-tests/unit tests/db tests/e2e tests/fixtures tests/helpers
-scripts/contrast.mjs scripts/render-skins.mjs
+tests/unit tests/db tests/e2e tests/fixtures/{files,images,ui,emails,discord,resend} tests/helpers/{seedIds,fixtureServer}.ts
+                         Playwright projects: smoke-desktop, smoke-phone, e2e, admin
+scripts/contrast.mjs scripts/render-skins.mjs scripts/{check-client-islands,check-fixtures,check-test-ids,check-bundle-secrets,record-fixture}.mjs
+next.config.ts eslint.config.mjs vitest.config.ts playwright.config.ts .nvmrc .env.example .env.test
 docs/build/  docs/  design/  assets/brand/  DESIGN.md  CLAUDE.md
 ```

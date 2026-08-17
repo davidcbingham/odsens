@@ -83,14 +83,14 @@ that rather than calling everything a "mod."
 - **Home** — featured-project hero, featured projects, IN THE WILD strip, latest videos, Find-me links, compact tip panel.
 - **Projects** — grid/list, filterable by type (**mod / datapack / resource pack / plugin**) and MC version. Detail page per project with icon, gallery, markdown body, versions/files, download buttons (Modrinth / CurseForge / direct for exclusives), combined download count, comments. **Exclusive** projects badged as "only on odsens.com".
   - Project schema mirrors Modrinth: `slug, title, description (short), body (markdown), project_type, categories[], loaders[], game_versions[], icon, gallery[], versions[] {version_number, changelog, files[], game_versions, loaders, date}, downloads, source (modrinth | odsens)`.
-- **About** — who OddSense is (age-appropriate; see privacy notes below).
+- ~~**About** — who OddSense is (age-appropriate; see privacy notes below).~~ — **no About page in v1**; covered by the Home intro strip (ADR-0002 #30).
 - **Videos** — YouTube channel feed with click-to-load facades + embedded player; **Shorts row** below long-form.
 - **Seen on (v1, added 2026-08-17)** — third-party coverage of Oliver's work (YouTube videos/Shorts, Twitch clips, TikToks, Reddit, articles) attached to a project or to OddSense generally. **Manual curation in v1**: Oliver pastes a URL in admin → metadata auto-fetched (YouTube oEmbed/Data API; Open Graph elsewhere) → assign project → publish. Shown as a "SEEN ON" row on project detail and an "IN THE WILD" strip on Home with a reach line ("1.2M views · 6 videos · 4 creators"); YouTube view counts refreshed hourly and snapshotted. Content stays on its platform (facade/embed + "on YouTube ↗" link); creators are public channels — name + link only; mods can hide on request. **v1.5:** assisted discovery — daily YouTube search per project → admin *Suggested* queue, never auto-publish.
 - **Skins** — native section highlighting skins he's made (3D viewer, download). **Details deferred to a dedicated design discussion.**
 - **Art** — native section: profile pictures, thumbnails, and other original art.
 - ~~Games (Scratch)~~ — **excluded** per Oliver.
 - **Accounts** — Google sign-in via Supabase Auth → mandatory onboarding step: pick a **handle** (unique) + optional profile image. Profile = handle + image only. Roles: user / moderator / admin.
-- **Comments** — by signed-in users; stored in Supabase.
+- **Comments** — by signed-in users; stored in Supabase. **v1: comment threads on projects only** (skins/art/videos later; schema keeps the polymorphic target — ADR-0002 C21).
   - **Moderation mode is an admin setting**: *auto-publish for signed-in users* vs. *hold first-time commenters for approval*. Start permissive; tighten if abuse appears.
   - **Multiple moderators**: Oliver can grant mod access to others (e.g. David). Mods can delete/hide comments and ban users.
   - **Notifications**: v1 = **admins only**, via **Discord webhook + email (Resend)**, controlled by a Settings **matrix** (event × channel ON/OFF). One event log, pluggable delivery; user-facing notifications arrive in Phase 2 (workrooms, opt-in). Full design: `docs/notifications.md`.
@@ -154,6 +154,7 @@ See `docs/questions.md` — running list of open questions (answered items migra
 ---
 
 *Revision log*
+- 2026-08-17 — Engineering specs `docs/build/` 00–06 + ADR-0001/0002; spec aligned (About page struck, comments v1 = projects).
 - 2026-08-16 — Initial draft from David's brief + Modrinth/Scratch public data.
 - 2026-08-16 — Folded in David's answers to Q1–3, 5–9; added platform audit (`platform-audit.md`).
 - 2026-08-17 — Design pass 3 landed: `DESIGN.md` v1.3 (Seen on, Workrooms, notifications matrix, allay templates, leaderboard, nav). Q41–42 resolved; Q44–46 added.

@@ -6,7 +6,7 @@ description: Front-end fidelity specialist for odsens.com — verifies built UI 
 # design-fidelity
 
 ## Sources
-`DESIGN.md` (law) · `design/claude-design-export/pass-2/*.dc.html` (reference renderings — open in a browser) · `styles/tokens.css` (must mirror DESIGN.md §1 verbatim).
+`DESIGN.md` v1.3a (law; §12.7 = build clarifications from ADR-0002) · `design/claude-design-export/pass-3/*.dc.html` (reference renderings — open in a browser) · `styles/tokens.css` (must mirror DESIGN.md §1 verbatim).
 
 ## Method
 1. **Tokens first**: every colour/space/radius/shadow in CSS is a `var(--…)` from `tokens.css`; grep for raw hex/px shadows outside `tokens.css` → ❌.

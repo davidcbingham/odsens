@@ -1,5 +1,6 @@
-# odsens.com — Design System (v1.3)
+# odsens.com — Design System (v1.3a)
 
+> v1.3a (2026-08-17): build clarifications from ADR-0002 — see §12.7. No visual direction changes.
 > v1.3 (2026-08-17): feature pass — Seen on / mentions, workrooms, notifications matrix, email + Discord templates, supporters leaderboard; see §12 and `design/claude-design-export/pass-3/CHANGELOG.md`.
 > v1.2 (2026-08-17): coverage pass — accounts/onboarding, comment moderation, admin settings/stats/orders, global states, privacy; see §11 and `design/claude-design-export/pass-2/CHANGELOG.md`.
 > v1.1 (2026-08-16): review-pass corrections — see `docs/design-review.md`. Contrast numbers computed; `--alert` token added; type minimums clarified; fonts self-hosted.
@@ -26,6 +27,7 @@ Palette is sampled from the OddSense avatar (`assets/brand/avatar/oddsense-avata
 | Token | Hex | Use |
 |---|---|---|
 | `--ink` | `#0D131B` | page ground |
+| `--ink-deep` | `#0A0F16` | neutral offset shadow under `--slab` surfaces (toasts, panels, avatars) — ADR-0002 #45 |
 | `--slab` | `#151E29` | cards, panels, nav bar |
 | `--slab-raised` | `#1E2938` | hover fills, comment bubbles |
 | `--slab-sunk` | `#111A24` | image wells, admin sidebar |
@@ -362,3 +364,29 @@ Replaces the reserved dashed slot on Support. Handle + amount, sorted by total; 
 - `odsens Screens - Admin Pass 3.dc.html` — notifications matrix desktop + phone, Orders & Workrooms list, order detail → Create workroom, room controls.
 - `odsens Screens - Email and Discord.dc.html` — three emails + a plain-text version, Discord channel embeds.
 - `odsens Screens - Support and Leftovers.dc.html` — supporters leaderboard (+ empty + phone), handle guidance, Privacy additions, How comments work, changelog expander, orders confirmation + profile menu.
+
+### 12.7 Build clarifications (v1.3a, 2026-08-17 — ADR-0002)
+
+Small design-facing lines settled by `docs/build/06-decisions/ADR-0002-spec-reconciliation.md`. Where a line below differs from an earlier section, this section wins.
+
+- **Placeholder pages (C20).** Nav targets not yet shipped (`/projects`, `/videos`, `/skins`, `/art`, `/seen-on`, `/support`) render the page's Bungee title plus one voice line: "Not yet. Soon." Nothing else. Replaced by the real page in its slice.
+- **Chips (#54, corrects §5).** Version/loader chips: **2** on `ProjectCard`, then `+N`; **4** everywhere else (project header, versions table), then `+N`.
+- **Toast (#53).** One toast at a time; a new one replaces the current. Hover (or focus) pauses the dismiss timer.
+- **StatusPill fills (#47).** `FEATURED` gold-wash/gold-bright · `HIDDEN`, `DRAFT`, `CLOSED` `--plugin-wash` (`#243040`)/chalk · `STALE` gold-wash/gold-bright · `FAILED` `--alert` fill/white. `HELD` and `LIVE` unchanged (§5 Admin table).
+- **SyncStatus (#56, for §11.3).** Composed of `Table` + `StatusPill` + `Button` + `SourceSwatch` — one row per source (swatch · last run · status pill · "Sync now" secondary button). No new primitive.
+- **Nav metrics (#52, from pass-3).** Links 15px 500 `--mute`, padding 10px 14px; active = white 700 + 3px gold inset underline. Support button in nav 12px Bungee, 3px vertical padding.
+- **VideoFacade sizes (#58).** Play block 88px (main player) / 44px (Up next rows) / 56px (Shorts and grid cards). Same square, triangle, and `5px 5px 0` shadow at each size.
+- **"N TOTAL" (#76).** The comment count beside COMMENTS is the number of comment slots the viewer can see (published, plus their own held/hidden ones). Never the raw table count.
+- **`comments_closed_default` toggle (#43, §11.3 #15).** Label "Comments off by default on new projects"; helper "Existing projects keep their own setting."
+- **`--ink-deep` (#45).** `#0A0F16`, added to the §1 dark table: neutral offset shadow (`4px 4px 0 --ink-deep`) under slab-coloured surfaces where indigo-deep or gold-deep would be wrong.
+- **/seen-on empty filter (#62).** "NOTHING HERE" (Bungee) + "Try another filter." (mute).
+- **Admin sidebar order (#36).** Comments · Projects · Skins · Art · Mentions · Stats · Settings.
+- **/projects count line (#39).** "<N> things. Some useful, some not."
+- **Stats (#29).** Tiles with no data show `0`; the chart area shows "No data yet."
+- **Default avatar (#48).** `--slab-sunk` square with 2px `--line`, first character of the handle in Bungee, chalk. Same sizes as the comment avatar (40 / 34px).
+- **Button pending (#46).** Uses the Disabled look (`#22293A` fill, `#5D6779` text, no shadow) plus `aria-busy="true"`; label unchanged. No spinner.
+- **Hero NEW (#41).** The NEW tag on the hero/featured card shows when `published_at` is under 30 days old.
+- **Wrong role on `/admin/*` (C4).** Signed-in non-moderators get the standard 404 page (§11.3 #13). Anonymous visitors get the Admin sign-in gate (§11.3 #18). Those are the only two gate states — no "not allowed" variant.
+- **Support CONTINUE (C19).** CONTINUE ON KO-FI mounts the Ko-fi iframe (712×620) in place inside the panel; the small "on Ko-fi ↗" ghost link is the only thing that leaves the site.
+- **Under-13 / age line (#24, Privacy + How comments work).** "Sign-in needs a Google account; Google's age rules apply." Replaces the earlier "under 13, don't sign in" wording; the "downloads work without an account" clause stays.
+
