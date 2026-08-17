@@ -34,7 +34,7 @@ and pushes to channels. Adding a channel later = a new deliverer module, not a r
 | channel | infra | v1? | notes |
 |---|---|---|---|
 | **Discord** | one channel webhook URL (no bot) — Oliver's server (David to confirm he has one) | **yes** | ~30 lines; small embed: kind, project, excerpt, link. Primary channel for Oliver. |
-| **Email** | **Resend** API; sender `notify@odsens.com`; DKIM/SPF/DMARC DNS at Squarespace (do with the Vercel DNS cutover) | **yes** | free tier 3k/mo. Secondary for David. |
+| **Email** | **Resend** API; sender `allay@odsens.com`; DKIM/SPF/DMARC DNS at Squarespace (do with the Vercel DNS cutover) | **yes** | free tier 3k/mo. Secondary for David. |
 | In-app | reads `notification_recipients` (channel inapp) — the cut bell | P2 | needed for workroom clients |
 | Web push | VAPID + service worker + subscriptions table | later/maybe | |
 | SMS | — | no | |
@@ -60,5 +60,7 @@ Provider note: Resend chosen over Postmark for fit (tiny admin-only volume, Reac
 
 ## Resend account wiring (2026-08-17)
 - Vercel Marketplace integration → `RESEND_API_KEY` injected into the `odsens` project envs (pull locally with `vercel env pull`).
-- Domain `odsens.com` verified in Resend (DKIM/SPF/DMARC at Squarespace) — sender `notify@odsens.com`.
+- Domain `odsens.com` verified in Resend — sender **`allay@odsens.com`** ("odsens <allay@odsens.com>"). DNS at Squarespace verified 2026-08-17: DKIM `resend._domainkey` ✔, SPF+MX on `send.odsens.com` ✔ (SES us-east-1). Test send succeeded (id 904a9249…).
+- The Vercel-integration API key is **send-only** (can't list domains/logs) — fine for the app; use the Resend dashboard for logs.
+- **Gaps:** no `_dmarc` record yet (add `TXT _dmarc.odsens.com "v=DMARC1; p=none; rua=mailto:david@studiobing.com"`); no MX on `odsens.com` root, so **allay@ can't receive replies** — add Squarespace email forwarding allay@odsens.com → david@studiobing.com (or Resend Receiving) and set `Reply-To` accordingly.
 - Not used: Resend↔Supabase SMTP (Supabase Auth sends no email for us). Resend MCP deferred; if added later, sending is gated by the stop-and-ask list.
