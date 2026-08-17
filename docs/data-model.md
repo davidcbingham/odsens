@@ -127,6 +127,13 @@ Generated/derived: `downloads_total = modrinth + curseforge + direct` (view colu
 
 Moderation rules (server): on insert, `status = 'held'` if `site_settings.moderation_mode = 'hold_first_time' AND author.comment_count = 0`, else `published`. Banned users can't insert (RLS). Any comment with ≥ N reports auto-`held` (N=3, tunable).
 
+**Build-vs-buy (decided 2026-08-17): built in-house.** Hosted widgets (Disqus, Hyvor, Commento, Cusdis) impose their
+UI/identity/moderation and can't do handle-only Google-via-Supabase; GitHub-backed ones (Giscus) are GitHub-only;
+self-hosted servers (Remark42, Isso) need their own host and user store. Our version: tables above + ~6 Server Actions
+(`postComment, editComment(15 min), deleteComment(soft), toggleLike, reportComment, moderate`) + `<CommentThread>` components
+mapped to DESIGN.md states; optimistic UI via React 19 `useOptimistic`; plain-text bodies auto-linkified; rate limit in SQL;
+Supabase Realtime optional later. Remark42's data model is a good reference, not a dependency.
+
 ### 2.6 Notifications (admin only, v1)
 **`notification_events`** — `id; kind enum new_comment|reply|new_order|new_tip|report; payload jsonb; emailed_at null; created_at`. A worker (cron every 5 min or DB webhook → route) emails admins per `site_settings` toggles. Keeps a log even when a toggle is off.
 
