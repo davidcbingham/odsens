@@ -57,7 +57,7 @@ Answered items get folded into `spec.md` and struck here.
 - **Custom Orders** — see design session above.
 
 ## Post-spec workstreams (agreed 2026-08-16)
-- **DESIGN.md** via Claude Design session with Oliver → `docs/design-process.md`
+- ~~**DESIGN.md** via Claude Design session with Oliver~~ — **done 2026-08-16** (`/DESIGN.md` v1, Crate Poster). Next: review pass (contrast, mobile, component coverage vs spec).
 - **Inspiration hunt** from abstracted functionality → `docs/design-process.md`
 - **Site management skills** (repo-committed `.claude/skills/`) → `docs/site-management-skills.md`
 - **Framework choice** — after design + functional spec

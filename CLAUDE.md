@@ -1,8 +1,9 @@
 # CLAUDE.md — orientation for any Claude session on this repo
 
 This is **odsens.com**, a portfolio site for OddSense (Minecraft creator). It is in the **planning/design phase** — read
-`docs/spec.md` first, then `docs/platform-audit.md`. Design work follows `docs/design-process.md`; the visual system will
-live in `DESIGN.md` at repo root once derived from the Claude Design handoff bundle.
+`docs/spec.md` first, then `docs/platform-audit.md`. **`DESIGN.md` at repo root is the visual
+source of truth** (v1, direction "Crate Poster"); prototypes are in `design/claude-design-export/` (open the `.dc.html`
+files in a browser), source art in `assets/brand/`. Design process: `docs/design-process.md`.
 
 Ground rules
 - **OddSense** = person/character; **odsens** = brand. Never reference "Odd Sense NYC".

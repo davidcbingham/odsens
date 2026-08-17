@@ -22,7 +22,8 @@ Portfolio and project site for **OddSense** — Minecraft mods, datapacks, resou
 ## Layout
 ```
 docs/            spec and planning docs
-assets/brand/    source art (avatar, banners, icons) — populated by Oliver
-DESIGN.md        (to come) design system derived from the Claude Design handoff
+assets/brand/    source art: avatar, skins (64×64 textures), art, thumbnails
+DESIGN.md        design system v1 (Crate Poster) — source of truth for all UI
+design/          Claude Design export: prototypes (.dc.html), handoff
 .env.example     env var template (copy to .env, gitignored)
 ```

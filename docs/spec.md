@@ -129,7 +129,7 @@ that rather than calling everything a "mod."
 ## 8. Aesthetic direction (early)
 
 - **Tone: playful and cartoony — fun, relaxed, inviting.** (Decided 2026-08-16.)
-- Design system will be produced as a repo-root **`DESIGN.md`** in a Claude Design session with Oliver — see `docs/design-process.md`. Inspiration hunt happens after the functional spec is complete.
+- **Design system v1 exists: repo-root `DESIGN.md`** (from Oliver's Claude Design session, 2026-08-16). Direction **"Crate Poster"** — blocky poster type (Bungee) on flat colour slabs, hard 2px edges, offset block shadows, zero blur; body Space Grotesk, pixel accent Silkscreen. Palette sampled from the avatar (ink `#0D131B`, indigo `#4B45D6`, gold `#FFC61F`, emerald `#17B94F`). Prototypes in `design/claude-design-export/`. Inspiration hunt still to come.
 - Palette from avatar: deep purple, gold, glowing green accent, near-black background, white outline highlights.
 - Pixel/blocky motifs (Minecraft-adjacent) used tastefully — chunky borders, pixel icons — but readable typography and clean layout.
 - Dark theme first (matches YouTube/Modrinth vibe). Light theme optional.
@@ -152,5 +152,6 @@ See `docs/questions.md` — running list of open questions (answered items migra
 *Revision log*
 - 2026-08-16 — Initial draft from David's brief + Modrinth/Scratch public data.
 - 2026-08-16 — Folded in David's answers to Q1–3, 5–9; added platform audit (`platform-audit.md`).
+- 2026-08-16 — Claude Design export landed: `DESIGN.md` v1 (Crate Poster), prototypes in `design/`, art in `assets/brand/`.
 - 2026-08-16 — Threaded comments + likes; naming model; tone; DESIGN.md/Claude Design process; inspiration-hunt process; site-management skills plan.
 - 2026-08-16 — Ko-fi chosen. Oliver's input: exclusive on-site projects (Modrinth-shaped schema, file hosting), CurseForge download totals, no Scratch, Skins + Art sections native. `.env.example` added.
