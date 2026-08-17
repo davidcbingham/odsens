@@ -59,7 +59,7 @@ Answered items get folded into `spec.md` and struck here.
 ## Post-spec workstreams (agreed 2026-08-16)
 - ~~**DESIGN.md** via Claude Design session with Oliver~~ — **done** (`/DESIGN.md` v1.1, Crate Poster). ~~Review pass~~ **done** → `docs/design-review.md`; gaps logged as Q28–32.
 - **Inspiration hunt** from abstracted functionality → `docs/design-process.md`
-- **Site management skills** (repo-committed `.claude/skills/`) → `docs/site-management-skills.md`
+- ~~**Site management skills**~~ — **spec'd 2026-08-17** (12 skills mapped to Oliver's moments) → `docs/site-management-skills.md`; written for real once the first build exists
 - ~~**Framework choice**~~ — **done** → `docs/framework-decision.md`
 
 ## From the DESIGN.md review pass (2026-08-16) — see `docs/design-review.md`

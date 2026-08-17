@@ -73,7 +73,7 @@ that rather than calling everything a "mod."
 4. **Discussion** — Visitors can comment on projects, **only when signed in with Google** (spam/bot/abuse prevention).
 5. **Support (Phase 2) — Ko-fi.** Tipping must be **maximum usability, minimum clicks** — embedded Ko-fi panel on the site (no bounce to Ko-fi where avoidable) + floating button. Later: Ko-fi webhook → Supabase for a supporters wall / goal bar / **donor leaderboard tied to site accounts** (idea queue). Account under David/StudioBing (Ko-fi requires 18+). Details in `platform-audit.md`. (Decided 2026-08-16.)
 5b. **Custom Orders (future)** — visitors can describe a mod/skin/etc. they want and **hire Oliver** to make it. Likely built on **Ko-fi Commissions** (native request form + payment; webhook `type: "Commission"`) with an odsens.com front door. Needs a design-detail session (scope, pricing, comms, expectations for a minor creator).
-6. **Oliver-maintainable** — Two editing surfaces plus a helper team: (a) an **Admin UI** (primary for content) with an add/edit menu for **every content type the site hosts** — exclusive projects (mod / datapack / resource pack / plugin), skins, art — plus curation of synced items, moderation, and settings; (b) **Claude Code in VS Code** on his own clone of this repo (primary for changing the site itself); (c) **repo-committed Claude skills** — "the site management team" — that encode how to add/curate content, sync, moderate, deploy, and check design (`docs/site-management-skills.md`). (Decided 2026-08-16.)
+6. **Oliver-maintainable** — Two editing surfaces plus a helper team: (a) an **Admin UI** (primary for content) with an add/edit menu for **every content type the site hosts** — exclusive projects (mod / datapack / resource pack / plugin), skins, art — plus curation of synced items, moderation, and settings; (b) **Claude Code in VS Code** on his own clone of this repo (primary for changing the site itself); (c) **repo-committed Claude skills** — "the site management team" — 12 specialists mapped to the moments Oliver opens Claude Code: `start-here`, `ship`, `whats-wrong`, `restyle`, `new-feature`, `db-change`, `add-content`, `sync-now`, `write-copy`, `stats`, `upkeep`, `keep-docs` (`docs/site-management-skills.md`). (Decided 2026-08-16.)
 7. **Fun, on-brand aesthetic** — purple / gold crown / glowing green; pixel-art sensibility without being unusable.
 
 ## 5. Functional scope (initial thinking — to be confirmed)
@@ -152,6 +152,7 @@ See `docs/questions.md` — running list of open questions (answered items migra
 *Revision log*
 - 2026-08-16 — Initial draft from David's brief + Modrinth/Scratch public data.
 - 2026-08-16 — Folded in David's answers to Q1–3, 5–9; added platform audit (`platform-audit.md`).
+- 2026-08-17 — Site-management skills spec'd from Oliver's moments (`docs/site-management-skills.md`).
 - 2026-08-17 — Data model + sync design: `docs/data-model.md`.
 - 2026-08-17 — Framework decided: Next.js + Supabase (`docs/framework-decision.md`).
 - 2026-08-17 — Design pass 2 landed: `DESIGN.md` v1.2 (§11), new screens; Q28–32 resolved; Q33–37 added.
