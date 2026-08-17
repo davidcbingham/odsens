@@ -1,4 +1,6 @@
-# odsens.com — Design System (v1)
+# odsens.com — Design System (v1.1)
+
+> v1.1 (2026-08-16): review-pass corrections — see `docs/design-review.md`. Contrast numbers computed; `--alert` token added; type minimums clarified; fonts self-hosted.
 
 Spec for building odsens.com. Design only — no framework decisions here.
 
@@ -47,6 +49,7 @@ Palette is sampled from the OddSense avatar (`assets/brand/avatar/oddsense-avata
 | `--danger` | `#F0836B` | destructive text |
 | `--danger-line` | `#4A2A2A` | destructive border |
 | `--danger-field` | `#C05A45` | invalid input border |
+| `--alert` | `#CC3A2A` | notification badge fill, alert fills — white text passes 4.5:1 (was `#E1493B` at 4.0) |
 | `--white` | `#FFFFFF` | avatar/image outline |
 
 Emerald is a **minor** accent — it comes from the crown gems, not from glowing eyes. It never carries a headline, a primary action, or a hero.
@@ -58,18 +61,18 @@ Emerald is a **minor** accent — it comes from the crown gems, not from glowing
 ### Contrast rules
 
 - Safe: chalk/mute/gold/indigo-lift on ink; white on indigo; ink on gold; ink on emerald.
-- Never: `--indigo` as text on `--ink` (3.2:1); emerald as body text; gold text on a gold slab.
+- Never: `--indigo` as text on `--ink` (2.8:1); emerald as body text; gold text on a gold slab.
 - Never encode meaning in colour alone. Type badges carry a glyph **and** a word; statuses are spelled out; the active nav item carries a 3px gold underline.
 
 ---
 
 ## 2. Typography
 
-Three faces, strict jobs. Google Fonts: `Bungee`, `Space Grotesk` (400/500/700), `Silkscreen` (400/700).
+Three faces, strict jobs: `Bungee`, `Space Grotesk` (400/500/700), `Silkscreen` (400/700). All are Google Fonts (OFL) — **self-host the WOFF2 files** in the build; no CDN request.
 
-- **Bungee** — display only. Page titles, project titles, section headers, primary button labels, wordmark. Always uppercase, leading 0.9–1.1, max ~6 words, never below 16px, never a paragraph.
+- **Bungee** — display only. Page titles, project titles, section headers, primary button labels, wordmark. Always uppercase, leading 0.9–1.1, max ~6 words, never a paragraph. Never below 16px for titles; 12–15px allowed only for button, filter, and support-button labels.
 - **Space Grotesk** — everything readable. Body, descriptions, nav links, inputs, tables, version numbers, admin UI. 400 prose / 500 UI / 700 subheads.
-- **Silkscreen** — pixel accent, micro-labels only. Eyebrows, download counts, badge text, section numbers. 9–12px, letter-spacing .08–.2em. Never a sentence.
+- **Silkscreen** — pixel accent, micro-labels only. Eyebrows, download counts, badge text, section numbers. **10–12px** (10px floor; ≥11px when the label carries information the user needs — counts, HELD FOR REVIEW, unread count), letter-spacing .08–.2em. Never a sentence.
 
 | Role | Size / face | Notes |
 |---|---|---|
@@ -81,7 +84,7 @@ Three faces, strict jobs. Google Fonts: `Bungee`, `Space Grotesk` (400/500/700),
 | Subhead | 19px Space Grotesk 700 | |
 | Body | 17px / 1.65–1.7, max 68ch | 16px on phone |
 | Small | 13–14px | meta, captions |
-| Pixel label | 9–11px Silkscreen | uppercase, letter-spaced |
+| Pixel label | 10–12px Silkscreen | uppercase, letter-spaced; ≥11px if informational |
 
 ---
 
@@ -115,7 +118,7 @@ Minimum hit target 44px everywhere. Focus is a 3px `--gold` ring with 2px offset
 
 **Type badge.** Glyph + word. 11px 700, letter-spacing .06–.08em, 7×11px padding, square. mod → indigo-wash/`#CFCCFF`; datapack → emerald-wash/emerald-soft; resource pack → gold-wash/gold-bright; plugin → `#243040`/chalk.
 
-**Exclusive badge.** "★ ONLY ON ODSENS", Silkscreen 9–10px, gold fill, gold-ink text, hatch overlay, `3px 3px 0 --gold-deep`. Sits in the card's top-left corner (overlapping the border by 1px) and the card gains a gold outline. One per card. Never on a project that also lives on Modrinth or CurseForge.
+**Exclusive badge.** "★ ONLY ON ODSENS", Silkscreen 10px, gold fill, gold-ink text, hatch overlay, `3px 3px 0 --gold-deep`. Sits in the card's top-left corner (overlapping the border by 1px) and the card gains a gold outline. One per card. Never on a project that also lives on Modrinth or CurseForge.
 
 **Version / loader chip.** 12px 500, 3px radius, 2px `--line-soft`, transparent fill. Selected: `--indigo-lift` fill with ink text. Unavailable: dim text, `--slab-raised` border, not clickable. Max four per card, then `+N`.
 
@@ -137,7 +140,7 @@ Minimum hit target 44px everywhere. Focus is a 3px `--gold` ring with 2px offset
 
 **Nav.** Sticky top bar, 68px desktop / 56px phone, `--slab` with 2px bottom line. Avatar (40px, white border) + `ODSENS` wordmark, then links in Space Grotesk; active link is white 700 with a 3px gold underline (inset shadow). Right side: search (projects page), notification bell, Sign in / signed-in handle, gold support button. Under 900px links collapse into a 44px square menu button.
 
-**Notification bell.** 44px square, 2px `--line-strong`, **solid filled** bell in chalk, YouTube-style silhouette: rounded dome flaring into a flat rim, with the clapper hanging clearly below the rim as a separate half-round. Not a pixel-art icon, not an outline. Unread count sits in a red square badge at the top-right corner: `#E1493B` fill, white Silkscreen 9px, 2px outline in the bar's own fill so it reads as a cut-out; clips to `9+` above nine. Signed-out or zero unread: mute bell, no badge, label "No new notifications" — the count is never conveyed by the dot alone. Click opens a slab dropdown (replies, likes on your comments, approvals); the badge clears on open, not on hover. Phone: same square in the collapsed bar, badge unchanged.
+**Notification bell.** 44px square, 2px `--line-strong`, **solid filled** bell in chalk, YouTube-style silhouette: rounded dome flaring into a flat rim, with the clapper hanging clearly below the rim as a separate half-round. Not a pixel-art icon, not an outline. Unread count sits in a red square badge at the top-right corner: `--alert` fill, white Silkscreen 10px, 2px outline in the bar's own fill so it reads as a cut-out; clips to `9+` above nine. Signed-out or zero unread: mute bell, no badge, label "No new notifications" — the count is never conveyed by the dot alone. Click opens a slab dropdown (replies, likes on your comments, approvals); the badge clears on open, not on hover. Phone: same square in the collapsed bar, badge unchanged.
 
 **Footer.** `--slab-foot`, 2px top line, three columns: wordmark + one dry line ("Mods and other odd things, made by OddSense. Not affiliated with Mojang."), "Find me" links, "Site" links. Silkscreen column headers.
 
@@ -192,7 +195,7 @@ odsens talks like someone who thinks the joke is funnier if you don't point at i
 - 44px minimum targets; visible 3px gold focus ring on every interactive element.
 - Meaning never rides on colour alone (glyph + word on badges, worded statuses, underlined active nav).
 - Alt text on every project icon, screenshot, skin and art piece.
-- Body text ≥16px, never below 13px anywhere; Silkscreen only for short uppercase labels.
+- Body text ≥16px, never below 13px for prose/UI text; Silkscreen labels 10px floor, ≥11px when informational.
 - Headings in document order; the Bungee hero is the `h1`.
 - Handles only — never render a real name, age or location, and don't accept them in a handle field.
 

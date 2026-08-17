@@ -57,7 +57,14 @@ Answered items get folded into `spec.md` and struck here.
 - **Custom Orders** — see design session above.
 
 ## Post-spec workstreams (agreed 2026-08-16)
-- ~~**DESIGN.md** via Claude Design session with Oliver~~ — **done 2026-08-16** (`/DESIGN.md` v1, Crate Poster). Next: review pass (contrast, mobile, component coverage vs spec).
+- ~~**DESIGN.md** via Claude Design session with Oliver~~ — **done** (`/DESIGN.md` v1.1, Crate Poster). ~~Review pass~~ **done** → `docs/design-review.md`; gaps logged as Q28–32.
 - **Inspiration hunt** from abstracted functionality → `docs/design-process.md`
 - **Site management skills** (repo-committed `.claude/skills/`) → `docs/site-management-skills.md`
 - **Framework choice** — after design + functional spec
+
+## From the DESIGN.md review pass (2026-08-16) — see `docs/design-review.md`
+28. **Card border contrast** — keep the quiet `--line` outlines (1.3:1, moody, on-brief) or lift card outlines toward `--line-strong`+ for visibility?
+29. **User notifications** — the design adds a bell/inbox for signed-in users (replies, likes, approvals). Keep in v1, or defer? (Feeds the Notifications design session.)
+30. **YouTube Shorts** — show on the Videos page (own rail?) or exclude?
+31. **Hero** — confirm the featured-project takeover (avatar strip, no 3D skin) is the intended home hero.
+32. **Second Claude Design pass** — needed for: handle onboarding, comment actions/states (edit/delete/report/mod actions/banned), admin Settings + upload states + Stats, 404/empty/loading, privacy page. When?

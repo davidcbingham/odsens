@@ -129,7 +129,7 @@ that rather than calling everything a "mod."
 ## 8. Aesthetic direction (early)
 
 - **Tone: playful and cartoony — fun, relaxed, inviting.** (Decided 2026-08-16.)
-- **Design system v1 exists: repo-root `DESIGN.md`** (from Oliver's Claude Design session, 2026-08-16). Direction **"Crate Poster"** — blocky poster type (Bungee) on flat colour slabs, hard 2px edges, offset block shadows, zero blur; body Space Grotesk, pixel accent Silkscreen. Palette sampled from the avatar (ink `#0D131B`, indigo `#4B45D6`, gold `#FFC61F`, emerald `#17B94F`). Prototypes in `design/claude-design-export/`. Inspiration hunt still to come.
+- **Design system v1 exists: repo-root `DESIGN.md`** (from Oliver's Claude Design session, 2026-08-16). Direction **"Crate Poster"** — blocky poster type (Bungee) on flat colour slabs, hard 2px edges, offset block shadows, zero blur; body Space Grotesk, pixel accent Silkscreen. Palette sampled from the avatar (ink `#0D131B`, indigo `#4B45D6`, gold `#FFC61F`, emerald `#17B94F`). Prototypes in `design/claude-design-export/`. Reviewed → `docs/design-review.md` (v1.1). Inspiration hunt still to come.
 - Palette from avatar: deep purple, gold, glowing green accent, near-black background, white outline highlights.
 - Pixel/blocky motifs (Minecraft-adjacent) used tastefully — chunky borders, pixel icons — but readable typography and clean layout.
 - Dark theme first (matches YouTube/Modrinth vibe). Light theme optional.
