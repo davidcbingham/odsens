@@ -20,3 +20,8 @@ Note: `brew trust supabase/tap` was needed before `brew upgrade supabase`. OrbSt
 Oliver's laptop: install the table top-to-bottom; he needs **read/write on the GitHub repo**, a `.env` from David (never via chat), and — only if he'll run migrations locally — Docker + Supabase CLI. For day-to-day (`pnpm dev` against the **staging** Supabase project) Docker is not required.
 
 No CLI exists or is needed for Resend, Ko-fi, YouTube, Modrinth, CurseForge — SDK/HTTP from the app; keys in `.env`.
+
+## Supabase project (2026-08-17)
+- **`odsens`** — ref `dllbekulbimblrsrxuyv`, region us-east-2, org StudioBing → treated as **production**. Linked from the repo: `supabase link --project-ref dllbekulbimblrsrxuyv` (already done on David's Mac; Oliver's laptop repeats `supabase login` + `link` only if he runs migrations).
+- URL + anon/service keys are in David's `.env`; the CLI also exposes newer `publishable`/`secret` keys — may switch at scaffold.
+- **Staging for previews — open choice:** (a) second project `odsens-staging` (simple, isolated), or (b) **Supabase Branching** on this project (preview branch per PR, integrates with Vercel previews; Pro plan feature). Decide before the first preview deploy; local stack (`supabase start`) covers dev until then.

@@ -83,7 +83,7 @@ Answered items get folded into `spec.md` and struck here.
 ## Setup to-dos before build (David)
 - [ ] Google Cloud project + OAuth client + YouTube key (`docs/setup-google-cloud.md`)
 - [ ] CurseForge for Studios API key → `.env`
-- [ ] Supabase: **two projects** — `odsens-prod` and `odsens-staging` (previews) — under StudioBing
+- [x] Supabase project **`odsens`** created (ref `dllbekulbimblrsrxuyv`, us-east-2) and linked from the repo (`supabase/config.toml`) — treated as **production**. Staging: decide between a second project or Supabase Branching before the first preview deploy (see `docs/dev-tooling.md`)
 - [ ] Vercel project `odsens` linked to the GitHub repo; env vars per environment; `CRON_SECRET`
 - [ ] Ko-fi account (18+, StudioBing) with page `oddsense` if available (phase 2)
 - [ ] Resend account + verified sending domain (odsens.com) for admin emails
