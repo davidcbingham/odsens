@@ -104,6 +104,13 @@ Generated/derived: `downloads_total = modrinth + curseforge + direct` (view colu
 ### 2.3 Videos (synced)
 **`videos`** — `id uuid; youtube_id text unique; title; description; thumbnail_url; published_at; duration_seconds; is_short bool; view_count; like_count; synced_at; hidden bool` (hidden set by Oliver). Shorts detection: duration ≤ 60s or `#shorts` — Data API has no flag; refine at build.
 
+### 2.3b Mentions — "Seen on" (v1)
+**`mentions`** — `id; project_id uuid null` (null = about OddSense generally) `; platform enum youtube|tiktok|twitch|reddit|article|other; url text unique; external_id text null` (YouTube video id) `; title; creator_name; creator_url; thumbnail_url; published_at; view_count bigint null; status enum draft|suggested|published|hidden; source enum manual|auto; featured bool; sort_order; created_by; created_at`.
+- Admin flow: paste URL → server action fetches metadata (YouTube oEmbed / Data API `videos`; generic Open Graph fallback) → preview → assign project → publish.
+- Hourly job refreshes `view_count` for YouTube mentions (batched `videos?id=…`, ~1 unit per 50 ids); daily snapshot to `stats_daily` (`metric='reach'`).
+- v1.5: `sync-mentions` cron runs YouTube `search` per project title (+ "OddSense") → inserts `status='suggested'`, admin approves. Never auto-publish.
+- RLS: published readable by all; drafts/suggested admin only.
+
 ### 2.4 Native content
 **`skins`** — `id; slug unique; name; description_md; texture_path` (Storage `skins/…png` 64×64) `; model enum classic|slim; render_bust_path` (cached PNG) `; is_exclusive bool; status draft|published; sort_order; downloads int`.
 **`art`** — `id; slug; title; kind enum avatar|thumbnail|icon|render|other; image_path; width; height; year int null; credit text null` (commissioned artist handle, optional) `; downloadable bool; status; sort_order`.
@@ -140,6 +147,10 @@ Supabase Realtime optional later. Remark42's data model is a good reference, not
 
 ### 2.7 Custom orders
 **`orders`** — `id; user_id FK; kind enum mod|plugin|skin|pack|art; brief text; mc_version text null; loader text null; budget text null; public_ok bool; status enum new|replied|closed; admin_notes text; created_at; updated_at`.
+
+### 2.7b Workrooms (Phase 2 — schema sketch; v1 only keeps hooks)
+`workrooms (id, order_id FK, title, status enum brief|quote|in_progress|review|delivered|closed, brief_md, kofi_url, created_at, closed_at)` · `workroom_members (workroom_id, profile_id, role enum owner|client|moderator|viewer, email_updates bool default false, PK(workroom_id, profile_id))` · `workroom_posts (id, workroom_id, author_id, body_md, images jsonb, created_at)` · `workroom_files (id, workroom_id, uploaded_by, filename, size_bytes, sha512, storage_path, kind enum brief|wip|deliverable, created_at)` · comments via `comments.target_type='workroom'`.
+Rules: **an admin is auto-added as `moderator` to every workroom** (visible in the participants row); RLS on every table keys on membership; bucket `workroom-files` private, signed URLs after membership check; client uploads allowlisted (png/jpg/webp/zip/txt/md/pdf), 25 MB/file, 200 MB/room; notifications to clients only if `email_updates`. **v1 hooks:** keep `comments` polymorphic (done), make the file table + download route generic (owner scope + bucket), keep admin `/admin/orders` route extensible.
 
 ### 2.8 Support (Ko-fi, phase 2)
 **`kofi_events`** — raw webhook payloads: `id; kofi_message_id text unique; type text; from_name; message; amount numeric; currency; is_public bool; email_hash text null; timestamp; raw jsonb`.
@@ -187,6 +198,7 @@ Role checks via a `is_moderator()` / `is_admin()` SQL helper reading `profiles.r
 | **Modrinth** | hourly (Vercel Cron) + manual button | `GET /v2/user/OddSense/projects` → `projects`; per project `GET /v2/project/{id}` (gallery, body, license) and `GET /v2/project/{id}/version` → `project_versions`, `project_files` | Upsert by (source, external_id). Map `project_type`: `mod`+loader `datapack`→datapack; `mod`+paper/spigot/bukkit/purpur/folia/velocity/bungeecord→plugin; `resourcepack`→resourcepack; else mod. Respect 300 req/min; send `User-Agent`. New projects default `published`; deleted-upstream → mark `hidden`, never delete. |
 | **CurseForge** | hourly | For each `project_links` row with platform curseforge: `GET /v1/mods/{id}` → `downloadCount` → `projects.downloads_curseforge`, `project_links.downloads` | Discovery of CF ids: admin enters CF project id/URL once (or `GET /v1/mods/search?gameId=432&authorId=…` at build if the API allows by author). |
 | **YouTube** | hourly | RSS (`feeds/videos.xml?channel_id=`) for cheap new-video detection; Data API `search`/`playlistItems` on uploads playlist + `videos` for stats/duration | Upsert by `youtube_id`. Data API budget: ~few hundred units/day. |
+| **Mentions refresh** | hourly | YouTube `videos` for `mentions.external_id` → `view_count` | v1.5 adds `search` → suggested queue |
 | **Stats snapshot** | daily 03:00 UTC | reads current totals from `projects`, `videos`, `comments`, `kofi_events` → `stats_daily` | Also aggregates `project_downloads` and purges >90d. |
 | **Skin renders** | on skin insert/update (server action) | render bust PNG via headless skinview3d (or `minecraft-skin-render` on Node/canvas) → `skins.render_bust_path` | Fallback: render client-side and cache on first view. |
 | **Notifications** | every 5 min | `notification_events` unemailed → Resend | Batched digest if >5 pending. |

@@ -49,7 +49,7 @@ Answered items get folded into `spec.md` and struck here.
 - **Skins section** — how skins are shown, viewer, download, metadata (from Q4)
 - **Notifications** — channels (email / Discord / in-app / push), which events, infrastructure (from Q11)
 - **Comments** — threaded + likes UX, notification hooks, moderation UX (from Q10)
-- **Custom Orders** — intake form, scope, pricing, payment, communication, tying to Ko-fi Commissions (from Q12b)
+- **Custom Orders + Workrooms** — intake (designed), workroom flows, safety rules, retention, client email opt-in (Phase 2)
 - **Asset IA** — categories, file types, pixel dimensions for `assets/brand/` (from Q14)
 
 ## Idea queue (not committed)
@@ -89,3 +89,8 @@ Answered items get folded into `spec.md` and struck here.
 - [ ] Resend account + verified sending domain (odsens.com) for admin emails
 - [x] Docker runtime on David's Mac — OrbStack installed, local Supabase verified (`docs/dev-tooling.md`)
 - [ ] Decisions: Q33–40
+
+## From "Seen on" + Workrooms (2026-08-17)
+41. **Mention click behaviour** — embed the third-party video inline (facade) with an "on YouTube ↗" link (proposed), or always link out? *(Oliver)*
+42. **Claude Design pass 3?** — Seen on + Workrooms can be built from existing components per DESIGN.md §12; does Oliver want to art-direct them first? *(Oliver)*
+43. **Workroom email opt-in copy + privacy page line** — draft when Phase 2 starts.

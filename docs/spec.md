@@ -72,7 +72,8 @@ that rather than calling everything a "mod."
 3. **Downloads** — Modrinth-hosted projects link out to Modrinth (and CurseForge where cross-posted); exclusive projects download directly from odsens.com. Display **combined download totals** (Modrinth + CurseForge) per project.
 4. **Discussion** — Visitors can comment on projects, **only when signed in with Google** (spam/bot/abuse prevention).
 5. **Support (Phase 2) — Ko-fi.** Tipping must be **maximum usability, minimum clicks** — embedded Ko-fi panel on the site (no bounce to Ko-fi where avoidable) + floating button. Later: Ko-fi webhook → Supabase for a supporters wall / goal bar / **donor leaderboard tied to site accounts** (idea queue). Account under David/StudioBing (Ko-fi requires 18+). Details in `platform-audit.md`. (Decided 2026-08-16.)
-5b. **Custom Orders (future)** — visitors can describe a mod/skin/etc. they want and **hire Oliver** to make it. Likely built on **Ko-fi Commissions** (native request form + payment; webhook `type: "Commission"`) with an odsens.com front door. Needs a design-detail session (scope, pricing, comms, expectations for a minor creator).
+5b. **Custom Orders (Phase 2)** — visitors can describe a mod/skin/etc. they want and **hire Oliver** to make it. Intake form designed (pass 2); payment via **Ko-fi Commissions**; expectations copy honest ("no contracts, no invoices yet").
+5c. **Workrooms (Phase 2, added 2026-08-17)** — a **private space per commission** reusing the site's primitives behind a membership wall: brief + milestones (brief → quote → in progress → review → delivered → closed), Oliver's WIP posts, **files both ways** (private bucket, signed URLs, allowlist, small caps), and the existing comment pattern scoped to members. Admin "Orders & Workrooms" manages multiple engagements. **Safety is structural:** an admin (David) is automatically a silent, *visible* member of every workroom; no DMs outside the room; client uploads magic-byte checked, never executables. Client email updates are **opt-in** on joining (first user-facing notification; privacy page updated). Payment stays on Ko-fi. **v1 groundwork:** comments stay polymorphic, files/download route generic (owner scope + bucket, not project-hardwired), admin Orders route designed to grow.
 6. **Oliver-maintainable** — Two editing surfaces plus a helper team: (a) an **Admin UI** (primary for content) with an add/edit menu for **every content type the site hosts** — exclusive projects (mod / datapack / resource pack / plugin), skins, art — plus curation of synced items, moderation, and settings; (b) **Claude Code in VS Code** on his own clone of this repo (primary for changing the site itself); (c) **repo-committed Claude skills** — "the site management team" — 12 specialists mapped to the moments Oliver opens Claude Code: `start-here`, `ship`, `whats-wrong`, `restyle`, `new-feature`, `db-change`, `add-content`, `sync-now`, `write-copy`, `stats`, `upkeep`, `keep-docs` (`docs/site-management-skills.md`). (Decided 2026-08-16.)
 7. **Fun, on-brand aesthetic** — purple / gold crown / glowing green; pixel-art sensibility without being unusable.
 
@@ -83,6 +84,7 @@ that rather than calling everything a "mod."
   - Project schema mirrors Modrinth: `slug, title, description (short), body (markdown), project_type, categories[], loaders[], game_versions[], icon, gallery[], versions[] {version_number, changelog, files[], game_versions, loaders, date}, downloads, source (modrinth | odsens)`.
 - **About** — who OddSense is (age-appropriate; see privacy notes below).
 - **Videos** — YouTube channel feed with click-to-load facades + embedded player; **Shorts row** below long-form.
+- **Seen on (v1, added 2026-08-17)** — third-party coverage of Oliver's work (YouTube videos/Shorts, Twitch clips, TikToks, Reddit, articles) attached to a project or to OddSense generally. **Manual curation in v1**: Oliver pastes a URL in admin → metadata auto-fetched (YouTube oEmbed/Data API; Open Graph elsewhere) → assign project → publish. Shown as a "SEEN ON" row on project detail and an "IN THE WILD" strip on Home with a reach line ("1.2M views · 6 videos · 4 creators"); YouTube view counts refreshed hourly and snapshotted. Content stays on its platform (facade/embed + "on YouTube ↗" link); creators are public channels — name + link only; mods can hide on request. **v1.5:** assisted discovery — daily YouTube search per project → admin *Suggested* queue, never auto-publish.
 - **Skins** — native section highlighting skins he's made (3D viewer, download). **Details deferred to a dedicated design discussion.**
 - **Art** — native section: profile pictures, thumbnails, and other original art.
 - ~~Games (Scratch)~~ — **excluded** per Oliver.
@@ -101,7 +103,8 @@ that rather than calling everything a "mod."
   Site-code changes (layout, new features) happen via Claude Code on the repo.
 - **Posts / devlogs** — deferred, maybe never.
 - **Support** — Ko-fi panel embed + floating button (Phase 2); supporters wall / donor leaderboard via webhook (Phase 2b).
-- **Custom Orders** — future; Ko-fi Commissions-backed intake (see 5b).
+- **Custom Orders + Workrooms** — Phase 2 (see 5b/5c).
+- **Seen on** — v1 slice (see Goal list).
 
 ## 6. Non-goals (for now)
 
@@ -152,6 +155,7 @@ See `docs/questions.md` — running list of open questions (answered items migra
 *Revision log*
 - 2026-08-16 — Initial draft from David's brief + Modrinth/Scratch public data.
 - 2026-08-16 — Folded in David's answers to Q1–3, 5–9; added platform audit (`platform-audit.md`).
+- 2026-08-17 — Added **Seen on** (v1) and **Workrooms** (Phase 2, with v1 schema hooks).
 - 2026-08-17 — Q33–40 decided (leaderboard handle+amount, structural handle validation, comment limits/edit window, auto-hold, manual CF ids, privacy defers to Google age rules).
 - 2026-08-17 — Site-management skills spec'd from Oliver's moments (`docs/site-management-skills.md`).
 - 2026-08-17 — Data model + sync design: `docs/data-model.md`.
