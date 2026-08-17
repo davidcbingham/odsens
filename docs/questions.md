@@ -15,12 +15,12 @@ Answered items get folded into `spec.md` and struck here.
 8. ~~**Will Oliver code?** Is part of the goal for him to learn web dev on this project (affects framework choice and how much we document), or should it be a finished tool he uses?
 
 ## Comments & moderation
-9. ~~**Moderation model**~~ — **Answered:** Oliver's two interaction modes: **the admin UI** for content, and **Claude Code on this repo** for changes to the site itself. Coding literacy is a bonus, not the goal.
-10. **Replies / threads / reactions**~~ — **Answered:** Bonus, not the point. Creative outlet first. He is strong in math + Scratch block coding; new to GitHub/Supabase.
-11. ~~**Notifications**~~ — **Answered:** Admin setting (auto-publish vs hold first-timers). Multiple moderators incl. David. Notification on/off toggle (extends #11).
+9. ~~**Moderation model**~~ — **Answered:** See earlier batch — admin setting; multi-mod; notifications toggle.
+10. ~~**Replies / threads / reactions**~~ — **Answered:** Considered answered (David, 2026-08-16). Working assumption: **flat comments** to start; threading/reactions decided in the comments design-detail session.
+11. ~~**Notifications**~~ — **Answered:** Yes, but **channels + infrastructure need a dedicated design session** (email / Discord / in-app / push; per-event types). Added to Future Design Sessions.
 
 ## Donations
-12. **Platform**~~ — **Answered:** Yes — as an on/off setting.
+12. ~~**Platform**~~ — **Answered:** **Ko-fi**, with **maximum usability, minimum clicks** — embedded panel, no redirect where avoidable. Also: 12b **Custom Orders / commissions** (leverage Ko-fi Commissions), 12c **donor leaderboard** (idea queue).
 
 ## Identity & aesthetic
 13. **Name presentation** — "OddSense" everywhere, with odsens.com as the short URL? Or lean into "odsens" as the brand?
@@ -44,3 +44,14 @@ Answered items get folded into `spec.md` and struck here.
 25. **YouTube Data API** — OK to create a Google Cloud project (same one as the OAuth client, Q18) for a YouTube API key? Keyless RSS covers "latest videos" only.
 26. **Roblox** — include a link/section, or leave off the site?
 27. **Oliver's setup** — Does he have `git`, GitHub account, and Claude Code working on his desktop already (for mods) or only VS Code + Claude Code without git?
+
+## Future design-detail sessions (agreed, not yet scheduled)
+- **Skins section** — how skins are shown, viewer, download, metadata (from Q4)
+- **Notifications** — channels (email / Discord / in-app / push), which events, infrastructure (from Q11)
+- **Comments** — threading vs flat, reactions, moderation UX (from Q10)
+- **Custom Orders** — intake form, scope, pricing, payment, communication, tying to Ko-fi Commissions (from Q12b)
+- **Asset IA** — categories, file types, pixel dimensions for `assets/brand/` (from Q14)
+
+## Idea queue (not committed)
+- **Donor leaderboard** — ranks supporters by total tipped; **ties to site account names** (Google-authenticated users). Needs a way to link a Ko-fi payment to a site account (e.g. Ko-fi webhook `email`/`from_name` match, or a "link my Ko-fi" step / code in the tip message). Privacy: opt-in display name.
+- **Custom Orders** — see design session above.

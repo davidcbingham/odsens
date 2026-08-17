@@ -71,7 +71,8 @@ that rather than calling everything a "mod."
 2. **Showcase** — Browse all projects with art, description, type, MC version/loader, and download counts.
 3. **Downloads** — Modrinth-hosted projects link out to Modrinth (and CurseForge where cross-posted); exclusive projects download directly from odsens.com. Display **combined download totals** (Modrinth + CurseForge) per project.
 4. **Discussion** — Visitors can comment on projects, **only when signed in with Google** (spam/bot/abuse prevention).
-5. **Donations (Phase 2) — Ko-fi.** Embedded Ko-fi panel on a `/support` page + floating button; later, Ko-fi webhook → Supabase for a supporters wall / goal bar. Account under David/StudioBing (Ko-fi requires 18+). Details in `platform-audit.md`. (Decided 2026-08-16.)
+5. **Support (Phase 2) — Ko-fi.** Tipping must be **maximum usability, minimum clicks** — embedded Ko-fi panel on the site (no bounce to Ko-fi where avoidable) + floating button. Later: Ko-fi webhook → Supabase for a supporters wall / goal bar / **donor leaderboard tied to site accounts** (idea queue). Account under David/StudioBing (Ko-fi requires 18+). Details in `platform-audit.md`. (Decided 2026-08-16.)
+5b. **Custom Orders (future)** — visitors can describe a mod/skin/etc. they want and **hire Oliver** to make it. Likely built on **Ko-fi Commissions** (native request form + payment; webhook `type: "Commission"`) with an odsens.com front door. Needs a design-detail session (scope, pricing, comms, expectations for a minor creator).
 6. **Oliver-maintainable** — Two editing surfaces: (a) an **Admin UI** (primary for content) with an add/edit menu for **every content type the site hosts** — exclusive projects (mod / datapack / resource pack / plugin), skins, art — plus curation of synced items, moderation, and settings; (b) **Claude Code in VS Code** on his own clone of this repo (primary for changing the site itself). (Decided 2026-08-16.)
 7. **Fun, on-brand aesthetic** — purple / gold crown / glowing green; pixel-art sensibility without being unusable.
 
@@ -88,7 +89,8 @@ that rather than calling everything a "mod."
 - **Comments** — Google sign-in via Supabase Auth; comments stored in Supabase.
   - **Moderation mode is an admin setting**: *auto-publish for signed-in users* vs. *hold first-time commenters for approval*. Start permissive; tighten if abuse appears.
   - **Multiple moderators**: Oliver can grant mod access to others (e.g. David). Mods can delete/hide comments and ban users.
-  - **Notifications**: on/off toggle for new-comment alerts (email initially; Discord webhook optional).
+  - **Notifications**: on/off toggle for new-comment alerts. Channels and infrastructure (email / Discord / in-app / push) to be settled in a dedicated design session.
+  - **Threading/reactions**: flat comments to start; revisit in the comments design session.
 - **Admin UI** (auth-gated; Oliver + moderators/admins) — a menu with one section per hosted content type:
   - **Projects** — create/edit exclusive projects (Modrinth-shaped form: metadata, gallery, versions + file upload); curate synced Modrinth projects (feature / hide / reorder / extra art).
   - **Skins** — add/edit (details per future skins design).
@@ -97,7 +99,8 @@ that rather than calling everything a "mod."
   - **Settings** — moderation mode, notifications, moderator/admin list, site config.
   Site-code changes (layout, new features) happen via Claude Code on the repo.
 - **Posts / devlogs** — deferred, maybe never.
-- **Support** — Ko-fi panel embed + floating button (Phase 2); supporters wall via webhook (Phase 2b).
+- **Support** — Ko-fi panel embed + floating button (Phase 2); supporters wall / donor leaderboard via webhook (Phase 2b).
+- **Custom Orders** — future; Ko-fi Commissions-backed intake (see 5b).
 
 ## 6. Non-goals (for now)
 
@@ -133,9 +136,9 @@ that rather than calling everything a "mod."
 - Comment moderation must be easy and default-safe (e.g. new commenters' posts held for approval, or a block/report flow).
 - Some project names/themes ("Disabilities", "Shizophrenia") may draw criticism — worth a family conversation on how they're presented, not a technical concern.
 
-## 10. Open questions
+## 10. Open questions, future design sessions, idea queue
 
-See `docs/questions.md` (running list, answered items migrate into this spec).
+See `docs/questions.md` — running list of open questions (answered items migrate here), the agreed list of **future design-detail sessions** (Skins, Notifications, Comments, Custom Orders, Asset IA), and the **idea queue** (donor leaderboard, …).
 
 ---
 
