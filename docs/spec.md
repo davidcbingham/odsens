@@ -1,7 +1,6 @@
 # odsens.com — Project Specification (DRAFT)
 
-> Status: **Planning — not yet building.** This document is the working spec. It will be revised over several
-> conversation cycles until mature enough to start implementation.
+> Status: **FROZEN v1.0 (2026-08-17) — building.** Product spec (this file), design system (`DESIGN.md` v1.3a), data model, notifications, and the engineering specs (`docs/build/00–05`, `_registry.md`, ADR-0001/0002) are the contract. Changes go through an ADR in `docs/build/06-decisions/` + a doc edit in the same PR; the `spec-drift-reviewer` gate enforces it. Build starts at slice **S0**.
 
 ---
 
@@ -154,6 +153,7 @@ See `docs/questions.md` — running list of open questions (answered items migra
 ---
 
 *Revision log*
+- 2026-08-17 — **FROZEN v1.0.** Engineering specs `docs/build/` at v1.0; build begins (S0 scaffold).
 - 2026-08-17 — Engineering specs `docs/build/` 00–06 + ADR-0001/0002; spec aligned (About page struck, comments v1 = projects).
 - 2026-08-16 — Initial draft from David's brief + Modrinth/Scratch public data.
 - 2026-08-16 — Folded in David's answers to Q1–3, 5–9; added platform audit (`platform-audit.md`).

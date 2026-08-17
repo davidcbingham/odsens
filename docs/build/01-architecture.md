@@ -1,6 +1,6 @@
 # Architecture & Invariants
 The numbered, gate-checkable rules every odsens.com PR must satisfy — repo layout, rendering model, data access, security, caching, styling, and dependencies — so read-only gate agents can diff code against a fixed contract.
-Status: DRAFT v0.4 (2026-08-17) — becomes v1.0 at freeze
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces)
 Decisions applied: `06-decisions/ADR-0001-engineering-spec-baseline.md` (baseline) · `06-decisions/ADR-0002-spec-reconciliation.md` (contradictions C1–C22 + OPEN defaults 13–80 — binding; every name/shape below matches it).
 
 Sources this doc restates (it decides nothing they settle): `docs/build/_registry.md` (IDs, names, layout), `docs/spec.md`, `docs/questions.md`, `docs/data-model.md` (§1 principles, §3 buckets, §4 RLS, §5 sync), `docs/notifications.md`, `docs/framework-decision.md` (stack, guardrails), `docs/analytics-options.md`, `DESIGN.md` v1.3, `.claude/skills/*/SKILL.md`, `.claude/agents/*.md`, `docs/dev-tooling.md`, `.env.example`, `supabase/config.toml`.

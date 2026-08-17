@@ -1,6 +1,6 @@
 # Build Registry — shared backbone for the engineering specs (00–06)
 
-Status: DRAFT v0.4 (2026-08-17) — becomes v1.0 at freeze
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces)
 
 Decisions: `06-decisions/ADR-0001-engineering-spec-baseline.md` (baseline) · `06-decisions/ADR-0002-spec-reconciliation.md` (contradictions C1–C22 + OPEN defaults 13–80 + Amendment A A1–A18; **binding for every name below**). Numbering per `06-decisions/README.md`; pre-assigned slugs only (`signed-uploads`, `shorts-detection`, `branching-preview-env`, `csp-unsafe-inline`, `component-preview`, `derived-tokens`, `handle-rename-rls`, `account-deletion`).
 

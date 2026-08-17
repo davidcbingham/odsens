@@ -1,6 +1,6 @@
 # Routes & Pages
 Every URL odsens.com serves — its slice, rendering mode, auth requirement, data, DESIGN.md section, components, route files, metadata and nav placement — plus middleware, the auth flows, revalidation triggers and the deploy smoke list.
-Status: DRAFT v0.4 (2026-08-17) — becomes v1.0 at freeze
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces)
 
 Sources: `docs/build/_registry.md` (IDs verbatim), `docs/spec.md`, `docs/data-model.md`, `docs/notifications.md`, `DESIGN.md` v1.3, `docs/design-review.md`, `.claude/skills/{web-quality,vercel-ops,security-check}/SKILL.md`, `.claude/agents/*.md`, `supabase/config.toml`, `docs/build/06-decisions/ADR-0002-spec-reconciliation.md` (binding reconciliation — cited as "ADR-0002 <ref>"). Siblings: `00-build-plan.md` (slice acceptance), `01-architecture.md` (invariants, headers/CSP, env — **wins on cross-cutting invariants and data-access rules; 02 §1 wins for a route's rendering mode** — ADR-0002 precedence, 01 §0), `03-components.md` (component props/states), `04-server-contracts.md` (action/handler shapes, rate limits, cron table — **wins on handler contracts and revalidation tags**), `05-test-plan.md` (test IDs).
 

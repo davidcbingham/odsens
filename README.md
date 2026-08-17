@@ -1,7 +1,7 @@
 # odsens.com
 
 Portfolio and project site for **OddSense** — Minecraft mods, datapacks, resource packs, plugins, skins, art, and videos.
-**Status: planning / design.** No application code yet; the spec is being developed in `docs/`.
+**Status: spec frozen (v1.0, 2026-08-17) — building.** Engineering specs in `docs/build/`; start at `docs/build/START-BUILD.md`.
 
 ## Start here
 | Doc | Purpose |

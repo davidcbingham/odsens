@@ -1,6 +1,6 @@
 # Component Inventory
 One row per UI component in `docs/build/_registry.md`, with folder, DESIGN.md source, server/client boundary, props, states, tokens, a11y, slice and tests — the contract `design-fidelity-reviewer`, `frontend-reviewer` and `spec-drift-reviewer` diff code against.
-Status: DRAFT v0.4 (2026-08-17) — becomes v1.0 at freeze
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces)
 
 Decisions applied: `06-decisions/ADR-0002-spec-reconciliation.md` (binding — every conflict and OPEN default below is settled there; §11 rows are kept for their IDs and marked DECIDED).
 

@@ -1,6 +1,6 @@
 # Test Plan
 Defines the odsens.com test harness (Vitest `unit`/`db`, Playwright `smoke`/`e2e` + axe, fixtures, seed, CI) and enumerates every test the v1 slices must land, by ID, so gate agents can check "the tests the slice requires exist" as a yes/no.
-Status: DRAFT v0.4 (2026-08-17) — becomes v1.0 at freeze
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces)
 
 Sources this doc is bound to (it re-decides nothing they settle): `docs/build/06-decisions/ADR-0002-spec-reconciliation.md` (binding for every contradiction C1–C22 and OPEN default 13–80 cited below), `docs/build/_registry.md` (IDs/names), `docs/data-model.md` §4 (RLS matrix) and §5 (sync), `docs/notifications.md`, `docs/spec.md`, `docs/questions.md` (Q34/35/38/39/40), `DESIGN.md` §5/§6/§9/§11/§12, `.claude/skills/test-engineer/SKILL.md`, `.claude/skills/backend-robustness/SKILL.md`, `.claude/skills/security-check/SKILL.md`, `.claude/agents/*.md`. Sibling contracts: 01 (invariants), 02 (routes/pages), 03 (components), 04 (server contracts). Where a shape (input schema, error code, rate-limit number, storage path, adapter function name) is 04's to define, this doc uses 04's current value (v0.3, as amended by ADR-0002) verbatim and tests the *behaviour* named here; where 02 owns page behaviour (redirect codes, sort enums, smoke list) this doc uses 02's current value (v0.3, as amended by ADR-0002).
 

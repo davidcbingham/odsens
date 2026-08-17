@@ -1,6 +1,6 @@
 # Server Contracts
 Purpose: the checkable contract for every Server Action, route handler, cron job, and external adapter in `_registry.md` §Server contract registry — names, files, auth, input schema, preconditions, effects, return shape, rate limits, idempotency, external calls, logging, and required tests — so gate agents can diff code against it.
-Status: DRAFT v0.4 (2026-08-17) — becomes v1.0 at freeze
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces)
 
 Decisions applied: `06-decisions/ADR-0002-spec-reconciliation.md` (binding — C1–C22 + OPEN defaults 13–80); every OPEN item below that ADR-0002 settles is marked **DECIDED (ADR-0002 <ref>)**.
 

@@ -110,4 +110,4 @@ Answers to Claude Design's open items (build decisions, no re-pass): view counts
 46. **Future passes** — tell Claude Design to stop carrying pass-1/2 files forward (each pass re-adds ~12 MB of identical assets). Decide: self-contained snapshots (current) vs. delta-only exports.
 
 ## Engineering specs (2026-08-17)
-`docs/build/00–05` + `_registry.md` + ADR-0001/0002 (with Amendment A) at **v0.4** — reconciled, gate-checkable. Next: David says **freeze** → docs bumped to v1.0, `build-phase` starts at S0.
+`docs/build/00–05` + `_registry.md` + ADR-0001/0002 (with Amendment A) **FROZEN v1.0 (2026-08-17)** — build starts at S0 in a fresh session (`docs/build/START-BUILD.md`).

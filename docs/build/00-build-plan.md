@@ -1,6 +1,6 @@
 # Build Plan
 Slice-by-slice contract for building odsens.com v1 (S0–S1.10) with Phase 2 stubs: scope, acceptance criteria, tests, gates, demo, and the global rules every PR follows.
-Status: DRAFT v0.4 (2026-08-17) — becomes v1.0 at freeze
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces)
 Binding decisions: `06-decisions/ADR-0001-engineering-spec-baseline.md` (baseline) · `06-decisions/ADR-0002-spec-reconciliation.md` (contradictions C1–C22 + OPEN defaults 13–80 + Amendment A A1–A18 — every slice below is aligned to it).
 
 Sources this doc is derived from (it re-decides nothing): `docs/build/_registry.md` (IDs — used verbatim), `docs/spec.md`, `docs/questions.md`, `docs/data-model.md`, `docs/notifications.md`, `docs/framework-decision.md`, `docs/analytics-options.md`, `DESIGN.md` v1.3, `docs/skill-handoffs.md`, `.claude/skills/*/SKILL.md`, `.claude/agents/*.md`, `docs/dev-tooling.md`, `.env.example`, `supabase/config.toml`.
