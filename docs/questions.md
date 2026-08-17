@@ -29,7 +29,7 @@ Answered items get folded into `spec.md` and struck here.
 16. ~~**Reference sites**~~ — **Answered:** No named references. After the functional spec is complete: abstract it into site/functionality types → Claude searches for examples → Oliver critiques good/bad. Process in `docs/design-process.md`.
 
 ## Technical / accounts
-17. ~~**Framework**~~ — **Answered:** Deferred until design spec settles; pick best fit.
+17. ~~**Framework**~~ — **Answered 2026-08-17:** **Next.js (App Router, TS) on Vercel + Supabase**, plain CSS tokens (no Tailwind), Resend for email. Full reasoning in `docs/framework-decision.md`.
 18. ~~**Google OAuth**~~ — **Answered:** Google Cloud project under **david@studiobing.com**; hosts both the OAuth client and the YouTube API key. Step-by-step in `docs/setup-google-cloud.md`.
 19. ~~**Vercel/Supabase org access**~~ — **Answered:** Discussed 2026-08-16 — see tradeoffs below. **Recommendation:** start with StudioBing logins only; Oliver operates through GitHub + the admin UI (Vercel auto-deploys from GitHub). Add him to Vercel/Supabase later only if needed.
 20. ~~**Analytics**~~ — **Answered:** Options + effort table in `docs/analytics-options.md`. Recommend Vercel Web Analytics + Speed Insights + custom events + own Supabase counters at launch; daily external-stats snapshots as first enhancement.
@@ -60,7 +60,7 @@ Answered items get folded into `spec.md` and struck here.
 - ~~**DESIGN.md** via Claude Design session with Oliver~~ — **done** (`/DESIGN.md` v1.1, Crate Poster). ~~Review pass~~ **done** → `docs/design-review.md`; gaps logged as Q28–32.
 - **Inspiration hunt** from abstracted functionality → `docs/design-process.md`
 - **Site management skills** (repo-committed `.claude/skills/`) → `docs/site-management-skills.md`
-- **Framework choice** — after design + functional spec
+- ~~**Framework choice**~~ — **done** → `docs/framework-decision.md`
 
 ## From the DESIGN.md review pass (2026-08-16) — see `docs/design-review.md`
 28. ~~**Card border contrast**~~ — **Answered (pass 2):** Card/panel outlines lifted one step to `--line-soft #2C3A4B`; `--line` kept for internal dividers.

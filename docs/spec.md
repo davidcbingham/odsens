@@ -124,7 +124,7 @@ that rather than calling everything a "mod."
 | Domain | odsens.com — Squarespace **registration only**, no site attached; DNS → Vercel |
 | Repo | github.com/davidcbingham/odsens — **David and Oliver both have full access**; Oliver's laptop already runs VS Code + Claude Code, has an unused GitHub account. David front-loads, then hands off; Oliver's git workflow should be simple and documented (skills + `CLAUDE.md`). |
 | Legacy | An old Cloudflare project exists for a prior attempt — **deprecated, ignore**. Clean sheet. |
-| Framework | **Deferred** — choose after the design/experience spec is settled (David is indifferent; pick what best fits). |
+| Framework | **Next.js (App Router, TypeScript)** — plain CSS tokens from `DESIGN.md` (no Tailwind/UI kit), self-hosted fonts, Vercel Cron for sync, Resend for admin email, skinview3d for skins. Decision + alternatives: `docs/framework-decision.md` (2026-08-17). |
 
 ## 8. Aesthetic direction (early)
 
@@ -152,6 +152,7 @@ See `docs/questions.md` — running list of open questions (answered items migra
 *Revision log*
 - 2026-08-16 — Initial draft from David's brief + Modrinth/Scratch public data.
 - 2026-08-16 — Folded in David's answers to Q1–3, 5–9; added platform audit (`platform-audit.md`).
+- 2026-08-17 — Framework decided: Next.js + Supabase (`docs/framework-decision.md`).
 - 2026-08-17 — Design pass 2 landed: `DESIGN.md` v1.2 (§11), new screens; Q28–32 resolved; Q33–37 added.
 - 2026-08-16 — Claude Design export landed: `DESIGN.md` v1 (Crate Poster), prototypes in `design/`, art in `assets/brand/`.
 - 2026-08-16 — Threaded comments + likes; naming model; tone; DESIGN.md/Claude Design process; inspiration-hunt process; site-management skills plan.

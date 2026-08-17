@@ -10,6 +10,6 @@ Ground rules
 - No PII in code, content, or designs. Users are handles only.
 - Tone: playful, cartoony, fun, relaxed, inviting; readable over flashy; dark-first.
 - Content principle: curate from native hosts (Modrinth, YouTube, CurseForge) + host only what has no home (exclusive projects, skins, art).
-- Framework not yet chosen — don't scaffold an app until `docs/spec.md` says the spec is frozen.
+- Stack decided (`docs/framework-decision.md`): Next.js App Router + TS, plain CSS tokens, Supabase, Vercel. **Don't scaffold yet** — wait until `docs/spec.md` says the spec is frozen.
 - Keep `docs/questions.md` updated when decisions are made.
 - Secrets go in `.env` (gitignored); template in `.env.example`.
