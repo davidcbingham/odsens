@@ -1,9 +1,12 @@
 # Data Model & Sync Design
 
 Postgres on Supabase. Written 2026-08-17 against `docs/spec.md` v-current and `DESIGN.md` v1.2; amended 2026-08-17 per
-`docs/build/06-decisions/ADR-0002-spec-reconciliation.md` (rate limits, views, RPCs, trigger, RLS rows). This is the plan;
+`docs/build/06-decisions/ADR-0002-spec-reconciliation.md` (rate limits, views, RPCs, trigger, RLS rows) and its Amendment A
+(`moderator_thread` RPC, `site_settings_public.moderation_mode`, `rate_limit_hits`-only counting, `email_hash` set by `/auth/callback`). This is the plan;
 the actual SQL lives in `supabase/migrations/` once we build. Conventions: `snake_case`, `uuid` PKs (`gen_random_uuid()`),
 `created_at/updated_at timestamptz` on every table, RLS enabled on every table.
+
+Status: DRAFT v0.4 (2026-08-17) — becomes v1.0 at freeze
 
 ---
 
@@ -30,7 +33,7 @@ the actual SQL lives in `supabase/migrations/` once we build. Conventions: `snak
 | banned_reason | text null | |
 | comment_count | int default 0 | maintained by trigger (+1 when a comment first reaches `published`; never decrements); used for "first-time commenter" hold logic |
 | handle_changed_at | timestamptz null | set by `updateProfile`/`renameUserHandle` (service role); own rename limited to 1 per 7 days (ADR-0002 #27) |
-| email_hash | text null | `HMAC-SHA256(HASH_SECRET, lower(email))` (ADR-0002 C13; was plain sha256), set by trigger; server-side use only (Ko-fi matching); **never selected into any view** |
+| email_hash | text null | `HMAC-SHA256(HASH_SECRET, lower(email))` (ADR-0002 C13; was plain sha256). **Not set by the DB trigger** (Postgres cannot read env — ADR-0002 A14): the `auth.users` trigger creates the row with `email_hash NULL`; `/auth/callback` (server, service client) sets it when null from `auth.users.email`. `HASH_SECRET` is required from S1.1. Server-side use only (Ko-fi matching); **never selected into any view** |
 | created_at, updated_at | | |
 
 Public view **`public_profiles`** (`id, handle, avatar_path, role`) — the only thing the client reads about other users.
@@ -118,7 +121,7 @@ Generated/derived: `downloads_total = modrinth + curseforge + direct` (view colu
 **`skins`** — `id; slug unique; name; description_md; texture_path` (Storage `skins/…png` 64×64) `; model enum classic|slim; render_bust_path` (cached PNG) `; is_exclusive bool; status draft|published; sort_order; downloads int` (incremented by RPC **`record_skin_download(p_skin_id)`**, called from `/api/download/[fileId]` when the id resolves to kind `skin` — ADR-0002 C8).
 **`art`** — `id; slug; title; kind enum avatar|thumbnail|icon|render|other; image_path; width; height; year int null; credit text null` (commissioned artist handle, optional) `; downloadable bool; status; sort_order`.
 **`site_settings`** — single row (`id = 1`): `moderation_mode enum auto|hold_first_time; admin_notify_emails text[]; discord_webhook_url text (secret); kofi_page text; comments_closed_default bool; announcement_md text null; owner_profile_id uuid null FK profiles` (Oliver's profile → CREATOR tag on comments, ADR-0002 #55). (Per-event toggles live in `notification_matrix`.)
-Public view **`site_settings_public`** (`comments_closed_default, kofi_page, owner_profile_id`) — readable by all roles; the base table stays admin-only (ADR-0002 C6). `KOFI_PAGE` env only seeds `kofi_page`.
+Public view **`site_settings_public`** (`comments_closed_default, kofi_page, owner_profile_id, moderation_mode` — `moderation_mode` added by ADR-0002 A3, non-sensitive; `postComment` reads it via the RLS server client and the client optimistic-insert rule uses it) — readable by all roles; the base table stays admin-only (ADR-0002 C6). `KOFI_PAGE` env only seeds `kofi_page`.
 
 ### 2.5 Comments & likes
 **`comments`**
@@ -143,6 +146,8 @@ SQL helper **`can_comment(p_target_type text, p_target_id uuid) returns boolean`
 
 Public view **`comments_public`** (ADR-0002 #71) — what public pages render (server-side, tag `project:<slug>`): every row of a visible target as a slot with `id, target_type, target_id, parent_id, status, created_at, like_count`; `body`, `author_id`, `edited_at` are non-NULL only for `published` rows **or** the caller's own rows (so held/hidden/deleted rows appear as slots with `body null`). Own held/hidden rows and own likes are read client-side under RLS.
 
+Moderator view of held/reported comments in the public thread (ADR-0002 A2): mods-only client read via RPC **`moderator_thread(p_target_type text, p_target_id uuid)`** (`security definer`; raises unless `is_moderator()`; returns the target's `held`/`hidden`/reported rows with `body`, `author_id`, plus `is_first_comment boolean` and `report_count int` per row). Allowed exception to 01 INV-09 / 03 C-17; `comments_public` is unchanged.
+
 **Build-vs-buy (decided 2026-08-17): built in-house.** Hosted widgets (Disqus, Hyvor, Commento, Cusdis) impose their
 UI/identity/moderation and can't do handle-only Google-via-Supabase; GitHub-backed ones (Giscus) are GitHub-only;
 self-hosted servers (Remark42, Isso) need their own host and user store. Our version: tables above + ~6 Server Actions
@@ -162,7 +167,7 @@ Rules: **an admin is auto-added as `moderator` to every workroom** (visible in t
 
 ### 2.8 Support (Ko-fi, phase 2)
 **`kofi_events`** — raw webhook payloads: `id; kofi_message_id text unique; type text; from_name; message; amount numeric; currency; is_public bool; email_hash text null; timestamp; raw jsonb`.
-**`supporters`** — link table `kofi_event_id → profile_id` for the leaderboard (handle + amount). Linking (Q33, decided): on webhook, `email_hash = HMAC-SHA256(HASH_SECRET, lower(email))` compared to a per-profile `email_hash` computed at sign-in from `auth.users.email` (server-side only; raw email never stored in `profiles`) → else parse a `@handle` from the Ko-fi message → else unlinked ("Anonymous"). Amount displayed if linked or `is_public`. Leaderboard = sum(amount) per profile.
+**`supporters`** — link table `kofi_event_id → profile_id` for the leaderboard (handle + amount). Linking (Q33, decided): on webhook, `email_hash = HMAC-SHA256(HASH_SECRET, lower(email))` compared to a per-profile `email_hash` set by `/auth/callback` from `auth.users.email` (ADR-0002 A14; server-side only; raw email never stored in `profiles`) → else parse a `@handle` from the Ko-fi message → else unlinked ("Anonymous"). Amount displayed if linked or `is_public`. Leaderboard = sum(amount) per profile.
 
 ### 2.9 Stats
 **`stats_daily`** — `day date; metric text; source text; entity_type; entity_id uuid null; value bigint` — PK (day, metric, source, entity_type, entity_id). Metrics: `downloads` (modrinth/curseforge/direct, per project + total), `views`/`subs` (youtube), `comments`, `tips`. Written by the daily snapshot cron from current totals; deltas computed at read time.
@@ -170,8 +175,8 @@ Rules: **an admin is auto-added as `moderator` to every workroom** (visible in t
 **`sync_runs`** — `id; source; started_at; finished_at; ok bool; items int; error text` — for the admin "sync status" and the `sync-sources` skill.
 
 ### 2.10 Rate limits (ADR-0002 #14)
-**`rate_limit_hits`** — `scope text; key text; ts timestamptz default now()` — index (scope, key, ts). **Service-role only** (no policies for other roles). Created in S1.1. Used for scopes without a natural source table (onboarding, `check_handle`, avatar, comment edit/delete, uploads, skin downloads, …); scopes with a natural table (`comments`, `comment_likes`, `comment_reports`, `project_downloads`) count that table instead. Full scope table: `docs/build/04-server-contracts.md` §5.5.
-- RPC **`rate_limit_ok(scope, key, max, window) returns boolean`** — counts rows over the window; called before every limited write (`lib/rate-limit.ts` `assertRateLimit`); on success for hit-based scopes the caller inserts one `rate_limit_hits` row. Exceeding → `rate_limited` (actions) / HTTP 429 JSON + `Retry-After: 60` (routes).
+**`rate_limit_hits`** — `scope text; key text; ts timestamptz default now()` — index (scope, key, ts). **Service-role only** (no policies for other roles). Table + RPC created in S1.1. **The single source for every rate limit** (ADR-0002 A4): every rate-limited action and route records one hit per call (`scope`, `key`); no scope counts `comments`, `comment_likes`, `comment_reports` or `project_downloads`. Full scope table: `docs/build/04-server-contracts.md` §5.5.
+- RPC **`rate_limit_ok(scope, key, max, window) returns boolean`** — counts **only `rate_limit_hits`** rows for (`scope`, `key`) over the window (ADR-0002 A4); called before every limited write (`lib/rate-limit.ts` `assertRateLimit`); every rate-limited action then inserts one `rate_limit_hits` row (also on a rejected call). Exceeding → `rate_limited` (actions) / HTTP 429 JSON + `Retry-After: 60` (routes).
 - RPC **`purge_rate_limit_hits(days)`** — housekeeping from the daily stats job (`purge_rate_limit_hits(1)`), alongside `purge_project_downloads(90)`.
 
 ### 2.11 SQL functions, views, triggers (summary)
@@ -180,12 +185,13 @@ Rules: **an admin is auto-added as `moderator` to every workroom** (visible in t
 | `check_handle(text)` | RPC, security definer | authenticated | handle available / taken / reserved / invalid |
 | `record_download(file_id, ip_hash, ua_hash)` | RPC, security definer | service role | exclusive-file counters + `project_downloads` log |
 | `record_skin_download(skin_id)` | RPC, security definer | service role | `skins.downloads + 1` |
-| `rate_limit_ok(scope, key, max, window)` | RPC | service role | SQL rate limiting |
+| `rate_limit_ok(scope, key, max, window)` | RPC | service role | SQL rate limiting over `rate_limit_hits` only (A4) |
 | `purge_project_downloads(days)`, `purge_rate_limit_hits(days)` | RPC | service role | nightly housekeeping |
 | `can_comment(target_type, target_id)` | helper, security definer | authenticated (inside policies) | comment/like/report insert precondition |
+| `moderator_thread(target_type, target_id)` | RPC, security definer | authenticated; raises unless `is_moderator()` (ADR-0002 A2) | held/hidden/reported rows + `is_first_comment`, `report_count` for the mods-only thread view |
 | `is_moderator()`, `is_admin()` | helpers | policies | role checks on `profiles.role` |
 | `comments_set_status()` | trigger BEFORE INSERT on `comments` | — | authoritative held/published status |
-| `public_profiles`, `comments_public`, `site_settings_public` | views | all roles | the only public reads of `profiles`, non-published comment slots, settings |
+| `public_profiles`, `comments_public`, `site_settings_public` | views | all roles | the only public reads of `profiles`, non-published comment slots, settings (incl. `moderation_mode` — A3) |
 
 ---
 
@@ -214,6 +220,7 @@ Uploads go through server routes/actions (validate type/size, generate paths, wr
 | site_settings_public (view) | all | — | — | — |
 | comments | published to all; own held/hidden rows to author; mods/admins all (public slot rendering via view `comments_public`) | authenticated + `can_comment(target_type, target_id)` (not banned, target visible, comments enabled); status set by trigger `comments_set_status()` | author (body, within 15 min → sets edited_at) ; mods (status) | author (soft → status deleted) / mods |
 | comments_public (view) | all (own non-published bodies visible only to their author) | — | — | — |
+| moderator_thread (RPC) | mod/admin only (`is_moderator()`; user/anon/banned denied — ADR-0002 A2) | — | — | — |
 | comment_likes | all | authenticated, `user_id = auth.uid()`, `can_comment()` | — | own |
 | comment_reports | mods | authenticated, `reporter_id = auth.uid()`, `can_comment()`; unique (comment_id, reporter_id) | mods (`resolved_at/by`) | service only |
 | orders | own; mods all | authenticated | mods (status/notes) | — |
@@ -221,7 +228,7 @@ Uploads go through server routes/actions (validate type/size, generate paths, wr
 | notification_recipients | admin (`address` masked in the app; Discord recipient `address` = webhook URL) | service role | service/admin | admin |
 | notification_matrix | admin | admin | admin (`enabled`) | service only |
 | rate_limit_hits | **service role only** (all other roles denied on every op) | service role | service role | service role (purge) |
-Role checks via a `is_moderator()` / `is_admin()` SQL helper reading `profiles.role`. Sensitive mutations (moderate, ban, settings) go through Server Actions that re-check role server-side in addition to RLS. Action-level roles (ADR-0002 C7): content curation, sync, mentions, uploads, skins/art, settings = **admin**; comment moderation, ban, handle rename = **moderator**. RPC grants: `check_handle` → authenticated; `record_download`, `record_skin_download`, `purge_*`, `rate_limit_ok` → service role only; `can_comment` → authenticated. The full expected matrix is `docs/build/05-test-plan.md` §7.1 (T-RLS); this table is the source it follows.
+Role checks via a `is_moderator()` / `is_admin()` SQL helper reading `profiles.role`. Sensitive mutations (moderate, ban, settings) go through Server Actions that re-check role server-side in addition to RLS. Action-level roles (ADR-0002 C7): content curation, sync, mentions, uploads, skins/art, settings = **admin**; comment moderation, ban, handle rename = **moderator**. RPC grants: `check_handle` → authenticated; `record_download`, `record_skin_download`, `purge_*`, `rate_limit_ok` → service role only; `can_comment` → authenticated; `moderator_thread` → authenticated, allowed only when `is_moderator()` (A2). The full expected matrix is `docs/build/05-test-plan.md` §7.1 (T-RLS); this table is the source it follows.
 
 ---
 
@@ -254,4 +261,4 @@ Every run writes a `sync_runs` row; failures don't touch existing data. Public p
 - ~~Ko-fi tip → supporters linking (Q33)~~ decided: email-hash match → `@handle` in message → unlinked (§2.8).
 - ~~Whether report threshold auto-hold (N=3) is wanted~~ decided: yes, N=3 (Q33–40).
 - ~~CurseForge id discovery~~ decided: manual entry (`setProjectLink`).
-- Build-time defaults settled by ADR-0002 (2026-08-17): `rate_limit_hits` + `rate_limit_ok`, views `comments_public`/`site_settings_public`, `comments_set_status()`, `can_comment()`, `handle_changed_at`, `owner_profile_id`, HMAC `HASH_SECRET`, comments v1 on projects only, admin/moderator action split (C7, [DAVID]-flagged).
+- Build-time defaults settled by ADR-0002 (2026-08-17): `rate_limit_hits` + `rate_limit_ok`, views `comments_public`/`site_settings_public`, `comments_set_status()`, `can_comment()`, `handle_changed_at`, `owner_profile_id`, HMAC `HASH_SECRET`, comments v1 on projects only, admin/moderator action split (C7, [DAVID]-flagged). Amendment A (2026-08-17): `moderator_thread` RPC (A2), `site_settings_public.moderation_mode` (A3), `rate_limit_ok` counts only `rate_limit_hits` (A4), `email_hash` set by `/auth/callback` with `HASH_SECRET` required from S1.1 (A14).

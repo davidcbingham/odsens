@@ -10,7 +10,7 @@ Read `docs/build/06-decisions/*.md` (accepted ADRs amend the specs); an unlogged
 
 Check on the pages/components in the diff:
 - **Boundaries**: `'use client'` only where interaction/state/browser APIs demand it (viewer, composer, uploads, admin forms); no data fetching in client components that a Server Component could do; no server-only secrets imported client-side.
-- **Bundle**: `next build` output — flag any route whose first-load JS grew unexpectedly; a >20 KB gz first-load delta vs `main` (baseline `build-output.txt`) requires a `## Bundle` line in the PR body — missing line → ❌ (01 INV-10); heavy libs (skinview3d, markdown) lazy-loaded.
+- **Bundle**: `next build` output — flag any route whose first-load JS grew unexpectedly; a >20 KB gz first-load delta vs `main` requires a `## Bundle` line in the PR body — missing line → ❌ (01 INV-10). Baseline = **`main`'s latest `build-output.txt` CI artifact** (uploaded by the CI-4 `build` job, 05 CI-4 / ADR-0002 A13): download it (`gh run download` on the latest `main` build run) and diff the PR's route table against it; if the artifact is missing, say so in Measurements and build `main` locally for the baseline; heavy libs (skinview3d, markdown) lazy-loaded.
 - **Images/fonts**: `next/image` with sizes; pixel art uses `image-rendering: pixelated` and integer scaling; fonts via `next/font/local`, no CDN.
 - **Caching**: `revalidate`/tags per `docs/build/02-routes-and-pages.md`; dynamic where auth is involved; no accidental `no-store` on public pages.
 - **A11y**: axe zero serious/critical; landmarks; heading order; every interactive element keyboard-reachable with the 3px gold focus ring; alt text; `prefers-reduced-motion` honoured; hit targets ≥44px; forms labelled with errors announced.

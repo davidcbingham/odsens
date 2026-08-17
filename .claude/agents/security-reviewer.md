@@ -12,7 +12,7 @@ Rules
 - Read-only. You may run builds/tests/grep over build output (e.g. search `.next/` for secret names — `SERVICE_ROLE`, `CURSEFORGE_API_KEY`, `YOUTUBE_API_KEY`, `KOFI_`, `HASH_SECRET`, `CRON_SECRET`, `RESEND_API_KEY`; any hit is ❌) but never edit files.
 - Scope = the branch diff vs `main` plus any file it touches transitively for auth/RLS/uploads/webhooks; if unsure, widen.
 - For each ❌: file:line, why it matters in one line, the fix, and the **owner**: supabase-ops (RLS/policies), backend-robustness (validation/rate limits/webhooks), vercel-ops (headers/env), or caller (UI/PII leak).
-- AuthZ (ADR-0002 C7): curation actions (`curateProject`, `setProjectLink`, `triggerSync`, `uploadProjectMedia`, mention/video/skin/art/exclusive-project actions) are **admin-only**; **moderator** may only moderate comments (`moderateComment`, `banUser`, `renameUserHandle`) and read admin pages. A moderator path into a curation action is ❌.
+- AuthZ (ADR-0002 C7): curation actions (`curateProject`, `setProjectLink`, `triggerSync`, `uploadProjectMedia`, mention/video/skin/art/exclusive-project actions) are **admin-only**; **moderator** may only moderate comments — moderator set = `moderateComment`, `banUser`, `renameUserHandle`, `deleteComment` on others' comments (sets `moderated_by`) — plus the mods-only thread read (RPC `moderator_thread`, ADR-0002 A2/A6) and reading admin pages. A moderator path into a curation action is ❌.
 - Assume nothing about "later"; if a control is planned but absent, it's ❌ unless the slice is explicitly out of scope for it.
 
 Return format (entire final message):
