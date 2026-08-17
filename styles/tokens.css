@@ -1,0 +1,111 @@
+/*
+ * odsens.com — design tokens (DESIGN.md §1 Dark, §2, §3 + docs/build/03-components.md §9 derived tokens).
+ * This is the ONLY file allowed to contain raw hex / rgba colours (01 INV-61, 03 C-08).
+ * Names mirror DESIGN.md verbatim; derived names are 03 §9's. Light theme: not shipped in v1.
+ */
+:root {
+  /* ---- DESIGN.md §1 Dark (default) ---- */
+  --ink: #0d131b; /* page ground */
+  --ink-deep: #0a0f16; /* neutral offset shadow under --slab surfaces (ADR-0002 #45) */
+  --slab: #151e29; /* cards, panels, nav bar */
+  --slab-raised: #1e2938; /* hover fills, comment bubbles */
+  --slab-sunk: #111a24; /* image wells, admin sidebar */
+  --slab-foot: #0f1721; /* card footers, page footer */
+  --line: #263242; /* default 2px border */
+  --line-strong: #3a4759; /* secondary button border, dashed drops */
+  --line-soft: #2c3a4b; /* chip borders, inputs, card outlines */
+  --chalk: #eef1f6; /* body text, headings on dark */
+  --mute: #9da9ba; /* secondary text */
+  --mute-dim: #7c889a; /* captions, meta, pixel eyebrows */
+  --indigo: #4b45d6; /* primary actions, hero slab — white text only */
+  --indigo-deep: #2e2a9e; /* pressed state, offset shadow under indigo */
+  --indigo-lift: #8b86f5; /* links, hover borders, selected thumb */
+  --indigo-wash: #2a2680; /* mod badge fill */
+  --gold: #ffc61f; /* accent, section titles, exclusives, support */
+  --gold-bright: #ffda6b; /* text on gold-wash badges */
+  --gold-deep: #c08400; /* offset shadow under gold */
+  --gold-wash: #4a3505; /* resource-pack badge fill */
+  --gold-ink: #2e2000; /* text on gold fills */
+  --emerald: #17b94f; /* minor: download counts, approve, success */
+  --emerald-soft: #7fe3a2; /* text on emerald-wash */
+  --emerald-wash: #0f3d22; /* datapack badge fill, LIVE status */
+  --danger: #f0836b; /* destructive text */
+  --danger-line: #4a2a2a; /* destructive border */
+  --danger-field: #c05a45; /* invalid input border */
+  --alert: #cc3a2a; /* alert fills behind white micro-text */
+  --orange: #e8762a; /* CurseForge in charts and source rows only */
+  --white: #ffffff; /* avatar/image outline */
+
+  /* ---- 03 §9 derived colour tokens (values from DESIGN.md inline hexes) ---- */
+  --indigo-hover: #5d57e8; /* §5 Button primary hover fill */
+  --disabled-fill: #22293a; /* §5 Button disabled fill */
+  --disabled-text: #5d6779; /* §5 Button disabled text */
+  --mod-badge-text: #cfccff; /* §5 Type badge mod text; REPLIED pill text */
+  --plugin-wash: #243040; /* §5 Type badge plugin fill; neutral pills; PlatformMark slab */
+  --skeleton-media: #1e2938; /* §11.1 Skeleton media (alias of --slab-raised) */
+  --skeleton-text: #1a2432; /* §11.1 Skeleton text lines */
+  --danger-wash: #1a1416; /* §11.2 delete strip fill; upload error fill */
+  --table-divider: #1b2531; /* §5 Admin table row separator */
+  --alert-deep: #7a1f14; /* §11.3 (14) error page shadow */
+  --scrim-92: rgba(13, 19, 27, 0.92); /* §5 Lightbox */
+  --scrim-35: rgba(13, 19, 27, 0.35); /* §11.1 Video facade */
+  --hatch: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.1) 0 14px,
+    transparent 14px 28px
+  ); /* §3 45° hatch, only on indigo/gold slabs */
+
+  /* ---- 03 §9 non-colour tokens ---- */
+  /* fonts: --font-display / --font-body / --font-pixel are set by next/font/local in app/layout.tsx (INV-63) */
+  --track-pixel: 0.14em;
+  --radius-input: 3px;
+  --radius-chip: 3px;
+  --dur-fast: 150ms;
+  --dur-skeleton: 1.6s;
+  --toast-ms: 4000;
+  --nav-h: 68px;
+  --nav-h-phone: 56px;
+  --measure-page: 1280px;
+  --measure-body: 68ch;
+  --size-toggle: 22px;
+  --bp-phone: 599px;
+  --bp-tablet: 899px;
+
+  /* spacing scale (DESIGN.md §3; 03 §9 members) */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-18: 18px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-28: 28px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-56: 56px;
+  --space-64: 64px;
+  --space-80: 80px;
+
+  /* type sizes (DESIGN.md §2) */
+  --text-body: 17px;
+  --text-body-phone: 16px;
+  --text-small: 14px;
+  --text-hero: 64px;
+  --text-hero-phone: 36px;
+  --text-page-title: 40px;
+  --text-page-title-phone: 30px;
+  --text-section-title: 26px;
+  --text-card-title: 19px;
+  --text-detail-title: 46px;
+  --text-detail-title-phone: 26px;
+  --text-subhead: 19px;
+  --text-nav: 15px;
+
+  /* z-index scale */
+  --z-skip: 1000;
+  --z-nav: 100;
+  --z-float: 200;
+  --z-toast: 300;
+  --z-modal: 400;
+}
