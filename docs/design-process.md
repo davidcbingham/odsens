@@ -2,13 +2,20 @@
 
 ## 1. DESIGN.md via Claude Design (with Oliver)
 
-**What it is.** [Claude Design](https://www.anthropic.com/news/claude-design-anthropic-labs) (Anthropic Labs, Apr 2026;
-included with Pro/Max/Team) is a visual workspace where you describe/upload/iterate on designs with Claude — inline
-comments, direct edits, sliders for spacing/color/layout. It builds a **persistent design system** for the project
-(tokens, typography, components, preview assets) and can **hand off a bundle to Claude Code** in one instruction.
-The community convention for the portable form of that system is a single **`DESIGN.md`** at the repo root — a
-plain-markdown description of the brand's visual language that any Claude session can act on
-(see [awesome-claude-design](https://github.com/VoltAgent/awesome-claude-design) for 68 examples of the format).
+**What it is / where.** [Claude Design](https://www.anthropic.com/news/claude-design-anthropic-labs) (Anthropic Labs,
+Apr 2026; Pro/Max/Team) is a **separate visual tool in the Design tab of claude.ai** (browser or Claude desktop app) —
+**not** inside VS Code. Oliver describes/uploads/iterates and sees live, clickable HTML designs; he refines via voice/text,
+inline comments on elements, direct text edits, and sliders for spacing/color/layout. It builds a **persistent design
+system** for the project (tokens, typography, components) and exports HTML / PDF / PPTX / Canva / a **handoff bundle
+for Claude Code**.
+
+**Where `DESIGN.md` fits.** `DESIGN.md` is a *community convention* (see
+[awesome-claude-design](https://github.com/VoltAgent/awesome-claude-design)), not a Claude Design export button: a
+single repo-root markdown file describing the visual language so any Claude session can act on it. We **derive it in a
+Claude Code session here** from the exported bundle/HTML, then commit it.
+
+**Flow:** claude.ai Design tab (Oliver iterates visually) → export bundle → Claude Code in VS Code on this repo →
+`DESIGN.md` committed → build + skills read it.
 
 **Why do it this way (advantages).**
 - **Oliver owns the look.** He can talk/iterate visually with Claude without knowing CSS; the output is a spec, not a mockup that rots.
@@ -20,7 +27,7 @@ plain-markdown description of the brand's visual language that any Claude sessio
 **Suggested process.**
 1. **Gather** — Oliver drops source art into `assets/brand/` (avatar at native pixel size + upscales, banners, project icons, textures he likes, screenshots of Modrinth pages / YouTube thumbnails he's proud of).
 2. **Session with Claude Design (Oliver + Claude, David optional)** — upload the art, state the tone (*playful, cartoony, fun, relaxed, inviting*) and constraints (dark-first, purple/gold/green, pixel motifs but readable). Iterate on: palette, type pairing, spacing scale, corner/border style, card + button + badge components, project card, comment bubble, hero with 3D skin.
-3. **Export the design system → `DESIGN.md`** at repo root. Sections: brand & voice · color tokens (light/dark) · typography · spacing/radius/shadow · iconography & pixel rules · core components with states · layout grid · motion · do/don't list · asset specs.
+3. **Export the handoff bundle → derive `DESIGN.md`** at repo root (Claude Code session, this repo). Sections: brand & voice · color tokens (light/dark) · typography · spacing/radius/shadow · iconography & pixel rules · core components with states · layout grid · motion · do/don't list · asset specs.
 4. **Review pass (David + Claude Code)** — check for accessibility (contrast on purple/black, glowing-green text), responsiveness rules, and that every component the functional spec needs has a definition.
 5. **Handoff bundle → Claude Code** for the actual build once the functional spec is frozen. `DESIGN.md` then becomes the reference the site-management skills read.
 
