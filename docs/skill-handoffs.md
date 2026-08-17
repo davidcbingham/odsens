@@ -32,6 +32,8 @@ Return to: <skill or human>   Blocking? yes/no
 | **backend-robustness** | adapters, cron/job code, server actions, download route, notification queue, env validation, backend tests | schema (asks `supabase-ops`), UI, deploy config | needs a table/column → `supabase-ops` (with the exact shape) · needs cron schedule/env var → `vercel-ops` · touches auth/uploads/webhooks → `security-check` · done → return checklist to caller |
 | **design-fidelity** | tokens.css parity, component/state parity, look rules, contrast, screenshots, voice check | writing features, backend, deciding new design rules alone | raw hex/rule break found → ❌ back to caller with fix · deliberate deviation needed → requires `DESIGN.md` edit + `keep-docs` in same PR · new component not in DESIGN.md → **stop, ask** (or a Claude Design pass) |
 | **security-check** | the threat-model checklist, headers/CSP, rate limits, upload/download hardening review | fixing everything itself, deploy | ❌ items → back to caller (owner fixes; may route to `supabase-ops` for RLS or `backend-robustness` for validation) · systemic gap → `docs/questions.md` via `keep-docs` · run generic `/security-review` first |
+| **web-quality** | how UI is engineered (RSC boundaries, caching, bundle, images/fonts, a11y, vitals, route files) | the look, server contracts, deploy | contract mismatch → `backend-robustness` · DESIGN.md conflict → `design-fidelity` + `keep-docs` · caching/env → `vercel-ops` · >50 KB client dep or new tracking → **stop, ask** |
+| **test-engineer** | harness, fixtures, RLS/action matrices, e2e + axe, CI test jobs | code under test, deploy | failing test reveals bug → `supabase-ops`/`backend-robustness` with the case · unclear what to test → spec/human · disabling a failing test → **stop, ask** |
 | **vercel-ops** | project config, env per environment, cron schedules, ISR strategy, domain, rollback, deploy troubleshooting | app code, DB | missing env var *value* → **ask human** (never invent) · deploy fails from code → back to caller · prod bad → rollback **after confirm** then hand to `whats-wrong`/caller with logs |
 
 ### Oliver's team (spec; same protocol when written)
@@ -54,7 +56,7 @@ Return to: <skill or human>   Blocking? yes/no
 | Kind | Used for | Files |
 |---|---|---|
 | **Skill** (in-context, interactive) | orchestration and anything needing human confirms, edits, or a conversation: `build-phase`, `supabase-ops`, `vercel-ops`, `backend-robustness` (build mode), and all of Oliver's team | `.claude/skills/<name>/SKILL.md` |
-| **Agent** (subagent, background, parallel-safe, read-only) | the **gates**: verify and return a verdict without touching files: `design-fidelity-reviewer`, `security-reviewer`, `backend-reviewer`, `supabase-reviewer`, `deploy-checker` | `.claude/agents/<name>.md` |
+| **Agent** (subagent, background, parallel-safe, read-only) | the **gates**: verify and return a verdict without touching files: **`spec-drift-reviewer` (every PR)**, `design-fidelity-reviewer`, `frontend-reviewer`, `security-reviewer`, `backend-reviewer`, `supabase-reviewer`, `deploy-checker` | `.claude/agents/<name>.md` |
 
 Rules for agents: read-only tools (Read/Grep/Glob/Bash for tests/screenshots; `deploy-checker` may WebFetch); they never
 edit, deploy, or merge; they return the standard `GATE:` verdict block, which the calling skill pastes into the PR. The

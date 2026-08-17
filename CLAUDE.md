@@ -15,8 +15,8 @@ Ground rules
 - Secrets go in `.env` (gitignored); template in `.env.example`.
 
 Skills follow the hand-off protocol in `docs/skill-handoffs.md` (owns / does-not-own / triggers / stop-and-ask / hand-off note).
-Gate agents (in `.claude/agents/`, read-only, run in background/parallel): `design-fidelity-reviewer`, `security-reviewer`, `backend-reviewer`, `supabase-reviewer`, `deploy-checker` — spawn in a batch per slice, paste `GATE:` verdicts into the PR.
+Gate agents (in `.claude/agents/`, read-only, run in background/parallel): `spec-drift-reviewer` (every PR), `design-fidelity-reviewer`, `frontend-reviewer`, `security-reviewer`, `backend-reviewer`, `supabase-reviewer`, `deploy-checker` — spawn in a batch per slice, paste `GATE:` verdicts into the PR.
 Skills (in `.claude/skills/`): build specialists exist now — `build-phase` (foreman), `supabase-ops`, `vercel-ops`,
-`security-check`, `design-fidelity`, `backend-robustness`. Oliver's day-to-day team (`start-here`, `ship`, `whats-wrong`,
+`security-check`, `design-fidelity`, `backend-robustness`, `web-quality`, `test-engineer`. Engineering specs live in `docs/build/` (to be written before slice 1); deviations require an ADR in `docs/build/06-decisions/`. Oliver's day-to-day team (`start-here`, `ship`, `whats-wrong`,
 `restyle`, `new-feature`, `db-change`, `add-content`, `sync-now`, `write-copy`, `stats`, `upkeep`, `keep-docs`) is spec'd in
 `docs/site-management-skills.md` and gets written once the app exists.

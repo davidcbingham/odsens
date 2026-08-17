@@ -116,11 +116,12 @@ and `/simplify` remain the generic layer underneath.
 | **`backend-robustness`** | Idempotent sync, retries/timeouts/quotas, `sync_runs`, zod-validated actions and env, download route, notifications queue, fixture-based tests | Robustness checklist in PR |
 
 ### Gate agents (`.claude/agents/`, exist now)
-`design-fidelity-reviewer` · `security-reviewer` · `backend-reviewer` · `supabase-reviewer` · `deploy-checker` — read-only,
+`spec-drift-reviewer` (every PR; checks `docs/build/00–05` + ADRs) · `design-fidelity-reviewer` · `frontend-reviewer` · `security-reviewer` · `backend-reviewer` · `supabase-reviewer` · `deploy-checker` — read-only,
 background, parallel-safe counterparts of the specialist gates. `build-phase`, `new-feature`, and `ship` spawn them in
 batches and paste the `GATE:` verdicts into the PR. See `docs/skill-handoffs.md` §4.
 
 ## 5. Later / optional
+- `land-design-pass` — unpack/verify/place a Claude Design export (done by hand ×3; encode if a pass 4 happens).
 - `moderate-cli` — bulk moderation from the terminal (only if the admin UI proves insufficient).
 - `orders` — help draft replies to custom-order requests in voice; track status.
 - `kofi` — webhook debugging, supporters wall maintenance (phase 2).
