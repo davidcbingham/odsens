@@ -108,3 +108,6 @@ Answers to Claude Design's open items (build decisions, no re-pass): view counts
 44. **Allay render** — Oliver to draw a pixel allay (Minecraft mob; same fan-content footing as the rest) for the email header (28px), Discord bot avatar, and Settings → Notifications. Also needed at build: official YouTube/TikTok/Twitch/Reddit marks (24px) from brand-guideline downloads. *(Oliver)*
 45. **Workroom limits** — confirm 25 MB/file, 200 MB/room; **max participants per room** (proposed 6). *(Phase 2)*
 46. **Future passes** — tell Claude Design to stop carrying pass-1/2 files forward (each pass re-adds ~12 MB of identical assets). Decide: self-contained snapshots (current) vs. delta-only exports.
+
+## Engineering specs (2026-08-17)
+`docs/build/00–05` + `_registry.md` + ADR-0001/0002 (with Amendment A) at **v0.4** — reconciled, gate-checkable. Next: David says **freeze** → docs bumped to v1.0, `build-phase` starts at S0.
