@@ -33,8 +33,8 @@ Oliver already builds his mods with **Claude Code inside VS Code**, so that is t
 |---|---|---|
 | YouTube | https://www.youtube.com/@OdSens | Channel ID `UCo3X_c7MqfC_ub-sMJZmmOA`. 666 subscribers, 21 videos. Keyless RSS + Data API available. |
 | Modrinth | https://modrinth.com/user/OddSense/mods | **18 projects**, ~8.9k total downloads. Public JSON API (`api.modrinth.com/v2/user/OddSense/projects`) — no auth needed. Joined Dec 2024. |
-| CurseForge | https://www.curseforge.com/members/oddsense/projects | Bot-protected page; official API requires a key. Need to check overlap with Modrinth list. |
-| Scratch | https://scratch.mit.edu/users/OddSense/ | Games since Oct 2022 (BedWars 1k views, Super Scratch Bros, Orb Royale, …). Public API available. |
+| CurseForge | https://www.curseforge.com/members/oddsense/projects | Small subset, all also on Modrinth. Pull via API key to **sum downloads** with Modrinth. |
+| Scratch | https://scratch.mit.edu/users/OddSense/ | **Excluded from the site** per Oliver (2026-08-16). |
 
 See **`docs/platform-audit.md`** for the full pull/embed/key audit of every platform.
 
@@ -66,9 +66,10 @@ that rather than calling everything a "mod."
 
 ## 4. Goals
 
-1. **Curate, don't duplicate** — Content lives where it is natively hosted (Modrinth, YouTube, Scratch, CurseForge…) and is pulled into odsens.com via APIs and presented in one consistent, clean format. Only content with no natural home is managed directly on the site. (Decided 2026-08-16.)
+1. **Curate, don't duplicate** — Content that lives on a native host (Modrinth, YouTube, CurseForge) is pulled into odsens.com via APIs and presented in one consistent, clean format. (Decided 2026-08-16.)
+1b. **Exclusive content** — The site will also carry **projects available nowhere else**. For these, Oliver needs to author name, description, gallery media, and **upload the file itself** (hosted on odsens.com via Supabase Storage). Native and exclusive projects share one schema, **modeled on Modrinth's project parameters**, across four categories: **mod, datapack, resource pack, plugin**. (Decided 2026-08-16.)
 2. **Showcase** — Browse all projects with art, description, type, MC version/loader, and download counts.
-3. **Link out to downloads** — Each project links to Modrinth / CurseForge / other hosts (no self-hosting of mod files).
+3. **Downloads** — Modrinth-hosted projects link out to Modrinth (and CurseForge where cross-posted); exclusive projects download directly from odsens.com. Display **combined download totals** (Modrinth + CurseForge) per project.
 4. **Discussion** — Visitors can comment on projects, **only when signed in with Google** (spam/bot/abuse prevention).
 5. **Donations (Phase 2) — Ko-fi.** Embedded Ko-fi panel on a `/support` page + floating button; later, Ko-fi webhook → Supabase for a supporters wall / goal bar. Account under David/StudioBing (Ko-fi requires 18+). Details in `platform-audit.md`. (Decided 2026-08-16.)
 6. **Oliver-maintainable** — Two editing surfaces: (a) **Claude Code in VS Code** on his own clone of this repo (his existing workflow); (b) a **very simple admin UI** for changes that are annoying via prompt (feature/hide/reorder, moderation, settings, uploads).
@@ -77,22 +78,27 @@ that rather than calling everything a "mod."
 ## 5. Functional scope (initial thinking — to be confirmed)
 
 - **Home** — hero with avatar/brand, featured projects, latest activity, links to YouTube/Modrinth/CurseForge/Scratch.
-- **Projects** — grid/list, filterable by type (mod / datapack / resource pack / plugin / skin / other) and MC version. Detail page per project with gallery, description, changelog/versions, download links, comments.
+- **Projects** — grid/list, filterable by type (**mod / datapack / resource pack / plugin**) and MC version. Detail page per project with icon, gallery, markdown body, versions/files, download buttons (Modrinth / CurseForge / direct for exclusives), combined download count, comments. **Exclusive** projects badged as "only on odsens.com".
+  - Project schema mirrors Modrinth: `slug, title, description (short), body (markdown), project_type, categories[], loaders[], game_versions[], icon, gallery[], versions[] {version_number, changelog, files[], game_versions, loaders, date}, downloads, source (modrinth | odsens)`.
 - **About** — who OddSense is (age-appropriate; see privacy notes below).
 - **Videos** — YouTube channel feed with embedded player.
-- **Games** — Scratch projects, playable inline via Scratch embed.
-- **Skins / Art** — natively hosted on odsens.com (no platform API exists); 3D skin viewer.
+- **Skins** — native section highlighting skins he's made (3D viewer, download). **Details deferred to a dedicated design discussion.**
+- **Art** — native section: profile pictures, thumbnails, and other original art.
+- ~~Games (Scratch)~~ — **excluded** per Oliver.
 - **Comments** — Google sign-in via Supabase Auth; comments stored in Supabase.
   - **Moderation mode is an admin setting**: *auto-publish for signed-in users* vs. *hold first-time commenters for approval*. Start permissive; tighten if abuse appears.
   - **Multiple moderators**: Oliver can grant mod access to others (e.g. David). Mods can delete/hide comments and ban users.
   - **Notifications**: on/off toggle for new-comment alerts (email initially; Discord webhook optional).
-- **Admin UI (minimal)** — moderation queue, moderator list, settings toggles, feature/hide/reorder items, upload skins/art. Everything else via Claude Code edits.
+- **Admin UI (minimal)** — moderation queue, moderator list, settings toggles, feature/hide/reorder items, **create/edit exclusive projects (metadata, gallery, file upload)**, upload skins/art. Everything else via Claude Code edits.
+- **Posts / devlogs** — deferred, maybe never.
 - **Support** — Ko-fi panel embed + floating button (Phase 2); supporters wall via webhook (Phase 2b).
 
 ## 6. Non-goals (for now)
 
-- Self-hosting mod files or replacing Modrinth/CurseForge.
+- Replacing Modrinth/CurseForge for content already published there (we host files **only** for odsens-exclusive projects).
+- Scratch games/projects.
 - Forums / general community beyond per-project comments.
+- Written posts/devlogs (deferred).
 - Anything about oddsensenyc.
 
 ## 7. Infrastructure (given)
@@ -100,7 +106,8 @@ that rather than calling everything a "mod."
 | Layer | Choice |
 |---|---|
 | Hosting | **Vercel** (paid, StudioBing account) |
-| Database / Auth / Storage | **Supabase** (paid, StudioBing account) — Postgres, Google OAuth via Supabase Auth, Storage for images |
+| Database / Auth / Storage | **Supabase** (paid, StudioBing account) — Postgres, Google OAuth via Supabase Auth, Storage for images, skins, art, and **exclusive project files** |
+| Secrets | `.env` (gitignored) — template in `.env.example`; David pastes keys as they're obtained |
 | Domain | odsens.com — Squarespace **registration only**, no site attached; DNS → Vercel |
 | Repo | github.com/davidcbingham/odsens (Oliver will get his own clone; he is new to GitHub/Supabase — keep the workflow simple and documented) |
 | Legacy | An old Cloudflare project exists for a prior attempt — **deprecated, ignore**. Clean sheet. |
@@ -129,3 +136,4 @@ See `docs/questions.md` (running list, answered items migrate into this spec).
 *Revision log*
 - 2026-08-16 — Initial draft from David's brief + Modrinth/Scratch public data.
 - 2026-08-16 — Folded in David's answers to Q1–3, 5–9; added platform audit (`platform-audit.md`).
+- 2026-08-16 — Ko-fi chosen. Oliver's input: exclusive on-site projects (Modrinth-shaped schema, file hosting), CurseForge download totals, no Scratch, Skins + Art sections native. `.env.example` added.
