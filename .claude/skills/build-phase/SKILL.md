@@ -27,3 +27,10 @@ Initial build, a new phase (e.g. "Phase 2: Ko-fi"), or any change touching ≥2 
 
 ## Done looks like
 Merged PRs with green gates, production verified, docs updated, tag pushed, report posted.
+
+## Boundaries & hand-offs (see `docs/skill-handoffs.md`)
+- **Owns:** scope, ordering, gates, phase report, tags. **Does not own:** migrations, UI, deploy config, merges.
+- **Hand off:** DB → `supabase-ops` · server code → `backend-robustness` · UI → `design-fidelity` · auth/uploads/webhooks/comments/admin → `security-check` before merge · ready → `ship` (Oliver's) / `vercel-ops` · decision changed → `keep-docs`.
+- **Stop & ask:** spec conflict, missing decision in `docs/questions.md`, any item on the stop-and-ask list.
+- **Return path:** gates return ✅/❌; a second ❌ on the same item → stop and ask.
+- Always write the hand-off note (format in `docs/skill-handoffs.md` §2).

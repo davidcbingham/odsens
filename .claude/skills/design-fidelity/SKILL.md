@@ -19,3 +19,8 @@ description: Front-end fidelity specialist for odsens.com — verifies built UI 
 
 ## Output
 Checklist table (✅/❌ with file:line) + screenshots in PR. Any deliberate deviation from DESIGN.md requires a DESIGN.md edit + changelog line in the same PR.
+
+## Boundaries & hand-offs (see `docs/skill-handoffs.md`)
+- **Owns:** verification of built UI vs `DESIGN.md`/prototypes. **Does not own:** building features, backend, inventing design rules.
+- **Return path:** checklist + screenshots to the caller; ❌ with file:line and the token/rule to use.
+- **Hand off:** deliberate deviation → caller edits `DESIGN.md` + `keep-docs` in the same PR · missing component in DESIGN.md → **stop, ask** (may need a Claude Design pass; see `docs/design-process.md`).

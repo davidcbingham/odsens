@@ -29,3 +29,9 @@ Structured logs (`{job, run_id, level, msg, meta}`) → Vercel logs; Sentry afte
 
 ## Output
 Checklist in the PR: idempotency ✅ · retries/timeouts ✅ · sync_runs ✅ · validation ✅ · tests ✅ · env validated ✅.
+
+## Boundaries & hand-offs (see `docs/skill-handoffs.md`)
+- **Owns:** adapters, jobs, server actions, download route, notification queue, env validation, backend tests. **Does not own:** schema, UI, deploy config.
+- **Hand off:** need table/column → `supabase-ops` (pass exact shape) · cron schedule/env var → `vercel-ops` · touches auth/uploads/webhooks/comments → `security-check` before merge.
+- **Return path:** robustness checklist ✅/❌ to the caller.
+- **Stop & ask:** anything that deletes data, changes rate limits materially, or stores new personal data.

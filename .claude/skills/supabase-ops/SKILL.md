@@ -28,3 +28,9 @@ Google provider enabled with client id/secret · Site URL + redirect URLs (prod,
 - Never `DROP TABLE/COLUMN` or delete Storage objects without an explicit confirm and a backup note.
 - Never run ad-hoc SQL against production; migrations only.
 - Service-role key exists only in server env; grep the client bundle for it in CI.
+
+## Boundaries & hand-offs (see `docs/skill-handoffs.md`)
+- **Owns:** schema, RLS, helpers/views/triggers, Storage policies, Auth config, types, seed, staging→prod DB. **Does not own:** app code using the schema, deploy, UI.
+- **Done → return to caller** with: migration file(s), regenerated types path, RLS test results, reversibility note.
+- **Hand off:** app-side role check needed → note for `security-check` · env/cron → `vercel-ops` · prod push → only through `ship` after preview.
+- **Stop & ask:** any DROP, any prod data edit, policy that widens reads of `profiles`.

@@ -38,3 +38,9 @@ Public site run by a minor · Google-authenticated commenters (spam, harassment,
 
 ## Output
 A pass/fail table in the PR body with links to the code for each ❌ and a fix or a ticket in `docs/questions.md`.
+
+## Boundaries & hand-offs (see `docs/skill-handoffs.md`)
+- **Owns:** the review + verdict. **Does not own:** implementing every fix, deploy, scope.
+- **Return path:** pass/fail table to the caller; ❌ items name the owner: RLS → `supabase-ops`, validation/rate-limit → `backend-robustness`, headers/env → `vercel-ops`, UI leaks (PII in view) → caller.
+- **Escalate:** systemic gap → `keep-docs` (questions.md) and tell the human. Second ❌ on the same item → stop and ask.
+- Run before merge of any slice touching auth, uploads/downloads, webhooks, comments, admin, headers.

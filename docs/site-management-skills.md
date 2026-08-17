@@ -26,6 +26,7 @@ Moderation, featuring, hiding, settings, and single uploads stay in the **admin 
 and `add-content` know how to fall back to SQL if the UI is the thing that's broken.
 
 ## 2. Team-wide rules (go in `CLAUDE.md`, every skill inherits)
+0. **Boundaries & hand-offs follow `docs/skill-handoffs.md`** — every skill has Owns / Does-not-own / triggers / stop-and-ask, writes a hand-off note, and gate skills return verdicts instead of taking over.
 1. **Talk to Oliver like a smart 15-year-old who builds mods, not like a web developer.** Name the concept once, then use it. Show, don't lecture.
 2. **Never destructive without a one-line confirm**: force-push, dropping tables/columns, deleting Storage files, rollback of production, editing prod data by hand.
 3. **Preview before production, always.** Every change gets a Vercel preview URL; production only via merged PR.

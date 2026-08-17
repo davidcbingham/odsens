@@ -34,3 +34,9 @@ Build green · preview smoke: home, projects, a project detail, sign-in round-tr
 
 ## Troubleshooting map
 Build fails → read the exact error, check Node version (22), env var missing at build · 500 in prod only → env var missing in Production scope · Sign-in loop → redirect URLs / Site URL mismatch · Cron not running → vercel.json path typo or missing `CRON_SECRET` · Stale pages → revalidate tag not called.
+
+## Boundaries & hand-offs (see `docs/skill-handoffs.md`)
+- **Owns:** project config, env per environment, cron, ISR strategy, domain, rollback, deploy troubleshooting. **Does not own:** app code, DB, merging feature PRs (that's `ship`).
+- **Hand off:** deploy fails from code → back to caller with the exact error · runtime bug → `whats-wrong` · schema → `supabase-ops`.
+- **Stop & ask:** missing secret *value* (never invent), production rollback, DNS changes.
+- **Return path:** deploy checklist ✅/❌ + preview/prod URLs.
