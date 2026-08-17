@@ -14,7 +14,8 @@ Checked 2026-08-17 on David's Mac. This is also the checklist `start-here` uses 
 | psql (optional) | `brew install libpq && brew link --force libpq` | poke the local DB | — |
 | jq, curl, python3 | preinstalled / `brew` | scripts, API probes | — |
 
-Status on David's Mac (2026-08-17): node 24.12 ✅ · pnpm 11.22 ✅ · gh ✅ · vercel 50.39 ✅ (authed, team studiobing) · supabase 2.98 ✅ (authed; no odsens projects yet) · jq/curl/python ✅ · **Docker ❌ (choose OrbStack or Docker Desktop) · Playwright browsers ❌ (installed at scaffold) · psql ❌ (optional)**.
+Status on David's Mac (2026-08-17, all installed & verified): node 24.12 · pnpm 11.22 · gh · vercel 50.39 (authed, team studiobing) · supabase **2.114** (authed; no odsens projects yet) · **OrbStack** (Docker 29.4 daemon running; `supabase start` verified — Postgres 17.6 local stack boots) · **psql 18.6** (libpq) · **Playwright Chromium** (in `~/Library/Caches/ms-playwright`) · jq/curl/python.
+Note: `brew trust supabase/tap` was needed before `brew upgrade supabase`. OrbStack runs as a menu-bar app; start it if `docker` says the daemon is down.
 
 Oliver's laptop: install the table top-to-bottom; he needs **read/write on the GitHub repo**, a `.env` from David (never via chat), and — only if he'll run migrations locally — Docker + Supabase CLI. For day-to-day (`pnpm dev` against the **staging** Supabase project) Docker is not required.
 
