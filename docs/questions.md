@@ -47,7 +47,7 @@ Answered items get folded into `spec.md` and struck here.
 
 ## Future design-detail sessions (agreed, not yet scheduled)
 - **Skins section** — how skins are shown, viewer, download, metadata (from Q4)
-- **Notifications** — channels (email / Discord / in-app / push), which events, infrastructure (from Q11)
+- ~~**Notifications**~~ — **designed 2026-08-17** → `docs/notifications.md`
 - **Comments** — threaded + likes UX, notification hooks, moderation UX (from Q10)
 - **Custom Orders + Workrooms** — intake (designed), workroom flows, safety rules, retention, client email opt-in (Phase 2)
 - **Asset IA** — categories, file types, pixel dimensions for `assets/brand/` (from Q14)
@@ -86,7 +86,8 @@ Answered items get folded into `spec.md` and struck here.
 - [x] Supabase project **`odsens`** created (ref `dllbekulbimblrsrxuyv`, us-east-2) and linked from the repo (`supabase/config.toml`) — treated as **production**. Staging = **Supabase Branching** (decided; set up at first preview deploy)
 - [ ] Vercel project `odsens` linked to the GitHub repo; env vars per environment; `CRON_SECRET`
 - [ ] Ko-fi account (18+, StudioBing) with page `oddsense` if available (phase 2)
-- [ ] Resend account + verified sending domain (odsens.com) for admin emails
+- [ ] Resend account + verified sending domain (odsens.com) — DNS records at Squarespace; batch with the Vercel DNS cutover
+- [ ] **Discord**: confirm Oliver has his own server; create a private `#odsens-admin` channel + webhook URL → `.env` `DISCORD_WEBHOOK_URL` (also settable in admin Settings)
 - [x] Docker runtime on David's Mac — OrbStack installed, local Supabase verified (`docs/dev-tooling.md`)
 - [ ] Decisions: Q33–40
 

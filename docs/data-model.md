@@ -114,7 +114,7 @@ Generated/derived: `downloads_total = modrinth + curseforge + direct` (view colu
 ### 2.4 Native content
 **`skins`** — `id; slug unique; name; description_md; texture_path` (Storage `skins/…png` 64×64) `; model enum classic|slim; render_bust_path` (cached PNG) `; is_exclusive bool; status draft|published; sort_order; downloads int`.
 **`art`** — `id; slug; title; kind enum avatar|thumbnail|icon|render|other; image_path; width; height; year int null; credit text null` (commissioned artist handle, optional) `; downloadable bool; status; sort_order`.
-**`site_settings`** — single row (`id = 1`): `moderation_mode enum auto|hold_first_time; notify_new_comment bool; notify_reply bool; notify_new_order bool; notify_new_tip bool; notify_email text; kofi_page text; comments_closed_default bool; announcement_md text null`.
+**`site_settings`** — single row (`id = 1`): `moderation_mode enum auto|hold_first_time; admin_notify_emails text[]; discord_webhook_url text (secret); kofi_page text; comments_closed_default bool; announcement_md text null`. (Per-event toggles live in `notification_matrix`.)
 
 ### 2.5 Comments & likes
 **`comments`**
@@ -143,7 +143,7 @@ mapped to DESIGN.md states; optimistic UI via React 19 `useOptimistic`; plain-te
 Supabase Realtime optional later. Remark42's data model is a good reference, not a dependency.
 
 ### 2.6 Notifications (admin only, v1)
-**`notification_events`** — `id; kind enum new_comment|reply|new_order|new_tip|report; payload jsonb; emailed_at null; created_at`. A worker (cron every 5 min or DB webhook → route) emails admins per `site_settings` toggles. Keeps a log even when a toggle is off.
+See **`docs/notifications.md`** (decided 2026-08-17). Tables: `notification_events (kind text catalog, actor_id, subject_type/id, payload)`, `notification_recipients (event_id, profile_id, channel, address, status, attempts, sent_at, error)`, `notification_matrix (kind, channel, enabled)`; `site_settings` gains `discord_webhook_url`, `admin_notify_emails`. Admin-only in v1 (Discord + Resend email); Phase 2 adds `notification_prefs` for users.
 
 ### 2.7 Custom orders
 **`orders`** — `id; user_id FK; kind enum mod|plugin|skin|pack|art; brief text; mc_version text null; loader text null; budget text null; public_ok bool; status enum new|replied|closed; admin_notes text; created_at; updated_at`.
@@ -201,7 +201,7 @@ Role checks via a `is_moderator()` / `is_admin()` SQL helper reading `profiles.r
 | **Mentions refresh** | hourly | YouTube `videos` for `mentions.external_id` → `view_count` | v1.5 adds `search` → suggested queue |
 | **Stats snapshot** | daily 03:00 UTC | reads current totals from `projects`, `videos`, `comments`, `kofi_events` → `stats_daily` | Also aggregates `project_downloads` and purges >90d. |
 | **Skin renders** | on skin insert/update (server action) | render bust PNG via headless skinview3d (or `minecraft-skin-render` on Node/canvas) → `skins.render_bust_path` | Fallback: render client-side and cache on first view. |
-| **Notifications** | every 5 min | `notification_events` unemailed → Resend | Batched digest if >5 pending. |
+| **Notifications** | every 5 min | fan-out per `notification_matrix` → deliver via `lib/notify/deliver/{email,discord}` → mark | digest if >5 pending per channel; retries w/ backoff |
 | **Ko-fi webhook** | on event | `POST /api/webhooks/kofi` verifies `verification_token` → `kofi_events`, `notification_events(new_tip)` | Phase 2. |
 Every run writes a `sync_runs` row; failures don't touch existing data. Public pages use ISR (`revalidate` ~10 min) and revalidate tags after each sync so nothing waits on an API at request time.
 

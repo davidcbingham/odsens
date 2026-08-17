@@ -92,7 +92,7 @@ that rather than calling everything a "mod."
 - **Comments** — by signed-in users; stored in Supabase.
   - **Moderation mode is an admin setting**: *auto-publish for signed-in users* vs. *hold first-time commenters for approval*. Start permissive; tighten if abuse appears.
   - **Multiple moderators**: Oliver can grant mod access to others (e.g. David). Mods can delete/hide comments and ban users.
-  - **Notifications**: v1 = **email to admins** with per-event toggles (new comment, reply to me, new order, new tip). **No user-facing inbox in v1** (bell cut in design pass 2). Channels beyond email later.
+  - **Notifications**: v1 = **admins only**, via **Discord webhook + email (Resend)**, controlled by a Settings **matrix** (event × channel ON/OFF). One event log, pluggable delivery; user-facing notifications arrive in Phase 2 (workrooms, opt-in). Full design: `docs/notifications.md`.
   - **Threaded replies** (so Oliver can respond in-thread) and **likes** on comments (feedback signal). Details in the comments design session.
 - **Admin UI** (auth-gated; Oliver + moderators/admins) — a menu with one section per hosted content type:
   - **Projects** — create/edit exclusive projects (Modrinth-shaped form: metadata, gallery, versions + file upload); curate synced Modrinth projects (feature / hide / reorder / extra art).
@@ -155,6 +155,7 @@ See `docs/questions.md` — running list of open questions (answered items migra
 *Revision log*
 - 2026-08-16 — Initial draft from David's brief + Modrinth/Scratch public data.
 - 2026-08-16 — Folded in David's answers to Q1–3, 5–9; added platform audit (`platform-audit.md`).
+- 2026-08-17 — Notifications designed (`docs/notifications.md`): admin-only, Discord + email, settings matrix.
 - 2026-08-17 — Added **Seen on** (v1) and **Workrooms** (Phase 2, with v1 schema hooks).
 - 2026-08-17 — Q33–40 decided (leaderboard handle+amount, structural handle validation, comment limits/edit window, auto-hold, manual CF ids, privacy defers to Google age rules).
 - 2026-08-17 — Site-management skills spec'd from Oliver's moments (`docs/site-management-skills.md`).

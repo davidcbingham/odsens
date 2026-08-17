@@ -1,0 +1,55 @@
+# Notifications — design (decided 2026-08-17)
+
+**Scope v1: admins only.** Users get no notifications in v1 (bell/inbox cut; workroom clients arrive in Phase 2 with opt-in).
+**Principle: one event log, pluggable delivery.** Every notable thing writes an event; delivery reads a settings matrix
+and pushes to channels. Adding a channel later = a new deliverer module, not a rewrite.
+
+## Event catalog (names are permanent)
+| kind | when | phase |
+|---|---|---|
+| `comment.new` | a comment is published on a project/skin/art | v1 |
+| `comment.held` | a comment is held (first-timer / auto-hold) — needs review | v1 |
+| `comment.reported` | a comment receives a report | v1 |
+| `comment.reply` / `comment.approved` | logged for a future user inbox; **no delivery in v1** | v1 (log only) |
+| `sync.failed` / `sync.stale` | a sync job errors, or no successful run in 6h | v1 |
+| `mention.suggested` | assisted discovery found a candidate | v1.5 |
+| `order.new` | custom order submitted | P2 |
+| `tip.new` | Ko-fi webhook received | P2 |
+| `workroom.post` / `workroom.file` / `workroom.comment` | activity in a workroom → members who opted in | P2 |
+
+## Data
+- `notification_events (id, kind, actor_id null, subject_type, subject_id, payload jsonb, created_at)` — the log.
+- `notification_recipients (id, event_id, profile_id null, channel enum email|discord|inapp|push, address text null, status enum pending|sent|failed|skipped, attempts int, sent_at, error)` — queue + audit; one row per (recipient, channel).
+- `notification_matrix (kind, channel, enabled bool, PK(kind, channel))` — the admin Settings grid; seeded with defaults below.
+- `site_settings` gains `discord_webhook_url` (secret; masked in UI) and `admin_notify_emails text[]` (entered explicitly — we never silently reuse Google emails).
+- Phase 2 adds `notification_prefs (profile_id, kind, channel, enabled)` for user-facing delivery.
+
+## Pipeline
+1. Server Action / cron inserts an event.
+2. **Fan-out** (`/api/cron/notify` step 1, or a DB trigger later): for each enabled (kind, channel) in the matrix → create recipient rows (email → one per admin email; discord → one row, address = webhook).
+3. **Deliver** (`/api/cron/notify` step 2, every 5 min): pending rows → `lib/notify/deliver/<channel>.ts` → mark sent/failed; retry failed with backoff (max 5); if >5 pending for one channel, send a single **digest**.
+4. Templates in the site voice, plain-text-first; every email carries a "manage in Settings" link (admins) — user-facing emails later carry a signed unsubscribe link.
+
+## Channels
+| channel | infra | v1? | notes |
+|---|---|---|---|
+| **Discord** | one channel webhook URL (no bot) — Oliver's server (David to confirm he has one) | **yes** | ~30 lines; small embed: kind, project, excerpt, link. Primary channel for Oliver. |
+| **Email** | **Resend** API; sender `notify@odsens.com`; DKIM/SPF/DMARC DNS at Squarespace (do with the Vercel DNS cutover) | **yes** | free tier 3k/mo. Secondary for David. |
+| In-app | reads `notification_recipients` (channel inapp) — the cut bell | P2 | needed for workroom clients |
+| Web push | VAPID + service worker + subscriptions table | later/maybe | |
+| SMS | — | no | |
+
+## Default matrix (admin Settings shows this grid with square ON/OFF toggles)
+| kind | email | discord |
+|---|---|---|
+| comment.new | ON | ON |
+| comment.held | ON | ON |
+| comment.reported | ON | ON |
+| sync.failed / sync.stale | ON | OFF |
+| mention.suggested (v1.5) | OFF | ON |
+| order.new (P2) | ON | ON |
+| tip.new (P2) | OFF | ON |
+
+## Groundwork in v1 regardless of timing
+Ship events + recipients + matrix tables; log `comment.reply/approved` even though undelivered; pluggable `deliver/` modules
+with one interface; the Settings matrix UI; Discord webhook + admin emails fields; Resend domain verification queued with DNS cutover.
