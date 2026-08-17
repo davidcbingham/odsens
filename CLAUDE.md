@@ -13,3 +13,8 @@ Ground rules
 - Stack decided (`docs/framework-decision.md`): Next.js App Router + TS, plain CSS tokens, Supabase, Vercel. **Don't scaffold yet** — wait until `docs/spec.md` says the spec is frozen.
 - Keep `docs/questions.md` updated when decisions are made.
 - Secrets go in `.env` (gitignored); template in `.env.example`.
+
+Skills (in `.claude/skills/`): build specialists exist now — `build-phase` (foreman), `supabase-ops`, `vercel-ops`,
+`security-check`, `design-fidelity`, `backend-robustness`. Oliver's day-to-day team (`start-here`, `ship`, `whats-wrong`,
+`restyle`, `new-feature`, `db-change`, `add-content`, `sync-now`, `write-copy`, `stats`, `upkeep`, `keep-docs`) is spec'd in
+`docs/site-management-skills.md` and gets written once the app exists.

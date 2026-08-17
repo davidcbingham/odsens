@@ -1,0 +1,29 @@
+---
+name: build-phase
+description: Orchestrates a build phase or major site update for odsens.com — turns a scope into ordered work, pulls in the specialist skills (supabase-ops, vercel-ops, security-check, design-fidelity, backend-robustness) at the right moments, and gates each phase on their checklists. Use when starting the initial build, a new phase, or any multi-day change.
+---
+
+# build-phase — the foreman
+
+## When to use
+Initial build, a new phase (e.g. "Phase 2: Ko-fi"), or any change touching ≥2 of: DB, auth, uploads, sync, admin, public UI.
+
+## Inputs
+- Scope statement (one paragraph) and which spec sections it implements (`docs/spec.md`, `docs/data-model.md`, `DESIGN.md` §).
+- Current state: `git status`, last deploy, open questions in `docs/questions.md` that block the scope.
+
+## Steps
+1. **Restate scope** in ≤5 bullets; list spec/questions items that are unresolved → ask before building on an assumption.
+2. **Order the work** (default): migrations + RLS (`supabase-ops`) → server data layer + sync adapters (`backend-robustness`) → UI from `DESIGN.md` components (`design-fidelity`) → auth/uploads/webhooks hardening (`security-check`) → deploy config, env, cron (`vercel-ops`) → docs (`keep-docs` or inline).
+3. **Work in vertical slices** where possible (one feature end-to-end) rather than all-DB-then-all-UI; each slice = one PR with preview URL.
+4. **Gate each slice**: run the relevant specialist checklist and record pass/fail in the PR body. A slice doesn't merge with an open ❌.
+5. **Freeze points**: after each phase, tag (`v0.x`), update `docs/spec.md` revision log, list what's deferred.
+6. **End of phase report**: what shipped, what's deferred, what Oliver should try, any new questions → `docs/questions.md`.
+
+## Guardrails
+- No feature outside the stated scope without noting it as deferred.
+- Never skip a specialist gate "because it's small" — run it, it's fast.
+- If a spec conflict is found mid-build, stop, write it down, ask.
+
+## Done looks like
+Merged PRs with green gates, production verified, docs updated, tag pushed, report posted.

@@ -99,11 +99,26 @@ put long references in `docs/`.
 - Triggers: "we decided", "change the spec", after any feature/design change; called by other skills.
 - Steps: locate the relevant section in `docs/spec.md` / `docs/questions.md` / `DESIGN.md` / `docs/data-model.md`; make the smallest true edit; add a dated line to the spec revision log; strike answered questions.
 
-## 4. Later / optional
+## 4. Build & major-update specialists (exist now, in `.claude/skills/`)
+
+These persist alongside Oliver's team and are pulled in for the initial build and any major update. Oliver's
+`new-feature`, `restyle`, `db-change`, and `ship` call them as gates; the built-in `/security-review`, `/code-review`,
+and `/simplify` remain the generic layer underneath.
+
+| Skill | Specialization | Gate it owns |
+|---|---|---|
+| **`build-phase`** | Foreman: turns a scope into ordered vertical slices, pulls in the specialists, gates each slice, writes the phase report | Nothing merges with an open ❌ from a specialist |
+| **`supabase-ops`** | Migrations, RLS-on-day-one, helpers/views/triggers, Storage policies, Auth config, types, staging→prod promotion | Every table has tested RLS; no ad-hoc prod SQL |
+| **`vercel-ops`** | Env per environment, cron routes + `CRON_SECRET`, ISR/revalidate tags, domain/DNS, analytics, rollback, troubleshooting map | Preview smoke passed; secrets not in bundle |
+| **`security-check`** | Project threat model: PII leakage, authZ defense-in-depth, upload/download hardening (magic bytes, signed URLs, sha512), comment abuse, webhook verification, CSP/headers, rate limits | Pass/fail table in the PR |
+| **`design-fidelity`** | Tokens-only CSS, component state parity with `DESIGN.md`, look rules, computed contrast, Playwright screenshots vs prototypes, voice | Screenshots + checklist in PR; deviations edit DESIGN.md |
+| **`backend-robustness`** | Idempotent sync, retries/timeouts/quotas, `sync_runs`, zod-validated actions and env, download route, notifications queue, fixture-based tests | Robustness checklist in PR |
+
+## 5. Later / optional
 - `moderate-cli` — bulk moderation from the terminal (only if the admin UI proves insufficient).
 - `orders` — help draft replies to custom-order requests in voice; track status.
 - `kofi` — webhook debugging, supporters wall maintenance (phase 2).
 - `design-pass` — prep a prompt + bundle for a new Claude Design session and land the export (we did this by hand twice; worth automating if a pass 3 happens).
 
-## 5. `CLAUDE.md` at build time (outline)
+## 6. `CLAUDE.md` at build time (outline)
 Project one-liner · where things are (`app/ components/ lib/ styles/ supabase/ docs/ design/ assets/brand/`) · commands (`pnpm dev/build/test`, `supabase start/db reset`) · the team-wide rules above · the skills table with one line each · "if unsure which skill, describe the moment and I'll pick".

@@ -1,0 +1,21 @@
+---
+name: design-fidelity
+description: Front-end fidelity specialist for odsens.com — verifies built UI matches DESIGN.md (tokens, type, spacing, edges, components, states, voice) and the Claude Design prototypes in design/claude-design-export, with computed contrast checks and desktop+phone screenshots. Use when building or changing any visible UI; called by build-phase, new-feature, and restyle.
+---
+
+# design-fidelity
+
+## Sources
+`DESIGN.md` (law) · `design/claude-design-export/pass-2/*.dc.html` (reference renderings — open in a browser) · `styles/tokens.css` (must mirror DESIGN.md §1 verbatim).
+
+## Method
+1. **Tokens first**: every colour/space/radius/shadow in CSS is a `var(--…)` from `tokens.css`; grep for raw hex/px shadows outside `tokens.css` → ❌.
+2. **Component parity**: for each DESIGN.md §5/§11 component used, compare states (hover/active/disabled/focus/selected/error/held/etc.) against the spec text; missing state → ❌.
+3. **Rules of the look**: radius 0 (3px only inputs/chips) · 2px lines drawn as `outline` on cards · offset block shadows only, no blur/gradient/glow · hatch only on indigo/gold slabs · type roles and minimums (Bungee ≥16 titles, 12–15 labels only; Silkscreen ≥10, ≥11 informational; body ≥16) · 44px targets · 3px gold focus ring.
+4. **Contrast**: run `scripts/contrast.mjs` (WCAG calc) on any new pair; text ≥4.5, UI ≥3.
+5. **Screenshots**: Playwright at 1280 and 390 for the touched pages, light on: dark theme; attach before/after to the PR; compare against the matching prototype section.
+6. **Voice**: copy follows §7 (no emoji, hype, vlogger openers; "Download" not "Get"; handles only).
+7. **Motion & a11y**: 120–180ms ease-out; `prefers-reduced-motion` respected; headings in order; alt text present; keyboard path works.
+
+## Output
+Checklist table (✅/❌ with file:line) + screenshots in PR. Any deliberate deviation from DESIGN.md requires a DESIGN.md edit + changelog line in the same PR.
