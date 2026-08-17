@@ -69,16 +69,16 @@ Answered items get folded into `spec.md` and struck here.
 31. ~~**Hero**~~ — **Answered (pass 2):** Unchanged in pass 2 (featured-project takeover hero) — treated as confirmed.
 32. ~~**Second Claude Design pass**~~ — **Answered (pass 2):** **Done 2026-08-17** — `design/claude-design-export/pass-2/`, `DESIGN.md` v1.2 §11.
 ## From pass 2 (Claude Design's open items, 2026-08-17)
-33. **Ko-fi tip event** — what happens on webhook receipt in v1: supporters wall entry (handles only)? nothing yet? (Wall is a reserved slot.)
-34. **Handle validation heuristic** — how strictly to reject "looks like a real name / email"? Build decision; needs a rule (e.g. block `@`, block first+last capitalized pairs?).
-35. **Comment limits** — placeholders in the design: 1000 chars, one link per comment. Confirm.
-36. **Under-13 line** on the Privacy page ("don't sign in") — needs David's call before ship.
-37. **Still-missing art**: project icons, in-game screenshots, rendered 3D skin busts (build-time via skinview3d).
+33. ~~**Ko-fi tip event**~~ — **Answered 2026-08-17:** v1 supporters wall = **leaderboard: handle + amount**. Linking a tip to a site account: server-side **hashed-email match** (never displayed/stored raw) → else handle typed in the Ko-fi message → else "Anonymous · $X". Amount shown only when linked or Ko-fi `is_public`. DESIGN.md note updated (was "no amounts").
+34. ~~**Handle validation heuristic**~~ — **Answered 2026-08-17:** **No name detection.** Structural validation only (3–20, `[A-Za-z0-9_]`, unique, reserved words, no `@`); heavy guidance copy at handle creation + in the privacy/comments pages. Design's "looks like a real name" state dropped.
+35. ~~**Comment limits**~~ — **Answered 2026-08-17:** Yes — 1000 chars, one link per comment.
+36. ~~**Under-13 line** on the Privacy page ("don't sign in") — needs David's call before ship.
+37. ~~**Still-missing art**: project icons, in-game screenshots, rendered 3D skin busts (build-time via skinview3d).
 
 ## From data-model design (2026-08-17) — see `docs/data-model.md`
-38. **Auto-hold on reports** — should a comment with ≥3 reports be auto-held pending review? (Proposed yes.)
-39. **CurseForge id mapping** — Oliver enters each CF project id/URL once in admin (simple, reliable) vs. auto-search by author via API. (Proposed manual; only a few projects.)
-40. **Comment edit window** — proposed 15 minutes; then no edits (delete only). OK?
+38. ~~**Auto-hold on reports**~~ — **Answered 2026-08-17:** Yes — auto-hold at ≥3 reports.
+39. ~~**CurseForge id mapping**~~ — **Answered 2026-08-17:** Yes — manual CurseForge id entry in admin.
+40. ~~**Comment edit window**~~ — **Answered 2026-08-17:** Yes — 15-minute **edit** window after posting; then delete only.
 
 ## Setup to-dos before build (David)
 - [ ] Google Cloud project + OAuth client + YouTube key (`docs/setup-google-cloud.md`)

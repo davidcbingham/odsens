@@ -28,6 +28,7 @@ the actual SQL lives in `supabase/migrations/` once we build. Conventions: `snak
 | is_banned | bool default false | |
 | banned_reason | text null | |
 | comment_count | int default 0 | maintained by trigger; used for "first-time commenter" hold logic |
+| email_hash | text null | sha256 of lowercased auth email, set by trigger; server-side use only (Ko-fi matching); **never selected into any view** |
 | created_at, updated_at | | |
 
 Public view **`public_profiles`** (`id, handle, avatar_path, role`) — the only thing the client reads about other users.
@@ -142,7 +143,7 @@ Supabase Realtime optional later. Remark42's data model is a good reference, not
 
 ### 2.8 Support (Ko-fi, phase 2)
 **`kofi_events`** — raw webhook payloads: `id; kofi_message_id text unique; type text; from_name; message; amount numeric; currency; is_public bool; email_hash text null; timestamp; raw jsonb`.
-**`supporters`** — optional link table `kofi_event_id → profile_id` (for wall/leaderboard by handle; opt-in). How linking works is Q33/idea queue.
+**`supporters`** — link table `kofi_event_id → profile_id` for the leaderboard (handle + amount). Linking (Q33, decided): on webhook, `email_hash = sha256(lower(email))` compared to a per-profile `email_hash` computed at sign-in from `auth.users.email` (server-side only; raw email never stored in `profiles`) → else parse a `@handle` from the Ko-fi message → else unlinked ("Anonymous"). Amount displayed if linked or `is_public`. Leaderboard = sum(amount) per profile.
 
 ### 2.9 Stats
 **`stats_daily`** — `day date; metric text; source text; entity_type; entity_id uuid null; value bigint` — PK (day, metric, source, entity_type, entity_id). Metrics: `downloads` (modrinth/curseforge/direct, per project + total), `views`/`subs` (youtube), `comments`, `tips`. Written by the daily snapshot cron from current totals; deltas computed at read time.
@@ -204,7 +205,7 @@ Every run writes a `sync_runs` row; failures don't touch existing data. Public p
 ---
 
 ## 7. Open build-time decisions (tracked in `docs/questions.md`)
-- Handle "looks like a real name/email" heuristic (Q34); comment limits (Q35: 1000 chars, 1 link — proposed as constraints above).
+- ~~Handle heuristic~~ decided: structural only. ~~Comment limits~~ decided: 1000 chars, 1 link, 15-min edit window, auto-hold ≥3 reports, manual CF ids.
 - Ko-fi tip → supporters linking (Q33).
 - Whether report threshold auto-hold (N=3) is wanted.
 - CurseForge id discovery: manual entry vs API author search.

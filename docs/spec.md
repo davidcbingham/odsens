@@ -152,6 +152,7 @@ See `docs/questions.md` — running list of open questions (answered items migra
 *Revision log*
 - 2026-08-16 — Initial draft from David's brief + Modrinth/Scratch public data.
 - 2026-08-16 — Folded in David's answers to Q1–3, 5–9; added platform audit (`platform-audit.md`).
+- 2026-08-17 — Q33–40 decided (leaderboard handle+amount, structural handle validation, comment limits/edit window, auto-hold, manual CF ids, privacy defers to Google age rules).
 - 2026-08-17 — Site-management skills spec'd from Oliver's moments (`docs/site-management-skills.md`).
 - 2026-08-17 — Data model + sync design: `docs/data-model.md`.
 - 2026-08-17 — Framework decided: Next.js + Supabase (`docs/framework-decision.md`).
