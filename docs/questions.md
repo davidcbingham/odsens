@@ -30,9 +30,9 @@ Answered items get folded into `spec.md` and struck here.
 
 ## Technical / accounts
 17. ~~**Framework**~~ — **Answered:** Deferred until design spec settles; pick best fit.
-18. **Google OAuth** — Needs a Google Cloud project for the OAuth client. Under David's Google account, or a new one? Which email should own it?
-19. **Vercel/Supabase org access** — Will Oliver eventually get his own logins to these, or always operate through StudioBing?
-20. **Analytics** — Vercel Analytics (privacy-friendly, built-in) fine? Anything else wanted (download stats over time?).
+18. ~~**Google OAuth**~~ — **Answered:** Google Cloud project under **david@studiobing.com**; hosts both the OAuth client and the YouTube API key. Step-by-step in `docs/setup-google-cloud.md`.
+19. ~~**Vercel/Supabase org access**~~ — **Answered:** Discussed 2026-08-16 — see tradeoffs below. **Recommendation:** start with StudioBing logins only; Oliver operates through GitHub + the admin UI (Vercel auto-deploys from GitHub). Add him to Vercel/Supabase later only if needed.
+20. ~~**Analytics**~~ — **Answered:** Options + effort table in `docs/analytics-options.md`. Recommend Vercel Web Analytics + Speed Insights + custom events + own Supabase counters at launch; daily external-stats snapshots as first enhancement.
 21. ~~**Squarespace DNS**~~ — **Answered:** Confirmed: registration only. Clean sheet; old Cloudflare project is deprecated.
 
 ## Privacy
@@ -41,7 +41,7 @@ Answered items get folded into `spec.md` and struck here.
 ## New (from 2026-08-16 answers)
 23. ~~**Content without a native home**~~ — **Answered:** **No PII on the site.** Applies to visitors too: on first sign-in every user must **choose a handle** (+ optional profile image); Google name/email are **never** displayed or used as a display name. Oliver's own presence = handle only.
 24. ~~**CurseForge API key**~~ — **Answered:** Yes — key goes in `.env` as `CURSEFORGE_API_KEY`.
-25. **YouTube Data API** — OK to create a Google Cloud project (same one as the OAuth client, Q18) for a YouTube API key? Keyless RSS covers "latest videos" only.
+25. ~~**YouTube Data API**~~ — **Answered:** Yes — same Google Cloud project as OAuth. See `docs/setup-google-cloud.md`.
 26. ~~**Roblox**~~ — **Answered:** No Roblox.
 27. ~~**Oliver's setup**~~ — **Answered:** VS Code + Claude Code working on his laptop; has a GitHub account (unused). David will set up the clone and give **full repo access** to both. David front-loads effort, then transitions to Oliver with minimal maintenance pushes. Skills may expand to cover major updates, design decisions, dev work.
 

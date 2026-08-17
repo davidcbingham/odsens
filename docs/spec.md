@@ -118,6 +118,9 @@ that rather than calling everything a "mod."
 | Hosting | **Vercel** (paid, StudioBing account) |
 | Database / Auth / Storage | **Supabase** (paid, StudioBing account) — Postgres, Google OAuth via Supabase Auth, Storage for images, skins, art, and **exclusive project files** |
 | Secrets | `.env` (gitignored) — template in `.env.example`; David pastes keys as they're obtained |
+| Google Cloud | Project `odsens` under david@studiobing.com — OAuth client (via Supabase Auth) + YouTube Data API key. Setup: `docs/setup-google-cloud.md` |
+| Accounts | Vercel/Supabase stay under StudioBing for now; Oliver's control plane is **GitHub + the admin UI** (Vercel deploys from GitHub). Revisit adding him to Vercel/Supabase later. |
+| Analytics | Vercel Web Analytics + Speed Insights + custom events (downloads, tips, plays) + own Supabase counters; daily snapshots of Modrinth/CF/YouTube stats as first enhancement. See `docs/analytics-options.md`. |
 | Domain | odsens.com — Squarespace **registration only**, no site attached; DNS → Vercel |
 | Repo | github.com/davidcbingham/odsens — **David and Oliver both have full access**; Oliver's laptop already runs VS Code + Claude Code, has an unused GitHub account. David front-loads, then hands off; Oliver's git workflow should be simple and documented (skills + `CLAUDE.md`). |
 | Legacy | An old Cloudflare project exists for a prior attempt — **deprecated, ignore**. Clean sheet. |
