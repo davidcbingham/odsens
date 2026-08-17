@@ -53,3 +53,7 @@ and pushes to channels. Adding a channel later = a new deliverer module, not a r
 ## Groundwork in v1 regardless of timing
 Ship events + recipients + matrix tables; log `comment.reply/approved` even though undelivered; pluggable `deliver/` modules
 with one interface; the Settings matrix UI; Discord webhook + admin emails fields; Resend domain verification queued with DNS cutover.
+
+## Email styling (2026-08-17)
+Templates are **React Email** components in `emails/` (Resend's library; inline-styled, table-based HTML that survives Gmail/Outlook/Apple Mail), using DESIGN.md tokens: dark-first (ink background, slab card — explicit backgrounds so Gmail dark mode doesn't invert), 0 radius, 2px borders, gold/indigo bulletproof buttons, `ODSENS` wordmark as PNG (web fonts don't load in Gmail/Outlook → fallbacks Impact/Arial Black display, Arial body), no shadows/hatch/motion. Shared `Layout`, `Button`, `Badge`; per-event templates (`CommentNew`, `CommentHeld`, `CommentReported`, `SyncFailed`, P2 `OrderNew`, `WorkroomUpdate`). Always send a plain-text alternative. Preview with `pnpm email dev`; `design-fidelity` covers `emails/`.
+Provider note: Resend chosen over Postmark for fit (tiny admin-only volume, React Email + Vercel integration, free tier, simplest for Oliver); Postmark is the switch target if user-facing volume/inbox placement ever matters — `deliver/email.ts` is the only seam.
