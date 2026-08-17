@@ -36,14 +36,14 @@ Answered items get folded into `spec.md` and struck here.
 21. ~~**Squarespace DNS**~~ — **Answered:** Confirmed: registration only. Clean sheet; old Cloudflare project is deprecated.
 
 ## Privacy
-22. **What personal info is OK to publish?** First name? Age? Nothing beyond the handle? (Scratch bio currently says "I'm 15 and in 9th grade.")
+22. ~~**What personal info is OK to publish?** First name? Age? Nothing beyond the handle? (Scratch bio currently says "I'm 15 and in 9th grade.")
 
 ## New (from 2026-08-16 answers)
-23. ~~**Content without a native home**~~ — **Answered:** Exclusive projects (with files), skins, art (profile pics, thumbnails). Not posts.
+23. ~~**Content without a native home**~~ — **Answered:** **No PII on the site.** Applies to visitors too: on first sign-in every user must **choose a handle** (+ optional profile image); Google name/email are **never** displayed or used as a display name. Oliver's own presence = handle only.
 24. ~~**CurseForge API key**~~ — **Answered:** Yes — key goes in `.env` as `CURSEFORGE_API_KEY`.
 25. **YouTube Data API** — OK to create a Google Cloud project (same one as the OAuth client, Q18) for a YouTube API key? Keyless RSS covers "latest videos" only.
-26. **Roblox** — include a link/section, or leave off the site?
-27. **Oliver's setup** — Does he have `git`, GitHub account, and Claude Code working on his desktop already (for mods) or only VS Code + Claude Code without git?
+26. ~~**Roblox**~~ — **Answered:** No Roblox.
+27. ~~**Oliver's setup**~~ — **Answered:** VS Code + Claude Code working on his laptop; has a GitHub account (unused). David will set up the clone and give **full repo access** to both. David front-loads effort, then transitions to Oliver with minimal maintenance pushes. Skills may expand to cover major updates, design decisions, dev work.
 
 ## Future design-detail sessions (agreed, not yet scheduled)
 - **Skins section** — how skins are shown, viewer, download, metadata (from Q4)

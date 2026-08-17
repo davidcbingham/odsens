@@ -86,7 +86,8 @@ that rather than calling everything a "mod."
 - **Skins** — native section highlighting skins he's made (3D viewer, download). **Details deferred to a dedicated design discussion.**
 - **Art** — native section: profile pictures, thumbnails, and other original art.
 - ~~Games (Scratch)~~ — **excluded** per Oliver.
-- **Comments** — Google sign-in via Supabase Auth; comments stored in Supabase.
+- **Accounts** — Google sign-in via Supabase Auth → mandatory onboarding step: pick a **handle** (unique) + optional profile image. Profile = handle + image only. Roles: user / moderator / admin.
+- **Comments** — by signed-in users; stored in Supabase.
   - **Moderation mode is an admin setting**: *auto-publish for signed-in users* vs. *hold first-time commenters for approval*. Start permissive; tighten if abuse appears.
   - **Multiple moderators**: Oliver can grant mod access to others (e.g. David). Mods can delete/hide comments and ban users.
   - **Notifications**: on/off toggle for new-comment alerts. Channels and infrastructure (email / Discord / in-app / push) to be settled in a dedicated design session.
@@ -118,7 +119,7 @@ that rather than calling everything a "mod."
 | Database / Auth / Storage | **Supabase** (paid, StudioBing account) — Postgres, Google OAuth via Supabase Auth, Storage for images, skins, art, and **exclusive project files** |
 | Secrets | `.env` (gitignored) — template in `.env.example`; David pastes keys as they're obtained |
 | Domain | odsens.com — Squarespace **registration only**, no site attached; DNS → Vercel |
-| Repo | github.com/davidcbingham/odsens (Oliver will get his own clone; he is new to GitHub/Supabase — keep the workflow simple and documented) |
+| Repo | github.com/davidcbingham/odsens — **David and Oliver both have full access**; Oliver's laptop already runs VS Code + Claude Code, has an unused GitHub account. David front-loads, then hands off; Oliver's git workflow should be simple and documented (skills + `CLAUDE.md`). |
 | Legacy | An old Cloudflare project exists for a prior attempt — **deprecated, ignore**. Clean sheet. |
 | Framework | **Deferred** — choose after the design/experience spec is settled (David is indifferent; pick what best fits). |
 
@@ -134,7 +135,8 @@ that rather than calling everything a "mod."
 
 ## 9. Content & safety considerations
 
-- Oliver is a minor. **Decision (2026-08-16): publish handle only** — no real name, age, school, or location on the site.
+- **No PII on the site — anyone's.** Oliver appears as **OddSense** only (no real name, age, school, location).
+- **Visitors' identity**: Google sign-in is for authentication only. On first sign-in the user must **choose a handle** and may add an optional profile image; **Google name/email/avatar are never displayed or used as a display name.** Handles must be unique; moderators can rename/ban.
 - Comment moderation must be easy and default-safe (e.g. new commenters' posts held for approval, or a block/report flow).
 - Some project names/themes ("Disabilities", "Shizophrenia") may draw criticism — worth a family conversation on how they're presented, not a technical concern.
 

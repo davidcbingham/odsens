@@ -20,6 +20,15 @@ Candidate skills (to refine once the spec is frozen):
 | `site-health` | Run lint/tests/build, check broken links, sync freshness, error logs |
 | `release-notes` | Summarize what changed for a project's version / the site |
 
+Possible higher-level skills (from David, 2026-08-16) — for **major site updates, design decisions, and development work**, so Oliver can drive bigger changes after David steps back:
+
+| Skill | What it helps Oliver do |
+|---|---|
+| `plan-feature` | Turn an idea into a scoped plan (spec update, DB changes, UI, skills) before code |
+| `design-decision` | Walk through a design choice against `DESIGN.md` and the spec; record the decision |
+| `dev-workflow` | Branch → change → preview deploy → PR → merge, explained simply; git safety rails |
+| `update-spec` | Keep `docs/spec.md` and `questions.md` current when things change |
+
 Notes:
 - Skills read `DESIGN.md`, `docs/spec.md`, and `docs/assets.md` as their source of truth.
 - Keep each skill short and procedural; put shared conventions in `CLAUDE.md`.
