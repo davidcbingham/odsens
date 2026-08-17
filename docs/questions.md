@@ -79,3 +79,12 @@ Answered items get folded into `spec.md` and struck here.
 38. **Auto-hold on reports** — should a comment with ≥3 reports be auto-held pending review? (Proposed yes.)
 39. **CurseForge id mapping** — Oliver enters each CF project id/URL once in admin (simple, reliable) vs. auto-search by author via API. (Proposed manual; only a few projects.)
 40. **Comment edit window** — proposed 15 minutes; then no edits (delete only). OK?
+
+## Setup to-dos before build (David)
+- [ ] Google Cloud project + OAuth client + YouTube key (`docs/setup-google-cloud.md`)
+- [ ] CurseForge for Studios API key → `.env`
+- [ ] Supabase: **two projects** — `odsens-prod` and `odsens-staging` (previews) — under StudioBing
+- [ ] Vercel project `odsens` linked to the GitHub repo; env vars per environment; `CRON_SECRET`
+- [ ] Ko-fi account (18+, StudioBing) with page `oddsense` if available (phase 2)
+- [ ] Resend account + verified sending domain (odsens.com) for admin emails
+- [ ] Decisions: Q33–40
