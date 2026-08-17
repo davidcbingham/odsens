@@ -57,3 +57,8 @@ with one interface; the Settings matrix UI; Discord webhook + admin emails field
 ## Email styling (2026-08-17)
 Templates are **React Email** components in `emails/` (Resend's library; inline-styled, table-based HTML that survives Gmail/Outlook/Apple Mail), using DESIGN.md tokens: dark-first (ink background, slab card — explicit backgrounds so Gmail dark mode doesn't invert), 0 radius, 2px borders, gold/indigo bulletproof buttons, `ODSENS` wordmark as PNG (web fonts don't load in Gmail/Outlook → fallbacks Impact/Arial Black display, Arial body), no shadows/hatch/motion. Shared `Layout`, `Button`, `Badge`; per-event templates (`CommentNew`, `CommentHeld`, `CommentReported`, `SyncFailed`, P2 `OrderNew`, `WorkroomUpdate`). Always send a plain-text alternative. Preview with `pnpm email dev`; `design-fidelity` covers `emails/`.
 Provider note: Resend chosen over Postmark for fit (tiny admin-only volume, React Email + Vercel integration, free tier, simplest for Oliver); Postmark is the switch target if user-facing volume/inbox placement ever matters — `deliver/email.ts` is the only seam.
+
+## Resend account wiring (2026-08-17)
+- Vercel Marketplace integration → `RESEND_API_KEY` injected into the `odsens` project envs (pull locally with `vercel env pull`).
+- Domain `odsens.com` verified in Resend (DKIM/SPF/DMARC at Squarespace) — sender `notify@odsens.com`.
+- Not used: Resend↔Supabase SMTP (Supabase Auth sends no email for us). Resend MCP deferred; if added later, sending is gated by the stop-and-ask list.

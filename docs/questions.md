@@ -86,7 +86,7 @@ Answered items get folded into `spec.md` and struck here.
 - [x] Supabase project **`odsens`** created (ref `dllbekulbimblrsrxuyv`, us-east-2) and linked from the repo (`supabase/config.toml`) — treated as **production**. Staging = **Supabase Branching** (decided; set up at first preview deploy)
 - [x] Vercel project `odsens` linked (id `prj_fTdiX6oYxyQ8CnAmzSzKnCb74MkU`), Standard protection on, env vars seeded, `CRON_SECRET` generated
 - [ ] Ko-fi account (18+, StudioBing) with page `oddsense` if available (phase 2)
-- [ ] Resend account + verified sending domain (odsens.com) — DNS records at Squarespace; batch with the Vercel DNS cutover
+- [ ] Resend: install the **Vercel Marketplace integration** (scoped to project `odsens`; injects `RESEND_API_KEY`) · verify sending domain `odsens.com` (DKIM/SPF/DMARC records at Squarespace — can do now) · **skip** the Supabase SMTP integration (Google-only auth) · Resend MCP: revisit after notifications ship
 - [ ] **Discord**: confirm Oliver has his own server; create a private `#odsens-admin` channel + webhook URL → `.env` `DISCORD_WEBHOOK_URL` (also settable in admin Settings)
 - [x] Docker runtime on David's Mac — OrbStack installed, local Supabase verified (`docs/dev-tooling.md`)
 - [ ] Decisions: Q33–40
