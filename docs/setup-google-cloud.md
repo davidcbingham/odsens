@@ -39,10 +39,16 @@ Quota: 10,000 units/day free; a channel-videos sync costs a few units — neglig
 ## 4. Later, in Vercel
 Add the same values as Environment Variables (Production + Preview) in the Vercel project. `.env` is only for local dev.
 
+## Status (2026-08-17) — DONE
+- Google Cloud project `odsens` (org studiobing.com) · OAuth Web client `782276308547-…apps.googleusercontent.com` with redirect `https://dllbekulbimblrsrxuyv.supabase.co/auth/v1/callback` and JS origins odsens.com / www / localhost:3000 · YouTube Data API key created.
+- Values in David's `.env` (`GOOGLE_OAUTH_CLIENT_ID/SECRET`, `YOUTUBE_API_KEY`).
+- **Supabase side configured from the repo, not the dashboard:** `supabase/config.toml` has `[auth.external.google]` (secret via `env(GOOGLE_OAUTH_CLIENT_SECRET)`) and `[remotes.production.auth]` with `site_url = https://odsens.com` + redirect allow-list (odsens.com, www, `*.vercel.app`, localhost). Applied with `set -a; source .env; set +a; supabase config push`. Verified: `/auth/v1/settings` shows google enabled; remote site_url = odsens.com.
+- Re-run `supabase config push` after any auth config change; it prints a diff first.
+
 ## Checklist
-- [ ] Project `odsens` created
-- [ ] Consent screen: External, odsens.com + supabase.co authorized, non-sensitive scopes, In production
-- [ ] OAuth Web client with Supabase callback URI; ID/secret in `.env` + Supabase Google provider
-- [ ] Supabase Site URL / redirect URLs set
-- [ ] YouTube Data API enabled; restricted API key in `.env`
+- [x] Project `odsens` created
+- [x] Consent screen: External, odsens.com + supabase.co authorized, non-sensitive scopes, In production
+- [x] OAuth Web client with Supabase callback URI; ID/secret in `.env` + Supabase Google provider
+- [x] Supabase Site URL / redirect URLs set
+- [x] YouTube Data API enabled; restricted API key in `.env`
 - [ ] Values mirrored to Vercel env vars at build time

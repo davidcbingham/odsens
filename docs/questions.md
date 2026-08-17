@@ -81,7 +81,7 @@ Answered items get folded into `spec.md` and struck here.
 40. ~~**Comment edit window**~~ — **Answered 2026-08-17:** Yes — 15-minute **edit** window after posting; then delete only.
 
 ## Setup to-dos before build (David)
-- [ ] Google Cloud project + OAuth client + YouTube key (`docs/setup-google-cloud.md`)
+- [x] Google Cloud project + OAuth client + YouTube key — done, Supabase Google provider configured via `supabase config push` (`docs/setup-google-cloud.md`)
 - [ ] CurseForge for Studios API key → `.env`
 - [x] Supabase project **`odsens`** created (ref `dllbekulbimblrsrxuyv`, us-east-2) and linked from the repo (`supabase/config.toml`) — treated as **production**. Staging = **Supabase Branching** (decided; set up at first preview deploy)
 - [ ] Vercel project `odsens` linked to the GitHub repo; env vars per environment; `CRON_SECRET`
