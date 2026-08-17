@@ -72,7 +72,7 @@ that rather than calling everything a "mod."
 3. **Downloads** — Modrinth-hosted projects link out to Modrinth (and CurseForge where cross-posted); exclusive projects download directly from odsens.com. Display **combined download totals** (Modrinth + CurseForge) per project.
 4. **Discussion** — Visitors can comment on projects, **only when signed in with Google** (spam/bot/abuse prevention).
 5. **Donations (Phase 2) — Ko-fi.** Embedded Ko-fi panel on a `/support` page + floating button; later, Ko-fi webhook → Supabase for a supporters wall / goal bar. Account under David/StudioBing (Ko-fi requires 18+). Details in `platform-audit.md`. (Decided 2026-08-16.)
-6. **Oliver-maintainable** — Two editing surfaces: (a) **Claude Code in VS Code** on his own clone of this repo (his existing workflow); (b) a **very simple admin UI** for changes that are annoying via prompt (feature/hide/reorder, moderation, settings, uploads).
+6. **Oliver-maintainable** — Two editing surfaces: (a) an **Admin UI** (primary for content) with an add/edit menu for **every content type the site hosts** — exclusive projects (mod / datapack / resource pack / plugin), skins, art — plus curation of synced items, moderation, and settings; (b) **Claude Code in VS Code** on his own clone of this repo (primary for changing the site itself). (Decided 2026-08-16.)
 7. **Fun, on-brand aesthetic** — purple / gold crown / glowing green; pixel-art sensibility without being unusable.
 
 ## 5. Functional scope (initial thinking — to be confirmed)
@@ -89,7 +89,13 @@ that rather than calling everything a "mod."
   - **Moderation mode is an admin setting**: *auto-publish for signed-in users* vs. *hold first-time commenters for approval*. Start permissive; tighten if abuse appears.
   - **Multiple moderators**: Oliver can grant mod access to others (e.g. David). Mods can delete/hide comments and ban users.
   - **Notifications**: on/off toggle for new-comment alerts (email initially; Discord webhook optional).
-- **Admin UI (minimal)** — moderation queue, moderator list, settings toggles, feature/hide/reorder items, **create/edit exclusive projects (metadata, gallery, file upload)**, upload skins/art. Everything else via Claude Code edits.
+- **Admin UI** (auth-gated; Oliver + moderators/admins) — a menu with one section per hosted content type:
+  - **Projects** — create/edit exclusive projects (Modrinth-shaped form: metadata, gallery, versions + file upload); curate synced Modrinth projects (feature / hide / reorder / extra art).
+  - **Skins** — add/edit (details per future skins design).
+  - **Art** — add/edit profile pictures, thumbnails, other art.
+  - **Comments** — moderation queue, delete/hide, ban.
+  - **Settings** — moderation mode, notifications, moderator/admin list, site config.
+  Site-code changes (layout, new features) happen via Claude Code on the repo.
 - **Posts / devlogs** — deferred, maybe never.
 - **Support** — Ko-fi panel embed + floating button (Phase 2); supporters wall via webhook (Phase 2b).
 

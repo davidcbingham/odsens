@@ -15,7 +15,7 @@ Answered items get folded into `spec.md` and struck here.
 8. ~~**Will Oliver code?** Is part of the goal for him to learn web dev on this project (affects framework choice and how much we document), or should it be a finished tool he uses?
 
 ## Comments & moderation
-9. ~~**Moderation model**~~ — **Answered:** Primary: Claude Code in VS Code on his own clone. Plus a very simple admin UI for fiddly changes.
+9. ~~**Moderation model**~~ — **Answered:** Oliver's two interaction modes: **the admin UI** for content, and **Claude Code on this repo** for changes to the site itself. Coding literacy is a bonus, not the goal.
 10. **Replies / threads / reactions**~~ — **Answered:** Bonus, not the point. Creative outlet first. He is strong in math + Scratch block coding; new to GitHub/Supabase.
 11. ~~**Notifications**~~ — **Answered:** Admin setting (auto-publish vs hold first-timers). Multiple moderators incl. David. Notification on/off toggle (extends #11).
 
