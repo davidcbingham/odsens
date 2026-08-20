@@ -26,7 +26,9 @@ export type Profile = {
 export type Viewer = { user: { id: string }; profile: Profile | null };
 
 /** Thrown by the `require*` helpers; actions map `code` onto `ActionResult` (04 SC-03 / §7). */
-export class AuthError extends Error {
+// Internal on purpose: 04 SC-04 / 01 INV-32 fix the export set to the seven names below. The
+// `require*` helpers throw it; S1.1 (first consumer) decides how actions surface `code` (SC-03).
+class AuthError extends Error {
   readonly code: ActionErrorCode;
 
   constructor(code: ActionErrorCode, message: string) {
