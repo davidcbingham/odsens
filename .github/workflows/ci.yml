@@ -25,9 +25,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11
+      - uses: pnpm/action-setup@v4 # pnpm version comes from package.json#packageManager (the action rejects a duplicate `version` input)
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -42,9 +40,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11
+      - uses: pnpm/action-setup@v4 # pnpm version comes from package.json#packageManager (the action rejects a duplicate `version` input)
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -65,9 +61,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11
+      - uses: pnpm/action-setup@v4 # pnpm version comes from package.json#packageManager (the action rejects a duplicate `version` input)
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -112,9 +106,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11
+      - uses: pnpm/action-setup@v4 # pnpm version comes from package.json#packageManager (the action rejects a duplicate `version` input)
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -143,9 +135,7 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11
+      - uses: pnpm/action-setup@v4 # pnpm version comes from package.json#packageManager (the action rejects a duplicate `version` input)
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
