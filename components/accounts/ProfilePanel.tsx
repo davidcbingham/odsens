@@ -22,7 +22,9 @@ import styles from './ProfilePanel.module.css';
  * `#picture`), handle row + SAVE with the consequence line (anchor `#handle`), footer strip (what we
  * store + Privacy link + Delete account behind `InlineConfirm` → `deleteAccount`). The 7-day
  * "You can change it again on …" line is the `limitedUntil` prop, computed by the server page — this
- * component never reads the clock.
+ * component never reads the clock. The root `<section>` carries `data-state="idle" | "submitting" |
+ * "error"` (03 §3) exactly like `OnboardingPanel` — a `section`, not a `div`, so the e2e root locators
+ * `div[data-state]:has(input[name="handle"])` keep matching only `HandleField` / `AvatarUpload`.
  */
 export type ProfilePanelProps = {
   handle: string;
@@ -40,7 +42,7 @@ async function save(_previous: SaveResult, formData: FormData): Promise<SaveResu
 export function ProfilePanel({ handle, avatarUrl, limitedUntil }: ProfilePanelProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [pictureResult, pictureAction] = useActionState(save, null);
+  const [pictureResult, pictureAction, picturePending] = useActionState(save, null);
   const [handleResult, handleAction, handlePending] = useActionState(save, null);
   const [, startDelete] = useTransition();
   const [canSave, setCanSave] = useState(false);
@@ -68,6 +70,16 @@ export function ProfilePanel({ handle, avatarUrl, limitedUntil }: ProfilePanelPr
   const pictureError = pictureResult && !pictureResult.ok ? pictureResult.error.message : null;
   const handleError = handleResult && !handleResult.ok ? handleResult.error.message : null;
 
+  // 03 §3 `ProfilePanel`: `submitting` while either form's action is pending, `error` while an inline
+  // action error is shown, else `idle` — the same derivation as `OnboardingPanel`. Delete pending is
+  // `InlineConfirm`'s own `pending` (ADR-0014), so it does not drive the root.
+  const state =
+    picturePending || handlePending
+      ? 'submitting'
+      : pictureError || handleError || deleteError
+        ? 'error'
+        : 'idle';
+
   // 03 C-17: mutations run through `<form action>`, `useActionState`, or `startTransition`. The
   // returned promise settles when the transition's work is done, so `InlineConfirm` shows `pending`
   // for exactly that long — and always settles, so the strip never sticks if the action throws.
@@ -92,7 +104,7 @@ export function ProfilePanel({ handle, avatarUrl, limitedUntil }: ProfilePanelPr
   }
 
   return (
-    <div className={styles['profile-panel']}>
+    <section className={styles['profile-panel']} data-state={state}>
       {/* ---- picture row ---- */}
       <form
         id="picture"
@@ -193,6 +205,6 @@ export function ProfilePanel({ handle, avatarUrl, limitedUntil }: ProfilePanelPr
           ) : null}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

@@ -7,8 +7,14 @@
  * Seed rows are read-only (H-1) except where a cell needs a write; every touched seed row is restored
  * to its SEED-3 shape in `afterAll` through psql (no JWT → `profiles_guard` passes). Factory users
  * (T-RLS-3/5/9/125) are removed by `cleanupFactories` / `auth.admin.deleteUser`.
+ *
+ * `avatar_path` values (ADR-0015 addendum, 2026-08-20): CHECK `profiles_avatar_path_own`
+ * (20260820120400_profiles_avatar_path_check.sql) accepts only NULL or `<own id>/<16 hex>.webp`, for
+ * every client incl. service — so every arranged value here has that shape (`ownAvatarPath`), and the
+ * T-RLS-4 CHECK cells assert SQLSTATE 23514 directly (it is a constraint, not RLS; `expectPolicy`'s
+ * denied set stays RLS-only).
  */
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { emailHash } from '@/lib/hash';
 import { asRole, asUser, SEED_ROLE_IDS, type SeedRole } from '@/tests/helpers/asRole';
@@ -32,6 +38,11 @@ const SEED_HANDLES: Readonly<Record<SeedRole, string | null>> = {
 };
 
 const tag = (prefix: string): string => `${prefix}_${randomUUID().replace(/-/g, '').slice(0, 6)}`;
+
+/** The documented own-folder object name from the F5 ruling / T-ACT-65 (16 lowercase hex + .webp). */
+const HASH16 = '0123456789abcdef';
+/** A fresh `<id>/<16 hex>.webp` — the only `avatar_path` shape the CHECK accepts for `id`. */
+const ownAvatarPath = (id: string): string => `${id}/${randomBytes(8).toString('hex')}.webp`;
 
 const service = asRole('service');
 
@@ -208,13 +219,13 @@ describe('T-RLS-4 profiles update own avatar_path', () => {
       role: 'anon',
       allowed: false,
       filter: { id: SEED_USERS.seed_user },
-      patch: { avatar_path: 't_rls4.webp' },
+      patch: { avatar_path: `${SEED_USERS.seed_user}/${HASH16}.webp` },
     });
   });
 
-  it.each(JWT_ROLES)('T-RLS-4 %s updates own avatar_path', async (role) => {
+  it.each(JWT_ROLES)('T-RLS-4 %s updates own avatar_path (own folder, then clears it)', async (role) => {
     const id = SEED_ROLE_IDS[role];
-    const avatarPath = `${id}/${tag('t_rls4')}.webp`;
+    const avatarPath = `${id}/${HASH16}.webp`;
     await expectPolicy({
       table: 'profiles',
       op: 'update',
@@ -245,10 +256,82 @@ describe('T-RLS-4 profiles update own avatar_path', () => {
       role: 'service',
       allowed: true,
       filter: { id: SEED_USERS.seed_user2 },
-      patch: { avatar_path: 't_rls4_svc.webp' },
+      patch: { avatar_path: ownAvatarPath(SEED_USERS.seed_user2) },
       expectRows: 1,
     });
     restoreSeedProfiles();
+  });
+
+  // --- CHECK profiles_avatar_path_own (ADR-0015 addendum): the row may only name an object in the
+  // owner's folder. A constraint, not a policy: PostgREST answers 400 / SQLSTATE 23514 for every client.
+  it('T-RLS-4 CHECK profiles_avatar_path_own exists on profiles and pins avatar_path to the owner folder', () => {
+    const rows = sql(
+      "select pg_get_constraintdef(oid) from pg_constraint where conname = 'profiles_avatar_path_own' and conrelid = 'public.profiles'::regclass",
+    );
+    expect(rows).toHaveLength(1);
+    // `sql()` splits cells on `|`, and the definition contains `||` — join it back.
+    const definition = rows[0]?.join('|') ?? '';
+    expect(definition).toMatch(/^CHECK/);
+    expect(definition).toContain('avatar_path IS NULL');
+    expect(definition).toContain('id');
+    expect(definition).toContain('[0-9a-f]{16}');
+    expect(definition).toContain('webp$');
+  });
+
+  it.each(JWT_ROLES)(
+    "T-RLS-4 %s cannot point own avatar_path at another user's folder (CHECK 23514, row unchanged)",
+    async (role) => {
+      const id = SEED_ROLE_IDS[role];
+      const other = role === 'user' ? SEED_USERS.seed_user2 : SEED_USERS.seed_user;
+      const { data, error, status } = await asRole(role)
+        .from('profiles')
+        .update({ avatar_path: `${other}/${HASH16}.webp` })
+        .eq('id', id)
+        .select('id');
+      expect(status).toBe(400);
+      expect(error?.code).toBe('23514');
+      expect(error?.message).toContain('profiles_avatar_path_own');
+      expect(data).toBeNull();
+      expect((await profileRow(id))?.avatar_path).toBeNull();
+    },
+  );
+
+  it('T-RLS-4 user: anything but <own id>/<16 hex>.webp is rejected by the CHECK (23514)', async () => {
+    const id = SEED_USERS.seed_user;
+    const malformed = [
+      `${id}/../${SEED_USERS.seed_user2}/${HASH16}.webp`,
+      `${id}/${HASH16}.png`,
+      `${id}/${HASH16.slice(0, 15)}.webp`,
+      `${id}/${HASH16}0.webp`,
+      `${id}/${HASH16.toUpperCase()}.webp`,
+      `${id}//${HASH16}.webp`,
+      `avatars/${id}/${HASH16}.webp`,
+      `${HASH16}.webp`,
+      't_rls4.webp',
+      '',
+    ];
+    for (const avatarPath of malformed) {
+      const { error, status } = await asRole('user')
+        .from('profiles')
+        .update({ avatar_path: avatarPath })
+        .eq('id', id)
+        .select('id');
+      expect(status, `avatar_path = ${JSON.stringify(avatarPath)}`).toBe(400);
+      expect(error?.code, `avatar_path = ${JSON.stringify(avatarPath)}`).toBe('23514');
+    }
+    expect((await profileRow(id))?.avatar_path).toBeNull();
+  });
+
+  it("T-RLS-4 service cannot write a foreign avatar_path either (the CHECK is not RLS)", async () => {
+    const target = SEED_USERS.seed_user2;
+    const { error, status } = await service
+      .from('profiles')
+      .update({ avatar_path: `${SEED_USERS.seed_user}/${HASH16}.webp` })
+      .eq('id', target)
+      .select('id');
+    expect(status).toBe(400);
+    expect(error?.code).toBe('23514');
+    expect((await profileRow(target))?.avatar_path).toBeNull();
   });
 });
 
@@ -514,7 +597,7 @@ describe("T-RLS-8 profiles update another user's row", () => {
         role,
         allowed: false,
         filter: { id: target },
-        patch: { avatar_path: 't_rls8.webp' },
+        patch: { avatar_path: ownAvatarPath(target) },
       });
       expect((await profileRow(target))?.avatar_path).toBeNull();
     },
@@ -522,7 +605,7 @@ describe("T-RLS-8 profiles update another user's row", () => {
 
   it("T-RLS-8 admin JWT cannot update another user's row; service can (ADR-0015)", async () => {
     const original = (await profileRow(target))?.avatar_path ?? null;
-    const patch = { avatar_path: `${target}/${tag('t_rls8')}.webp` };
+    const patch = { avatar_path: ownAvatarPath(target) };
 
     // Admin JWT: the update policy passes (`is_admin()`), but own-row select filters the target out
     // → 0 rows, no error. expectPolicy proves the row exists via service first.
@@ -559,7 +642,7 @@ describe("T-RLS-8 profiles update another user's row", () => {
   });
 
   it("T-RLS-8 service updates another user's row", async () => {
-    const avatarPath = `${target}/${tag('t_rls8')}.webp`;
+    const avatarPath = ownAvatarPath(target);
     await expectPolicy({
       table: 'profiles',
       op: 'update',

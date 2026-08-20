@@ -5,15 +5,31 @@
  * Cell order: anon | user | banned | mod | admin | svc.
  *
  * `mutatesSeed` (H-1): admin/service cells write the SEED-1 row; `afterAll` restores it via psql.
+ *
+ * The singleton itself (ADR-0015 addendum, 2026-08-20): production and the persistent `staging` branch
+ * never run seed.sql, so the row is created by migration 20260820120500_site_settings_default_row.sql
+ * (`insert … (id) values (1) on conflict (id) do nothing`) with column defaults; seed.sql only sets
+ * `kofi_page` / `owner_profile_id` locally (SEED-1). The T-RLS-12 singleton cells prove the migration
+ * alone yields a valid row and that re-applying it is a no-op.
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { asRole, type TestRole } from '@/tests/helpers/asRole';
 import { sql } from '@/tests/helpers/db';
+import { REPO_ROOT } from '@/tests/helpers/envTest';
 import { expectPolicy } from '@/tests/helpers/expectPolicy';
 import { SEED_USERS } from '@/tests/helpers/seedIds';
 
 const NON_ADMIN = ['user', 'banned', 'mod'] as const satisfies readonly TestRole[];
 const service = asRole('service');
+
+const DEFAULT_ROW_MIGRATION = path.join(
+  REPO_ROOT,
+  'supabase',
+  'migrations',
+  '20260820120500_site_settings_default_row.sql',
+);
 
 /** SEED-1 values (05 §3; brief §1). */
 const SEED_ROW = {
@@ -48,6 +64,50 @@ async function seedRow() {
 
 afterAll(() => {
   restoreSeedRow();
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-RLS-12 the singleton — created by migration 20260820120500, not only by seed.sql
+// ---------------------------------------------------------------------------------------------
+describe('T-RLS-12 site_settings singleton', () => {
+  it('T-RLS-12 the row exists after reset with defaults (count = 1, moderation_mode auto)', async () => {
+    expect(sql('select count(*) from public.site_settings')).toEqual([['1']]);
+    const row = await seedRow();
+    expect(row?.id).toBe(1);
+    expect(row?.moderation_mode).toBe('auto');
+    expect(row?.comments_closed_default).toBe(false);
+    expect(row?.admin_notify_emails).toEqual([]);
+  });
+
+  it('T-RLS-12 migration 20260820120500 alone creates the default row and re-applying it is a no-op', async () => {
+    expect(fs.existsSync(DEFAULT_ROW_MIGRATION), DEFAULT_ROW_MIGRATION).toBe(true);
+    const migration = fs.readFileSync(DEFAULT_ROW_MIGRATION, 'utf8');
+    expect(migration).toMatch(
+      /insert\s+into\s+public\.site_settings\s*\(\s*id\s*\)\s*values\s*\(\s*1\s*\)\s*on\s+conflict\b[\s\S]*?do\s+nothing/i,
+    );
+
+    // On top of the seeded row (what a local `db reset` and every later deploy see): a no-op.
+    sql(migration);
+    expect(sql('select count(*) from public.site_settings')).toEqual([['1']]);
+    expect((await seedRow())?.kofi_page).toBe('oddsense');
+
+    // On an empty table (what a fresh production / staging database sees): the defaults row, with no
+    // reference to a seed profile (…0001 does not exist there).
+    const removed = await service.from('site_settings').delete().eq('id', 1).select('id');
+    expect(removed.error).toBeNull();
+    expect(removed.data).toHaveLength(1);
+    sql(migration);
+    expect(sql('select count(*) from public.site_settings')).toEqual([['1']]);
+    const row = await seedRow();
+    expect(row?.id).toBe(1);
+    expect(row?.moderation_mode).toBe('auto');
+    expect(row?.comments_closed_default).toBe(false);
+    expect(row?.admin_notify_emails).toEqual([]);
+    expect(row?.owner_profile_id).toBeNull();
+
+    restoreSeedRow();
+    expect((await seedRow())?.kofi_page).toBe('oddsense');
+  });
 });
 
 // ---------------------------------------------------------------------------------------------

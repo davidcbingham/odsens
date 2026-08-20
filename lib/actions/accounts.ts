@@ -10,6 +10,11 @@
  * the service-role client ONLY after the auth check (04 SC-06; `profiles_guard` blocks a JWT user from
  * renaming a non-null handle). The first handle (null → value) is the user's own RLS write.
  *
+ * Avatar objects (01 INV-53; ADR-0015 addendum): every Storage delete passes the CALLER's id —
+ * `deleteAvatar(user.id, path)` / `deleteAvatarQuietly(user.id, path, …)` refuse a path outside
+ * `avatars/{user.id}/` — and every `avatar_path` written here is asserted to be one this action generated
+ * for that user (`isOwnAvatarPath`). The DB CHECK `profiles_avatar_path_own` mirrors both.
+ *
  * Input schemas live in `./accounts.schema.ts` (a `'use server'` module may export only async
  * functions). No `revalidateTag` here — accounts touch no ISR tag (05 T-ACT-3).
  */
@@ -24,9 +29,16 @@ import {
   type UpdateProfileInput,
 } from '@/lib/actions/accounts.schema';
 import { fail, ok, type ActionResult } from '@/lib/actions/result';
-import { runAction, type ActionContext } from '@/lib/actions/run';
+import { runAction } from '@/lib/actions/run';
 import { getProfile, requireOnboarded, requireUser } from '@/lib/auth';
-import { AvatarError, deleteAvatar, reencodeAvatar, uploadAvatar } from '@/lib/files';
+import {
+  AvatarError,
+  deleteAvatar,
+  deleteAvatarQuietly,
+  isOwnAvatarPath,
+  reencodeAvatar,
+  uploadAvatar,
+} from '@/lib/files';
 import { formatDay } from '@/lib/format/date';
 import { log } from '@/lib/log';
 import { assertRateLimit } from '@/lib/rate-limit';
@@ -108,16 +120,13 @@ function avatarFailure<T>(message: string): ActionResult<T> {
   });
 }
 
-/** Best-effort removal of an object that is no longer referenced (the DB row already moved on). */
-async function deleteAvatarQuietly(
-  path: string,
-  action: string,
-  ctx: ActionContext,
-): Promise<void> {
-  try {
-    await deleteAvatar(path);
-  } catch {
-    log.warn({ action, id: ctx.id, msg: 'avatar_cleanup_failed', meta: { path } });
+/**
+ * Guard before every `avatar_path` write: the value must be a path this action generated for `profileId`
+ * (`uploadAvatar` always returns one). Anything else is a programming error → thrown → `internal`.
+ */
+function assertOwnAvatarPath(profileId: string, path: string): void {
+  if (!isOwnAvatarPath(profileId, path)) {
+    throw new Error('avatar_path outside the caller folder was about to be written');
   }
 }
 
@@ -169,17 +178,19 @@ export async function completeOnboarding(
       .is('handle', null)
       .select('handle')
       .maybeSingle();
+    const cleanup = { action: 'completeOnboarding', id: ctx.id };
     if (error) {
-      if (avatarPath) await deleteAvatarQuietly(avatarPath, 'completeOnboarding', ctx);
+      if (avatarPath) await deleteAvatarQuietly(user.id, avatarPath, cleanup);
       if (error.code === UNIQUE_VIOLATION) return handleFailure('taken', data.handle);
       throw new Error(`profiles update failed: ${error.code}`);
     }
     if (!row) {
-      if (avatarPath) await deleteAvatarQuietly(avatarPath, 'completeOnboarding', ctx);
+      if (avatarPath) await deleteAvatarQuietly(user.id, avatarPath, cleanup);
       return fail('conflict', 'You already have a handle.');
     }
 
     if (avatarPath) {
+      assertOwnAvatarPath(user.id, avatarPath);
       const admin = createAdminClient();
       const { error: avatarError } = await admin
         .from('profiles')
@@ -260,6 +271,7 @@ export async function updateProfile(
 
     if (prepared?.ok) {
       const path = await uploadAvatar(user.id, prepared.bytes);
+      assertOwnAvatarPath(user.id, path);
       const { error } = await admin
         .from('profiles')
         .update({ avatar_path: path })
@@ -267,10 +279,15 @@ export async function updateProfile(
       if (error) throw new Error(`avatar_path update failed: ${error.code}`);
       const previous = avatarPath;
       avatarPath = path;
-      // Old object goes only after the new one exists and the row points at it.
-      if (previous && previous !== path) await deleteAvatarQuietly(previous, 'updateProfile', ctx);
+      // Old object goes only after the new one exists and the row points at it — and only if it is
+      // really the caller's (a foreign path is skipped + logged, never deleted).
+      if (previous && previous !== path) {
+        await deleteAvatarQuietly(user.id, previous, { action: 'updateProfile', id: ctx.id });
+      }
     } else if (data.removeAvatar === true && avatarPath !== null) {
-      await deleteAvatar(avatarPath); // throws storage_error → nothing changed
+      // Throws `validation` ("That picture isn't yours.") for a path outside the caller's folder and
+      // `storage_error` on a Storage failure — in both cases nothing has changed.
+      await deleteAvatar(user.id, avatarPath);
       const { error } = await admin
         .from('profiles')
         .update({ avatar_path: null })
@@ -297,7 +314,9 @@ export async function deleteAccount(
     // S1.4: `comments where author_id = me` → status 'deleted'; `comment_likes` / `comment_reports`
     // by me deleted; `revalidateTag('project:<slug>')` per distinct target — those tables do not exist yet.
 
-    if (profile.avatar_path) await deleteAvatarQuietly(profile.avatar_path, 'deleteAccount', ctx);
+    if (profile.avatar_path) {
+      await deleteAvatarQuietly(user.id, profile.avatar_path, { action: 'deleteAccount', id: ctx.id });
+    }
 
     const admin = createAdminClient();
     const { error } = await admin.auth.admin.deleteUser(user.id);

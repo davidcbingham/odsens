@@ -27,7 +27,7 @@ Status: DRAFT v0.4 (2026-08-17) — becomes v1.0 at freeze
 |---|---|---|
 | id | uuid PK → auth.users.id | |
 | handle | citext unique, null | 3–20, `^[A-Za-z0-9_]+$`; check constraint; null = onboarding incomplete |
-| avatar_path | text null | Storage path in `avatars` bucket |
+| avatar_path | text null | Storage path in `avatars` bucket. CHECK **`profiles_avatar_path_own`** (migration `20260820120400_profiles_avatar_path_check.sql`): NULL or `^<id>/[0-9a-f]{16}\.webp$` — a row can only name an object in its owner's folder (a foreign path → SQLSTATE 23514); every service-role Storage delete re-checks ownership (`lib/files.ts` `isOwnAvatarPath`) — ADR-0015 |
 | role | enum `user|moderator|admin` default user | admins set via SQL/admin UI |
 | is_banned | bool default false | |
 | banned_reason | text null | |
@@ -120,7 +120,7 @@ Generated/derived: `downloads_total = modrinth + curseforge + direct` (view colu
 ### 2.4 Native content
 **`skins`** — `id; slug unique; name; description_md; texture_path` (Storage `skins/…png` 64×64) `; model enum classic|slim; render_bust_path` (cached PNG) `; is_exclusive bool; status draft|published; sort_order; downloads int` (incremented by RPC **`record_skin_download(p_skin_id)`**, called from `/api/download/[fileId]` when the id resolves to kind `skin` — ADR-0002 C8).
 **`art`** — `id; slug; title; kind enum avatar|thumbnail|icon|render|other; image_path; width; height; year int null; credit text null` (commissioned artist handle, optional) `; downloadable bool; status; sort_order`.
-**`site_settings`** — single row (`id = 1`): `moderation_mode enum auto|hold_first_time; admin_notify_emails text[]; discord_webhook_url text (secret); kofi_page text; comments_closed_default bool; announcement_md text null; owner_profile_id uuid null FK profiles` (Oliver's profile → CREATOR tag on comments, ADR-0002 #55). (Per-event toggles live in `notification_matrix`.)
+**`site_settings`** — single row (`id = 1`): `moderation_mode enum auto|hold_first_time; admin_notify_emails text[]; discord_webhook_url text (secret); kofi_page text; comments_closed_default bool; announcement_md text null; owner_profile_id uuid null FK profiles` (Oliver's profile → CREATOR tag on comments, ADR-0002 #55). (Per-event toggles live in `notification_matrix`.) The `id = 1` row is created by migration `20260820120500_site_settings_default_row.sql` (`insert … (id) values (1) on conflict (id) do nothing` — column defaults) because production and the persistent `staging` branch never run `seed.sql`; `seed.sql` sets `kofi_page` / `owner_profile_id` locally (ADR-0015).
 Public view **`site_settings_public`** (`comments_closed_default, kofi_page, owner_profile_id, moderation_mode` — `moderation_mode` added by ADR-0002 A3, non-sensitive; `postComment` reads it via the RLS server client and the client optimistic-insert rule uses it) — readable by all roles; the base table stays admin-only (ADR-0002 C6). `KOFI_PAGE` env only seeds `kofi_page`.
 
 ### 2.5 Comments & likes
@@ -192,6 +192,8 @@ Rules: **an admin is auto-added as `moderator` to every workroom** (visible in t
 | `is_moderator()`, `is_admin()` | helpers | policies | role checks on `profiles.role` |
 | `comments_set_status()` | trigger BEFORE INSERT on `comments` | — | authoritative held/published status |
 | `public_profiles`, `comments_public`, `site_settings_public` | views | all roles | the only public reads of `profiles`, non-published comment slots, settings (incl. `moderation_mode` — A3) |
+
+Constraints are not objects in this table: the CHECK `profiles_avatar_path_own` on `profiles.avatar_path` (migration `20260820120400_profiles_avatar_path_check.sql`, ADR-0015) adds no function, view or trigger.
 
 ---
 

@@ -5,10 +5,17 @@
  * Success rows run on factory users (a seed row must not end up with an avatar or a new handle, H-1);
  * the D rows use seed roles (nothing is written). `public_profiles` visibility is asserted through the
  * anon client. "Comments by that user show the new handle" is a join, asserted in S1.4 (no comments yet).
+ *
+ * Avatar ownership (ADR-0015 addendum, 2026-08-20): every service-role Storage delete re-checks that
+ * the object lives in the CALLER's folder (`lib/files.ts isOwnAvatarPath`), and the DB CHECK
+ * `profiles_avatar_path_own` refuses a row that points elsewhere (T-RLS-4). The action-level attack
+ * ("point my row at your object, then removeAvatar") can therefore no longer be arranged, so the
+ * T-ACT-6 ownership cells assert the guard on the unit it lives in plus "remove touches only mine".
  */
 import { afterAll, describe, expect, it } from 'vitest';
 import { updateProfile } from '@/lib/actions/accounts';
 import type { UpdateProfileInput } from '@/lib/actions/accounts.schema';
+import { AVATAR_NOT_YOURS, AvatarError, deleteAvatar, isOwnAvatarPath } from '@/lib/files';
 import { formatDay } from '@/lib/format/date';
 import { RATE_LIMITED_MESSAGE } from '@/lib/rate-limit';
 import { HANDLE_RESERVED, HANDLE_TAKEN, handleReason } from '@/lib/validation/handle';
@@ -19,7 +26,7 @@ import { callAction, callActionAs, setupActionMocks } from '@/tests/helpers/call
 import { cleanupFactories, makeUser } from '@/tests/helpers/factories';
 import { fixtureFile } from '@/tests/helpers/fixtures';
 import { spyRevalidateTag } from '@/tests/helpers/spies';
-import { listObjects } from '@/tests/helpers/storage';
+import { listObjects, uploadFixture } from '@/tests/helpers/storage';
 
 setupActionMocks();
 
@@ -262,6 +269,86 @@ describe('T-ACT-6 updateProfile avatar effects', () => {
     expect(after?.handle_changed_at).toBeNull();
     expect(after?.email_hash).toBeNull();
     expect(after?.handle).toBe(before?.handle);
+  });
+
+  it("T-ACT-6 deleteAvatar(callerId, path) refuses a path outside the caller's folder (validation) — the victim object survives", async () => {
+    const attacker = await makeUser();
+    const victim = await makeUser();
+    const victimPath = `${victim}/0123456789abcdef.webp`;
+    await uploadFixture('avatars', victimPath, 'images/tiny.webp');
+    await patchProfile(victim, { avatar_path: victimPath });
+
+    // The row itself cannot be pointed at the victim's object any more (CHECK profiles_avatar_path_own,
+    // T-RLS-4) — even through the service client — which is why the attack is asserted on the unit.
+    const pointed = await asRole('service')
+      .from('profiles')
+      .update({ avatar_path: victimPath })
+      .eq('id', attacker);
+    expect(pointed.error?.code).toBe('23514');
+    expect((await readProfile(attacker))?.avatar_path).toBeNull();
+
+    // The pure check: exactly `<callerId>/<16 lowercase hex>.webp`, nothing else.
+    expect(isOwnAvatarPath(victim, victimPath)).toBe(true);
+    expect(isOwnAvatarPath(attacker, `${attacker}/0123456789abcdef.webp`)).toBe(true);
+    for (const path of [
+      victimPath,
+      `${attacker}/../${victimPath}`,
+      `${attacker}/0123456789abcdef.png`,
+      `${attacker}/0123456789abcde.webp`,
+      `${attacker}/0123456789ABCDEF.webp`,
+      `${attacker}//0123456789abcdef.webp`,
+      '0123456789abcdef.webp',
+      `avatars/${attacker}/0123456789abcdef.webp`,
+      '',
+    ]) {
+      expect(isOwnAvatarPath(attacker, path), `isOwnAvatarPath(attacker, ${path})`).toBe(false);
+    }
+
+    // The guarded delete: refused before Storage is touched, as `validation` with the 04 §7 copy.
+    const thrown: unknown = await deleteAvatar(attacker, victimPath).then(
+      () => null,
+      (error: unknown) => error,
+    );
+    expect(thrown).toBeInstanceOf(AvatarError);
+    expect(thrown).toMatchObject({ code: 'validation', message: AVATAR_NOT_YOURS });
+    expect(await listObjects('avatars', victim)).toEqual([victimPath]);
+    expect((await readProfile(victim))?.avatar_path).toBe(victimPath);
+
+    // The owner's own delete still works (and only removes their object).
+    await deleteAvatar(victim, victimPath);
+    expect(await listObjects('avatars', victim)).toEqual([]);
+  });
+
+  it("T-ACT-6 replace / removeAvatar delete only the caller's own object — another user's avatar survives", async () => {
+    const me = await makeUser();
+    const other = await makeUser();
+    const otherPath = `${other}/0123456789abcdef.webp`;
+    await uploadFixture('avatars', otherPath, 'images/tiny.webp');
+    await patchProfile(other, { avatar_path: otherPath });
+
+    const first = expectOk(
+      await callActionAs(updateProfile, await avatarForm('avatar-600.png'), { profileId: me }),
+    ).avatar_path;
+    expect(first).not.toBeNull();
+    expect(isOwnAvatarPath(me, first ?? '')).toBe(true);
+
+    // Replace: the old object in MY folder goes, the other user's object is untouched.
+    const second = expectOk(
+      await callActionAs(updateProfile, await avatarForm('exif.jpg'), { profileId: me }),
+    ).avatar_path;
+    expect(second).not.toBe(first);
+    expect(await listObjects('avatars', me)).toEqual([second]);
+    expect(await listObjects('avatars', other)).toEqual([otherPath]);
+
+    // Remove: only my object goes; the other row and object are exactly as arranged.
+    const removed = expectOk(
+      await callActionAs(updateProfile, { removeAvatar: true }, { profileId: me }),
+    );
+    expect(removed.avatar_path).toBeNull();
+    expect((await readProfile(me))?.avatar_path).toBeNull();
+    expect(await listObjects('avatars', me)).toEqual([]);
+    expect(await listObjects('avatars', other)).toEqual([otherPath]);
+    expect((await readProfile(other))?.avatar_path).toBe(otherPath);
   });
 
   it('T-ACT-6 no revalidateTag call anywhere in this file', () => {

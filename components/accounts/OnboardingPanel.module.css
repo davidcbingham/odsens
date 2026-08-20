@@ -1,10 +1,9 @@
 /* OnboardingPanel — DESIGN.md §11.3 #10 (pass-3 "Handle onboarding" desktop + phone frames);
    03 §2.5, §3 idle | submitting | error. The page paints the hatch; this is the 560px slab. */
 .onboarding-panel {
-  width: 560px;
-  max-width: 100%;
+  width: min(560px, 100%);
   background: var(--slab);
-  border: 2px solid var(--line);
+  border: 2px solid var(--line-soft);
   box-shadow: 6px 6px 0 var(--ink-deep);
 }
 

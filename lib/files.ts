@@ -10,6 +10,12 @@
  * `{profile_id}/{hash16}.webp` inside the `avatars` bucket (`profiles.avatar_path` stores exactly
  * that — no bucket prefix). Original bytes are never stored.
  *
+ * Ownership (INV-53; ADR-0015 addendum): the service-role client can delete ANY object, and
+ * `profiles.avatar_path` is an own-row write under RLS — so a row could be pointed at another user's
+ * object. Every delete here therefore re-checks `isOwnAvatarPath(profileId, path)` (the caller's id,
+ * never the row's value alone) and the DB CHECK `profiles_avatar_path_own`
+ * (20260820120400_profiles_avatar_path_check.sql) rejects such a row in the first place.
+ *
  * Errors carry an `ActionErrorCode` (`validation` | `storage_error`) so `runAction` maps them.
  * Later slices add the other SC-21 builders and `resolveDownloadable` here.
  */
@@ -17,6 +23,7 @@ import 'server-only';
 import sharp from 'sharp';
 import { env } from '@/lib/env';
 import { sha256Hex } from '@/lib/hash';
+import { log } from '@/lib/log';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export const AVATAR_BUCKET = 'avatars';
@@ -43,6 +50,12 @@ export class AvatarError extends Error {
 export const AVATAR_UNREADABLE = "That file didn't open as an image.";
 export const AVATAR_SAVE_FAILED = "Couldn't save that picture. Try again.";
 export const AVATAR_REMOVE_FAILED = "Couldn't remove that picture. Try again.";
+export const AVATAR_NOT_YOURS = "That picture isn't yours.";
+
+/** Canonical lowercase UUID — the only shape `profiles.id` (and so an avatar folder) can have. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+/** `{hash16}.webp` — the object name `avatarObjectPath` produces. */
+const HASH16_WEBP_RE = /^[0-9a-f]{16}\.webp$/;
 
 export function avatarTooSmall(width: number, height: number): string {
   return `That's ${width}×${height}. Pictures need to be at least ${AVATAR_MIN_SIDE}×${AVATAR_MIN_SIDE}.`;
@@ -51,6 +64,19 @@ export function avatarTooSmall(width: number, height: number): string {
 /** `{profile_id}/{hash16}.webp` — the object path inside the `avatars` bucket (04 SC-21). */
 export function avatarObjectPath(profileId: string, hash16: string): string {
   return `${profileId}/${hash16}.webp`;
+}
+
+/**
+ * True only when `path` is exactly `^<profileId>/[0-9a-f]{16}\.webp$` — i.e. something
+ * `avatarObjectPath(profileId, …)` could have produced for THIS profile. Mirrors the DB CHECK
+ * `profiles_avatar_path_own` (`avatar_path ~ ('^' || id::text || '/[0-9a-f]{16}\.webp$')`).
+ * Pure; safe to call with untrusted `path`.
+ */
+export function isOwnAvatarPath(profileId: string, path: string): boolean {
+  if (!UUID_RE.test(profileId)) return false;
+  const prefix = `${profileId}/`;
+  if (!path.startsWith(prefix)) return false;
+  return HASH16_WEBP_RE.test(path.slice(prefix.length));
 }
 
 /** Public URL for an avatar object path (bucket is public-read, INV-33). */
@@ -113,9 +139,44 @@ export async function uploadAvatar(profileId: string, bytes: Buffer): Promise<st
   return path;
 }
 
-/** Removes one avatar object. A missing object is not an error; a Storage failure throws. */
-export async function deleteAvatar(path: string): Promise<void> {
+/**
+ * Removes one avatar object that belongs to `profileId`. Throws `AvatarError('validation',
+ * AVATAR_NOT_YOURS)` — before touching Storage — unless `isOwnAvatarPath(profileId, path)`; the
+ * service-role client would otherwise delete whatever `path` names. A missing object is not an error;
+ * a Storage failure throws `storage_error`.
+ */
+export async function deleteAvatar(profileId: string, path: string): Promise<void> {
+  if (!isOwnAvatarPath(profileId, path)) throw new AvatarError('validation', AVATAR_NOT_YOURS);
   const admin = createAdminClient();
   const { error } = await admin.storage.from(AVATAR_BUCKET).remove([path]);
   if (error) throw new AvatarError('storage_error', AVATAR_REMOVE_FAILED);
+}
+
+/** Log correlation for `deleteAvatarQuietly`: the calling action's name + its `runAction` request id. */
+export type AvatarCleanupContext = { action: string; id: string };
+
+/**
+ * Best-effort removal of an object the DB row no longer references. Never throws: a `path` outside
+ * `profileId`'s folder is skipped (one `warn` line, `avatar_path_not_own` — the object is left alone)
+ * and a Storage failure is logged (`avatar_cleanup_failed`). Same ownership rule as `deleteAvatar`.
+ */
+export async function deleteAvatarQuietly(
+  profileId: string,
+  path: string,
+  ctx: AvatarCleanupContext,
+): Promise<void> {
+  if (!isOwnAvatarPath(profileId, path)) {
+    log.warn({
+      action: ctx.action,
+      id: ctx.id,
+      msg: 'avatar_path_not_own',
+      meta: { profile_id: profileId, path },
+    });
+    return;
+  }
+  try {
+    await deleteAvatar(profileId, path);
+  } catch {
+    log.warn({ action: ctx.action, id: ctx.id, msg: 'avatar_cleanup_failed', meta: { path } });
+  }
 }

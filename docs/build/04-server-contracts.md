@@ -1,6 +1,6 @@
 # Server Contracts
 Purpose: the checkable contract for every Server Action, route handler, cron job, and external adapter in `_registry.md` §Server contract registry — names, files, auth, input schema, preconditions, effects, return shape, rate limits, idempotency, external calls, logging, and required tests — so gate agents can diff code against it.
-Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0009, ADR-0010, ADR-0012, ADR-0013 (2026-08-20) — amended by ADR-0014 (2026-08-20)
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0009, ADR-0010, ADR-0012, ADR-0013 (2026-08-20) — amended by ADR-0014 (2026-08-20) — amended by ADR-0015 (2026-08-20)
 
 Decisions applied: `06-decisions/ADR-0002-spec-reconciliation.md` (binding — C1–C22 + OPEN defaults 13–80); every OPEN item below that ADR-0002 settles is marked **DECIDED (ADR-0002 <ref>)**.
 
@@ -122,7 +122,7 @@ Role rule (**DECIDED — ADR-0002 C7**, flagged [DAVID] for awareness): **`admin
 | Auth | `requireOnboarded()`. |
 | Input (`updateProfileInput`) | `{handle?: string, avatar?: File, removeAvatar?: boolean}` — at least one present. Same H-rules. |
 | Preconditions | Handle change: new handle ≠ current (case-insensitive) else no-op `ok`. |
-| Effects | Handle: RPC `check_handle` → update via **service-role client** (data-model §4 RLS allows only null→value for self; renaming is a design requirement, DESIGN.md §11.3 p.11 — DECIDED, ADR-0002 #27), set `profiles.handle_changed_at = now()`. Avatar: same pipeline as `completeOnboarding`; old object deleted after new one is written. `removeAvatar`: delete object, set `avatar_path = null`. Never touches `role`/`is_banned` (unknown fields stripped by zod). |
+| Effects | Handle: RPC `check_handle` → update via **service-role client** (data-model §4 RLS allows only null→value for self; renaming is a design requirement, DESIGN.md §11.3 p.11 — DECIDED, ADR-0002 #27), set `profiles.handle_changed_at = now()`. Avatar: same pipeline as `completeOnboarding`; old object deleted after new one is written. `removeAvatar`: delete object, set `avatar_path = null`. Storage deletes (replace + `removeAvatar`) delete only objects under `avatars/{caller_id}/` — `lib/files.ts` `deleteAvatar(profileId, path)` refuses any other path (`isOwnAvatarPath`; `validation` "That picture isn't yours.") and the action writes only an `avatar_path` it generated itself; the DB CHECK `profiles_avatar_path_own` mirrors it (ADR-0015). Never touches `role`/`is_banned` (unknown fields stripped by zod). |
 | Returns | `{ok:true, data:{handle, avatar_path}}`. Errors: `handle_taken`, `handle_reserved`, `validation`, `rate_limited`, `storage_error`. |
 | Rate limit | Handle change: 1 / 7 days / user (ADR-0002 #27), counted from `profiles.handle_changed_at`. Avatar: `assertRateLimit('avatar', profile_id, 10, '10 minutes')` (`rate_limit_hits`). |
 | Tests (05) | T-ACT-4, T-ACT-5, T-ACT-6; T-RLS-6, T-RLS-8; T-E2E-23. |
@@ -143,7 +143,7 @@ Role rule (**DECIDED — ADR-0002 C7**, flagged [DAVID] for awareness): **`admin
 |---|---|
 | Trigger | `/profile` "Delete account" (danger, inline confirm; DESIGN.md §11.3 p.11; 02 O-6). |
 | Auth | `requireOnboarded()`. Input (`deleteAccountInput`) `{confirm: z.literal(true)}`. Rate limit `assertRateLimit('delete_account', profile_id, 1, '1 day')`. |
-| Effects (service role, one transaction where possible) | `comments where author_id = me` → `status='deleted'` (slot stays, body retained per §1.2 `deleteComment`); `comment_likes where user_id = me` deleted (trigger fixes `like_count`); `comment_reports where reporter_id = me` deleted; avatar object removed; `profiles` row deleted via `auth.admin.deleteUser(id)` cascade — comments keep `author_id` as a dangling reference rendered as `author: null` ("Deleted." slot). `revalidateTag('project:<slug>')` for every distinct comment target (not the four site tags). Sign the user out (cookies cleared) → client redirects `/`. |
+| Effects (service role, one transaction where possible) | `comments where author_id = me` → `status='deleted'` (slot stays, body retained per §1.2 `deleteComment`); `comment_likes where user_id = me` deleted (trigger fixes `like_count`); `comment_reports where reporter_id = me` deleted; avatar object removed (deletes only objects under `avatars/{caller_id}/` — `isOwnAvatarPath`, ADR-0015); `profiles` row deleted via `auth.admin.deleteUser(id)` cascade — comments keep `author_id` as a dangling reference rendered as `author: null` ("Deleted." slot). `revalidateTag('project:<slug>')` for every distinct comment target (not the four site tags). Sign the user out (cookies cleared) → client redirects `/`. |
 | Returns | `{ok:true, data:{deleted:true}}`. Errors: `unauthenticated`, `rate_limited`, `internal`. |
 | Tests (05) | T-ACT-65 (auth matrix, cascade, sign-out, rate limit). |
 

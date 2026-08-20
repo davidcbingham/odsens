@@ -52,7 +52,7 @@
   z-index: var(--z-nav);
   width: 236px;
   background: var(--slab);
-  border: 2px solid var(--line);
+  border: 2px solid var(--line-soft);
   box-shadow: 4px 4px 0 var(--ink-deep);
   animation: profile-menu-in var(--dur-fast) ease-out;
 }

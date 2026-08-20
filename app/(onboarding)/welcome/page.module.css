@@ -3,6 +3,8 @@
 .welcome {
   position: relative;
   display: grid;
+  /* an explicit track: an auto column takes the slab's 560px as its min-content and overflows the phone */
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   min-height: calc(100dvh - var(--nav-h));
   padding: var(--space-64) var(--space-40) var(--space-80);

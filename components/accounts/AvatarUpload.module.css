@@ -123,10 +123,6 @@
   gap: var(--space-8);
 }
 
-.avatar-upload-remove {
-  color: var(--danger);
-}
-
 .avatar-upload-error {
   font-size: var(--text-label);
   font-weight: 700;
