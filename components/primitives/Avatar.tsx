@@ -41,6 +41,9 @@ export function Avatar({
           width={size}
           height={size}
           sizes={`${size}px`}
+          // Static pixel-art brand files are served as-is (80px → 40px is a 2:1 integer downscale);
+          // the optimizer's 48w candidate would resample them twice (01 INV-64). User avatars (S1.1) stay optimized.
+          unoptimized={src.startsWith('/brand/')}
         />
       </span>
     );

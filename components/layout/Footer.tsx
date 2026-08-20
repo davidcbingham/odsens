@@ -9,7 +9,7 @@ import styles from './Footer.module.css';
  */
 export type FooterProps = Record<string, never>;
 
-type FooterLink = { label: string; href: string; external?: boolean };
+type FooterLink = { label: string; href: string; external?: boolean; prefetch?: false };
 
 // PlatformMark (Modrinth / CurseForge / YouTube marks) joins these rows in S1.2 (03 §2.2).
 const FIND_ME: FooterLink[] = [
@@ -27,8 +27,9 @@ const SITE: FooterLink[] = [
   { label: 'Seen on', href: '/seen-on' },
   ...(FLAGS.commissions ? [{ label: 'Custom orders', href: '/commissions' }] : []),
   { label: 'Support', href: '/support' },
-  { label: 'How comments work', href: '/how-comments-work' },
-  { label: 'Privacy', href: '/privacy' },
+  // S1.1 ships these two pages — until then no prefetch, so the footer does not request a 404 on every page.
+  { label: 'How comments work', href: '/how-comments-work', prefetch: false },
+  { label: 'Privacy', href: '/privacy', prefetch: false },
 ];
 
 function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) {
@@ -54,7 +55,7 @@ function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) 
                 <span className="visually-hidden"> (opens in new tab)</span>
               </a>
             ) : (
-              <Link href={link.href} className={styles['footer-link']}>
+              <Link href={link.href} className={styles['footer-link']} prefetch={link.prefetch}>
                 {link.label}
               </Link>
             )}

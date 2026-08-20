@@ -14,7 +14,7 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <div className={styles.error}>
+    <main id="main" tabIndex={-1} className={styles.error}>
       <div className={styles['error-column']}>
         <div aria-hidden="true" className={styles['error-mark']}>
           !
@@ -33,6 +33,6 @@ export default function Error({
           </Button>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

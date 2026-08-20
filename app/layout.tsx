@@ -33,6 +33,7 @@ const silkscreen = localFont({
   ],
   variable: '--font-pixel',
   display: 'swap',
+  preload: false, // small eyebrow labels only — keep the first-paint preload budget for Bungee + Space Grotesk
   fallback: ['monospace'],
 });
 
@@ -42,10 +43,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(publicEnv.NEXT_PUBLIC_SITE_URL),
   title: { template: '%s — odsens', default: 'odsens' },
   description,
+  // No `title`/`description` here: Next fills og:title / og:description from each page's resolved
+  // metadata, so `/projects` emits "Projects — odsens" (02 RP-06) while `/` keeps the absolute title.
   openGraph: {
     siteName: 'odsens',
-    title: 'odsens',
-    description,
     images: ['/brand/og-default.png'],
     type: 'website',
   },

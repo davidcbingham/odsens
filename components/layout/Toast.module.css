@@ -33,3 +33,13 @@
 .toast[data-state='leaving'] {
   opacity: 0;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    transition-property: opacity;
+  }
+
+  .toast[data-state='entering'] {
+    transform: none;
+  }
+}

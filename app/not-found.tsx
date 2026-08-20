@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function NotFound() {
   return (
-    <div className={styles['not-found']}>
+    <main id="main" tabIndex={-1} className={styles['not-found']}>
       <div className={styles['not-found-column']}>
         {/* Decorative numeral: aria-hidden + inert (not in the a11y tree, not hit-testable) — the h1 carries the meaning (03 G-02). */}
         <p aria-hidden="true" inert className={styles['not-found-code']}>
@@ -29,6 +29,6 @@ export default function NotFound() {
           </Button>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

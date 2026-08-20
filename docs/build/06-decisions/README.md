@@ -101,6 +101,7 @@ No other agent file mentions ADRs or this folder today (`grep -l "ADR\|06-decisi
 | ADR-0005 | Placeholder pages render static, not ISR | Proposed | 2026-08-17 | S0 | 01 INV-38 + Status line; 02 §0.1, RP-16, Status line |
 | ADR-0006 | Preview env fallback until Supabase Branching is live | Proposed | 2026-08-17 | S0 | 00 §6 changelog + Status line; `docs/questions.md` Setup to-dos |
 | ADR-0007 | Bundle secret grep ignores the supabase-js key-format literal | Proposed | 2026-08-20 | S0 | 01 INV-29 Check + Status line; 02 SM-30 + Status line; 05 CI-4 + Status line |
+| ADR-0008 | Supabase browser client chunk on public routes (lazy) | Proposed | 2026-08-20 | S0 | 01 INV-80 + Status line |
 
 ## 8. Phase 2 stub
 Phase 2 slices (S2.1–S2.5) reuse this process unchanged. Phase 2 needs an ADR only where a stub in 00 §3 / 01 §26 / 02 §1.5 / 04 §9 is contradicted when the slice is detailed (e.g. Q45 workroom limits if they change from 25 MB/file · 200 MB/room). Already-baseline items need no ADR when built: showing the Commissions nav item at S2.2 is a `commissionsEnabled` flag flip (03 §8, ADR-0001 D10); Ko-fi webhook verification and `kofi_message_id` dedupe are specified in 00 §3 S2.1 (ADR-0001 D14). ADRs are written when the slice opens, not before.

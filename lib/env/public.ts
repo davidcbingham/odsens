@@ -2,31 +2,50 @@
  * lib/env/public.ts — the browser-safe env subset (01 INV-35/INV-29; 04 SC-16).
  * Only NEXT_PUBLIC_* names live here; client components import `publicEnv` from this file, never `@/lib/env`.
  * Next.js inlines these at build time, so they must be referenced as literal `process.env.NEXT_PUBLIC_*`.
+ * Validated by hand (not zod) on purpose: this module is in every client bundle and zod stays server-side
+ * (`lib/env.ts`) — ADR-0008.
  */
-import { z } from 'zod';
 
-const publicSchema = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  NEXT_PUBLIC_SITE_URL: z.url(),
-  NEXT_PUBLIC_SENTRY_DSN: z.string().optional(), // S1.10 (ADR-0002 #79)
-});
+export type PublicEnv = {
+  NEXT_PUBLIC_SUPABASE_URL: string;
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: string;
+  NEXT_PUBLIC_SITE_URL: string;
+  NEXT_PUBLIC_SENTRY_DSN?: string; // S1.10 (ADR-0002 #79)
+};
 
-export type PublicEnv = z.infer<typeof publicSchema>;
-
-/** Parsed once at module load; throws with the missing names if a required public var is absent. */
-export const publicEnv: PublicEnv = (() => {
-  const parsed = publicSchema.safeParse({
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
-    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN || undefined,
-  });
-  if (!parsed.success) {
-    const missing = parsed.error.issues.map((i) => i.path.join('.')).join(', ');
-    throw new Error(`Missing or invalid public environment variables: ${missing}`);
+function isUrl(value: string | undefined): value is string {
+  if (!value) return false;
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
   }
-  return parsed.data;
+}
+
+function present(value: string | undefined): value is string {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
+/** Parsed once at module load; throws with the missing/invalid names if a required public var is absent. */
+export const publicEnv: PublicEnv = (() => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const site = process.env.NEXT_PUBLIC_SITE_URL;
+  const sentry = process.env.NEXT_PUBLIC_SENTRY_DSN;
+  const missing: string[] = [];
+  if (!isUrl(url)) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+  if (!present(anon)) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  if (!isUrl(site)) missing.push('NEXT_PUBLIC_SITE_URL');
+  if (missing.length > 0 || !isUrl(url) || !present(anon) || !isUrl(site)) {
+    throw new Error(`Missing or invalid public environment variables: ${missing.join(', ')}`);
+  }
+  return {
+    NEXT_PUBLIC_SUPABASE_URL: url,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: anon,
+    NEXT_PUBLIC_SITE_URL: site,
+    ...(present(sentry) ? { NEXT_PUBLIC_SENTRY_DSN: sentry } : {}),
+  };
 })();
 
 /**
