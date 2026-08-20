@@ -38,5 +38,18 @@ test.describe('components preview', () => {
 
     await expectNoSeriousA11y(page);
     await shoot(page, 'components');
+
+    // NavMenuButton `data-state="open"` (03 N-05/N-08; ADR-0004 D3): the burger exists only under 900px.
+    const burger = page.locator('section[data-preview="NavMenuButton"] button[aria-label="Menu"]');
+    if (await burger.isVisible()) {
+      await burger.click();
+      const panel = page.locator('#nav-menu-preview[data-state="open"]');
+      await expect(panel).toBeVisible();
+      // Let the 150ms open transition finish — axe samples blended colours mid-fade otherwise.
+      await expect.poll(() => panel.evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
+      await expectNoSeriousA11y(page);
+      await shoot(page, 'components-menu');
+      await page.keyboard.press('Escape');
+    }
   });
 });

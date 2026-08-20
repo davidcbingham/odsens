@@ -122,3 +122,20 @@
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 }
+
+/* NavMenuButton specimen: a positioned slab bar so the phone panel (position: absolute) drops below it. */
+.preview-menu-host {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: var(--nav-h-phone);
+  padding: 0 var(--space-16);
+  background: var(--slab);
+  border-bottom: 2px solid var(--line);
+}
+
+/* Fixture geometry never overflows its specimen cell (Skeleton · media custom at 390). */
+.preview-specimen-body > * {
+  max-width: 100%;
+}

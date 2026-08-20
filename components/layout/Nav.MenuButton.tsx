@@ -15,6 +15,8 @@ import styles from './Nav.module.css';
 export type NavMenuButtonProps = {
   links: { label: string; href: string }[];
   support: { label: string; href: string };
+  /** Panel element id (default `nav-menu`); only the component preview passes another value so two instances can coexist (03 C-03). */
+  panelId?: string;
 };
 
 const PANEL_ID = 'nav-menu';
@@ -25,7 +27,7 @@ function isCurrentPath(pathname: string | null, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function NavMenuButton({ links, support }: NavMenuButtonProps) {
+export function NavMenuButton({ links, support, panelId = PANEL_ID }: NavMenuButtonProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const burgerRef = useRef<HTMLButtonElement>(null);
@@ -74,13 +76,13 @@ export function NavMenuButton({ links, support }: NavMenuButtonProps) {
         className={styles['nav-burger']}
         aria-label="Menu"
         aria-expanded={open}
-        aria-controls={PANEL_ID}
+        aria-controls={panelId}
         onClick={toggle}
       >
         <Icon name={open ? 'close' : 'menu'} />
       </button>
       <div
-        id={PANEL_ID}
+        id={panelId}
         className={styles['nav-menu']}
         data-state={open ? 'open' : 'closed'}
         hidden={!open}

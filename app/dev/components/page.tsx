@@ -5,6 +5,7 @@ import { isVercel, nodeEnv } from '@/lib/env';
 import { SkipLink } from '@/components/layout/SkipLink';
 import { Nav } from '@/components/layout/Nav';
 import { NavLinks } from '@/components/layout/Nav.Links';
+import { NavMenuButton } from '@/components/layout/Nav.MenuButton';
 import { Footer } from '@/components/layout/Footer';
 import { Toast } from '@/components/layout/Toast';
 import { Skeleton } from '@/components/layout/Skeleton';
@@ -21,6 +22,7 @@ import {
   iconFixtures,
   navFixtures,
   navLinksFixtures,
+  navMenuButtonFixtures,
   pixelLabelFixtures,
   projectCardSkeletonFixtures,
   skeletonFixtures,
@@ -101,6 +103,17 @@ export default function ComponentsPreviewPage() {
             {navLinksFixtures.map(({ label, props }) => (
               <Specimen key={label} name="NavLinks" label={label}>
                 <NavLinks {...props} />
+              </Specimen>
+            ))}
+            {navMenuButtonFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="NavMenuButton" label={label}>
+                <p className={styles['preview-note']}>
+                  Visible under 900px. Tap the burger to open the panel (Esc closes).
+                </p>
+                {/* A slab bar stands in for the Nav so the absolute panel drops below it. */}
+                <div className={styles['preview-menu-host']}>
+                  <NavMenuButton {...props} />
+                </div>
               </Specimen>
             ))}
             {footerFixtures.map(({ label }) => (

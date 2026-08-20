@@ -5,9 +5,11 @@
  */
 import type { NavProps } from '@/components/layout/Nav';
 import type { NavLinksProps } from '@/components/layout/Nav.Links';
+import type { NavMenuButtonProps } from '@/components/layout/Nav.MenuButton';
 
 export type NavFixture = { label: string; props: NavProps };
 export type NavLinksFixture = { label: string; props: NavLinksProps };
+export type NavMenuButtonFixture = { label: string; props: NavMenuButtonProps };
 
 export const navFixtures: NavFixture[] = [{ label: 'Nav · shell', props: {} }];
 
@@ -23,6 +25,22 @@ export const navLinksFixtures: NavLinksFixture[] = [
         { label: 'Art', href: '/art' },
         { label: 'Seen on', href: '/seen-on' },
       ],
+    },
+  },
+];
+
+/**
+ * Phone menu (03 N-05/N-08): closed at rest; the smoke spec clicks the burger at 390 and shoots
+ * `components-menu@390.png` for the `data-state="open"` panel (ADR-0004 D3). `panelId` keeps the
+ * preview instance's id distinct from the one inside the `Nav` specimen.
+ */
+export const navMenuButtonFixtures: NavMenuButtonFixture[] = [
+  {
+    label: 'NavMenuButton · closed (click for open)',
+    props: {
+      links: navLinksFixtures[0]?.props.links ?? [],
+      support: { label: '♥ SUPPORT', href: '/support' },
+      panelId: 'nav-menu-preview',
     },
   },
 ];

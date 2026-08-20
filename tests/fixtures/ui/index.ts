@@ -7,7 +7,14 @@ export { buttonFixtures, type ButtonFixture } from './button';
 export { pixelLabelFixtures, type PixelLabelFixture } from './pixelLabel';
 export { iconFixtures, type IconFixture } from './icon';
 export { avatarFixtures, type AvatarFixture } from './avatar';
-export { navFixtures, navLinksFixtures, type NavFixture, type NavLinksFixture } from './nav';
+export {
+  navFixtures,
+  navLinksFixtures,
+  navMenuButtonFixtures,
+  type NavFixture,
+  type NavLinksFixture,
+  type NavMenuButtonFixture,
+} from './nav';
 export { footerFixtures, type FooterFixture } from './footer';
 export { toastFixtures, type ToastFixture } from './toast';
 export {

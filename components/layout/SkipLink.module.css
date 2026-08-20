@@ -4,6 +4,9 @@
   top: var(--space-16);
   left: var(--space-16);
   z-index: var(--z-skip);
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px; /* DESIGN.md §5 minimum hit target */
   padding: var(--space-12) var(--space-16);
   background: var(--gold);
   color: var(--gold-ink);
