@@ -1,7 +1,7 @@
 # ADR-0006 — Preview env fallback until Supabase Branching is live
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-17

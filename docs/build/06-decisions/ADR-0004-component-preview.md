@@ -1,7 +1,7 @@
 # ADR-0004 — Dev-only component preview route
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-17

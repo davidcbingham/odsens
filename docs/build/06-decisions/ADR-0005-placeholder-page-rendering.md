@@ -1,7 +1,7 @@
 # ADR-0005 — Placeholder pages render static, not ISR
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-17

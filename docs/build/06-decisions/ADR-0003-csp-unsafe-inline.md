@@ -1,7 +1,7 @@
 # ADR-0003 — CSP script-src 'unsafe-inline' for v1
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-17

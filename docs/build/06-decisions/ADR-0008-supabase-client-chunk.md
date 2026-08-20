@@ -1,7 +1,7 @@
 # ADR-0008 — Supabase browser client chunk on public routes (lazy)
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-20

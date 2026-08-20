@@ -1,7 +1,7 @@
 # ADR-0007 — Bundle secret grep ignores the supabase-js key-format literal
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-20
