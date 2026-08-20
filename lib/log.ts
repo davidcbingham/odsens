@@ -51,12 +51,21 @@ const REDACT_KEYS: ReadonlySet<string> = new Set([
   'signedurl',
   'body',
   'useragent',
+  // Google identity fields (01 INV-43: name/picture never reach logs) — `name` alone stays loggable
+  // (job/source names); the identity-specific keys are listed.
+  'fullname',
+  'givenname',
+  'familyname',
+  'displayname',
+  'picture',
+  'avatarurl',
+  'phone',
 ]);
 
 const REDACT_KEY_SUFFIXES = ['secret', 'token', 'key'] as const;
 
-/** String values that embed a credential-bearing query parameter (signed URLs, webhook links). */
-const REDACT_VALUE_PATTERN = /(?:token|sig)=/i;
+/** String values that embed a credential: `token=`/`sig=` query parameters (signed URLs) or a Discord webhook URL (the path carries the token). */
+const REDACT_VALUE_PATTERN = /(?:token|sig)=|discord(?:app)?\.com\/api\/webhooks\//i;
 
 const MAX_DEPTH = 8;
 

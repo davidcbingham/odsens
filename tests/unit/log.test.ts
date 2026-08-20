@@ -175,3 +175,43 @@ describe('redactMeta (T-UNIT-33)', () => {
     expect(deeper?.n).toBe(1);
   });
 });
+
+describe('redactMeta — identity fields + webhook URLs (T-UNIT-33, 01 INV-43)', () => {
+  it('T-UNIT-33 Google identity keys are redacted; a plain `name` (job/source) is kept', () => {
+    const out = redactMeta({
+      full_name: 'A Person',
+      given_name: 'A',
+      family_name: 'Person',
+      display_name: 'AP',
+      picture: 'https://lh3.googleusercontent.com/a/x',
+      avatar_url: 'https://lh3.googleusercontent.com/a/y',
+      phone: '+1 555 0100',
+      name: 'modrinth',
+    });
+    for (const key of [
+      'full_name',
+      'given_name',
+      'family_name',
+      'display_name',
+      'picture',
+      'avatar_url',
+      'phone',
+    ]) {
+      expect(out[key], key).toBe('[redacted]');
+    }
+    expect(out['name']).toBe('modrinth');
+  });
+
+  it('T-UNIT-33 a Discord webhook URL is redacted under any key, even without token=', () => {
+    const out = redactMeta({
+      url: 'https://discord.com/api/webhooks/123456789/AbCdEf-ghijk',
+      legacy: 'https://discordapp.com/api/webhooks/123456789/AbCdEf-ghijk',
+      nested: { link: 'https://discord.com/api/webhooks/1/x' },
+      fine: 'https://discord.com/channels/1/2',
+    });
+    expect(out['url']).toBe('[redacted]');
+    expect(out['legacy']).toBe('[redacted]');
+    expect((out['nested'] as Record<string, unknown>)['link']).toBe('[redacted]');
+    expect(out['fine']).toBe('https://discord.com/channels/1/2');
+  });
+});

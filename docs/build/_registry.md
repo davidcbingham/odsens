@@ -112,7 +112,7 @@ styles/tokens.css styles/globals.css   public/fonts/ public/brand/{marks,email,o
 supabase/migrations/ supabase/seed.sql supabase/config.toml
 tests/unit tests/db tests/e2e tests/fixtures/{files,images,ui,emails,discord,resend} tests/helpers/{seedIds,fixtureServer}.ts
                          Playwright projects: smoke-desktop, smoke-phone, e2e, admin
-scripts/contrast.mjs scripts/render-skins.mjs scripts/{check-client-islands,check-fixtures,check-test-ids,check-bundle-secrets,record-fixture}.mjs
+scripts/contrast.mjs scripts/render-skins.mjs scripts/{check-client-islands,check-fixtures,check-test-ids,check-bundle-secrets,record-fixture,fixture-server}.mjs
 next.config.ts eslint.config.mjs vitest.config.ts playwright.config.ts .nvmrc .env.example .env.test
 docs/build/  docs/  design/  assets/brand/  DESIGN.md  CLAUDE.md
 ```
