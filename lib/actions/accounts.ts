@@ -315,7 +315,10 @@ export async function deleteAccount(
     // by me deleted; `revalidateTag('project:<slug>')` per distinct target — those tables do not exist yet.
 
     if (profile.avatar_path) {
-      await deleteAvatarQuietly(user.id, profile.avatar_path, { action: 'deleteAccount', id: ctx.id });
+      await deleteAvatarQuietly(user.id, profile.avatar_path, {
+        action: 'deleteAccount',
+        id: ctx.id,
+      });
     }
 
     const admin = createAdminClient();

@@ -5,6 +5,7 @@
   justify-content: center;
   gap: var(--space-8);
   min-height: 44px;
+  min-width: 44px; /* DESIGN.md 44px targets on both axes — a short ghost label ("Skip") must not shrink below */
   padding: var(--space-12) var(--space-20);
   border: 2px solid transparent;
   border-radius: 0;

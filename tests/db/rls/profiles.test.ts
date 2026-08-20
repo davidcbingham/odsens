@@ -223,31 +223,34 @@ describe('T-RLS-4 profiles update own avatar_path', () => {
     });
   });
 
-  it.each(JWT_ROLES)('T-RLS-4 %s updates own avatar_path (own folder, then clears it)', async (role) => {
-    const id = SEED_ROLE_IDS[role];
-    const avatarPath = `${id}/${HASH16}.webp`;
-    await expectPolicy({
-      table: 'profiles',
-      op: 'update',
-      role,
-      allowed: true,
-      filter: { id },
-      patch: { avatar_path: avatarPath },
-      expectRows: 1,
-    });
-    expect((await profileRow(id))?.avatar_path).toBe(avatarPath);
-    // Owner may also clear it.
-    await expectPolicy({
-      table: 'profiles',
-      op: 'update',
-      role,
-      allowed: true,
-      filter: { id },
-      patch: { avatar_path: null },
-      expectRows: 1,
-    });
-    expect((await profileRow(id))?.avatar_path).toBeNull();
-  });
+  it.each(JWT_ROLES)(
+    'T-RLS-4 %s updates own avatar_path (own folder, then clears it)',
+    async (role) => {
+      const id = SEED_ROLE_IDS[role];
+      const avatarPath = `${id}/${HASH16}.webp`;
+      await expectPolicy({
+        table: 'profiles',
+        op: 'update',
+        role,
+        allowed: true,
+        filter: { id },
+        patch: { avatar_path: avatarPath },
+        expectRows: 1,
+      });
+      expect((await profileRow(id))?.avatar_path).toBe(avatarPath);
+      // Owner may also clear it.
+      await expectPolicy({
+        table: 'profiles',
+        op: 'update',
+        role,
+        allowed: true,
+        filter: { id },
+        patch: { avatar_path: null },
+        expectRows: 1,
+      });
+      expect((await profileRow(id))?.avatar_path).toBeNull();
+    },
+  );
 
   it('T-RLS-4 service updates avatar_path (then restores)', async () => {
     await expectPolicy({
@@ -322,7 +325,7 @@ describe('T-RLS-4 profiles update own avatar_path', () => {
     expect((await profileRow(id))?.avatar_path).toBeNull();
   });
 
-  it("T-RLS-4 service cannot write a foreign avatar_path either (the CHECK is not RLS)", async () => {
+  it('T-RLS-4 service cannot write a foreign avatar_path either (the CHECK is not RLS)', async () => {
     const target = SEED_USERS.seed_user2;
     const { error, status } = await service
       .from('profiles')

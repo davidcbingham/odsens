@@ -434,12 +434,7 @@ export function AvatarUpload({ name, current, size = 88, onChange, className }: 
                   <Button variant="ghost" arrow={false} onClick={openPicker}>
                     Change
                   </Button>
-                  <Button
-                    variant="ghost"
-                    arrow={false}
-                    onClick={remove}
-                    className={styles['avatar-upload-remove']}
-                  >
+                  <Button variant="ghost" arrow={false} onClick={remove}>
                     Remove
                   </Button>
                 </>

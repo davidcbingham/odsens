@@ -41,27 +41,39 @@ function menuTrigger(page: Page): Locator {
   return page.locator('header nav button[aria-haspopup="menu"]');
 }
 
+/**
+ * Resolves once React has hydrated the element `selector` points at: host instances carry a
+ * `__reactFiber$…` property only after hydration (or a client render) attached them. The `/profile`
+ * segment sits behind `loading.tsx`, a Suspense boundary React hydrates lazily after the root, and an
+ * event that lands on it before that is dropped — so every interaction waits for this first.
+ */
+async function waitForHydrated(page: Page, selector: string): Promise<void> {
+  await page.waitForFunction((sel) => {
+    const el = document.querySelector(sel);
+    return el !== null && Object.keys(el).some((key) => key.startsWith('__reactFiber$'));
+  }, selector);
+}
+
+type DetachedTracker = Window & { __detachedHandleInputs?: Element[] };
+
 /** Signed-in `/profile`; the ProfileMenu trigger appears only after hydration + the viewer read. */
 async function openProfile(page: Page): Promise<void> {
   await loginAs(page, 'user');
   await page.goto('/profile');
   await expect(menuTrigger(page)).toBeVisible();
-  // The page streams behind `loading.tsx`; wait until exactly one HandleField is mounted.
+  // The page streams behind `loading.tsx`; wait until exactly one HandleField is mounted and hydrated.
   await expect(page.locator('input[name="handle"]')).toHaveCount(1);
+  await waitForHydrated(page, 'input[name="handle"]');
 }
 
 /**
- * Types a handle and waits for the live field to react. Retried: in the first ~500 ms the page
- * segment is still the server HTML, which is then replaced by a client-rendered copy (see the build
- * report, HANDOFF → ui) — keystrokes that land on the server copy are lost.
+ * Types a handle and waits for the live field to react. No retry: the `/profile` segment hydrates in
+ * place (ViewerProvider publishes through an external store, never a context update that would make
+ * React client-render the still-dehydrated `loading.tsx` boundary — ADR-0014 addendum).
  */
 async function typeHandle(page: Page, value: string): Promise<void> {
-  await expect(async () => {
-    await page.getByLabel('Handle', { exact: true }).fill(value);
-    await expect(handleField(page)).toHaveAttribute('data-state', /checking|available|invalid/, {
-      timeout: 1_000,
-    });
-  }).toPass({ timeout: 10_000 });
+  await page.getByLabel('Handle', { exact: true }).fill(value);
+  await expect(handleField(page)).toHaveAttribute('data-state', /checking|available|invalid/);
 }
 
 test.beforeAll(async () => {
@@ -74,6 +86,45 @@ test.afterAll(async () => {
 });
 
 test.describe('profile', () => {
+  test('T-E2E-23 /profile hydrates in place — the server-rendered handle input is never replaced (ADR-0014 addendum)', async ({
+    page,
+  }) => {
+    await loginAs(page, 'user');
+    // From the first byte on, remember every `input[name=handle]` that leaves the document. React's
+    // streaming script moves the segment out of its hidden holder (a removal that stays connected);
+    // the old context-based ViewerProvider made React discard the server HTML of the still-dehydrated
+    // segment and client-render it (the SSR input ends up detached, keystrokes lost). A store update
+    // reaches only its subscribers, so the SSR input must still be connected after the viewer read.
+    await page.addInitScript(() => {
+      const w = window as DetachedTracker;
+      w.__detachedHandleInputs = [];
+      new MutationObserver((records) => {
+        for (const record of records) {
+          for (const node of record.removedNodes) {
+            if (!(node instanceof Element)) continue;
+            const inputs = node.matches('input[name="handle"]')
+              ? [node]
+              : Array.from(node.querySelectorAll('input[name="handle"]'));
+            w.__detachedHandleInputs?.push(...inputs);
+          }
+        }
+      }).observe(document, { childList: true, subtree: true });
+    });
+    await page.goto('/profile');
+    await expect(menuTrigger(page)).toBeVisible(); // the viewer read has published
+    await expect(page.locator('input[name="handle"]')).toHaveCount(1);
+    await waitForHydrated(page, 'input[name="handle"]');
+    await page.waitForLoadState('networkidle'); // let any late re-render land
+    const detached = await page.evaluate(
+      () =>
+        ((window as DetachedTracker).__detachedHandleInputs ?? []).filter((el) => !el.isConnected)
+          .length,
+    );
+    expect(detached, 'server-rendered handle inputs left detached').toBe(0);
+    // Hydrated in place: the live input keeps its server `useId` (`_R_…_`), not a client one (`_r_…_`).
+    await expect(page.locator('input[name="handle"]')).toHaveAttribute('id', /^_R_/);
+  });
+
   test('T-E2E-23 rename → Saved. toast, consequence + 7-day line; second rename → 7-day reason', async ({
     page,
   }) => {

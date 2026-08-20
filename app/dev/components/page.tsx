@@ -237,10 +237,11 @@ export default function ComponentsPreviewPage() {
         {/* -------------------------------------------------------------- Accounts (03 §2.5) */}
         <Area id="area-accounts" title="ACCOUNTS">
           <div className={styles['preview-group']} data-wide="">
-            <Specimen name="ViewerProvider" label="ViewerProvider · context">
+            <Specimen name="ViewerProvider" label="ViewerProvider · store">
               <ViewerProvider>
                 <p className={styles['preview-note']}>
-                  Context only, no markup. `ProfileMenu` below reads it (anon without a session).
+                  No markup — an external store behind `useViewer()`. `ProfileMenu` below reads it
+                  (anon without a session).
                 </p>
                 <ProfileMenu />
               </ViewerProvider>
