@@ -31,7 +31,7 @@ export const navLinksFixtures: NavLinksFixture[] = [
 
 /**
  * Phone menu (03 N-05/N-08): closed at rest; the smoke spec clicks the burger at 390 and shoots
- * `components-menu@390.png` for the `data-state="open"` panel (ADR-0004 D3). `panelId` keeps the
+ * the `components-menu` capture at 390 px for the `data-state="open"` panel (ADR-0004 D3). `panelId` keeps the
  * preview instance's id distinct from the one inside the `Nav` specimen.
  */
 export const navMenuButtonFixtures: NavMenuButtonFixture[] = [
