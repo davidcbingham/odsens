@@ -36,6 +36,10 @@ test.describe('components preview', () => {
     );
     expect(unlabelled, 'svgs without aria-hidden or role=img+title').toEqual([]);
 
+    // No horizontal overflow at either viewport: the capture must be exactly the viewport width.
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth, 'document scrollWidth == viewport width').toBe(page.viewportSize()?.width);
+
     await expectNoSeriousA11y(page);
     await shoot(page, 'components');
 

@@ -135,7 +135,9 @@
   border-bottom: 2px solid var(--line);
 }
 
-/* Fixture geometry never overflows its specimen cell (Skeleton · media custom at 390). */
-.preview-specimen-body > * {
+/* Fixture geometry never overflows its specimen cell (Skeleton · media/text custom at 390): the Skeleton sits inside
+   .preview-skeleton-well, so the clamp is applied to the well's children too. */
+.preview-specimen-body > *,
+.preview-skeleton-well > * {
   max-width: 100%;
 }
