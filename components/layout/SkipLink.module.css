@@ -1,0 +1,20 @@
+/* SkipLink — DESIGN.md §9 keyboard path; 03 §2.1. Off-screen until :focus-visible. */
+.skip-link {
+  position: fixed;
+  top: var(--space-16);
+  left: var(--space-16);
+  z-index: var(--z-skip);
+  padding: var(--space-12) var(--space-16);
+  background: var(--gold);
+  color: var(--gold-ink);
+  font-family: var(--font-display);
+  font-size: var(--text-small);
+  line-height: 1;
+  text-transform: uppercase;
+  text-decoration: none;
+  transform: translateY(calc(-100% - var(--space-24)));
+}
+
+.skip-link:focus-visible {
+  transform: none;
+}

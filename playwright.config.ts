@@ -33,7 +33,11 @@ export default defineConfig({
     {
       name: 'smoke-desktop',
       testMatch: /smoke\/.*\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 }, colorScheme: 'dark' },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 800 },
+        colorScheme: 'dark',
+      },
     },
     {
       name: 'smoke-phone',
@@ -49,13 +53,21 @@ export default defineConfig({
     {
       name: 'e2e',
       testMatch: /flows\/.*\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 }, colorScheme: 'dark' },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 800 },
+        colorScheme: 'dark',
+      },
     },
     {
       name: 'admin',
       testMatch: /admin\/.*\.spec\.ts/,
       fullyParallel: false,
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 }, colorScheme: 'dark' },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 800 },
+        colorScheme: 'dark',
+      },
     },
   ],
 });

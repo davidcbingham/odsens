@@ -1,0 +1,35 @@
+/* Toast — DESIGN.md §11.1 Toast; 03 §2.1, G-04. Bottom-left, 24px inset; one at a time. */
+.toast-region {
+  position: fixed;
+  left: var(--space-24);
+  bottom: var(--space-24);
+  z-index: var(--z-toast);
+  max-width: calc(100vw - var(--space-24) * 2);
+}
+
+.toast {
+  max-width: 360px;
+  padding: var(--space-12) var(--space-16);
+  background: var(--slab);
+  color: var(--chalk);
+  border: 2px solid var(--line-soft);
+  border-left: 6px solid var(--gold);
+  box-shadow: 4px 4px 0 var(--ink-deep);
+  font-family: var(--font-body);
+  font-size: var(--text-ui);
+  line-height: 1.4;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-fast) ease-out,
+    transform var(--dur-fast) ease-out;
+}
+
+.toast[data-state='entering'] {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.toast[data-state='leaving'] {
+  opacity: 0;
+}

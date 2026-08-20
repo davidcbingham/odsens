@@ -1,0 +1,181 @@
+# .github/workflows/ci.yml — docs/build/05-test-plan.md §4 (CI-1..CI-5, CI-8..CI-11); 00 DoD-2, S0.AC6.
+# Five required checks: lint · unit · db · build · e2e. No repository secrets (CI-9): everything runs
+# against the local Supabase stack with the committed .env.test.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CI: 'true'
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # CI-1: eslint + prettier + tsc + contrast.mjs + check-fixtures + check-test-ids + check-client-islands
+      - run: pnpm lint
+
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # CI-2
+      - run: pnpm test:unit --coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-unit
+          path: coverage/
+          if-no-files-found: ignore
+
+  db:
+    name: db
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: pnpm install --frozen-lockfile
+      - name: Start local Supabase
+        run: supabase start
+      # CI-3: globalSetup runs `supabase db reset` (H-1) — SKIP_DB_RESET is deliberately NOT set.
+      - name: Load .env.test
+        shell: bash
+        run: |
+          set -a; source .env.test; set +a
+          for name in $(grep -oE '^[A-Z_][A-Z0-9_]*' .env.test); do
+            echo "$name=${!name}" >> "$GITHUB_ENV"
+          done
+      - run: pnpm test:db --coverage
+      - name: Supabase diagnostics (on failure)
+        if: failure()
+        shell: bash
+        run: |
+          supabase status || true
+          docker ps -a || true
+          for c in $(docker ps -a --format '{{.Names}}' | grep -i supabase); do
+            echo "===== $c ====="; docker logs --tail 200 "$c" 2>&1 || true
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-db
+          path: coverage/
+          if-no-files-found: ignore
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup || true
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # CI-4: build with .env.test; keep the route table as build-output.txt (ADR-0002 A13 / 01 INV-10).
+      - name: Build (env from .env.test)
+        shell: bash
+        run: |
+          set -o pipefail
+          set -a; source .env.test; set +a
+          pnpm build 2>&1 | tee build-output.txt
+      # 01 INV-29: no secret-bearing env name in the client bundle.
+      - run: node scripts/check-bundle-secrets.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-output.txt
+          path: build-output.txt
+          if-no-files-found: error
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: pnpm install --frozen-lockfile
+      - name: Start local Supabase
+        run: supabase start
+      - name: Load .env.test
+        shell: bash
+        run: |
+          set -a; source .env.test; set +a
+          for name in $(grep -oE '^[A-Z_][A-Z0-9_]*' .env.test); do
+            echo "$name=${!name}" >> "$GITHUB_ENV"
+          done
+      # CI-5 / ADR-0002 #73: fixture server on :4010 (adapters read *_API_BASE from .env.test)
+      - name: Start fixture server
+        run: node scripts/fixture-server.mjs 4010 &
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm build
+      # playwright.config.ts webServer runs `pnpm start` with E2E=1 (enables /__test/throw, T-E2E-15)
+      - run: E2E=1 pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results/
+          if-no-files-found: ignore
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup || true

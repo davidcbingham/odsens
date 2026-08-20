@@ -1,5 +1,5 @@
 allowBuilds:
-  unrs-resolver: set this to true or false
+  unrs-resolver: false
 # pnpm settings (pnpm ≥10 reads these here, not from package.json#pnpm) — 01 INV-81 allowlist
 onlyBuiltDependencies:
   - sharp

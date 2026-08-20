@@ -60,7 +60,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${bungee.variable} ${spaceGrotesk.variable} ${silkscreen.variable}`}>
+    <html
+      lang="en"
+      className={`${bungee.variable} ${spaceGrotesk.variable} ${silkscreen.variable}`}
+    >
       <body>{children}</body>
     </html>
   );

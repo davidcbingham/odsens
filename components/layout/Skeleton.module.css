@@ -1,0 +1,46 @@
+/* Skeleton — DESIGN.md §11.1; 03 G-06. Two flat depths, opacity pulse, no shimmer/gradient. */
+.skeleton {
+  display: block;
+  width: var(--w, 100%);
+  animation: skeleton-pulse var(--dur-skeleton) ease-in-out infinite alternate;
+}
+
+.skeleton[data-variant='media'] {
+  height: var(--h, auto);
+  aspect-ratio: 16 / 9;
+  background: var(--skeleton-media);
+}
+
+.skeleton[data-variant='text'] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.skeleton-line {
+  display: block;
+  height: var(--h, 14px);
+  width: 100%;
+  background: var(--skeleton-text);
+}
+
+.skeleton-line:last-child:not(:only-child) {
+  width: 60%;
+}
+
+@keyframes skeleton-pulse {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    opacity: 0.8;
+  }
+}

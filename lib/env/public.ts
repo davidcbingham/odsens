@@ -28,3 +28,9 @@ export const publicEnv: PublicEnv = (() => {
   }
   return parsed.data;
 })();
+
+/**
+ * True outside production builds (`next dev`, vitest) — enables the throw-in-development copy guards
+ * (03 PixelLabel ≤5 words / size 10 && informational; Toast ≤3 words). Literal NODE_ENV so Next inlines it.
+ */
+export const isDev = process.env.NODE_ENV !== 'production';

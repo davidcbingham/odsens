@@ -101,6 +101,17 @@
   --text-detail-title-phone: 26px;
   --text-subhead: 19px;
   --text-nav: 15px;
+  --text-ui: 15px; /* secondary/ghost labels, footer links, toast (§2 UI) */
+  --text-label: 13px; /* small labels, sm button */
+  --text-label-sm: 12px; /* nav Support button, chip text */
+  --text-wordmark: 20px; /* ODSENS wordmark in nav/footer */
+  --text-pixel-10: 10px;
+  --text-pixel-11: 11px;
+  --text-pixel-12: 12px;
+  --text-404: 80px; /* §11.3 #13 decorative numeral */
+  --text-404-phone: 60px;
+  --size-error-mark: 64px; /* §11.3 #14 alert square */
+  --size-avatar-nav: 40px;
 
   /* z-index scale */
   --z-skip: 1000;

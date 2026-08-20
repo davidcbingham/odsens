@@ -97,6 +97,9 @@ Answered items get folded into `spec.md` and struck here.
 - [ ] **Discord**: confirm Oliver has his own server; create a private `#odsens-admin` channel + webhook URL → `.env` `DISCORD_WEBHOOK_URL` (also settable in admin Settings)
 - [x] Docker runtime on David's Mac — OrbStack installed, local Supabase verified (`docs/dev-tooling.md`)
 - [ ] Decisions: Q33–40
+- [ ] Enable **Supabase Branching** on `odsens` + install the Supabase **GitHub integration** (`davidcbingham/odsens`) + the Supabase **Vercel integration** — REQUIRED before S1.1 (ADR-0006; at S0 the preview runs on placeholder anon/service-role values)
+- [ ] Vercel: enable **Protection Bypass for Automation** (Project → Deployment Protection) so `deploy-checker` can fetch protected previews
+- [ ] Vercel: remove `CURSEFORGE_MEMBER` from all environments (dropped from `.env.example` at S0, 04 SC-16)
 
 ## From "Seen on" + Workrooms (2026-08-17)
 41. ~~**Mention click behaviour**~~ — **Answered (pass 3):** YouTube mentions embed inline (facade → player, indigo-lift outline, "on YouTube ↗" ghost link); other platforms link out.
@@ -111,3 +114,9 @@ Answers to Claude Design's open items (build decisions, no re-pass): view counts
 
 ## Engineering specs (2026-08-17)
 `docs/build/00–05` + `_registry.md` + ADR-0001/0002 (with Amendment A) **FROZEN v1.0 (2026-08-17)** — build starts at S0 in a fresh session (`docs/build/START-BUILD.md`).
+
+## S0 build notes (2026-08-17 → 2026-08-20)
+- 2026-08-17 — S0 build started on `feat/S0-scaffold`; ADRs filed: ADR-0003 (CSP `unsafe-inline`), ADR-0004 (`/dev/components`), ADR-0005 (placeholder pages static per 02 RP-16), ADR-0006 (preview env fallback until Supabase Branching is live).
+- 2026-08-17 — S1.1 open: preview `NEXT_PUBLIC_SITE_URL` strategy (per-branch env vs `VERCEL_BRANCH_URL` derivation) — needed for OAuth `redirectTo` on previews (ADR-0006 D2).
+- 2026-08-17 — S1.1 heads-up: Next 16 renamed `middleware.ts` → `proxy.ts`; 02 §3 / `_registry.md` say `middleware.ts` — decide by ADR at S1.1.
+- 2026-08-20 — S0 session resumed after an interruption; PR opened from `feat/S0-scaffold`.

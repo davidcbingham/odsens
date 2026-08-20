@@ -1,0 +1,37 @@
+/* Onboarding shell — same slab bar as Nav (03 N-01): --nav-h, --slab, 2px --line bottom. */
+.onboarding-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  background: var(--slab);
+  border-bottom: 2px solid var(--line);
+}
+
+.onboarding-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-24);
+  max-width: var(--measure-page);
+  height: var(--nav-h);
+  margin: 0 auto;
+  padding: 0 var(--space-40);
+}
+
+.onboarding-wordmark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-family: var(--font-display);
+  font-size: var(--text-wordmark);
+  line-height: 1;
+  color: var(--white);
+  text-decoration: none;
+}
+
+@media (max-width: 599px) {
+  .onboarding-header-inner {
+    height: var(--nav-h-phone);
+    padding: 0 var(--space-24);
+  }
+}

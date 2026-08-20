@@ -62,22 +62,54 @@ const config = [
       // INV-93 / INV-68
       'no-restricted-properties': [
         'error',
-        { property: 'toLocaleString', message: 'Format dates in lib/format/*.ts (01 INV-68/INV-93).' },
-        { property: 'toLocaleDateString', message: 'Format dates in lib/format/*.ts (01 INV-68/INV-93).' },
-        { property: 'toLocaleTimeString', message: 'Format dates in lib/format/*.ts (01 INV-68/INV-93).' },
+        {
+          property: 'toLocaleString',
+          message: 'Format dates in lib/format/*.ts (01 INV-68/INV-93).',
+        },
+        {
+          property: 'toLocaleDateString',
+          message: 'Format dates in lib/format/*.ts (01 INV-68/INV-93).',
+        },
+        {
+          property: 'toLocaleTimeString',
+          message: 'Format dates in lib/format/*.ts (01 INV-68/INV-93).',
+        },
       ],
       // INV-84 / INV-85 / INV-86 / INV-87 — module import fences (defaults; relaxed per-directory below)
       'no-restricted-imports': [
         'error',
         {
           paths: [
-            { name: '@/lib/supabase/admin', message: 'Service-role client only in lib/actions/**, lib/jobs/**, lib/notify/**, lib/files.ts, lib/rate-limit.ts, app/api/** (01 INV-14/INV-84).' },
-            { name: '@supabase/supabase-js', message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).' },
-            { name: '@supabase/ssr', message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).' },
-            { name: '@/lib/supabase/client', message: 'Browser client only in ViewerProvider, CommentThread, GoogleSignInButton (01 INV-85).' },
-            { name: 'react-markdown', message: 'Only lib/markdown.ts may import react-markdown (01 INV-86).' },
-            { name: 'remark-gfm', message: 'Only lib/markdown.ts may import remark-gfm (01 INV-86).' },
-            { name: 'rehype-sanitize', message: 'Only lib/markdown.ts may import rehype-sanitize (01 INV-86).' },
+            {
+              name: '@/lib/supabase/admin',
+              message:
+                'Service-role client only in lib/actions/**, lib/jobs/**, lib/notify/**, lib/files.ts, lib/rate-limit.ts, app/api/** (01 INV-14/INV-84).',
+            },
+            {
+              name: '@supabase/supabase-js',
+              message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).',
+            },
+            {
+              name: '@supabase/ssr',
+              message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).',
+            },
+            {
+              name: '@/lib/supabase/client',
+              message:
+                'Browser client only in ViewerProvider, CommentThread, GoogleSignInButton (01 INV-85).',
+            },
+            {
+              name: 'react-markdown',
+              message: 'Only lib/markdown.ts may import react-markdown (01 INV-86).',
+            },
+            {
+              name: 'remark-gfm',
+              message: 'Only lib/markdown.ts may import remark-gfm (01 INV-86).',
+            },
+            {
+              name: 'rehype-sanitize',
+              message: 'Only lib/markdown.ts may import rehype-sanitize (01 INV-86).',
+            },
             { name: 'rehype-raw', message: 'rehype-raw is banned everywhere (01 INV-65/INV-86).' },
           ],
         },
@@ -87,7 +119,16 @@ const config = [
 
   // Type-aware rules only where the project service resolves files (INV-91).
   {
-    files: ['app/**/*.ts', 'app/**/*.tsx', 'lib/**/*.ts', 'lib/**/*.tsx', 'components/**/*.tsx', 'components/**/*.ts', 'middleware.ts', 'emails/**/*.tsx'],
+    files: [
+      'app/**/*.ts',
+      'app/**/*.tsx',
+      'lib/**/*.ts',
+      'lib/**/*.tsx',
+      'components/**/*.tsx',
+      'components/**/*.ts',
+      'middleware.ts',
+      'emails/**/*.tsx',
+    ],
     rules: {
       '@typescript-eslint/no-floating-promises': 'error',
     },
@@ -96,7 +137,15 @@ const config = [
   // ---- Per-directory relaxations (the "allowed only in" halves of INV-84–89) ----
   {
     // INV-35/INV-88: env readers, next.config, tests, scripts may read process.env
-    files: ['lib/env.ts', 'lib/env/public.ts', 'next.config.ts', 'tests/**', 'scripts/**', 'vitest.config.ts', 'playwright.config.ts'],
+    files: [
+      'lib/env.ts',
+      'lib/env/public.ts',
+      'next.config.ts',
+      'tests/**',
+      'scripts/**',
+      'vitest.config.ts',
+      'playwright.config.ts',
+    ],
     rules: { 'no-restricted-syntax': 'off' },
   },
   {
@@ -123,15 +172,54 @@ const config = [
   },
   {
     // INV-14/INV-84: service-role client allowed here
-    files: ['lib/actions/**', 'lib/jobs/**', 'lib/notify/**', 'lib/files.ts', 'lib/rate-limit.ts', 'app/api/**', 'tests/**'],
+    files: [
+      'lib/actions/**',
+      'lib/jobs/**',
+      'lib/notify/**',
+      'lib/files.ts',
+      'lib/rate-limit.ts',
+      'app/api/**',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
         {
           paths: [
-            { name: '@supabase/supabase-js', message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).' },
-            { name: '@supabase/ssr', message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).' },
-            { name: '@/lib/supabase/client', message: 'Browser client only in ViewerProvider, CommentThread, GoogleSignInButton (01 INV-85).' },
+            {
+              name: '@supabase/supabase-js',
+              message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).',
+            },
+            {
+              name: '@supabase/ssr',
+              message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).',
+            },
+            {
+              name: '@/lib/supabase/client',
+              message:
+                'Browser client only in ViewerProvider, CommentThread, GoogleSignInButton (01 INV-85).',
+            },
+            { name: 'react-markdown', message: 'Only lib/markdown.ts (01 INV-86).' },
+            { name: 'remark-gfm', message: 'Only lib/markdown.ts (01 INV-86).' },
+            { name: 'rehype-sanitize', message: 'Only lib/markdown.ts (01 INV-86).' },
+            { name: 'rehype-raw', message: 'rehype-raw is banned everywhere (01 INV-65/INV-86).' },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // 05 §1.3: the test harness (asRole/expectPolicy) builds raw Supabase clients against the local stack
+    files: ['tests/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/lib/supabase/client',
+              message:
+                'Browser client only in ViewerProvider, CommentThread, GoogleSignInButton (01 INV-85).',
+            },
             { name: 'react-markdown', message: 'Only lib/markdown.ts (01 INV-86).' },
             { name: 'remark-gfm', message: 'Only lib/markdown.ts (01 INV-86).' },
             { name: 'rehype-sanitize', message: 'Only lib/markdown.ts (01 INV-86).' },
@@ -154,10 +242,22 @@ const config = [
         {
           paths: [
             { name: '@/lib/supabase/admin', message: '01 INV-14/INV-84.' },
-            { name: '@/lib/supabase/server', message: 'Client components never import the cookie server client (01 INV-85).' },
-            { name: '@supabase/supabase-js', message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).' },
-            { name: '@supabase/ssr', message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).' },
-            { name: '@/lib/env', message: 'Client code imports publicEnv from @/lib/env/public (01 INV-87).' },
+            {
+              name: '@/lib/supabase/server',
+              message: 'Client components never import the cookie server client (01 INV-85).',
+            },
+            {
+              name: '@supabase/supabase-js',
+              message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).',
+            },
+            {
+              name: '@supabase/ssr',
+              message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).',
+            },
+            {
+              name: '@/lib/env',
+              message: 'Client code imports publicEnv from @/lib/env/public (01 INV-87).',
+            },
             { name: 'react-markdown', message: 'Only lib/markdown.ts (01 INV-86).' },
             { name: 'remark-gfm', message: 'Only lib/markdown.ts (01 INV-86).' },
             { name: 'rehype-sanitize', message: 'Only lib/markdown.ts (01 INV-86).' },
@@ -199,11 +299,21 @@ const config = [
         {
           paths: [
             { name: '@/lib/supabase/admin', message: '01 INV-14/INV-84.' },
-            { name: '@/lib/supabase/server', message: 'components/** never import the cookie server client (01 INV-85).' },
-            { name: '@/lib/supabase/client', message: 'Browser client only in ViewerProvider, CommentThread, GoogleSignInButton (01 INV-85).' },
+            {
+              name: '@/lib/supabase/server',
+              message: 'components/** never import the cookie server client (01 INV-85).',
+            },
+            {
+              name: '@/lib/supabase/client',
+              message:
+                'Browser client only in ViewerProvider, CommentThread, GoogleSignInButton (01 INV-85).',
+            },
             { name: '@supabase/supabase-js', message: '01 INV-13/INV-85.' },
             { name: '@supabase/ssr', message: '01 INV-13/INV-85.' },
-            { name: '@/lib/env', message: 'components import publicEnv from @/lib/env/public (01 INV-87).' },
+            {
+              name: '@/lib/env',
+              message: 'components import publicEnv from @/lib/env/public (01 INV-87).',
+            },
             { name: 'react-markdown', message: 'Only lib/markdown.ts (01 INV-86).' },
             { name: 'remark-gfm', message: 'Only lib/markdown.ts (01 INV-86).' },
             { name: 'rehype-sanitize', message: 'Only lib/markdown.ts (01 INV-86).' },

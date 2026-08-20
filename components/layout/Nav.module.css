@@ -1,0 +1,187 @@
+/* Nav — DESIGN.md §5 Nav, §12.2, §12.7 nav metrics; 03 §4 N-01..N-09. Shared by Nav, NavLinks, NavMenuButton. */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  background: var(--slab);
+  border-bottom: 2px solid var(--line);
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-24);
+  max-width: var(--measure-page);
+  height: var(--nav-h);
+  margin: 0 auto;
+  padding: 0 var(--space-40);
+}
+
+/* ---- left: avatar + wordmark = the Home link (N-02) ---- */
+.nav-home {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: 44px;
+  color: var(--white);
+  text-decoration: none;
+}
+
+.nav-wordmark {
+  font-family: var(--font-display);
+  font-size: var(--text-wordmark);
+  line-height: 1;
+  color: var(--white);
+}
+
+/* ---- middle: desktop link row (N-03, ADR-0002 #52) ---- */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: var(--space-8);
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: var(--text-nav);
+  font-weight: 500;
+  color: var(--mute);
+  text-decoration: none;
+  transition: color var(--dur-fast) ease-out;
+}
+
+.nav-link:hover {
+  color: var(--chalk);
+}
+
+.nav-link[aria-current='page'] {
+  color: var(--white);
+  font-weight: 700;
+  box-shadow: inset 0 -3px 0 var(--gold);
+}
+
+/* ---- right: viewer slot (S1.1) · Support · burger (N-04, N-05) ---- */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  margin-left: auto;
+}
+
+/* ---- burger + panel (N-05, N-08) ---- */
+.nav-burger {
+  display: none;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  color: var(--chalk);
+  outline-offset: -2px;
+}
+
+.nav-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--slab);
+  border-bottom: 2px solid var(--line);
+  padding: var(--space-8) 0 var(--space-16);
+}
+
+.nav-menu-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-menu-link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-8) var(--space-24);
+  font-family: var(--font-body);
+  font-size: var(--text-nav);
+  font-weight: 500;
+  color: var(--mute);
+  text-decoration: none;
+}
+
+.nav-menu-link:hover {
+  color: var(--chalk);
+}
+
+.nav-menu-link[aria-current='page'] {
+  color: var(--white);
+  font-weight: 700;
+  box-shadow: inset 0 -3px 0 var(--gold);
+}
+
+.nav-menu-support {
+  padding: var(--space-12) var(--space-24) var(--space-8);
+}
+
+.nav-menu-support-button {
+  width: 100%;
+}
+
+@keyframes nav-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes nav-menu-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---- breakpoints: burger under 900px (--bp-tablet); phone bar under 600px (--bp-phone) ---- */
+@media (max-width: 899px) {
+  .nav-links {
+    display: none;
+  }
+
+  .nav-burger {
+    display: grid;
+  }
+
+  .nav-menu[data-state='open'] {
+    display: block;
+    animation: nav-menu-in var(--dur-fast) ease-out;
+  }
+}
+
+@media (max-width: 599px) {
+  .nav-inner {
+    height: var(--nav-h-phone);
+    padding: 0 var(--space-24);
+    gap: var(--space-16);
+  }
+
+  /* Support lives only in the menu on phone (ADR-0002 #51) */
+  .nav-right .nav-support {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-menu[data-state='open'] {
+    animation: nav-menu-fade var(--dur-fast) ease-out;
+  }
+}

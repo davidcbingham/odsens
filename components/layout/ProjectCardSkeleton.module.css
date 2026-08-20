@@ -1,0 +1,51 @@
+/* ProjectCardSkeleton — ProjectCard shell (DESIGN.md §5 Project card) with skeleton blocks. */
+.project-card-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-20);
+}
+
+@media (max-width: 899px) {
+  .project-card-skeleton-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .project-card-skeleton-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.project-card-skeleton {
+  display: flex;
+  flex-direction: column;
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+}
+
+.project-card-skeleton-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-20);
+}
+
+.project-card-skeleton-icon {
+  width: 64px;
+  height: 64px;
+  background: var(--slab-sunk);
+  border: 2px solid var(--line);
+}
+
+.project-card-skeleton-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-top: auto;
+  padding: var(--space-12) var(--space-20);
+  background: var(--slab-foot);
+  border-top: 2px solid var(--line);
+}
