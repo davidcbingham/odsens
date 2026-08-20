@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { FLAGS } from '@/lib/flags';
 import { Avatar } from '@/components/primitives/Avatar';
 import { Button } from '@/components/primitives/Button';
+import { ProfileMenu } from '@/components/accounts/ProfileMenu';
 import { NavLinks } from './Nav.Links';
 import { NavMenuButton } from './Nav.MenuButton';
 import styles from './Nav.module.css';
@@ -9,7 +10,9 @@ import styles from './Nav.module.css';
 /**
  * Nav — sticky top bar (DESIGN.md §5 Nav, §12.2; 03 §4 N-01..N-09). Server shell, no props:
  * the link list is a constant here and `FLAGS.commissions` is read directly (01 INV-74).
- * Client leaves: `NavLinks` (aria-current via usePathname) and `NavMenuButton` (burger + panel).
+ * Client leaves: `NavLinks` (aria-current via usePathname), `NavMenuButton` (burger + panel) and the
+ * viewer slot `ProfileMenu` (03 N-04; reads `useViewer()` — anon/loading renders "Sign in"). The same
+ * slot is passed into the phone panel as the `viewer` node (03 N-05: same order, Support last).
  */
 export type NavProps = Record<string, never>;
 
@@ -38,11 +41,18 @@ export function Nav() {
         <NavLinks links={LINKS} />
 
         <div className={styles['nav-right']}>
-          {/* Viewer slot (S1.1): ProfileMenu reading useViewer(); GoogleSignInButton "Sign in" while anon/loading. */}
+          {/* Viewer slot (03 N-04): SearchBox placement="nav" precedes it from S1.2. */}
+          <div className={styles['nav-viewer']}>
+            <ProfileMenu />
+          </div>
           <Button variant="gold" size="sm" href={SUPPORT.href} className={styles['nav-support']}>
             {SUPPORT.label}
           </Button>
-          <NavMenuButton links={LINKS} support={SUPPORT} />
+          <NavMenuButton
+            links={LINKS}
+            support={SUPPORT}
+            viewer={<ProfileMenu className={styles['nav-menu-profile']} />}
+          />
         </div>
       </nav>
     </header>

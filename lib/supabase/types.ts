@@ -34,17 +34,202 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_path: string | null
+          banned_reason: string | null
+          comment_count: number
+          created_at: string
+          email_hash: string | null
+          handle: string | null
+          handle_changed_at: string | null
+          id: string
+          is_banned: boolean
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+        }
+        Insert: {
+          avatar_path?: string | null
+          banned_reason?: string | null
+          comment_count?: number
+          created_at?: string
+          email_hash?: string | null
+          handle?: string | null
+          handle_changed_at?: string | null
+          id: string
+          is_banned?: boolean
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Update: {
+          avatar_path?: string | null
+          banned_reason?: string | null
+          comment_count?: number
+          created_at?: string
+          email_hash?: string | null
+          handle?: string | null
+          handle_changed_at?: string | null
+          id?: string
+          is_banned?: boolean
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rate_limit_hits: {
+        Row: {
+          key: string
+          scope: string
+          ts: string
+        }
+        Insert: {
+          key: string
+          scope: string
+          ts?: string
+        }
+        Update: {
+          key?: string
+          scope?: string
+          ts?: string
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          admin_notify_emails: string[]
+          announcement_md: string | null
+          comments_closed_default: boolean
+          created_at: string
+          discord_webhook_url: string | null
+          id: number
+          kofi_page: string | null
+          moderation_mode: Database["public"]["Enums"]["moderation_mode"]
+          owner_profile_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_notify_emails?: string[]
+          announcement_md?: string | null
+          comments_closed_default?: boolean
+          created_at?: string
+          discord_webhook_url?: string | null
+          id: number
+          kofi_page?: string | null
+          moderation_mode?: Database["public"]["Enums"]["moderation_mode"]
+          owner_profile_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_notify_emails?: string[]
+          announcement_md?: string | null
+          comments_closed_default?: boolean
+          created_at?: string
+          discord_webhook_url?: string | null
+          id?: number
+          kofi_page?: string | null
+          moderation_mode?: Database["public"]["Enums"]["moderation_mode"]
+          owner_profile_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_settings_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_settings_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          avatar_path: string | null
+          handle: string | null
+          id: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+        }
+        Insert: {
+          avatar_path?: string | null
+          handle?: string | null
+          id?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+        }
+        Update: {
+          avatar_path?: string | null
+          handle?: string | null
+          id?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+        }
+        Relationships: []
+      }
+      site_settings_public: {
+        Row: {
+          comments_closed_default: boolean | null
+          kofi_page: string | null
+          moderation_mode: Database["public"]["Enums"]["moderation_mode"] | null
+          owner_profile_id: string | null
+        }
+        Insert: {
+          comments_closed_default?: boolean | null
+          kofi_page?: string | null
+          moderation_mode?:
+            | Database["public"]["Enums"]["moderation_mode"]
+            | null
+          owner_profile_id?: string | null
+        }
+        Update: {
+          comments_closed_default?: boolean | null
+          kofi_page?: string | null
+          moderation_mode?:
+            | Database["public"]["Enums"]["moderation_mode"]
+            | null
+          owner_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_settings_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_settings_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      check_handle: { Args: { p_handle: string }; Returns: string }
       is_admin: { Args: never; Returns: boolean }
       is_moderator: { Args: never; Returns: boolean }
+      purge_rate_limit_hits: { Args: { p_days: number }; Returns: number }
+      rate_limit_ok: {
+        Args: {
+          p_key: string
+          p_max: number
+          p_scope: string
+          p_window: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      moderation_mode: "auto" | "hold_first_time"
+      user_role: "user" | "moderator" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -174,7 +359,10 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      moderation_mode: ["auto", "hold_first_time"],
+      user_role: ["user", "moderator", "admin"],
+    },
   },
 } as const
 

@@ -19,14 +19,14 @@ Talk to Oliver like a smart 15-year-old who builds mods: name a thing once, then
 ### Facts it knows
 - Vercel project `odsens`, team `studiobing`, id `prj_fTdiX6oYxyQ8CnAmzSzKnCb74MkU`. A branch push deploys a preview automatically (GitHub integration). Preview URL pattern: `https://odsens-git-<branch-slug>-studiobing.vercel.app`.
 - Deployment Protection = Standard until S1.10: previews and production need a Vercel login to view. `deploy-checker` needs "Protection Bypass for Automation" (David-side to-do below).
-- Env var names = `.env.example`. The per-branch preview `NEXT_PUBLIC_SITE_URL` is set by this skill (ADR-0006 D2) until S1.1 decides a general rule.
+- Env var names = `.env.example`. Preview env needs no per-branch step (ADR-0010): every preview runs on the persistent **`staging`** Supabase branch (git branch `staging`); the Vercel Preview environment carries staging's `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` (set once by David; the new names are accepted as aliases) and `NEXT_PUBLIC_SITE_URL` is derived from `VERCEL_BRANCH_URL` on previews.
 - Cron routes to smoke-test after deploy = `docs/build/04-server-contracts.md` §6 table (empty at S0).
 - Required CI checks on `main`: `lint`, `unit`, `db`, `build`, `e2e` (05 CI-8). Tags per 00 §1.4: S0 `v0.1`, S1.1 `v0.2` … S1.9 `v0.10`, S1.10 `v1.0.0`; Phase 2 `v1.<n>`. Fix branches get no tag.
 
 ## Steps
 1. **Branch + clean tree.** `git status`. On `main`? → `git switch -c feat/<SliceID>-<slug>` (fix after merge: `fix/<SliceID>-<slug>`; docs only: `docs/<slug>`). Uncommitted work → commit it with a plain message ("Add Discord widget to home rail") ending in the `Co-Authored-By: Claude <noreply@anthropic.com>` line. Never commit on `main`.
 2. **Push.** `git push -u origin <branch>`. Vercel starts the preview build on its own.
-3. **New branch? Set its preview site URL** (ADR-0006 D2): `vercel env add NEXT_PUBLIC_SITE_URL preview <branch> --value https://odsens-git-<branch-slug>-studiobing.vercel.app --yes --scope studiobing` — works only after step 2 (the branch must exist on GitHub). If the first preview already built, push again so it picks the var up.
+3. **Push the PR branch to `staging`** (ADR-0010) before anyone reviews the preview: `git push origin <branch>:staging` — fast-forward only, **never force**; if it is not a fast-forward, rebase the branch onto `main` first (one PR in flight at a time). That is how the PR's migrations + `supabase/config.toml` reach the persistent `staging` Supabase branch every preview runs on; `main` still promotes to production on merge. Nothing else to set by hand: `NEXT_PUBLIC_SITE_URL` is derived from `VERCEL_BRANCH_URL`. Until David's three dashboard steps are done (automatic branching off · staging vars in Vercel Preview · Google-console redirect URI) a preview may still run on an ephemeral branch — `deploy-checker` reports which ref it found.
 4. **Find the preview URL.** `vercel ls odsens --scope studiobing` or the PR's "Vercel" check. It should match the pattern above. Open it (Vercel login needed while Protection is on).
 5. **Pre-PR checklist.** CI green on the branch (`gh pr checks` once the PR exists, or the Actions tab); `pnpm test` locally; screenshots of every touched page at 1280 + 390: `pnpm test:e2e --project=smoke-desktop --project=smoke-phone` (files land in `test-results/`; dark theme).
 6. **Open the PR** with the 00 §1.3 template VERBATIM (copy below) — write the body to a file, then `gh pr create --title "<SliceID> — <name>" --body-file <file>`. Fill every section. `## ADRs in this PR` is the word `none` or one line per ADR. `## Bundle` is `none` unless a route's first-load JS grew >20 KB gz.
@@ -38,9 +38,10 @@ Talk to Oliver like a smart 15-year-old who builds mods: name a thing once, then
 12. **Close out.** Docs touched (spec, questions, `DESIGN.md`, 00–05, an ADR to flip to Accepted)? → `keep-docs`. Then the breadcrumb: what I did / where it is (PR number, preview URL, tag) / how to undo (`git revert <merge-sha>` + push, or step 11).
 
 ### David-side prerequisites (dashboard clicks a build session can't do)
-- Enable Supabase Branching on `odsens` + install the Supabase GitHub integration (`davidcbingham/odsens`) + the Supabase Vercel integration — REQUIRED before S1.1 (ADR-0006).
-- Vercel → Project → Deployment Protection → enable "Protection Bypass for Automation" so `deploy-checker` can fetch protected previews.
-- Vercel → remove `CURSEFORGE_MEMBER` from all environments (dropped from `.env.example` at S0, 04 SC-16).
+- ~~Enable Supabase Branching on `odsens` + install the Supabase GitHub integration (`davidcbingham/odsens`) + the Supabase Vercel integration — REQUIRED before S1.1 (ADR-0006).~~ Done 2026-08-20 (ADR-0010).
+- ~~Vercel → Project → Deployment Protection → enable "Protection Bypass for Automation" so `deploy-checker` can fetch protected previews.~~ Done 2026-08-20 (`VERCEL_AUTOMATION_BYPASS_SECRET`, tooling-only; a commented line in `.env.example`, never a schema name).
+- ~~Vercel → remove `CURSEFORGE_MEMBER` from all environments (dropped from `.env.example` at S0, 04 SC-16).~~ Done 2026-08-20.
+- Persistent `staging` branch (ADR-0010): Supabase → GitHub integration → turn **off** automatic per-PR branching · Vercel → Preview environment → paste staging's `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` · Google Cloud console → OAuth client → add `https://oihrxwqarwllvsyllczo.supabase.co/auth/v1/callback`.
 
 ### PR body template (`docs/build/00-build-plan.md` §1.3, verbatim)
 ```

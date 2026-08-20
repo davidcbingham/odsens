@@ -1,17 +1,21 @@
 /**
- * lib/auth.ts — the one auth seam (01 INV-32; 04 SC-04; 02 RP-19 / RP-20; ADR-0002 A15).
+ * lib/auth.ts — the one auth seam (01 INV-32; 04 SC-04; 02 RP-19 / RP-20; ADR-0002 A15; ADR-0013; ADR-0014).
  *
- * Exports exactly `getUser`, `getViewer`, `getProfile`, `requireUser`, `requireOnboarded`,
- * `requireRole`, `safeNext` (+ the types `AuthError`, `Role`, `Profile`, `Viewer`). Only this module
- * and `middleware.ts` call `auth.getUser()`; the raw session is never read anywhere (ADR-0002 A15).
- * Callers receive `{ id }` and the own `profiles` row only — no Google identity field ever leaves
- * this file (01 INV-32).
+ * Function exports are exactly `getUser`, `getViewer`, `getProfile`, `requireUser`, `requireOnboarded`,
+ * `requireRole`, `safeNext` (+ the types `Role`, `Profile`, `OnboardedProfile`, `Viewer` and the class
+ * `AuthError`, a value export since ADR-0013 so `runAction` can map `code`). Only this module and
+ * `proxy.ts` call `auth.getUser()`; the raw session is never read anywhere (ADR-0002 A15). Callers
+ * receive `{ id }` and the own `profiles` row only — no Google identity field ever leaves this file
+ * (01 INV-32).
  *
- * `safeNext` is pure (no Next / Supabase dependency) so T-UNIT-44 can import it directly.
+ * `safeNext` lives in the pure module `lib/validation/next.ts` (client-importable) and is re-exported
+ * here so 04 SC-04's export set is unchanged (T-UNIT-44 imports it from this file).
  */
 import 'server-only';
 import type { ActionErrorCode } from '@/lib/actions/result';
 import { createServerClient } from '@/lib/supabase/server';
+
+export { safeNext } from '@/lib/validation/next';
 
 export type Role = 'user' | 'moderator' | 'admin';
 
@@ -21,14 +25,17 @@ export type Profile = {
   avatar_path: string | null;
   role: Role;
   is_banned: boolean;
+  /** ISO time of the last rename, or null — `/profile` derives its 7-day line from it (ADR-0014). */
+  handle_changed_at: string | null;
 };
+
+/** A profile past onboarding: `handle` is narrowed to `string` (what `requireOnboarded` returns). */
+export type OnboardedProfile = Profile & { handle: string };
 
 export type Viewer = { user: { id: string }; profile: Profile | null };
 
-/** Thrown by the `require*` helpers; actions map `code` onto `ActionResult` (04 SC-03 / §7). */
-// Internal on purpose: 04 SC-04 / 01 INV-32 fix the export set to the seven names below. The
-// `require*` helpers throw it; S1.1 (first consumer) decides how actions surface `code` (SC-03).
-class AuthError extends Error {
+/** Thrown by the `require*` helpers; `runAction` maps `code` onto `ActionResult` (04 SC-03 / §7). */
+export class AuthError extends Error {
   readonly code: ActionErrorCode;
 
   constructor(code: ActionErrorCode, message: string) {
@@ -38,48 +45,32 @@ class AuthError extends Error {
   }
 }
 
-// ---------------------------------------------------------------------------------------------
-// safeNext (02 RP-20; T-UNIT-44) — pure, no runtime dependency on next/headers or Supabase.
-// ---------------------------------------------------------------------------------------------
+const PROFILE_COLUMNS = 'id, handle, avatar_path, role, is_banned, handle_changed_at' as const;
 
-/** Same-origin app paths that must never be a post-sign-in destination. */
-const BLOCKED_PREFIXES = ['/api', '/auth', '/admin'] as const;
+type ServerClient = Awaited<ReturnType<typeof createServerClient>>;
 
-const CODE_SPACE = 0x20;
-const CODE_BACKSLASH = 0x5c;
-const CODE_DEL = 0x7f;
-
-/**
- * True when `value` carries an ASCII control character (CR / LF / TAB / NUL …), DEL or a backslash.
- * Browsers strip tabs and newlines before URL parsing, so a tab after the slash would otherwise let
- * `/<tab>/evil` become `//evil`; CR / LF would allow header injection in a `Location` header.
- */
-function hasForbiddenChar(value: string): boolean {
-  for (let i = 0; i < value.length; i += 1) {
-    const code = value.charCodeAt(i);
-    if (code < CODE_SPACE || code === CODE_DEL || code === CODE_BACKSLASH) return true;
-  }
-  return false;
+/** Own-row read under RLS (`auth.uid() = id`) — the only `from('profiles')` site on the server seam. */
+async function readOwnProfile(supabase: ServerClient, userId: string): Promise<Profile | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(PROFILE_COLUMNS)
+    .eq('id', userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    id: data.id,
+    handle: data.handle,
+    avatar_path: data.avatar_path,
+    role: data.role,
+    is_banned: data.is_banned,
+    handle_changed_at: data.handle_changed_at,
+  };
 }
 
-/**
- * Validates a `next` query value as an in-app path. Returns it unchanged when it is a string that
- * starts with `/`, does not start with `//` or `/\`, carries no backslash / control character, and
- * does not target `/api`, `/auth` or `/admin` (exact, or followed by `/`, `?`, `#`). Otherwise `/`.
- */
-export function safeNext(next: string | null | undefined): string {
-  if (typeof next !== 'string' || next === '') return '/';
-  if (!next.startsWith('/')) return '/';
-  if (next.startsWith('//') || next.startsWith('/\\')) return '/';
-  if (hasForbiddenChar(next)) return '/';
-  for (const prefix of BLOCKED_PREFIXES) {
-    if (next === prefix) return '/';
-    if (next.startsWith(prefix)) {
-      const boundary = next.charAt(prefix.length);
-      if (boundary === '/' || boundary === '?' || boundary === '#') return '/';
-    }
-  }
-  return next;
+async function resolveUser(supabase: ServerClient): Promise<{ id: string } | null> {
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) return null;
+  return { id: data.user.id };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -89,22 +80,23 @@ export function safeNext(next: string | null | undefined): string {
 /** The signed-in user's id, or `null` for anon. Verified server-side (never trusts the cookie alone). */
 export async function getUser(): Promise<{ id: string } | null> {
   const supabase = await createServerClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return null;
-  return { id: data.user.id };
+  return resolveUser(supabase);
 }
 
-/** The caller's own `profiles` row (`id, handle, avatar_path, role, is_banned`), or `null`. */
+/** The caller's own `profiles` row (`id, handle, avatar_path, role, is_banned, handle_changed_at`), or `null`. */
 export async function getProfile(): Promise<Profile | null> {
-  // S1.1 wires the own-row read (the profiles table does not exist yet)
-  return null;
+  const supabase = await createServerClient();
+  const user = await resolveUser(supabase);
+  if (!user) return null;
+  return readOwnProfile(supabase, user.id);
 }
 
 /** The one call pages and actions use to know who is asking (04 SC-04). `null` for anon. */
 export async function getViewer(): Promise<Viewer | null> {
-  const user = await getUser();
+  const supabase = await createServerClient();
+  const user = await resolveUser(supabase);
   if (!user) return null;
-  const profile = await getProfile();
+  const profile = await readOwnProfile(supabase, user.id);
   return { user, profile };
 }
 
@@ -116,13 +108,17 @@ export async function requireUser(): Promise<{ id: string }> {
 }
 
 /** Throws `unauthenticated` for anon and `onboarding_required` while the handle is still null. */
-export async function requireOnboarded(): Promise<{ user: { id: string }; profile: Profile }> {
-  const user = await requireUser();
-  const profile = await getProfile();
+export async function requireOnboarded(): Promise<{
+  user: { id: string };
+  profile: OnboardedProfile;
+}> {
+  const viewer = await getViewer();
+  if (!viewer) throw new AuthError('unauthenticated', 'Sign in first.');
+  const { user, profile } = viewer;
   if (!profile || profile.handle === null) {
     throw new AuthError('onboarding_required', 'Pick a handle first.');
   }
-  return { user, profile };
+  return { user, profile: { ...profile, handle: profile.handle } };
 }
 
 const ROLE_RANK: Record<Role, number> = { user: 0, moderator: 1, admin: 2 };
@@ -135,8 +131,9 @@ const ROLE_RANK: Record<Role, number> = { user: 0, moderator: 1, admin: 2 };
 export async function requireRole(
   role: 'moderator' | 'admin',
 ): Promise<{ user: { id: string }; profile: Profile }> {
-  const user = await requireUser();
-  const profile = await getProfile();
+  const viewer = await getViewer();
+  if (!viewer) throw new AuthError('unauthenticated', 'Sign in first.');
+  const { user, profile } = viewer;
   if (!profile || ROLE_RANK[profile.role] < ROLE_RANK[role]) {
     throw new AuthError('forbidden', 'Not allowed.');
   }

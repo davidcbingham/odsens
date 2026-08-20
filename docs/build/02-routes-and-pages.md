@@ -1,6 +1,6 @@
 # Routes & Pages
 Every URL odsens.com serves — its slice, rendering mode, auth requirement, data, DESIGN.md section, components, route files, metadata and nav placement — plus middleware, the auth flows, revalidation triggers and the deploy smoke list.
-Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0005 (2026-08-17) — amended by ADR-0007 (2026-08-20)
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0005 (2026-08-17) — amended by ADR-0007 (2026-08-20) — amended by ADR-0009, ADR-0011, ADR-0013 (2026-08-20)
 
 Sources: `docs/build/_registry.md` (IDs verbatim), `docs/spec.md`, `docs/data-model.md`, `docs/notifications.md`, `DESIGN.md` v1.3, `docs/design-review.md`, `.claude/skills/{web-quality,vercel-ops,security-check}/SKILL.md`, `.claude/agents/*.md`, `supabase/config.toml`, `docs/build/06-decisions/ADR-0002-spec-reconciliation.md` (binding reconciliation — cited as "ADR-0002 <ref>"). Siblings: `00-build-plan.md` (slice acceptance), `01-architecture.md` (invariants, headers/CSP, env — **wins on cross-cutting invariants and data-access rules; 02 §1 wins for a route's rendering mode** — ADR-0002 precedence, 01 §0), `03-components.md` (component props/states), `04-server-contracts.md` (action/handler shapes, rate limits, cron table — **wins on handler contracts and revalidation tags**), `05-test-plan.md` (test IDs).
 
@@ -200,7 +200,7 @@ Common (04 SC-11–SC-13, §2.4): GET; `Authorization: Bearer ${CRON_SECRET}` (`
 
 ---
 
-## 3. Middleware (`middleware.ts` at repo root)
+## 3. Middleware (`proxy.ts` at repo root — the Next 16 middleware file, named export `proxy`; ADR-0009)
 **Matcher (literal):**
 ```
 matcher: ['/((?!_next/static|_next/image|favicon\\.ico|fonts/|brand/|robots\\.txt|sitemap\\.xml|api/cron/|api/webhooks/|api/download/|.*\\.(?:png|jpg|jpeg|webp|svg|ico|woff2|txt|xml)$).*)']
@@ -216,15 +216,15 @@ Rules, in order (all use `@supabase/ssr` `createServerClient` with the request c
 | M6 | `handle IS NOT NULL` AND path `=== '/welcome'` | 307 → validated `next` param or `/` |
 | M7 | path starts with `/admin` | pass through — role check happens in `app/admin/layout.tsx` (INV-31); anon renders `AdminGate` there |
 | M8 | else | pass through |
-**RP-19** Middleware never reads `role` and never renders; it only refreshes the session and enforces the onboarding rule (M5/M6) and the anon redirects for `/welcome`, `/profile` (M1). Role decisions live in `lib/auth.ts` (server, `app/admin/layout.tsx`) and in every action (04). `lib/auth.ts` exports `getViewer()` (built on `getUser()`), `requireRole()`, `safeNext()` among 04 SC-04's names; **`getSession()` does not exist and `auth.getSession()` is never called** (ADR-0002 A15) — the middleware refresh uses `auth.getUser()` (M2).
-**RP-20** `next` validation (shared helper `lib/auth.ts` `safeNext(next)`, S0; 05 T-UNIT-44): must start with `/`, must not start with `//` or `/\`, must not start with `/api`, `/auth`, `/admin`; else `/`. Used by middleware, `/auth/callback`, `/welcome`, and `GoogleSignInButton` when building `redirectTo`.
+**RP-19** Middleware never reads `role` and never renders; it only refreshes the session and enforces the onboarding rule (M5/M6) and the anon redirects for `/welcome`, `/profile` (M1). Role decisions live in `lib/auth.ts` (server, `app/admin/layout.tsx`) and in every action (04). `lib/auth.ts` exports `getViewer()` (built on `getUser()`), `requireRole()`, `safeNext()` among 04 SC-04's names; **`getSession()` does not exist and `auth.getSession()` is never called** (ADR-0002 A15) — the middleware refresh uses `auth.getUser()` (M2). The file is `proxy.ts` (ADR-0009).
+**RP-20** `next` validation (shared helper `safeNext(next)` — pure function in the client-safe `lib/validation/next.ts`, re-exported by `lib/auth.ts` — ADR-0013; S0; 05 T-UNIT-44): must start with `/`, must not start with `//` or `/\`, must not start with `/api`, `/auth`, `/admin`; else `/`. Used by `proxy.ts` (ADR-0009), `/auth/callback`, `/welcome`, and `GoogleSignInButton` when building `redirectTo`.
 **RP-21** Un-onboarded users can still call `/auth/sign-out` and view `/privacy`, `/how-comments-work` (M5 list agrees with 04 §2.1 and 01 INV-30 as amended by ADR-0002; encoded in 05 T-ACT-10).
 Performance note: M1 keeps anonymous traffic free of DB calls; the M4 query is one indexed PK read per authenticated request. Replacing it with a JWT claim requires an ADR.
 
 ---
 
 ## 4. Auth flows
-**Sign-in (client-side; ADR-0002 C3, 04 §2.0):** there is **no route handler**. Every `GoogleSignInButton` (nav "Sign in", `SignInPrompt`, `AdminGate`) is a client component that calls `supabase.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: `${NEXT_PUBLIC_SITE_URL}/auth/callback?next=${encodeURIComponent(safeNext(next))}` } })` via `lib/supabase/client.ts` (PKCE; verifier stored by `@supabase/ssr`) and lets the browser follow Supabase's `/auth/v1/authorize?provider=google` redirect to Google. `redirectTo` is built from `NEXT_PUBLIC_SITE_URL` (`lib/env/public.ts`, INV-37), never from `window.location`. Redirect URL allow-list is in `supabase/config.toml` (`[remotes.production.auth].additional_redirect_urls`: `https://odsens.com/**`, `https://www.odsens.com/**`, `https://*.vercel.app/**`, `http://localhost:3000/**`); adding a URL = config change, not app change. The button fires `trackEvent('sign_in', {from})` on click (ADR-0002 C12).
+**Sign-in (client-side; ADR-0002 C3, 04 §2.0):** there is **no route handler**. Every `GoogleSignInButton` (nav "Sign in", `SignInPrompt`, `AdminGate`) is a client component that calls `supabase.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: `${NEXT_PUBLIC_SITE_URL}/auth/callback?next=${encodeURIComponent(safeNext(next))}` } })` via `lib/supabase/client.ts` (PKCE; verifier stored by `@supabase/ssr`) and lets the browser follow Supabase's `/auth/v1/authorize?provider=google` redirect to Google. `redirectTo` is built from `NEXT_PUBLIC_SITE_URL` (`lib/env/public.ts`, INV-37), never from `window.location`. Redirect URL allow-list is in `supabase/config.toml` (`[remotes.production.auth].additional_redirect_urls`: `https://odsens.com/**`, `https://www.odsens.com/**`, `https://odsens-git-*-studiobing.vercel.app/**`, `http://localhost:3000/**` — no `*.vercel.app` wildcard; the base `[auth]` block, which config.toml syncs to local + Supabase preview branches, additionally lists `https://odsens-git-*-studiobing.vercel.app/**`; `[remotes.production]` is applied to production by the Supabase GitHub integration on merge — ADR-0011); adding a URL = config change + a `Kind: security` ADR, not app change. The button fires `trackEvent('sign_in', {from})` on click (ADR-0002 C12).
 **`/auth/callback` (GET, 04 §2.1; ADR-0002 C18):**
 1. Read `code`, `next` (`safeNext`). No `code` → 307 `/`.
 2. `supabase.auth.exchangeCodeForSession(code)`; on error → 307 `/` (**no query param**; logged via `lib/log.ts`; no UI surface in v1).

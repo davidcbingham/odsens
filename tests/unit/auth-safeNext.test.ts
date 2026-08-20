@@ -1,8 +1,9 @@
 /**
- * tests/unit/auth-safeNext.test.ts — T-UNIT-44: `safeNext(next)` (02 RP-20; 01 INV-32; 04 §2.1 A1).
- * `safeNext` is pure, but `lib/auth.ts` also imports the cookie server client; `server-only` is
- * mocked by tests/helpers/setup.unit.ts and `next/headers` is stubbed here so the import never
- * needs a request context (no function under test touches it).
+ * tests/unit/auth-safeNext.test.ts — T-UNIT-44: `safeNext(next)` (02 RP-20; 01 INV-32; 04 §2.1 A1;
+ * ADR-0013). The pure function lives in `lib/validation/next.ts` and `lib/auth.ts` re-exports it —
+ * both import paths are exercised and must be the SAME function. `lib/auth.ts` also imports the
+ * cookie server client; `server-only` is mocked by tests/helpers/setup.unit.ts and `next/headers`
+ * is stubbed here so the import never needs a request context (no function under test touches it).
  */
 import { describe, expect, it, vi } from 'vitest';
 
@@ -11,6 +12,7 @@ vi.mock('next/headers', () => ({
 }));
 
 const { safeNext } = await import('@/lib/auth');
+const { safeNext: safeNextPure } = await import('@/lib/validation/next');
 
 // Control characters spelled out by code so no escape sequence hides in the source.
 const NUL = String.fromCharCode(0);
@@ -20,6 +22,11 @@ const CR = String.fromCharCode(13);
 const DEL = String.fromCharCode(127);
 
 describe('safeNext (T-UNIT-44)', () => {
+  it('T-UNIT-44 lib/auth.ts re-exports the pure lib/validation/next.ts function (same reference)', () => {
+    expect(typeof safeNextPure).toBe('function');
+    expect(safeNext).toBe(safeNextPure);
+  });
+
   it.each([
     '/projects/x#comments',
     '/support?x=1',
@@ -33,6 +40,7 @@ describe('safeNext (T-UNIT-44)', () => {
     '/ok x', // a plain space is not a control character
   ])('T-UNIT-44 %s → unchanged', (next) => {
     expect(safeNext(next)).toBe(next);
+    expect(safeNextPure(next)).toBe(next);
   });
 
   it.each([
@@ -60,5 +68,6 @@ describe('safeNext (T-UNIT-44)', () => {
     `/ok${DEL}`,
   ])('T-UNIT-44 %j → /', (next) => {
     expect(safeNext(next)).toBe('/');
+    expect(safeNextPure(next)).toBe('/');
   });
 });

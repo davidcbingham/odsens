@@ -23,3 +23,14 @@ export {
   type SkeletonFixture,
   type ProjectCardSkeletonFixture,
 } from './skeleton';
+// ---- S1.1 Accounts ----
+export { googleSignInButtonFixtures, type GoogleSignInButtonFixture } from './googleSignInButton';
+export { noteCalloutFixtures, type NoteCalloutFixture } from './noteCallout';
+export { inlineConfirmFixtures, type InlineConfirmFixture } from './inlineConfirm';
+export { handleFieldFixtures, type HandleFieldFixture } from './handleField';
+export { avatarUploadFixtures, type AvatarUploadFixture } from './avatarUpload';
+export { profileMenuFixtures, type ProfileMenuFixture } from './profileMenu';
+export { onboardingPanelFixtures, type OnboardingPanelFixture } from './onboardingPanel';
+export { profilePanelFixtures, type ProfilePanelFixture } from './profilePanel';
+export { adminGateFixtures, type AdminGateFixture } from './adminGate';
+export { adminShellFixtures, type AdminShellFixture } from './adminShell';

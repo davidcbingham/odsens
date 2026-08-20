@@ -1,9 +1,15 @@
 /**
- * lib/env/public.ts — the browser-safe env subset (01 INV-35/INV-29; 04 SC-16).
+ * lib/env/public.ts — the browser-safe env subset (01 INV-35/INV-29; 04 SC-16; ADR-0010).
  * Only NEXT_PUBLIC_* names live here; client components import `publicEnv` from this file, never `@/lib/env`.
- * Next.js inlines these at build time, so they must be referenced as literal `process.env.NEXT_PUBLIC_*`.
- * Validated by hand (not zod) on purpose: this module is in every client bundle and zod stays server-side
- * (`lib/env.ts`) — ADR-0008.
+ * Next.js inlines these at build time, so they must be referenced as literal `process.env.NEXT_PUBLIC_*`
+ * (no dynamic access, no loops). Validated by hand (not zod) on purpose: this module is in every client
+ * bundle and zod stays server-side (`lib/env.ts`) — ADR-0008.
+ *
+ * Mirrors the two `lib/env.ts` pre-fills (ADR-0010 / brief §7), with the client-exposed names:
+ *   1. `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Supabase↔Vercel integration) fills a blank
+ *      `NEXT_PUBLIC_SUPABASE_ANON_KEY`; the canonical name wins when both are set.
+ *   2. On preview (`NEXT_PUBLIC_VERCEL_ENV === 'preview'`) with `NEXT_PUBLIC_VERCEL_BRANCH_URL` set,
+ *      `NEXT_PUBLIC_SITE_URL = 'https://' + branchUrl` — this derived value wins over the configured one.
  */
 
 export type PublicEnv = {
@@ -30,9 +36,19 @@ function present(value: string | undefined): value is string {
 /** Parsed once at module load; throws with the missing/invalid names if a required public var is absent. */
 export const publicEnv: PublicEnv = (() => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const site = process.env.NEXT_PUBLIC_SITE_URL;
+  const canonicalAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const publishable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const anon = present(canonicalAnon) ? canonicalAnon : publishable;
+
+  const configuredSite = process.env.NEXT_PUBLIC_SITE_URL;
+  const previewBranch =
+    process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview'
+      ? process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL
+      : undefined;
+  const site = present(previewBranch) ? `https://${previewBranch}` : configuredSite;
+
   const sentry = process.env.NEXT_PUBLIC_SENTRY_DSN;
+
   const missing: string[] = [];
   if (!isUrl(url)) missing.push('NEXT_PUBLIC_SUPABASE_URL');
   if (!present(anon)) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');

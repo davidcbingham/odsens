@@ -12,7 +12,7 @@
  * table lands (S1.1) — the per-table matrix files pass real names.
  */
 import { expect } from 'vitest';
-import { asRole, type TestRole } from './asRole';
+import { asRole, loose, type TestRole } from './asRole';
 
 export type PolicyOp = 'select' | 'insert' | 'update' | 'delete';
 
@@ -40,14 +40,27 @@ type OpOutcome = { error: { code?: string; message: string } | null; status: num
 const DENIED_STATUSES = new Set([401, 403]);
 const DENIED_SQLSTATE = '42501';
 
-// PostgREST is schema-driven and `Database['public']['Tables']` is empty until S1.1, so the typed
-// `.from()` cannot accept a table name yet; the matrix runner deliberately drives the untyped surface.
-type UntypedFrom = (table: string) => ReturnType<ReturnType<typeof asRole>['from']>;
+// The matrix runner is table-driven (names arrive as strings from the per-table files), so it drives a
+// minimal structural view of the PostgREST builder instead of the generated `Database` type — it must
+// compile before and after every `supabase gen types` regen.
+type QueryOutcome = {
+  data: unknown[] | null;
+  error: { code?: string; message: string } | null;
+  status: number;
+};
+type LooseFilter = PromiseLike<QueryOutcome> & {
+  eq(column: string, value: Scalar): LooseFilter;
+  select(columns: string): LooseFilter;
+};
+type LooseQuery = {
+  select(columns: string): LooseFilter;
+  insert(row: RowValues): { select(columns: string): LooseFilter };
+  update(patch: RowValues): LooseFilter;
+  delete(): LooseFilter;
+};
 
-function fromTable(role: TestRole, table: string) {
-  const client = asRole(role);
-  const from = client.from.bind(client) as unknown as UntypedFrom;
-  return from(table);
+function fromTable(role: TestRole, table: string): LooseQuery {
+  return loose(asRole(role)).from(table) as unknown as LooseQuery;
 }
 
 function resolveFilter(args: ExpectPolicyArgs): RowFilter | undefined {
@@ -57,10 +70,7 @@ function resolveFilter(args: ExpectPolicyArgs): RowFilter | undefined {
   return undefined;
 }
 
-function applyFilter<T extends { eq: (col: string, val: Scalar) => T }>(
-  q: T,
-  filter: RowFilter,
-): T {
+function applyFilter(q: LooseFilter, filter: RowFilter): LooseFilter {
   let query = q;
   for (const [column, value] of Object.entries(filter)) {
     query = query.eq(column, value);

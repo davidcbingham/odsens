@@ -115,7 +115,7 @@ port = 54324
 [storage]
 enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
-file_size_limit = "50MiB"
+file_size_limit = "100MiB"
 
 # Uncomment to configure local storage buckets
 # [storage.buckets.images]
@@ -160,7 +160,7 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["http://localhost:3000/**", "http://127.0.0.1:3000/**"]
+additional_redirect_urls = ["http://localhost:3000/**", "http://127.0.0.1:3000/**", "https://odsens-git-*-studiobing.vercel.app/**"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -429,4 +429,22 @@ project_id = "dllbekulbimblrsrxuyv"
 
 [remotes.production.auth]
 site_url = "https://odsens.com"
-additional_redirect_urls = ["https://odsens.com/**", "https://www.odsens.com/**", "https://*.vercel.app/**", "http://localhost:3000/**"]
+additional_redirect_urls = ["https://odsens.com/**", "https://www.odsens.com/**", "https://odsens-git-*-studiobing.vercel.app/**", "http://localhost:3000/**"]
+
+# --- Persistent staging branch (ADR-0010, decided 2026-08-20): database + auth server for EVERY Vercel preview.
+# Created with `supabase branches create staging --persistent --git-branch staging` (region us-east-2, size micro).
+# Pushing the git branch `staging` applies migrations + this block to it; Google's console holds
+# https://oihrxwqarwllvsyllczo.supabase.co/auth/v1/callback once (David). The Google client secret is a branch secret
+# (`supabase secrets set --project-ref oihrxwqarwllvsyllczo GOOGLE_OAUTH_CLIENT_SECRET=…`), never committed.
+[remotes.staging]
+project_id = "oihrxwqarwllvsyllczo"
+
+[remotes.staging.auth]
+site_url = "https://odsens-git-staging-studiobing.vercel.app"
+additional_redirect_urls = ["https://odsens-git-*-studiobing.vercel.app/**", "http://localhost:3000/**"]
+
+[remotes.staging.auth.external.google]
+enabled = true
+client_id = "782276308547-7088g67jn37t91qgejen94k3ij8k0g6u.apps.googleusercontent.com"
+secret = "env(GOOGLE_OAUTH_CLIENT_SECRET)"
+skip_nonce_check = false

@@ -211,7 +211,7 @@ Uploads go through server routes/actions (validate type/size, generate paths, wr
 | table | select | insert | update | delete |
 |---|---|---|---|---|
 | public_profiles (view) | all | — | — | — |
-| profiles | own row (full); admin does **not** select other rows via RLS (admin client in actions — ADR-0002 #70) | trigger only | own row: handle (only if null→value), avatar_path; renames + `handle_changed_at`, `role`, `is_banned`, `comment_count`, `email_hash` = admin/service only | admin |
+| profiles | own row (full); admin does **not** select other rows via RLS (admin client in actions — ADR-0002 #70) | trigger only | own row: handle (only if null→value), avatar_path; renames + `handle_changed_at`, `role`, `is_banned`, `comment_count`, `email_hash` = admin (own row) / service only; **other users' rows: service (admin actions) only** — an admin JWT cannot reach them (select is own-row, so its update filters to 0 rows — ADR-0015) | service (admin actions) only — an admin JWT cannot delete other rows (ADR-0015) |
 | projects / versions / files / links / overrides | all where `status='published'` and not `overrides.hidden`; admin sees all | admin (exclusives) / service role (sync) | same | admin |
 | project_downloads | admin | service role (RPC `record_download`) | service role | admin / service (purge) |
 | mentions | published to all; admin all (drafts/suggested/hidden) | admin / service (v1.5 suggested) | admin | admin |

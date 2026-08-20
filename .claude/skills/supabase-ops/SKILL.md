@@ -19,10 +19,10 @@ description: Supabase specialist for odsens.com — schema migrations, RLS polic
 - Seed: `supabase/seed.sql` creates the settings row, an admin profile placeholder, and a couple of sample projects for local dev.
 
 ## Steps for a change
-1. Write migration (+ RLS + indexes + trigger if needed). 2. `supabase db reset` locally; run seed. 3. Regen types; fix TS errors. 4. Add/adjust tests that hit RLS as anon/user/mod/admin (Vitest against local Supabase). 5. Preview deploys use a **Supabase preview branch** (Branching + GitHub/Vercel integrations; migrations auto-apply to the branch); production gets migrations when the PR merges to `main` (branching promotes) — verify in the dashboard; never `db push` by hand except to recover. 6. Note reversibility in the PR.
+1. Write migration (+ RLS + indexes + trigger if needed). 2. `supabase db reset` locally; run seed. 3. Regen types; fix TS errors. 4. Add/adjust tests that hit RLS as anon/user/mod/admin (Vitest against local Supabase). 5. Preview deploys use the persistent **`staging` Supabase branch** (git branch `staging`; `ship` pushes the PR branch there fast-forward-only and the GitHub integration applies its migrations + `config.toml` `[remotes.staging]` — ADR-0010); production gets migrations when the PR merges to `main` (branching promotes) — verify in the dashboard; never `db push` by hand except to recover. 6. Note reversibility in the PR.
 
 ## Auth checklist
-Google provider enabled with client id/secret · Site URL + redirect URLs (prod, `*.vercel.app`, localhost) · email confirmations off (OAuth only) · `profiles` trigger creates row with null handle · middleware forces onboarding when handle is null · JWT contains no PII beyond sub.
+Google provider enabled with client id/secret · Site URL + redirect URLs: `https://odsens.com/**`, `https://www.odsens.com/**`, `https://odsens-git-*-studiobing.vercel.app/**`, `http://localhost:3000/**` — never a bare `*.vercel.app` wildcard; the base `[auth]` block (local + Supabase preview branches) also lists the `odsens-git-*-studiobing` pattern; `[remotes.production]` is applied on merge by the GitHub integration (ADR-0011) · email confirmations off (OAuth only) · `profiles` trigger creates row with null handle · `proxy.ts` (middleware, ADR-0009) forces onboarding when handle is null · JWT contains no PII beyond sub.
 
 ## Guardrails
 - Never `DROP TABLE/COLUMN` or delete Storage objects without an explicit confirm and a backup note.

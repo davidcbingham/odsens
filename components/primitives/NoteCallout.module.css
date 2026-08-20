@@ -1,0 +1,15 @@
+/* NoteCallout — DESIGN.md §6.3, §11.3 #12 (pass-3 Privacy frame); 03 §2.2. */
+.note-callout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-20);
+  background: var(--slab-raised);
+  border: 2px solid var(--line-soft);
+}
+
+.note-callout-body {
+  font-size: var(--text-body-phone);
+  line-height: 1.65;
+  color: var(--chalk);
+}

@@ -1,0 +1,162 @@
+/* HandleField — DESIGN.md §11.1 Handle field; 03 §2.5, §3 resting | checking | available | invalid. */
+.handle-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.handle-field-label {
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+.handle-field-well {
+  display: flex;
+  align-items: stretch;
+  background: var(--slab-sunk);
+  border: 2px solid var(--line-soft);
+  border-radius: var(--radius-input);
+  transition: border-color var(--dur-fast) ease-out;
+}
+
+.handle-field-well:focus-within {
+  border-color: var(--indigo-lift);
+}
+
+/* The input's own ring is suppressed below; the well carries the same 3px gold ring (03 C-25) so it
+   wraps the @ prefix, the value and the state mark as one control. */
+.handle-field-well:has(.handle-field-input:focus-visible) {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.handle-field[data-state='checking'] .handle-field-well {
+  border-color: var(--indigo-lift);
+}
+
+.handle-field[data-state='available'] .handle-field-well {
+  border-color: var(--emerald);
+}
+
+.handle-field[data-state='invalid'] .handle-field-well {
+  border-color: var(--danger-field);
+}
+
+.handle-field-prefix {
+  display: flex;
+  align-items: center;
+  padding-left: var(--space-16);
+  font-size: var(--text-input);
+  color: var(--mute);
+}
+
+.handle-field-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--space-12) var(--space-12) var(--space-12) var(--space-4);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: var(--text-input);
+  color: var(--chalk);
+}
+
+.handle-field-input:focus-visible {
+  outline: none; /* replaced by the identical ring on .handle-field-well:has(:focus-visible) above */
+}
+
+.handle-field-mark {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  padding: 0 var(--space-12);
+  font-size: var(--text-body);
+  font-weight: 700;
+}
+
+.handle-field[data-state='available'] .handle-field-mark {
+  color: var(--emerald);
+}
+
+.handle-field[data-state='invalid'] .handle-field-mark {
+  color: var(--danger);
+}
+
+/* three-square pixel pulse (checking) */
+.handle-field-pulse {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.handle-field-pulse span {
+  display: block;
+  width: var(--space-4);
+  height: var(--space-4);
+  background: var(--disabled-text);
+  animation: handle-field-pulse 0.9s steps(1, end) infinite;
+}
+
+.handle-field-pulse span:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+.handle-field-pulse span:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+@keyframes handle-field-pulse {
+  0%,
+  100% {
+    background: var(--disabled-text);
+  }
+
+  33% {
+    background: var(--indigo-lift);
+  }
+}
+
+.handle-field-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.handle-field-helper {
+  font-size: var(--text-label);
+  line-height: 1.5;
+  color: var(--mute-dim);
+}
+
+.handle-field[data-state='available'] .handle-field-helper {
+  font-weight: 700;
+  color: var(--emerald-soft);
+}
+
+.handle-field[data-state='invalid'] .handle-field-helper {
+  font-weight: 700;
+  color: var(--danger);
+}
+
+.handle-field-counter {
+  flex: none;
+  font-size: var(--text-label);
+  color: var(--mute-dim);
+}
+
+.handle-field[data-state='invalid'] .handle-field-counter {
+  color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .handle-field-pulse span {
+    animation: none;
+  }
+
+  .handle-field-pulse span:nth-child(2) {
+    background: var(--indigo-lift);
+  }
+}

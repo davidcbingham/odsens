@@ -105,6 +105,7 @@
   --text-label: 13px; /* small labels, sm button */
   --text-label-sm: 12px; /* nav Support button, chip text */
   --text-wordmark: 20px; /* ODSENS wordmark in nav/footer */
+  --text-input: 16px; /* DESIGN.md §11.1 Handle field value (S1.1) */
   --text-pixel-10: 10px;
   --text-pixel-11: 11px;
   --text-pixel-12: 12px;

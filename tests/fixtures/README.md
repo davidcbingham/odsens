@@ -9,8 +9,8 @@ Policy: `docs/build/05-test-plan.md` §2 (F-1..F-8). Adapters and jobs are teste
 | `youtube/` | `rss.xml`, `rss-malformed.xml`, `videos-list.json`, `playlist-items.json`, `oembed.json`, `videos-mentions.json`, `channels.json` | S1.6 (mentions S1.8) |
 | `oembed/` | `og-page.html`, `no-og.html`, `tiktok.html` | S1.8 |
 | `discord/` `resend/` | `webhook-ok.json`, `429.json` · `send-ok.json`, `422.json` (+ `__snapshots__/`) | S1.5 |
-| `files/` | hand-made binaries ≤ 100 KB: `pack.zip`, `png-as.jar`, `bad.exe` (F-4) | S1.3 |
-| `images/` | hand-made PNG/JPG/WEBP/SVG/GIF ≤ 100 KB per F-4 (`icon-256.png`, `skin-64.png`, `tiny.jpg`, `bad.svg`, …) | S1.1 (avatar) / S1.3 |
+| `files/` | hand-made binaries ≤ 100 KB (F-4): `png-as.jar` (PNG bytes, `.jar` name — S1.1); `pack.zip`, `bad.exe` | S1.1 / S1.3 |
+| `images/` | hand-made PNG/JPG/WEBP/SVG/GIF ≤ 100 KB per F-4. S1.1: `avatar-600.png` (600×600 RGBA + tEXt metadata), `tiny.jpg` (32×32, below the 64×64 avatar minimum), `exif.jpg` (128×96, EXIF Orientation=6), `tiny.webp` (1×1 lossless), `bad.svg`, `bad.gif` (1×1). Later: `icon-256.png`, `skin-64.png`, … | S1.1 (avatar) / S1.3 |
 | `emails/` | React Email render snapshots (`__snapshots__/`) | S1.5 |
 | `ui/` | `*.ts` component fixture data for `/dev/components` (03 O-1; T-E2E-48) | S0 onward |
 | `kofi/` | Phase 2 (S2.1) | — |

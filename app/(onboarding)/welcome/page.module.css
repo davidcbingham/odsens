@@ -1,0 +1,28 @@
+/* /welcome — DESIGN.md §11.3 #10: panel centred on a faint 45° indigo hatch over --ink. The hatch token
+   is black-on-slab (§3); the indigo tint comes from an --indigo layer under it at low opacity. */
+.welcome {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: calc(100dvh - var(--nav-h));
+  padding: var(--space-64) var(--space-40) var(--space-80);
+  isolation: isolate;
+}
+
+.welcome::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--indigo);
+  background-image: var(--hatch);
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+@media (max-width: 599px) {
+  .welcome {
+    min-height: calc(100dvh - var(--nav-h-phone));
+    padding: var(--space-24) var(--space-16) var(--space-40);
+  }
+}

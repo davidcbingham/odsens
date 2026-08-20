@@ -1,0 +1,48 @@
+/* /how-comments-work — DESIGN.md §12.5: four short Bungee-headed blocks in a 720px column. */
+.how-comments-work {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  width: 720px;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: var(--space-48) var(--space-24) var(--space-80);
+}
+
+.how-comments-work-title {
+  font-family: var(--font-display);
+  font-size: var(--text-page-title);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--white);
+}
+
+.how-comments-work-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.how-comments-work-h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-card-title);
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.how-comments-work-body {
+  max-width: var(--measure-body);
+  line-height: 1.7;
+  color: var(--chalk);
+}
+
+@media (max-width: 599px) {
+  .how-comments-work {
+    padding: var(--space-32) var(--space-16) var(--space-64);
+  }
+
+  .how-comments-work-title {
+    font-size: var(--text-page-title-phone);
+  }
+}
