@@ -1,0 +1,33 @@
+/* Home shell — DESIGN.md §2 Hero (64px / 36px phone), page gutters (§3). */
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  max-width: var(--measure-page);
+  min-height: 60dvh;
+  margin: 0 auto;
+  padding: var(--space-80) var(--space-40);
+}
+
+.home-title {
+  font-family: var(--font-display);
+  font-size: var(--text-hero);
+  line-height: 0.9;
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+
+.home-line {
+  max-width: var(--measure-body);
+  color: var(--mute);
+}
+
+@media (max-width: 599px) {
+  .home {
+    padding: var(--space-48) var(--space-24);
+  }
+
+  .home-title {
+    font-size: var(--text-hero-phone);
+  }
+}

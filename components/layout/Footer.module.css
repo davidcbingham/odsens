@@ -1,0 +1,68 @@
+/* Footer — DESIGN.md §5 Footer, §11.6; 03 §2.1. --slab-foot, 2px top line, three columns. */
+.footer {
+  background: var(--slab-foot);
+  border-top: 2px solid var(--line);
+  padding: var(--space-40) var(--space-24);
+  color: var(--chalk);
+}
+
+.footer-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-40);
+  max-width: var(--measure-page);
+  margin: 0 auto;
+}
+
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  max-width: 44ch;
+}
+
+.footer-wordmark {
+  font-family: var(--font-display);
+  font-size: var(--text-wordmark);
+  line-height: 1;
+  color: var(--white);
+}
+
+.footer-line {
+  font-size: var(--text-small);
+  line-height: 1.5;
+  color: var(--mute);
+}
+
+.footer-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.footer-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.footer-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
+  font-size: var(--text-ui);
+  color: var(--chalk);
+  text-decoration: none;
+  transition: color var(--dur-fast) ease-out;
+}
+
+.footer-link:hover {
+  color: var(--white);
+}
+
+@media (max-width: 599px) {
+  .footer-inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-32);
+  }
+}

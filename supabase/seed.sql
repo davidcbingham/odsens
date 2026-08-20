@@ -1,0 +1,19 @@
+-- LOCAL/PREVIEW ONLY — never run against production (05 SEED-14)
+-- supabase/seed.sql — applied by `supabase db reset` via supabase/config.toml [db.seed] sql_paths.
+-- Contents follow docs/build/05-test-plan.md §3 (SEED-1..SEED-14). Idempotent; fixed UUIDs
+-- (scheme 00000000-0000-4000-8000-0000000<gg><nn>) mirrored by tests/helpers/seedIds.ts.
+-- S0 = skeleton only; each SEED block arrives with the slice that creates its table:
+--   SEED-1  site_settings (1 row)                         — arrives in S1.1
+--   SEED-2  notification_matrix (16 rows)                 — arrives in S1.5
+--   SEED-3  auth.users (6) + profiles                     — arrives in S1.1
+--   SEED-4  projects (3)                                  — arrives in S1.2 / S1.3
+--   SEED-5  project_versions (4) + project_files (5)      — arrives in S1.2 / S1.3
+--   SEED-6  project_links (1) + project_overrides (2)     — arrives in S1.2 / S1.3
+--   SEED-7  skins (2)                                     — arrives in S1.7
+--   SEED-8  art (2)                                       — arrives in S1.7
+--   SEED-9  comments (5) + comment_likes + comment_reports — arrives in S1.4
+--   SEED-10 mentions (2)                                  — arrives in S1.8
+--   SEED-11 videos (3)                                    — arrives in S1.6
+--   SEED-12 sync_runs (3) + stats_daily (6) (+ empty tables) — arrives in S1.2
+--   SEED-13 Storage objects — not SQL; uploaded by the e2e/db globalSetup (`uploadFixture`)
+--   SEED-14 this guard line (first line of the file) — present from S0

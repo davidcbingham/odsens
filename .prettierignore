@@ -1,0 +1,15 @@
+node_modules
+.next
+coverage
+test-results
+playwright-report
+pnpm-lock.yaml
+public/fonts
+lib/supabase/types.ts
+design/
+assets/
+docs/
+*.md
+supabase/.temp
+supabase/.branches
+.vercel

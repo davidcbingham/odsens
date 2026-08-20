@@ -1,0 +1,60 @@
+/* PixelLabel — DESIGN.md §2 Pixel label; 03 §2.2. Silkscreen, uppercase, letter-spaced. */
+.pixel-label {
+  display: inline-block;
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  font-size: var(--text-pixel-11);
+  line-height: 1.2;
+  letter-spacing: var(--track-pixel);
+  text-transform: uppercase;
+  color: inherit;
+}
+
+.pixel-label[data-size='10'] {
+  font-size: var(--text-pixel-10);
+}
+
+.pixel-label[data-size='12'] {
+  font-size: var(--text-pixel-12);
+}
+
+/* tones */
+.pixel-label[data-tone='mute-dim'] {
+  color: var(--mute-dim);
+}
+
+.pixel-label[data-tone='gold'] {
+  color: var(--gold);
+}
+
+.pixel-label[data-tone='emerald'] {
+  color: var(--emerald);
+}
+
+.pixel-label[data-tone='chalk'] {
+  color: var(--chalk);
+}
+
+.pixel-label[data-tone='gold-ink'] {
+  color: var(--gold-ink);
+}
+
+/* fills (tag variants) — fill sets its own text colour */
+.pixel-label[data-fill] {
+  padding: var(--space-4) var(--space-8);
+}
+
+.pixel-label[data-fill='gold'] {
+  background: var(--gold);
+  color: var(--gold-ink);
+}
+
+.pixel-label[data-fill='indigo-wash'] {
+  background: var(--indigo-wash);
+  color: var(--mod-badge-text);
+}
+
+.pixel-label[data-fill='neutral'] {
+  background: var(--plugin-wash);
+  color: var(--chalk);
+}

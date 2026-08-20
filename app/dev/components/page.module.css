@@ -1,0 +1,143 @@
+/* /dev/components — dev-only preview (03 §7, ADR-0004). Page-level arrangement only; every specimen
+   brings its own component CSS. Tokens only (03 C-08); 2px borders; no radius. */
+.preview-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  max-width: var(--measure-page);
+  margin: 0 auto;
+  padding: var(--space-40) var(--space-40) 0;
+}
+
+.preview-title {
+  font-family: var(--font-display);
+  font-size: var(--text-page-title);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+
+.preview-line {
+  max-width: var(--measure-body);
+  color: var(--mute);
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-40);
+  max-width: var(--measure-page);
+  margin: 0 auto;
+  padding: var(--space-24) var(--space-40) var(--space-80);
+}
+
+/* one section per area (Layout · Primitives · Accounts), h2 in Bungee gold */
+.preview-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.preview-area-title {
+  padding-bottom: var(--space-12);
+  border-bottom: 2px solid var(--line);
+  font-family: var(--font-display);
+  font-size: var(--text-section-title);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* one grid per component; dense for the icon set, wide for chrome (Nav, Footer, skeleton grids) */
+.preview-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-16);
+}
+
+.preview-group[data-dense] {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.preview-group[data-wide] {
+  grid-template-columns: 1fr;
+}
+
+/* one specimen = <section data-preview="<Name>"> with a PixelLabel h3 and the component */
+.preview-specimen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+  padding: var(--space-16);
+  border: 2px solid var(--line);
+  background: var(--ink);
+}
+
+.preview-specimen-label {
+  color: var(--mute-dim);
+}
+
+.preview-specimen-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.preview-group[data-wide] .preview-specimen-body {
+  display: block;
+}
+
+.preview-note {
+  max-width: var(--measure-body);
+  font-size: var(--text-small);
+  color: var(--mute);
+}
+
+/* skeleton specimens sit in a slab well so both depths read against a surface */
+.preview-skeleton-well {
+  width: 100%;
+  padding: var(--space-16);
+  background: var(--slab);
+  border: 2px solid var(--line-soft);
+}
+
+@media (max-width: 599px) {
+  .preview-header {
+    padding: var(--space-24) var(--space-16) 0;
+  }
+
+  .preview-title {
+    font-size: var(--text-page-title-phone);
+  }
+
+  .preview {
+    padding: var(--space-16) var(--space-16) var(--space-64);
+  }
+
+  .preview-group,
+  .preview-group[data-dense] {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+
+/* NavMenuButton specimen: a positioned slab bar so the phone panel (position: absolute) drops below it. */
+.preview-menu-host {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: var(--nav-h-phone);
+  padding: 0 var(--space-16);
+  background: var(--slab);
+  border-bottom: 2px solid var(--line);
+}
+
+/* Fixture geometry never overflows its specimen cell (Skeleton · media/text custom at 390): the Skeleton sits inside
+   .preview-skeleton-well, so the clamp is applied to the well's children too. */
+.preview-specimen-body > *,
+.preview-skeleton-well > * {
+  max-width: 100%;
+}

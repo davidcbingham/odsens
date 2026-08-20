@@ -1,6 +1,6 @@
 # Architecture Decision Records
 Purpose: the log of engineering decisions taken during the build that add to, or deviate from, the frozen engineering specs (`docs/build/00–05`, `_registry.md`), `DESIGN.md`, `docs/data-model.md`, and `docs/notifications.md` — so the specs and the code never disagree silently.
-Status: DRAFT v0.2 (2026-08-17) — becomes v1.0 at freeze
+Status: v1.0 (2026-08-17)
 
 ## 1. What this folder is
 | Item | Value |
@@ -95,6 +95,13 @@ No other agent file mentions ADRs or this folder today (`grep -l "ADR\|06-decisi
 | ADR | Title | Status | Date | Slice | Amends |
 |---|---|---|---|---|---|
 | ADR-0001 | Engineering spec baseline | Accepted | 2026-08-17 | cross-cutting | none (baseline) |
+| ADR-0002 | Engineering-spec reconciliation (contradictions + OPEN defaults) | Accepted | 2026-08-17 | cross-cutting | 00–05, `_registry.md`, `DESIGN.md` §12.7, `docs/data-model.md` |
+| ADR-0003 | CSP script-src 'unsafe-inline' for v1 | Accepted | 2026-08-17 | S0 | 01 §20 INV-77 `script-src` row; 01 Status line |
+| ADR-0004 | Dev-only component preview route | Accepted | 2026-08-17 | S0 | 03 §7, §12, Status line; `_registry.md` Non-production line |
+| ADR-0005 | Placeholder pages render static, not ISR | Accepted | 2026-08-17 | S0 | 01 INV-38 + Status line; 02 §0.1, RP-16, Status line |
+| ADR-0006 | Preview env fallback until Supabase Branching is live | Accepted | 2026-08-17 | S0 | 00 §6 changelog + Status line; `docs/questions.md` Setup to-dos |
+| ADR-0007 | Bundle secret grep ignores the supabase-js key-format literal | Accepted | 2026-08-20 | S0 | 01 INV-29 Check + Status line; 02 SM-30 + Status line; 05 CI-4 + Status line |
+| ADR-0008 | Supabase browser client chunk on public routes (lazy) | Accepted | 2026-08-20 | S0 | 01 INV-80 + Status line |
 
 ## 8. Phase 2 stub
 Phase 2 slices (S2.1–S2.5) reuse this process unchanged. Phase 2 needs an ADR only where a stub in 00 §3 / 01 §26 / 02 §1.5 / 04 §9 is contradicted when the slice is detailed (e.g. Q45 workroom limits if they change from 25 MB/file · 200 MB/room). Already-baseline items need no ADR when built: showing the Commissions nav item at S2.2 is a `commissionsEnabled` flag flip (03 §8, ADR-0001 D10); Ko-fi webhook verification and `kofi_message_id` dedupe are specified in 00 §3 S2.1 (ADR-0001 D14). ADRs are written when the slice opens, not before.

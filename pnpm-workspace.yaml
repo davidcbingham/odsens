@@ -1,0 +1,7 @@
+allowBuilds:
+  unrs-resolver: false
+# pnpm settings (pnpm ≥10 reads these here, not from package.json#pnpm) — 01 INV-81 allowlist
+onlyBuiltDependencies:
+  - sharp
+  - esbuild
+  - '@parcel/watcher'

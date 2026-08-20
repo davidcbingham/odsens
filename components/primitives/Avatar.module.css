@@ -1,0 +1,76 @@
+/* Avatar — DESIGN.md §3 (3px white border), §5 Nav/Comment bubble; ADR-0002 #48 default square. */
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 3px solid var(--white);
+  border-radius: 0;
+  background: var(--slab-sunk);
+  container-type: inline-size;
+}
+
+.avatar[data-border='2'] {
+  border-width: 2px;
+}
+
+/* sizes (visual box incl. border) */
+.avatar[data-size='28'] {
+  width: 28px;
+  height: 28px;
+}
+
+.avatar[data-size='34'] {
+  width: 34px;
+  height: 34px;
+}
+
+.avatar[data-size='40'] {
+  width: var(--size-avatar-nav);
+  height: var(--size-avatar-nav);
+}
+
+.avatar[data-size='56'] {
+  width: 56px;
+  height: 56px;
+}
+
+.avatar[data-size='88'] {
+  width: 88px;
+  height: 88px;
+}
+
+.avatar[data-size='104'] {
+  width: 104px;
+  height: 104px;
+}
+
+.avatar-picture {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+
+/* no picture: --slab-sunk square, 2px --line, first character in Bungee chalk (ADR-0002 #48) */
+.avatar[data-fallback] {
+  border: 2px solid var(--line);
+  color: var(--chalk);
+}
+
+.avatar[data-fallback='question'] {
+  color: var(--mute-dim);
+}
+
+.avatar-glyph {
+  font-family: var(--font-display);
+  font-size: 46cqw;
+  line-height: 1;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.avatar[data-dim] {
+  opacity: 0.5;
+}
