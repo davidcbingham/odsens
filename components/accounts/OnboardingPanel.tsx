@@ -1,7 +1,7 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useActionState, useEffect, useId, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useActionState, useEffect, useId, useState } from 'react';
 import { AvatarUpload } from '@/components/accounts/AvatarUpload';
 import { HandleField } from '@/components/accounts/HandleField';
 import { Button } from '@/components/primitives/Button';
@@ -16,11 +16,18 @@ import styles from './OnboardingPanel.module.css';
  * OnboardingPanel — DESIGN.md §11.3 #10 Handle onboarding, §12.5 guidance block; 03 §2.5
  * `OnboardingPanel`; 02 §2.4. 560px slab centred on the faint 45° `--indigo` hatch (the page paints
  * it), STEP 1 OF 1, "PICK A HANDLE", the line, `HandleField`, the "What's a handle?" block (a
- * `NoteCallout`, 03 C-22), optional `AvatarUpload` (Upload / Skip — Skip only moves focus to DONE, so
- * no ghost arrow), footer strip with DONE (disabled until the handle validates) and
- * "You can change both later. Your Google name and email stay hidden." `useActionState` around
- * `completeOnboarding`; on ok → `router.replace(next)` (`?next=` through `safeNext`); server errors
- * inline under DONE (never a modal / toast). No props — nothing is prefilled from Google (Q34).
+ * `NoteCallout`, 03 C-22), optional `AvatarUpload` (Upload only — no Skip button, ADR-0017: leaving
+ * the picture empty and pressing DONE is the skip), footer strip with DONE (disabled until the
+ * handle validates — the picture never gates it) and "You can change both later. Your Google name
+ * and email stay hidden." `useActionState` around `completeOnboarding`; server errors inline under
+ * DONE (never a modal / toast). No props — nothing is prefilled from Google (Q34).
+ *
+ * On ok the panel leaves with a DOCUMENT navigation, `window.location.assign(next)` (`?next=`
+ * through `safeNext`), not `router.replace` (ADR-0017): the client router's prefetch cache can hold
+ * `/` as the proxy's M5 answer "307 → /welcome" (the `/` prefetch was made while the handle was still
+ * null), so a soft navigation "home" landed right back here. A document load asks the server fresh,
+ * and the public layout's `ViewerProvider` starts with the new handle. The onboarding layout's
+ * wordmark link also has `prefetch={false}` so the poisoned entry is not created in the first place.
  */
 export type OnboardingPanelProps = Record<string, never>;
 
@@ -31,19 +38,17 @@ async function submit(_previous: Result, formData: FormData): Promise<Result> {
 }
 
 export function OnboardingPanel() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNext(searchParams.get('next'));
   const [result, formAction, pending] = useActionState(submit, null);
   const [valid, setValid] = useState(false);
-  const doneRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const helpId = useId();
   const errorId = useId();
 
   useEffect(() => {
-    if (result?.ok) router.replace(next);
-  }, [result, router, next]);
+    if (result?.ok) window.location.assign(next);
+  }, [result, next]);
 
   const error = result && !result.ok ? result.error : null;
   const state = pending ? 'submitting' : error ? 'error' : 'idle';
@@ -77,19 +82,10 @@ export function OnboardingPanel() {
           </p>
           <div className={styles['onboarding-panel-picture']}>
             <AvatarUpload name="avatar" current={null} size={88} />
-            <Button
-              variant="ghost"
-              arrow={false}
-              onClick={() =>
-                doneRef.current?.querySelector<HTMLButtonElement>('button[type="submit"]')?.focus()
-              }
-            >
-              Skip
-            </Button>
           </div>
         </div>
 
-        <div ref={doneRef} className={styles['onboarding-panel-foot']}>
+        <div className={styles['onboarding-panel-foot']}>
           <div className={styles['onboarding-panel-foot-row']}>
             <Button
               variant="primary"

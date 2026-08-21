@@ -24,6 +24,8 @@ Kind: deviation
 5. Tests: 05 T-ACT-10 invokes the exported `proxy(request)` directly (`tests/db/proxy.test.ts`); the ID and its assertions are unchanged.
 6. *(addendum 2026-08-20)* `proxy.ts` is the session-refresh seam and imports `@supabase/ssr` directly: `createServerClient` with a cookie adapter bound to the request→response pair, because 02 §3 M2 requires refreshed cookies to ride on *this* response and `lib/supabase/server.ts` (bound to `next/headers`) cannot provide that. 01 INV-13 / §23 INV-85 "only `lib/supabase/*.ts` imports the Supabase packages" gain the exception "+ `proxy.ts` (`@supabase/ssr` only, never `@supabase/supabase-js`, never the admin client)". `eslint.config.mjs` carries it as its own `files: ['proxy.ts']` block (as built): `@supabase/ssr` unrestricted; `@supabase/supabase-js`, `@/lib/supabase/admin`, `@/lib/supabase/client`, `@/lib/supabase/server` and the markdown packages banned. `proxy.ts` adds no fifth client kind to INV-13's list — it is the cookie server client with a request-bound adapter. `grep -n "supabase-js\|supabase/admin\|supabase/client\|supabase/server" proxy.ts` → none.
 
+7. *(addendum 2026-08-21 — David's preview review)* **Redirects are for page navigations only.** M1 (anon on `/welcome`/`/profile`), M5 and M6 apply to GET/HEAD requests (documents and RSC fetches); any other method — in practice a Server Action POST — passes through right after the M2 refresh (new row **M3b** in 02 §3), with the refreshed cookies on the response and without the M4 read. Why: a 307 on an action POST makes the browser re-POST the action body to the redirect target (`POST /welcome` → 307 → `POST /`), which Next answers with a non-RSC body and the client throws "An unexpected response was received from the server" (the "Something broke" page David hit when pressing DONE a second time after his handle was already set). The action re-checks auth and onboarding itself (`requireUser` / `requireOnboarded`, 04 SC-04), so nothing is lost. 05 T-ACT-10 gains four cases (`tests/db/proxy.test.ts` "M3b").
+
 ## Alternatives considered
 | Alternative | Why not |
 |---|---|
@@ -53,6 +55,9 @@ Kind: deviation
 | `docs/build/04-server-contracts.md` | `Status:` line | appended "— amended by ADR-0009, ADR-0010, ADR-0012, ADR-0013 (2026-08-20)" (README ADR-R2) |
 | `docs/questions.md` | S0 build notes (2026-08-17 heads-up line) | marked answered by ADR-0009 |
 | `docs/build/06-decisions/README.md` | §7 Index | row for ADR-0009 |
+| `docs/build/02-routes-and-pages.md` | §3 M-table (new row M3b), RP-19 | non-GET requests pass through after the refresh; redirects are GET/HEAD-only (contains the string ADR-0009; addendum 2026-08-21) |
+| `docs/build/01-architecture.md` | §6 INV-30 | "redirects on GET/HEAD only — a Server Action POST passes through after the refresh (M3b)" (contains the string ADR-0009; addendum 2026-08-21) |
+| `docs/build/05-test-plan.md` | §7.2 T-ACT-10 row | M3b cases (contains the string ADR-0009; addendum 2026-08-21) |
 | `docs/build/01-architecture.md` | §10 INV-45 Check parenthetical | `proxy.ts` M4 added to the permitted `from('profiles')` sites (selects only `handle`) (contains the string ADR-0009) |
 
 ## Gate impact
@@ -61,5 +66,5 @@ Kind: deviation
 | spec-drift-reviewer | `proxy.ts` exists, `middleware.ts` does not; matcher string equals 02 §3 verbatim; named export `proxy` + `config`; `eslint.config.mjs` has the `files: ['proxy.ts']` block of Decision 6 (addendum); this ADR listed under `## ADRs in this PR` |
 | security-reviewer | INV-14 / INV-32 / INV-42 greps run against `proxy.ts` (not `middleware.ts`); `proxy.ts` reads only `profiles.handle` (M4), never `role`; INV-13 / INV-85 (addendum): `proxy.ts` imports `@supabase/ssr` only — `grep -n "^import.*\(supabase-js\|supabase/admin\|supabase/client\|supabase/server\)" proxy.ts` → none (the file's header comment may name `lib/supabase/server.ts` to explain why it is not used) |
 | frontend-reviewer | INV-30 "middleware shape" review targets `proxy.ts` |
-| backend-reviewer | T-ACT-10 imports `proxy` from `@/proxy`; no `runtime` export in `proxy.ts` |
+| backend-reviewer | T-ACT-10 imports `proxy` from `@/proxy`; no `runtime` export in `proxy.ts`; (addendum) `proxy.ts` returns before M4 for non-GET/HEAD requests (`navigation` flag) and the M3b cases in `tests/db/proxy.test.ts` pass — anon/nohandle/user POSTs are never redirected |
 | design-fidelity-reviewer, supabase-reviewer, deploy-checker | none |

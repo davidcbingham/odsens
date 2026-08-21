@@ -13,7 +13,12 @@ import { publicEnv } from '@/lib/env/public';
  * `{ id, handle, avatarUrl, role, isBanned }`; `avatarUrl` is the public `avatars` object URL
  * (`lib/files.ts` template, built inline here with `publicEnv`). The row is re-read on SIGNED_IN /
  * TOKEN_REFRESHED / USER_UPDATED and on the window event `odsens:viewer-refresh`, which `/profile`
- * dispatches after a successful save so `ProfileMenu` updates immediately (00 S1.1.AC6).
+ * dispatches after a successful save so `ProfileMenu` updates immediately (00 S1.1.AC6). On the
+ * window event `odsens:viewer-signed-out`, which `ProfilePanel` dispatches after a successful
+ * `deleteAccount`, it publishes `anon` at once and signs the browser client out locally
+ * (`signOut({ scope: 'local' })` → SIGNED_OUT): the server action already cleared the cookies, but
+ * the browser client's stored session would otherwise keep the deleted account's handle and picture
+ * in the nav until a reload.
  *
  * The Supabase browser client is imported lazily after hydration (03 C-18; ADR-0008): the ISR
  * shell's first-load JS does not carry the Supabase chunk, and the leaves render the signed-out
@@ -51,6 +56,13 @@ export type ViewerState = {
 
 /** Dispatched on `window` by `/profile` after a successful `updateProfile` (internal detail). */
 export const VIEWER_REFRESH_EVENT = 'odsens:viewer-refresh';
+
+/**
+ * Dispatched on `window` by `ProfilePanel` after a successful `deleteAccount` (internal detail): the
+ * provider publishes `anon` and drops the browser client's stored session, so the nav signs out
+ * without a reload.
+ */
+export const VIEWER_SIGNED_OUT_EVENT = 'odsens:viewer-signed-out';
 
 const LOADING_STATE: ViewerState = { status: 'loading', viewer: null };
 const ANON_STATE: ViewerState = { status: 'anon', viewer: null };
@@ -128,11 +140,26 @@ function startSession(): () => void {
   let currentUserId: string | null = null;
   let readSequence = 0;
   let onRefresh: (() => void) | null = null;
+  let signOutLocally: (() => void) | null = null;
+
+  // `odsens:viewer-signed-out` (ProfilePanel after deleteAccount): the server action cleared the
+  // cookies; drop the browser client's stored session too, which fires SIGNED_OUT → `anon`. The store
+  // flips to `anon` right away as well — belt and braces, and it holds while the lazy client import
+  // is still in flight. `currentUserId = null` makes an in-flight own-row read discard its result.
+  const onSignedOut = () => {
+    currentUserId = null;
+    publish(ANON_STATE);
+    signOutLocally?.();
+  };
+  window.addEventListener(VIEWER_SIGNED_OUT_EVENT, onSignedOut);
 
   void import('@/lib/supabase/client')
     .then(({ createBrowserClient }) => {
       if (cancelled) return;
       const supabase = createBrowserClient();
+      signOutLocally = () => {
+        void supabase.auth.signOut({ scope: 'local' });
+      };
 
       const readOwnRow = (userId: string) => {
         readSequence += 1;
@@ -184,6 +211,7 @@ function startSession(): () => void {
   return () => {
     cancelled = true;
     subscription?.unsubscribe();
+    window.removeEventListener(VIEWER_SIGNED_OUT_EVENT, onSignedOut);
     if (onRefresh) window.removeEventListener(VIEWER_REFRESH_EVENT, onRefresh);
   };
 }

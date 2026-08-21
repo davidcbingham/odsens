@@ -14,11 +14,13 @@ import styles from './ProfileMenu.module.css';
  * from="nav"` (the outlined block; no layout shift — C-17a). Signed in → trigger (28px `Avatar` +
  * handle + ▾ in a `--line-strong` outlined block, `aria-expanded`) and, `data-state="open"`, the
  * 236px slab (`4px 4px 0 --ink-deep`): header 40px `Avatar` + handle + SIGNED IN, then Your profile ·
- * Change handle · Change picture · [Admin — role ≥ moderator] · Sign out in `--danger` behind a 2px
- * top `--line` as `<form method="post" action="/auth/sign-out">` (01 INV-17). `role="menu"`, Esc
- * closes + focus back, click-outside closes, arrows move. Dynamic routes may pass `viewer`; ISR
- * pages rely on `useViewer()`. Inside the phone panel `Nav` passes a className whose rules (in
- * `Nav.module.css`, attribute selectors) turn the popover into a static full-width block.
+ * [Admin — role ≥ moderator] · Sign out in `--danger` behind a 2px top `--line` as
+ * `<form method="post" action="/auth/sign-out">` (01 INV-17). The former handle / picture shortcut
+ * items are gone (ADR-0018 — all three opened `/profile`; the page keeps its `#handle` / `#picture`
+ * anchors). `role="menu"`, Esc closes + focus back, click-outside closes, arrows move.
+ * Dynamic routes may pass `viewer`; ISR pages rely on `useViewer()`. Inside the phone panel `Nav`
+ * passes a className whose rules (in `Nav.module.css`, attribute selectors) turn the popover into a
+ * static full-width block.
  */
 export type ProfileMenuProps = {
   viewer?: { handle: string; avatarUrl: string | null; role: 'user' | 'moderator' | 'admin' };
@@ -120,10 +122,9 @@ export function ProfileMenu({ viewer: viewerProp, className }: ProfileMenuProps)
     );
   }
 
+  // Your profile · [Admin] — handle and picture are edited on /profile itself (ADR-0018).
   const links: MenuItem[] = [
     { label: 'Your profile', href: '/profile' },
-    { label: 'Change handle', href: '/profile#handle' },
-    { label: 'Change picture', href: '/profile#picture' },
     ...(viewer.role === 'moderator' || viewer.role === 'admin'
       ? [{ label: 'Admin', href: '/admin' }]
       : []),

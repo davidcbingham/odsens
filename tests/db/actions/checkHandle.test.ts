@@ -1,7 +1,8 @@
 /**
  * tests/db/actions/checkHandle.test.ts — T-ACT-7 (05 §7.2; 04 §1.1 `checkHandle` / RPC `check_handle`).
  *
- * Status per role, the four states, "never returns the owning profile id", the 61st call in a minute,
+ * Status per role (a banned caller gets `banned` before the limiter — ADR-0019), the four states,
+ * "never returns the owning profile id", the 61st call in a minute,
  * and SQL ↔ TS reserved-list parity (the RPC says `reserved` for every `RESERVED_HANDLES` entry, and the
  * array literal inside `check_handle`'s body equals the TS list exactly — T-UNIT-2's twin).
  * The 61-call run uses a factory user so the seed `user`'s budget stays untouched for other files.
@@ -10,7 +11,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { checkHandle } from '@/lib/actions/accounts';
 import { RATE_LIMITED_MESSAGE } from '@/lib/rate-limit';
 import { RESERVED_HANDLES } from '@/lib/validation/handle';
-import { freeHandle } from '@/tests/helpers/arrange';
+import { clearRateLimitHits, countRateLimitHits, freeHandle } from '@/tests/helpers/arrange';
 import { expectFail, expectOk } from '@/tests/helpers/actionResult';
 import { asRole, SEED_ROLE_IDS, type SeedRole } from '@/tests/helpers/asRole';
 import { callAction, callActionAs, setupActionMocks } from '@/tests/helpers/callAction';
@@ -34,7 +35,7 @@ describe('T-ACT-7 checkHandle', () => {
     expect(error.message).toBe('Sign in first.');
   });
 
-  it.each<SeedRole>(['user', 'banned', 'mod', 'admin', 'nohandle', 'user0'])(
+  it.each<SeedRole>(['user', 'mod', 'admin', 'nohandle', 'user0'])(
     'T-ACT-7 %s → ok { status } for a free handle',
     async (role) => {
       const data = expectOk(
@@ -44,6 +45,16 @@ describe('T-ACT-7 checkHandle', () => {
       expect(STATUSES).toContain(data.status);
     },
   );
+
+  it('T-ACT-7 banned → banned before the limiter (ADR-0019): no hit recorded', async () => {
+    await clearRateLimitHits('check_handle', SEED_ROLE_IDS.banned);
+    const error = expectFail(
+      await callAction(checkHandle, { handle: freeHandle() }, { role: 'banned' }),
+      'banned',
+    );
+    expect(error.message).toBe('This account is banned.');
+    expect(await countRateLimitHits('check_handle', SEED_ROLE_IDS.banned)).toBe(0);
+  });
 
   it.each([
     { handle: 'SEED_USER', status: 'taken' },

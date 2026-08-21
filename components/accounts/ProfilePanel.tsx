@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from 'react';
 import { AvatarUpload } from '@/components/accounts/AvatarUpload';
 import { HandleField } from '@/components/accounts/HandleField';
-import { VIEWER_REFRESH_EVENT } from '@/components/accounts/ViewerProvider';
+import {
+  VIEWER_REFRESH_EVENT,
+  VIEWER_SIGNED_OUT_EVENT,
+} from '@/components/accounts/ViewerProvider';
 import { useToast } from '@/components/layout/Toast';
 import { Button } from '@/components/primitives/Button';
 import { InlineConfirm } from '@/components/primitives/InlineConfirm';
@@ -90,7 +93,10 @@ export function ProfilePanel({ handle, avatarUrl, limitedUntil }: ProfilePanelPr
         try {
           const result = await deleteAccount({ confirm: true });
           if (result.ok) {
-            // The session is gone (04 §1.1 deleteAccount signs out) — back to the front door.
+            // The server session is gone (04 §1.1 deleteAccount signs out), but the browser client
+            // still holds it: tell ViewerProvider to sign out locally so the nav drops the old
+            // handle + picture at once — then back to the front door.
+            window.dispatchEvent(new Event(VIEWER_SIGNED_OUT_EVENT));
             router.replace('/');
             router.refresh();
           } else {

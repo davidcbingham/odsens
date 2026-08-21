@@ -41,6 +41,7 @@ Talk to Oliver like a smart 15-year-old who builds mods: name a thing once, then
 - ~~Enable Supabase Branching on `odsens` + install the Supabase GitHub integration (`davidcbingham/odsens`) + the Supabase Vercel integration — REQUIRED before S1.1 (ADR-0006).~~ Done 2026-08-20 (ADR-0010).
 - ~~Vercel → Project → Deployment Protection → enable "Protection Bypass for Automation" so `deploy-checker` can fetch protected previews.~~ Done 2026-08-20 (`VERCEL_AUTOMATION_BYPASS_SECRET`, tooling-only; a commented line in `.env.example`, never a schema name).
 - ~~Vercel → remove `CURSEFORGE_MEMBER` from all environments (dropped from `.env.example` at S0, 04 SC-16).~~ Done 2026-08-20.
+- **Owner bootstrap** after Oliver's first Google sign-in on each environment (staging, then production after the S1.1 merge): the one-line SQL in `.claude/skills/supabase-ops/SKILL.md` "Owner bootstrap" gives him the reserved handle `oddsense` + the admin role (00-O-10). Until then `oddsense` is refused by the handle field as reserved — by design.
 - Persistent `staging` branch (ADR-0010): Supabase → GitHub integration → turn **off** automatic per-PR branching · Vercel → Preview environment → paste staging's `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` · Google Cloud console → OAuth client → add `https://oihrxwqarwllvsyllczo.supabase.co/auth/v1/callback`.
 
 ### PR body template (`docs/build/00-build-plan.md` §1.3, verbatim)

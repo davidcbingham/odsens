@@ -185,16 +185,26 @@ test.describe('onboarding', () => {
     expect(await listObjects('avatars', NEWBIE)).toEqual([row?.avatar_path]);
   });
 
-  test('T-E2E-22 Skip path completes without a picture', async ({ page }) => {
+  test('T-E2E-22 DONE without a picture completes — there is no Skip button (ADR-0017)', async ({
+    page,
+  }) => {
     await openWelcome(page);
+    await expect(page.getByRole('button', { name: /^Skip/ })).toHaveCount(0);
     const handle = randomHandle();
     await typeAvailableHandle(page, handle);
-
-    const done = page.getByRole('button', { name: 'DONE' });
-    await page.getByRole('button', { name: /^Skip/ }).click();
-    await expect(done).toBeFocused();
-    await page.keyboard.press('Enter');
+    // DONE is gated on the handle only; the picture never arms or disarms it.
+    await page.evaluate(() => {
+      (window as Window & { __onboardingDocument?: true }).__onboardingDocument = true;
+    });
+    await page.getByRole('button', { name: 'DONE' }).click();
     await expectLanded(page, '/');
+    // ADR-0017 D3: success leaves with a DOCUMENT navigation (the marker set above is gone), never a
+    // soft `router.replace` that the router's prefetch cache could answer with "307 → /welcome".
+    expect(
+      await page.evaluate(
+        () => (window as Window & { __onboardingDocument?: true }).__onboardingDocument,
+      ),
+    ).toBeUndefined();
 
     expect(await readSeedProfile(NEWBIE)).toMatchObject({ handle, avatar_path: null });
     expect(await listObjects('avatars', NEWBIE)).toEqual([]);

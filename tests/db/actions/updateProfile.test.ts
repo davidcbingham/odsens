@@ -5,6 +5,7 @@
  * Success rows run on factory users (a seed row must not end up with an avatar or a new handle, H-1);
  * the D rows use seed roles (nothing is written). `public_profiles` visibility is asserted through the
  * anon client. "Comments by that user show the new handle" is a join, asserted in S1.4 (no comments yet).
+ * A banned caller gets `banned` before anything is written — no rename, no picture (ADR-0019).
  *
  * Avatar ownership (ADR-0015 addendum, 2026-08-20): every service-role Storage delete re-checks that
  * the object lives in the CALLER's folder (`lib/files.ts isOwnAvatarPath`), and the DB CHECK
@@ -66,9 +67,29 @@ describe('T-ACT-4 updateProfile auth matrix (change avatar)', () => {
     expect(await listObjects('avatars', SEED_ROLE_IDS.nohandle)).toEqual([]);
   });
 
+  it('T-ACT-4 banned (factory, own row) → banned; nothing written, no object (ADR-0019)', async () => {
+    const id = await makeUser({ banned: true });
+    const before = await readProfile(id);
+    const error = expectFail(
+      await callActionAs(updateProfile, await avatarForm('avatar-600.png'), { profileId: id }),
+      'banned',
+    );
+    expect(error.message).toBe('This account is banned.');
+    expect(await readProfile(id)).toEqual(before);
+    expect(await listObjects('avatars', id)).toEqual([]);
+  });
+
+  it('T-ACT-4 banned (seed) cannot rename either → banned, row unchanged (ADR-0019)', async () => {
+    const before = await readProfile(SEED_ROLE_IDS.banned);
+    expectFail(
+      await callAction(updateProfile, { handle: freeHandle() }, { role: 'banned' }),
+      'banned',
+    );
+    expect(await readProfile(SEED_ROLE_IDS.banned)).toEqual(before);
+  });
+
   it.each([
     { label: 'user', overrides: {} },
-    { label: 'banned', overrides: { banned: true } },
     { label: 'mod', overrides: { role: 'moderator' as const } },
     { label: 'admin', overrides: { role: 'admin' as const } },
   ])('T-ACT-4 $label (factory, own row) → ok with avatar_path set', async ({ overrides }) => {

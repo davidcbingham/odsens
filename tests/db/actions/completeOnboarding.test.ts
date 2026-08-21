@@ -21,7 +21,13 @@ import {
   handleReason,
 } from '@/lib/validation/handle';
 import { sha256Hex } from '@/lib/hash';
-import { clearRateLimitHits, freeHandle, patchProfile, readProfile } from '@/tests/helpers/arrange';
+import {
+  clearRateLimitHits,
+  countRateLimitHits,
+  freeHandle,
+  patchProfile,
+  readProfile,
+} from '@/tests/helpers/arrange';
 import { expectFail, expectOk } from '@/tests/helpers/actionResult';
 import { asRole, SEED_ROLE_IDS, type SeedRole } from '@/tests/helpers/asRole';
 import { callAction, callActionAs, setupActionMocks } from '@/tests/helpers/callAction';
@@ -72,17 +78,28 @@ describe('T-ACT-1 completeOnboarding auth matrix', () => {
     expect((await readProfile(id))?.handle).toBeNull();
   });
 
-  it('T-ACT-1 banned with null handle (factory) → ok (ban is not checked here, 04 §1.1)', async () => {
+  it('T-ACT-1 banned with a null handle (factory) → banned; handle stays null, no hit (ADR-0019)', async () => {
     const id = await makeUser({ banned: true, handle: null });
-    const handle = freeHandle();
-    const data = expectOk(await callActionAs(completeOnboarding, { handle }, { profileId: id }));
-    expect(data.handle).toBe(handle);
+    const error = expectFail(
+      await callActionAs(completeOnboarding, { handle: freeHandle() }, { profileId: id }),
+      'banned',
+    );
+    expect(error.message).toBe('This account is banned.');
     const row = await readProfile(id);
-    expect(row?.handle).toBe(handle);
+    expect(row?.handle).toBeNull();
     expect(row?.is_banned).toBe(true);
+    // `requireUser` throws before the limiter (04 SC-05: before touching the DB for the action).
+    expect(await countRateLimitHits('onboarding', id)).toBe(0);
   });
 
-  it.each<SeedRole>(['user', 'banned', 'mod', 'admin'])(
+  it('T-ACT-1 banned (seed, already onboarded) → banned — before the conflict check; row unchanged (ADR-0019)', async () => {
+    const before = await readProfile(SEED_ROLE_IDS.banned);
+    const res = await callAction(completeOnboarding, { handle: freeHandle() }, { role: 'banned' });
+    expect(expectFail(res, 'banned').message).toBe('This account is banned.');
+    expect(await readProfile(SEED_ROLE_IDS.banned)).toEqual(before);
+  });
+
+  it.each<SeedRole>(['user', 'mod', 'admin'])(
     'T-ACT-1 %s (already onboarded) → conflict, row unchanged',
     async (role) => {
       const before = await readProfile(SEED_ROLE_IDS[role]);

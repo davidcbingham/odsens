@@ -28,7 +28,8 @@ test.describe('sign-out', () => {
     const items = await menu
       .getByRole('menuitem')
       .evaluateAll((els) => els.map((el) => (el.textContent ?? '').trim()));
-    expect(items).toEqual(['Your profile', 'Change handle', 'Change picture', 'Sign out']);
+    // ADR-0018: Your profile · [Admin — role ≥ moderator] · Sign out; user0 is a plain user.
+    expect(items).toEqual(['Your profile', 'Sign out']);
 
     const signOut = menu.getByRole('menuitem', { name: 'Sign out' });
     const look = await signOut.evaluate((el) => {

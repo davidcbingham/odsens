@@ -93,7 +93,6 @@ describe('T-ACT-65 deleteAccount', () => {
   });
 
   it.each([
-    { label: 'banned', overrides: { banned: true } },
     { label: 'mod', overrides: { role: 'moderator' as const } },
     { label: 'admin', overrides: { role: 'admin' as const } },
   ])('T-ACT-65 $label (factory) → ok, auth user gone', async ({ overrides }) => {
@@ -101,6 +100,24 @@ describe('T-ACT-65 deleteAccount', () => {
     expectOk(await callActionAs(deleteAccount, { confirm: true }, { profileId: id }));
     expect(await authUserExists(id)).toBe(false);
     expect(await readProfile(id)).toBeNull();
+  });
+
+  it('T-ACT-65 banned (factory) → banned; auth user + profile survive, no hit recorded (ADR-0019)', async () => {
+    const id = await makeUser({ banned: true });
+    const error = expectFail(
+      await callActionAs(deleteAccount, { confirm: true }, { profileId: id }),
+      'banned',
+    );
+    expect(error.message).toBe('This account is banned.');
+    expect(await authUserExists(id)).toBe(true);
+    expect((await readProfile(id))?.is_banned).toBe(true);
+    expect(await countRateLimitHits('delete_account', id)).toBe(0);
+  });
+
+  it('T-ACT-65 banned (seed) → banned, seed_banned still exists (ADR-0019)', async () => {
+    expectFail(await callAction(deleteAccount, { confirm: true }, { role: 'banned' }), 'banned');
+    expect(await authUserExists(SEED_ROLE_IDS.banned)).toBe(true);
+    expect((await readProfile(SEED_ROLE_IDS.banned))?.handle).toBe('seed_banned');
   });
 
   it('T-ACT-65 deleting only touches the caller (own only): other rows survive', async () => {

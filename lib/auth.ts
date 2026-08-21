@@ -1,5 +1,5 @@
 /**
- * lib/auth.ts — the one auth seam (01 INV-32; 04 SC-04; 02 RP-19 / RP-20; ADR-0002 A15; ADR-0013; ADR-0014).
+ * lib/auth.ts — the one auth seam (01 INV-32; 04 SC-04; 02 RP-19 / RP-20; ADR-0002 A15; ADR-0013; ADR-0014; ADR-0019).
  *
  * Function exports are exactly `getUser`, `getViewer`, `getProfile`, `requireUser`, `requireOnboarded`,
  * `requireRole`, `safeNext` (+ the types `Role`, `Profile`, `OnboardedProfile`, `Viewer` and the class
@@ -10,6 +10,13 @@
  *
  * `safeNext` lives in the pure module `lib/validation/next.ts` (client-importable) and is re-exported
  * here so 04 SC-04's export set is unchanged (T-UNIT-44 imports it from this file).
+ *
+ * Banned accounts (ADR-0019; 04 SC-05): `requireUser()` and `requireOnboarded()` throw
+ * `AuthError('banned')` when the caller's own `profiles.is_banned` is true — checked right after the
+ * session and before `onboarding_required`, so every account action answers `banned` for a banned
+ * caller (04 §1.1). `requireUser()` therefore costs one own-row PK read under RLS (it used to read the
+ * session only); `getUser()` / `getViewer()` / `getProfile()` are unchanged. The proxy (02 §3 M4b) keeps
+ * a banned browser on `/banned`; this is the server-side half.
  */
 import 'server-only';
 import type { ActionErrorCode } from '@/lib/actions/result';
@@ -100,14 +107,30 @@ export async function getViewer(): Promise<Viewer | null> {
   return { user, profile };
 }
 
-/** Throws `AuthError('unauthenticated')` for anon. */
+/** 04 §7 `banned` copy for the account actions (ADR-0019); the comments UI keeps its own line. */
+const BANNED_MESSAGE = 'This account is banned.';
+
+/** ADR-0019: a banned caller fails every `require*` check before anything else is looked at. */
+function assertNotBanned(profile: Profile | null): void {
+  if (profile?.is_banned) throw new AuthError('banned', BANNED_MESSAGE);
+}
+
+/**
+ * Throws `unauthenticated` for anon and `banned` when the caller's own row has `is_banned` (one
+ * own-row PK read — ADR-0019). Still returns `{ id }` only (04 SC-04 shape unchanged).
+ */
 export async function requireUser(): Promise<{ id: string }> {
-  const user = await getUser();
+  const supabase = await createServerClient();
+  const user = await resolveUser(supabase);
   if (!user) throw new AuthError('unauthenticated', 'Sign in first.');
+  assertNotBanned(await readOwnProfile(supabase, user.id));
   return user;
 }
 
-/** Throws `unauthenticated` for anon and `onboarding_required` while the handle is still null. */
+/**
+ * Throws `unauthenticated` for anon, `banned` for a banned account (ADR-0019 — before the handle is
+ * looked at), then `onboarding_required` while the handle is still null.
+ */
 export async function requireOnboarded(): Promise<{
   user: { id: string };
   profile: OnboardedProfile;
@@ -115,6 +138,7 @@ export async function requireOnboarded(): Promise<{
   const viewer = await getViewer();
   if (!viewer) throw new AuthError('unauthenticated', 'Sign in first.');
   const { user, profile } = viewer;
+  assertNotBanned(profile);
   if (!profile || profile.handle === null) {
     throw new AuthError('onboarding_required', 'Pick a handle first.');
   }

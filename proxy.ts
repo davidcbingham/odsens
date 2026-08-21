@@ -9,7 +9,13 @@
  *   M2 cookie present → `auth.getUser()` (refreshes tokens; refreshed cookies ride on the response);
  *      invalid / expired → treated as M1
  *   M3 authenticated + `/auth/*` → pass through
- *   M4 read `profiles.handle` for the user (one own-row query; NEVER `role`)
+ *   M3b non-GET/HEAD requests (Server Action POSTs) → pass through after the refresh: the action
+ *      re-checks auth + onboarding itself (04 SC-04), and a 307 would make the browser re-POST the
+ *      action body to the redirect target (ADR-0009 addendum)
+ *   M4 read `profiles.handle, is_banned` for the user (one own-row query; NEVER `role`)
+ *   M4b `is_banned` → path ∉ {`/banned`, `/auth/*` (already passed at M3), `/api/*`} → 307 `/banned`;
+ *      else pass through. M5–M8 never run for a banned account, so one whose handle is still null
+ *      lands on `/banned` too, never on `/welcome` (ADR-0019)
  *   M5 handle null + path ∉ {`/welcome`, `/privacy`, `/how-comments-work`, `/auth/*`, `/api/*`}
  *      → 307 `/welcome?next=<pathname+search>` (only when `next` passes RP-20, else plain `/welcome`)
  *   M6 handle set + `/welcome` → 307 `safeNext(next)`
@@ -50,6 +56,11 @@ function isOnboardingExempt(pathname: string): boolean {
   return ONBOARDING_EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
+/** M4b (ADR-0019): all a banned account may still load — its page and `/api/*` (`/auth/*` passed at M3). */
+function isBannedExempt(pathname: string): boolean {
+  return pathname === '/banned' || pathname.startsWith('/api/');
+}
+
 function hasAuthCookie(request: NextRequest): boolean {
   return request.cookies.getAll().some((cookie) => AUTH_COOKIE.test(cookie.name));
 }
@@ -72,8 +83,14 @@ function anonResponse(request: NextRequest, pathname: string, from?: NextRespons
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname, search } = request.nextUrl;
 
+  // Redirects (M1, M5, M6) apply to page navigations only — GET/HEAD documents and RSC fetches. A
+  // Server Action POST is never redirected: the action re-checks auth and onboarding (04 SC-04), and a
+  // 307 would make the browser re-POST the action to the redirect target (ADR-0009 addendum).
+  const navigation = request.method === 'GET' || request.method === 'HEAD';
+
   // M1 — no session cookie: public traffic never touches Supabase.
-  if (!hasAuthCookie(request)) return anonResponse(request, pathname);
+  if (!hasAuthCookie(request))
+    return navigation ? anonResponse(request, pathname) : NextResponse.next({ request });
 
   // M2 — refresh the session; cookies written by the client land on `response`.
   let response = NextResponse.next({ request });
@@ -97,18 +114,27 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   );
 
   const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return anonResponse(request, pathname, response);
+  if (error || !data.user) return navigation ? anonResponse(request, pathname, response) : response;
 
   // M3 — auth routes pass through for signed-in users (callback / sign-out).
   if (pathname.startsWith('/auth/')) return response;
 
-  // M4 — one own-row read: `handle` only (RP-19: never `role`).
+  // M3b — non-navigation requests (Server Action POSTs) pass through with the refreshed cookies.
+  if (!navigation) return response;
+
+  // M4 — one own-row read: `handle` + `is_banned` (RP-19: never `role`).
   const { data: profile } = await supabase
     .from('profiles')
-    .select('handle')
+    .select('handle, is_banned')
     .eq('id', data.user.id)
     .maybeSingle();
   const handle = profile?.handle ?? null;
+
+  // M4b — a banned account sees `/banned` and nothing else (ADR-0019). Before M5 on purpose: a banned
+  // account whose handle is still null lands here, not on `/welcome`; M5–M8 do not apply to it.
+  if (profile?.is_banned === true) {
+    return isBannedExempt(pathname) ? response : redirect(request, '/banned', response);
+  }
 
   // M5 — onboarding is mandatory everywhere except the exempt list.
   if (handle === null && !isOnboardingExempt(pathname)) {

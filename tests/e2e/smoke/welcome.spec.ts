@@ -49,7 +49,8 @@ test.describe('welcome', () => {
       "Handles are made-up names. Don't use your real one — nobody here needs to know it, including us.",
     );
     await expect(page.getByRole('button', { name: 'Upload picture' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Skip/ })).toBeVisible();
+    // No Skip button (ADR-0017): leaving the picture empty and pressing DONE is the skip.
+    await expect(page.getByRole('button', { name: /^Skip/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'DONE' })).toBeDisabled();
     await expect(
       page.getByText('You can change both later. Your Google name and email stay hidden.'),

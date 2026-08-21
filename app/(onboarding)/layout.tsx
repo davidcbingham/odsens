@@ -17,7 +17,9 @@ export default function OnboardingLayout({ children }: { children: ReactNode }) 
       <ToastProvider>
         <header className={styles['onboarding-header']}>
           <div className={styles['onboarding-header-inner']}>
-            <Link href="/" className={styles['onboarding-wordmark']}>
+            {/* No prefetch: the proxy would answer it with "307 → /welcome" while the handle is null and
+                poison the router cache for the post-DONE navigation (ADR-0017). */}
+            <Link href="/" prefetch={false} className={styles['onboarding-wordmark']}>
               ODSENS
             </Link>
             <form method="post" action="/auth/sign-out">

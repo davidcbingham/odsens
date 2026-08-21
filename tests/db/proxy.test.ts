@@ -6,25 +6,36 @@
  * none for anon. `proxy.ts` reads `request.cookies`, so the action-context mocks are not involved.
  *
  * "No query on profiles.role" is proven two ways: a `fetch` spy records every PostgREST request the
- * middleware makes (each `/rest/v1/profiles` call must select exactly `handle`), and the source of
- * proxy.ts — comments stripped — contains no `role` token at all.
+ * middleware makes (each `/rest/v1/profiles` call must select exactly `handle,is_banned` — ADR-0019 added
+ * `is_banned` for M4b), and the source of proxy.ts — comments stripped — contains no `role` token at all.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { NextRequest } from 'next/server';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { proxy, config } from '@/proxy';
 import { REPO_ROOT } from '@/tests/helpers/envTest';
-import { cookieHeader, seedSessionCookies } from '@/tests/helpers/sessionCookies';
+import { cleanupFactories, makeUser } from '@/tests/helpers/factories';
+import {
+  cookieHeader,
+  seedSessionCookies,
+  userSessionCookies,
+} from '@/tests/helpers/sessionCookies';
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
 let nohandleCookie = '';
 let userCookie = '';
+let bannedCookie = '';
 
 beforeAll(async () => {
   nohandleCookie = cookieHeader(await seedSessionCookies('nohandle'));
   userCookie = cookieHeader(await seedSessionCookies('user'));
+  bannedCookie = cookieHeader(await seedSessionCookies('banned'));
+});
+
+afterAll(async () => {
+  await cleanupFactories();
 });
 
 const realFetch = globalThis.fetch;
@@ -179,16 +190,69 @@ describe('T-ACT-10 proxy M6/M7/M8 — onboarded user', () => {
   });
 });
 
+/** A Server Action POST (`next-action` header + RSC body), as the browser sends it. */
+function actionPost(pathname: string, cookie?: string): NextRequest {
+  return new NextRequest(new URL(pathname, SITE), {
+    method: 'POST',
+    headers: {
+      ...(cookie ? { cookie } : {}),
+      'next-action': '0123456789abcdef0123456789abcdef01234567',
+      'content-type': 'text/plain;charset=UTF-8',
+    },
+    body: '[]',
+  });
+}
+
+describe('T-ACT-10 proxy M3b — non-GET requests (Server Action POSTs) are never redirected', () => {
+  // ADR-0009 addendum: a 307 on an action POST makes the browser re-POST the action to the redirect
+  // target (seen on the preview: DONE → handle set → second DONE → POST /welcome 307 → POST / → crash).
+  // The action re-checks auth + onboarding itself (04 SC-04); the proxy only refreshes the session.
+
+  it('T-ACT-10 anon POST /profile and /welcome → pass through (no 307, no Supabase call)', async () => {
+    spyOnDb();
+    for (const pathname of ['/profile', '/welcome']) {
+      expectPassThrough(await proxy(actionPost(pathname)));
+    }
+    expect(profileRequests).toEqual([]);
+  });
+
+  it('T-ACT-10 nohandle POST /projects → pass through (M5 is a navigation rule)', async () => {
+    spyOnDb();
+    expectPassThrough(await proxy(actionPost('/projects?x=1', nohandleCookie)));
+    // M3b returns before M4: no profiles read for an action request.
+    expect(profileRequests).toEqual([]);
+  });
+
+  it('T-ACT-10 user POST /welcome → pass through (M6 is a navigation rule)', async () => {
+    spyOnDb();
+    expectPassThrough(await proxy(actionPost('/welcome?next=%2F', userCookie)));
+    expect(profileRequests).toEqual([]);
+  });
+
+  it('T-ACT-10 HEAD behaves like GET (user on /welcome → 307 /)', async () => {
+    const res = await proxy(
+      new NextRequest(new URL('/welcome', SITE), {
+        method: 'HEAD',
+        headers: { cookie: userCookie },
+      }),
+    );
+    expect(res.status).toBe(307);
+    expect(location(res)).toBe(`${SITE}/`);
+  });
+});
+
 describe('T-ACT-10 proxy RP-19 — never reads role', () => {
-  it('T-ACT-10 every profiles query selects exactly `handle` (fetch spy)', async () => {
+  it('T-ACT-10 every profiles query selects exactly `handle,is_banned` (fetch spy; ADR-0019)', async () => {
     spyOnDb();
     await proxy(req('/projects', nohandleCookie));
     await proxy(req('/profile', userCookie));
     await proxy(req('/welcome', userCookie));
+    await proxy(req('/', bannedCookie));
     const profiles = profileRequests.filter((u) => u.pathname.endsWith('/rest/v1/profiles'));
-    expect(profiles.length).toBeGreaterThanOrEqual(3);
+    expect(profiles.length).toBeGreaterThanOrEqual(4);
     for (const url of profiles) {
-      expect(url.searchParams.get('select')).toBe('handle');
+      // supabase-js strips the space from `select('handle, is_banned')`; never `role`, never `*`.
+      expect(url.searchParams.get('select')).toBe('handle,is_banned');
       expect(url.search.toLowerCase()).not.toContain('role');
     }
     // and no other table is consulted by the middleware
@@ -207,9 +271,82 @@ describe('T-ACT-10 proxy RP-19 — never reads role', () => {
     expect(code).not.toMatch(/\brole\b/i);
     expect(code).not.toMatch(/getSession\(/);
     expect(code).not.toMatch(/supabase\/admin/);
-    expect(code).toMatch(/select\('handle'\)/);
+    expect(code).toMatch(/select\('handle, is_banned'\)/);
     expect(config.matcher).toEqual([
       '/((?!_next/static|_next/image|favicon\\.ico|fonts/|brand/|robots\\.txt|sitemap\\.xml|api/cron/|api/webhooks/|api/download/|.*\\.(?:png|jpg|jpeg|webp|svg|ico|woff2|txt|xml)$).*)',
     ]);
+  });
+});
+
+describe('T-ACT-10 proxy M4b — banned (ADR-0019)', () => {
+  // A banned account sees `/banned` and nothing else: every page navigation is 307'd there before M5
+  // (so a banned account with a null handle never reaches `/welcome`); `/banned` itself, `/auth/*` (M3)
+  // and `/api/*` pass through; an action POST passes through (M3b) and the action answers `banned`.
+  it.each([
+    '/',
+    '/projects',
+    '/projects/pixel-chameleon?tag=mods',
+    '/profile',
+    '/welcome',
+    '/welcome?next=/projects',
+    '/admin',
+    '/admin/comments',
+    '/privacy',
+    '/how-comments-work',
+    '/skins',
+  ])('T-ACT-10 banned on %s → 307 /banned', async (p) => {
+    expectRedirect(await proxy(req(p, bannedCookie)), '/banned');
+  });
+
+  it('T-ACT-10 banned on /banned → pass through', async () => {
+    expectPassThrough(await proxy(req('/banned', bannedCookie)));
+  });
+
+  it('T-ACT-10 banned on /auth/* → pass through before the profiles read (M3)', async () => {
+    spyOnDb();
+    expectPassThrough(await proxy(req('/auth/sign-out', bannedCookie)));
+    expectPassThrough(await proxy(req('/auth/callback?code=x', bannedCookie)));
+    expect(profileRequests).toEqual([]);
+  });
+
+  it('T-ACT-10 banned on /api/* → pass through', async () => {
+    expectPassThrough(await proxy(req('/api/health', bannedCookie)));
+  });
+
+  it('T-ACT-10 banned with a null handle (factory) → 307 /banned, never /welcome (M4b precedes M5)', async () => {
+    const id = await makeUser({ banned: true, handle: null });
+    const cookie = cookieHeader(await userSessionCookies(id));
+    expectRedirect(await proxy(req('/', cookie)), '/banned');
+    expectRedirect(await proxy(req('/welcome', cookie)), '/banned');
+    expectPassThrough(await proxy(req('/banned', cookie)));
+  });
+
+  it('T-ACT-10 user on /banned → pass through (the page redirects, not the proxy); nohandle → M5 first', async () => {
+    expectPassThrough(await proxy(req('/banned', userCookie)));
+    // `/banned` is not onboarding-exempt: a not-banned account without a handle still owes one.
+    expectRedirect(
+      await proxy(req('/banned', nohandleCookie)),
+      `/welcome?next=${encodeURIComponent('/banned')}`,
+    );
+  });
+
+  it('T-ACT-10 anon on /banned → pass through, no DB work (M1; the page sends anon home)', async () => {
+    spyOnDb();
+    expectPassThrough(await proxy(req('/banned')));
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('T-ACT-10 a banned Server Action POST → pass through (M3b), no profiles read', async () => {
+    spyOnDb();
+    expectPassThrough(await proxy(actionPost('/profile', bannedCookie)));
+    expectPassThrough(await proxy(actionPost('/welcome', bannedCookie)));
+    expect(profileRequests).toEqual([]);
+  });
+
+  it('T-ACT-10 HEAD behaves like GET (banned on / → 307 /banned)', async () => {
+    const res = await proxy(
+      new NextRequest(new URL('/', SITE), { method: 'HEAD', headers: { cookie: bannedCookie } }),
+    );
+    expectRedirect(res, '/banned');
   });
 });
