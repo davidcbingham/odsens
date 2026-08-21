@@ -56,14 +56,27 @@ const PROFILE_COLUMNS = 'id, handle, avatar_path, role, is_banned, handle_change
 
 type ServerClient = Awaited<ReturnType<typeof createServerClient>>;
 
-/** Own-row read under RLS (`auth.uid() = id`) — the only `from('profiles')` site on the server seam. */
-async function readOwnProfile(supabase: ServerClient, userId: string): Promise<Profile | null> {
+/**
+ * Own-row read under RLS (`auth.uid() = id`) — the only `from('profiles')` site on the server seam.
+ * Pages (`getViewer` / `getProfile`) read it leniently: a failed read renders as "no profile". The
+ * `require*` helpers read it strictly — a failed read must not pass as "not banned" / "no handle",
+ * so they throw a plain Error, which `runAction` maps to `internal` with one log line (04 SC-03).
+ */
+async function readOwnProfile(
+  supabase: ServerClient,
+  userId: string,
+  mode: 'lenient' | 'strict' = 'lenient',
+): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
     .select(PROFILE_COLUMNS)
     .eq('id', userId)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) {
+    if (mode === 'strict') throw new Error(`profiles read failed: ${error.code}`);
+    return null;
+  }
+  if (!data) return null;
   return {
     id: data.id,
     handle: data.handle,
@@ -123,7 +136,7 @@ export async function requireUser(): Promise<{ id: string }> {
   const supabase = await createServerClient();
   const user = await resolveUser(supabase);
   if (!user) throw new AuthError('unauthenticated', 'Sign in first.');
-  assertNotBanned(await readOwnProfile(supabase, user.id));
+  assertNotBanned(await readOwnProfile(supabase, user.id, 'strict'));
   return user;
 }
 
@@ -135,9 +148,10 @@ export async function requireOnboarded(): Promise<{
   user: { id: string };
   profile: OnboardedProfile;
 }> {
-  const viewer = await getViewer();
-  if (!viewer) throw new AuthError('unauthenticated', 'Sign in first.');
-  const { user, profile } = viewer;
+  const supabase = await createServerClient();
+  const user = await resolveUser(supabase);
+  if (!user) throw new AuthError('unauthenticated', 'Sign in first.');
+  const profile = await readOwnProfile(supabase, user.id, 'strict');
   assertNotBanned(profile);
   if (!profile || profile.handle === null) {
     throw new AuthError('onboarding_required', 'Pick a handle first.');

@@ -58,6 +58,8 @@ Kind: deviation
 | `docs/build/02-routes-and-pages.md` | §3 M-table (new row M3b), RP-19 | non-GET requests pass through after the refresh; redirects are GET/HEAD-only (contains the string ADR-0009; addendum 2026-08-21) |
 | `docs/build/01-architecture.md` | §6 INV-30 | "redirects on GET/HEAD only — a Server Action POST passes through after the refresh (M3b)" (contains the string ADR-0009; addendum 2026-08-21) |
 | `docs/build/05-test-plan.md` | §7.2 T-ACT-10 row | M3b cases (contains the string ADR-0009; addendum 2026-08-21) |
+| `docs/build/05-test-plan.md` | `Status:` line | appended "— amended by ADR-0009 (2026-08-21, addendum D7)" (README ADR-R2) |
+| `docs/build/00-build-plan.md` | §6 Changelog ADR-0009 row | addendum sentence appended (addendum 2026-08-21) |
 | `docs/build/01-architecture.md` | §10 INV-45 Check parenthetical | `proxy.ts` M4 added to the permitted `from('profiles')` sites (selects only `handle`) (contains the string ADR-0009) |
 
 ## Gate impact

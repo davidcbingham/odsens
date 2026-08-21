@@ -26,7 +26,7 @@ Status: DRAFT v0.4 (2026-08-17) — becomes v1.0 at freeze
 | col | type | notes |
 |---|---|---|
 | id | uuid PK → auth.users.id | |
-| handle | citext unique, null | 3–20, `^[A-Za-z0-9_]+$`; check constraint; null = onboarding incomplete |
+| handle | citext unique, null | 3–20, `^[A-Za-z0-9_]+$`; check constraint; null = onboarding incomplete. The 04 H3 reserved list lives in SQL once as `is_reserved_handle(text)`: `check_handle` calls it, and the `profiles_guard` trigger refuses a reserved **first** handle on the owner's direct write (42501) and every own-row write while `is_banned` — ADR-0020 |
 | avatar_path | text null | Storage path in `avatars` bucket. CHECK **`profiles_avatar_path_own`** (migration `20260820120400_profiles_avatar_path_check.sql`): NULL or `^<id>/[0-9a-f]{16}\.webp$` — a row can only name an object in its owner's folder (a foreign path → SQLSTATE 23514); every service-role Storage delete re-checks ownership (`lib/files.ts` `isOwnAvatarPath`) — ADR-0015 |
 | role | enum `user|moderator|admin` default user | admins set via SQL/admin UI |
 | is_banned | bool default false | |
@@ -182,7 +182,8 @@ Rules: **an admin is auto-added as `moderator` to every workroom** (visible in t
 ### 2.11 SQL functions, views, triggers (summary)
 | object | kind | callable by | purpose |
 |---|---|---|---|
-| `check_handle(text)` | RPC, security definer | authenticated | handle available / taken / reserved / invalid |
+| `check_handle(text)` | RPC, security definer | authenticated | handle available / taken / reserved / invalid (reserved = `is_reserved_handle()` — ADR-0020) |
+| `is_reserved_handle(text)` | helper, pure SQL (`immutable`, invoker rights, no table access) | anon, authenticated, service_role; called by `check_handle` and by the `profiles_guard` trigger | the 04 H3 reserved list in SQL once (22 entries, case-insensitive; `lib/validation/handle.ts` `RESERVED_HANDLES` mirrors it — T-ACT-7 parity); binds the owner's direct first-handle write and, with `is_banned`, every own-row write of a banned account (42501) — ADR-0020 |
 | `record_download(file_id, ip_hash, ua_hash)` | RPC, security definer | service role | exclusive-file counters + `project_downloads` log |
 | `record_skin_download(skin_id)` | RPC, security definer | service role | `skins.downloads + 1` |
 | `rate_limit_ok(scope, key, max, window)` | RPC | service role | SQL rate limiting over `rate_limit_hits` only (A4) |
@@ -213,7 +214,7 @@ Uploads go through server routes/actions (validate type/size, generate paths, wr
 | table | select | insert | update | delete |
 |---|---|---|---|---|
 | public_profiles (view) | all | — | — | — |
-| profiles | own row (full); admin does **not** select other rows via RLS (admin client in actions — ADR-0002 #70) | trigger only | own row: handle (only if null→value), avatar_path; renames + `handle_changed_at`, `role`, `is_banned`, `comment_count`, `email_hash` = admin (own row) / service only; **other users' rows: service (admin actions) only** — an admin JWT cannot reach them (select is own-row, so its update filters to 0 rows — ADR-0015) | service (admin actions) only — an admin JWT cannot delete other rows (ADR-0015) |
+| profiles | own row (full); admin does **not** select other rows via RLS (admin client in actions — ADR-0002 #70) | trigger only | own row: `avatar_path` + first handle (only if null→value) — not a reserved handle, and not while banned (`profiles_guard` + `is_reserved_handle()`, 42501 — ADR-0020); renames + `handle_changed_at`, `role`, `is_banned`, `comment_count`, `email_hash` = admin (own row) / service only; **other users' rows: service (admin actions) only** — an admin JWT cannot reach them (select is own-row, so its update filters to 0 rows — ADR-0015) | service (admin actions) only — an admin JWT cannot delete other rows (ADR-0015) |
 | projects / versions / files / links / overrides | all where `status='published'` and not `overrides.hidden`; admin sees all | admin (exclusives) / service role (sync) | same | admin |
 | project_downloads | admin | service role (RPC `record_download`) | service role | admin / service (purge) |
 | mentions | published to all; admin all (drafts/suggested/hidden) | admin / service (v1.5 suggested) | admin | admin |

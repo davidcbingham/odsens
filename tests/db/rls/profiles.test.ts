@@ -13,6 +13,12 @@
  * every client incl. service — so every arranged value here has that shape (`ownAvatarPath`), and the
  * T-RLS-4 CHECK cells assert SQLSTATE 23514 directly (it is a constraint, not RLS; `expectPolicy`'s
  * denied set stays RLS-only).
+ *
+ * ADR-0020 (2026-08-21, security gate round 3 rows 19/20): migration
+ * 20260821090000_profiles_guard_reserved_and_banned.sql makes `profiles_guard` refuse (42501) every
+ * own-row write by a banned account and a reserved FIRST handle (`is_reserved_handle()`, the SQL twin of
+ * `RESERVED_HANDLES`) — so the T-RLS-4 banned cell is D and T-RLS-5 gains reserved / banned → D cells.
+ * Sessions without a JWT and the service client still pass (the owner-bootstrap path, asserted here).
  */
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -27,6 +33,11 @@ import { SEED_USERS } from '@/tests/helpers/seedIds';
 const JWT_ROLES = ['user', 'banned', 'mod', 'admin'] as const satisfies readonly SeedRole[];
 /** Signed-in, non-admin roles: every write beyond avatar_path / first handle is denied for them. */
 const NON_ADMIN = ['user', 'banned', 'mod'] as const satisfies readonly SeedRole[];
+/** JWT roles whose own-row writes `profiles_guard` still lets through (banned is D since ADR-0020). */
+const NOT_BANNED = ['user', 'mod', 'admin'] as const satisfies readonly SeedRole[];
+/** The 42501 messages `profiles_guard` raises (20260821090000_profiles_guard_reserved_and_banned.sql). */
+const GUARD_BANNED = 'profiles: banned accounts cannot change their profile';
+const GUARD_RESERVED = 'profiles: that handle is reserved';
 
 const SEED_HANDLES: Readonly<Record<SeedRole, string | null>> = {
   admin: 'oddsense',
@@ -68,7 +79,14 @@ async function profileRow(id: string) {
 
 /** SEED-3 shape for the six seed profiles (05 §3) — restores everything this file may touch. */
 function restoreSeedProfiles(): void {
+  // Two statements in one psql call = one transaction. Handles are nulled first because the unique
+  // index is checked row by row: one UPDATE … FROM (values) that hands a handle back to its seed owner
+  // while another seed row still holds it (the T-RLS-5 bootstrap case: `oddsense`) fails mid-statement.
   sql(`
+    update public.profiles
+       set handle = null
+     where id in ('${SEED_USERS.oddsense}', '${SEED_USERS.seed_mod}', '${SEED_USERS.seed_user}',
+                  '${SEED_USERS.seed_user2}', '${SEED_USERS.seed_banned}', '${SEED_USERS.seed_newbie}');
     update public.profiles p
        set handle = s.handle::extensions.citext, role = s.role::public.user_role,
            comment_count = s.comment_count, is_banned = s.is_banned, banned_reason = s.banned_reason,
@@ -209,7 +227,7 @@ describe('T-RLS-3 profiles insert (direct)', () => {
 });
 
 // ---------------------------------------------------------------------------------------------
-// T-RLS-4 update own avatar_path — D | A | A | A | A | A
+// T-RLS-4 update own avatar_path — D | A | D (banned — ADR-0020) | A | A | A
 // ---------------------------------------------------------------------------------------------
 describe('T-RLS-4 profiles update own avatar_path', () => {
   it('T-RLS-4 anon cannot update avatar_path', async () => {
@@ -223,7 +241,7 @@ describe('T-RLS-4 profiles update own avatar_path', () => {
     });
   });
 
-  it.each(JWT_ROLES)(
+  it.each(NOT_BANNED)(
     'T-RLS-4 %s updates own avatar_path (own folder, then clears it)',
     async (role) => {
       const id = SEED_ROLE_IDS[role];
@@ -251,6 +269,37 @@ describe('T-RLS-4 profiles update own avatar_path', () => {
       expect((await profileRow(id))?.avatar_path).toBeNull();
     },
   );
+
+  it('T-RLS-4 banned cannot set, clear or mis-point own avatar_path (profiles_guard 42501, row unchanged — ADR-0020)', async () => {
+    const id = SEED_ROLE_IDS.banned;
+    // The guard is a BEFORE UPDATE trigger, so it answers before the CHECK: even a foreign path is 42501
+    // for a banned account, not 23514.
+    for (const avatar_path of [
+      `${id}/${HASH16}.webp`,
+      null,
+      `${SEED_USERS.seed_user}/${HASH16}.webp`,
+    ]) {
+      const { data, error, status } = await asRole('banned')
+        .from('profiles')
+        .update({ avatar_path })
+        .eq('id', id)
+        .select('id');
+      expect(status, `avatar_path = ${JSON.stringify(avatar_path)}`).toBe(403);
+      expect(error?.code, `avatar_path = ${JSON.stringify(avatar_path)}`).toBe('42501');
+      expect(error?.message).toBe(GUARD_BANNED);
+      expect(data).toBeNull();
+    }
+    expect((await profileRow(id))?.avatar_path).toBeNull();
+    // The matrix runner reads the same cell as D.
+    await expectPolicy({
+      table: 'profiles',
+      op: 'update',
+      role: 'banned',
+      allowed: false,
+      filter: { id },
+      patch: { avatar_path: `${id}/${HASH16}.webp` },
+    });
+  });
 
   it('T-RLS-4 service updates avatar_path (then restores)', async () => {
     await expectPolicy({
@@ -281,7 +330,7 @@ describe('T-RLS-4 profiles update own avatar_path', () => {
     expect(definition).toContain('webp$');
   });
 
-  it.each(JWT_ROLES)(
+  it.each(NOT_BANNED)(
     "T-RLS-4 %s cannot point own avatar_path at another user's folder (CHECK 23514, row unchanged)",
     async (role) => {
       const id = SEED_ROLE_IDS[role];
@@ -339,7 +388,9 @@ describe('T-RLS-4 profiles update own avatar_path', () => {
 });
 
 // ---------------------------------------------------------------------------------------------
-// T-RLS-5 update own handle when currently NULL — — | A (nohandle) | — | — | A (own row, ADR-0015) | A
+// T-RLS-5 update own handle when currently NULL —
+//   — | A (nohandle; a reserved handle → D, ADR-0020) | D (banned, ADR-0020) | — | A (own row, ADR-0015)
+//   | A (svc — incl. a reserved handle: the owner-bootstrap path, ADR-0020)
 // ---------------------------------------------------------------------------------------------
 describe('T-RLS-5 profiles first handle (NULL → value)', () => {
   const newbie = SEED_USERS.seed_newbie;
@@ -348,6 +399,51 @@ describe('T-RLS-5 profiles first handle (NULL → value)', () => {
     const { error } = await service.from('profiles').update({ handle: null }).eq('id', newbie);
     if (error) throw new Error(`could not reset seed_newbie handle: ${error.message}`);
   }
+
+  /** 04 H3 entries that pass H1: lowercase, mixed case, and one that no seed row owns. */
+  const RESERVED_FIRST = ['admin', 'OddSense', 'mods'] as const;
+
+  it.each(RESERVED_FIRST)(
+    'T-RLS-5 nohandle cannot take the reserved first handle "%s" (profiles_guard 42501, row unchanged — ADR-0020)',
+    async (handle) => {
+      expect((await profileRow(newbie))?.handle).toBeNull();
+      const { data, error, status } = await asRole('nohandle')
+        .from('profiles')
+        .update({ handle })
+        .eq('id', newbie)
+        .select('id');
+      expect(status).toBe(403);
+      expect(error?.code).toBe('42501');
+      expect(error?.message).toBe(GUARD_RESERVED);
+      expect(data).toBeNull();
+      expect((await profileRow(newbie))?.handle).toBeNull();
+      await expectPolicy({
+        table: 'profiles',
+        op: 'update',
+        role: 'nohandle',
+        allowed: false,
+        filter: { id: newbie },
+        patch: { handle },
+      });
+    },
+  );
+
+  it('T-RLS-5 banned with a NULL handle cannot set a first handle (profiles_guard 42501 — ADR-0020)', async () => {
+    const id = await makeUser({ banned: true, handle: null });
+    const { data, error, status } = await asUser(id)
+      .from('profiles')
+      .update({ handle: tag('t_rls5b') })
+      .eq('id', id)
+      .select('id');
+    expect(status).toBe(403);
+    expect(error?.code).toBe('42501');
+    expect(error?.message).toBe(GUARD_BANNED);
+    expect(data).toBeNull();
+    const row = await profileRow(id);
+    expect(row?.handle).toBeNull();
+    expect(row?.is_banned).toBe(true);
+    // Row is removed by cleanupFactories (afterAll).
+  });
 
   it('T-RLS-5 nohandle sets their own first handle', async () => {
     expect((await profileRow(newbie))?.handle).toBeNull();
@@ -397,6 +493,38 @@ describe('T-RLS-5 profiles first handle (NULL → value)', () => {
     });
     expect((await profileRow(newbie))?.handle).toBe(handle);
     await resetNewbieHandle();
+  });
+
+  it('T-RLS-5 no-JWT and service sessions set a RESERVED first handle on a NULL row — the owner-bootstrap path (ADR-0020)', async () => {
+    // The local seed admin already owns `oddsense` (citext unique); free it for this case only.
+    sql(`update public.profiles set handle = null where id = '${SEED_USERS.oddsense}'`);
+    try {
+      // (1) psql as postgres, no JWT — the `.claude/skills/supabase-ops/SKILL.md` "Owner bootstrap" shape.
+      const rows = sql(
+        `update public.profiles set handle = 'oddsense', role = 'admin' where id = '${newbie}' and (handle is null or handle = 'oddsense') returning handle::text, role::text`,
+      );
+      // psql prints the `UPDATE 1` command tag after the RETURNING row even in tuples-only mode.
+      expect(rows[0]).toEqual(['oddsense', 'admin']);
+      const reset = await service
+        .from('profiles')
+        .update({ handle: null, role: 'user' })
+        .eq('id', newbie);
+      expect(reset.error).toBeNull();
+      // (2) the service client through PostgREST (auth.role() = 'service_role').
+      const { data, error } = await service
+        .from('profiles')
+        .update({ handle: 'oddsense', role: 'admin' })
+        .eq('id', newbie)
+        .select('handle, role');
+      expect(error).toBeNull();
+      expect(data).toEqual([{ handle: 'oddsense', role: 'admin' }]);
+    } finally {
+      restoreSeedProfiles();
+    }
+    expect((await profileRow(SEED_USERS.oddsense))?.handle).toBe('oddsense');
+    const row = await profileRow(newbie);
+    expect(row?.handle).toBeNull();
+    expect(row?.role).toBe('user');
   });
 });
 

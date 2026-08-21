@@ -51,7 +51,10 @@ export function OnboardingPanel() {
   }, [result, next]);
 
   const error = result && !result.ok ? result.error : null;
-  const state = pending ? 'submitting' : error ? 'error' : 'idle';
+  // `leaving` keeps DONE armed-off (and the panel `submitting`) for the ~200 ms between the action's
+  // `ok` and the document navigation, so a second click cannot post again ("You already have a handle.").
+  const leaving = result?.ok === true;
+  const state = pending || leaving ? 'submitting' : error ? 'error' : 'idle';
 
   return (
     <section className={styles['onboarding-panel']} data-state={state} aria-labelledby={titleId}>
@@ -90,8 +93,8 @@ export function OnboardingPanel() {
             <Button
               variant="primary"
               type="submit"
-              disabled={!valid}
-              pending={pending}
+              disabled={!valid || leaving}
+              pending={pending || leaving}
               aria-describedby={helpId}
               className={styles['onboarding-panel-done']}
             >

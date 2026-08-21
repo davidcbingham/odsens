@@ -54,7 +54,14 @@ async function expectLanded(page: Page, pathname: string): Promise<void> {
     .poll(
       async () => {
         // Next's route announcer is a `role="alert"` too (empty, then the new page's title).
-        const texts = (await page.locator(ALERTS).allTextContents()).filter((t) => t.trim());
+        let texts: string[] = [];
+        try {
+          texts = (await page.locator(ALERTS).allTextContents()).filter((t) => t.trim());
+        } catch {
+          // The post-DONE document navigation (ADR-0017) tore the old execution context down
+          // mid-read — poll again on whatever document is current.
+          return new URL(page.url()).pathname;
+        }
         if (texts.length > 0) return `alert: ${texts.join(' / ')}`;
         return new URL(page.url()).pathname;
       },

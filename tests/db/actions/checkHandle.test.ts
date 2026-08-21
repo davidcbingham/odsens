@@ -4,9 +4,13 @@
  * Status per role (a banned caller gets `banned` before the limiter — ADR-0019), the four states,
  * "never returns the owning profile id", the 61st call in a minute,
  * and SQL ↔ TS reserved-list parity (the RPC says `reserved` for every `RESERVED_HANDLES` entry, and the
- * array literal inside `check_handle`'s body equals the TS list exactly — T-UNIT-2's twin).
+ * array literal inside `is_reserved_handle`'s body — the ONE SQL copy of the list since ADR-0020
+ * (20260821090000_profiles_guard_reserved_and_banned.sql), called by `check_handle` and by the
+ * `profiles_guard` trigger — equals the TS list exactly — T-UNIT-2's twin).
  * The 61-call run uses a factory user so the seed `user`'s budget stays untouched for other files.
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { checkHandle } from '@/lib/actions/accounts';
 import { RATE_LIMITED_MESSAGE } from '@/lib/rate-limit';
@@ -16,6 +20,7 @@ import { expectFail, expectOk } from '@/tests/helpers/actionResult';
 import { asRole, SEED_ROLE_IDS, type SeedRole } from '@/tests/helpers/asRole';
 import { callAction, callActionAs, setupActionMocks } from '@/tests/helpers/callAction';
 import { sql } from '@/tests/helpers/db';
+import { REPO_ROOT } from '@/tests/helpers/envTest';
 import { cleanupFactories, makeUser } from '@/tests/helpers/factories';
 
 setupActionMocks();
@@ -116,12 +121,40 @@ describe('T-ACT-7 checkHandle', () => {
     },
   );
 
-  it('T-ACT-7 the array literal inside check_handle equals RESERVED_HANDLES (both directions)', () => {
+  it('T-ACT-7 the array literal inside is_reserved_handle equals RESERVED_HANDLES (both directions; ADR-0020)', () => {
     const rows = sql(
-      "select (regexp_match(pg_get_functiondef('public.check_handle(text)'::regprocedure), 'array\\[(.*?)\\]'))[1]",
+      "select (regexp_match(pg_get_functiondef('public.is_reserved_handle(text)'::regprocedure), 'array\\[(.*?)\\]'))[1]",
     );
     const literal = rows.map((cells) => cells.join('|')).join(' ');
     const inSql = [...literal.matchAll(/'([^']+)'/g)].map((m) => m[1] ?? '');
     expect(inSql).toEqual([...RESERVED_HANDLES]);
+  });
+
+  it('T-ACT-7 check_handle and profiles_guard delegate to is_reserved_handle — no second copy of the list in SQL (ADR-0020)', () => {
+    for (const fn of ['public.check_handle(text)', 'public.profiles_guard()']) {
+      const definition = sql(`select pg_get_functiondef('${fn}'::regprocedure)`)
+        .map((cells) => cells.join('|'))
+        .join('\n');
+      expect(definition, fn).toContain('public.is_reserved_handle(');
+      expect(definition, fn).not.toMatch(/array\s*\[/i);
+    }
+  });
+
+  it('T-ACT-7 the migration that defines is_reserved_handle carries the same list (ADR-0020)', () => {
+    const file = fs.readFileSync(
+      path.join(
+        REPO_ROOT,
+        'supabase',
+        'migrations',
+        '20260821090000_profiles_guard_reserved_and_banned.sql',
+      ),
+      'utf8',
+    );
+    const body =
+      /create or replace function public\.is_reserved_handle[\s\S]*?\$\$([\s\S]*?)\$\$/i.exec(
+        file,
+      )?.[1] ?? '';
+    const inFile = [...body.matchAll(/'([^']+)'/g)].map((m) => m[1] ?? '');
+    expect(inFile).toEqual([...RESERVED_HANDLES]);
   });
 });

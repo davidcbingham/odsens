@@ -216,6 +216,7 @@ export type Database = {
       check_handle: { Args: { p_handle: string }; Returns: string }
       is_admin: { Args: never; Returns: boolean }
       is_moderator: { Args: never; Returns: boolean }
+      is_reserved_handle: { Args: { p_handle: string }; Returns: boolean }
       purge_rate_limit_hits: { Args: { p_days: number }; Returns: number }
       rate_limit_ok: {
         Args: {

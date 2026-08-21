@@ -1,9 +1,11 @@
 /**
  * tests/helpers/seedReset.ts — restore a SEED-3 profile after a `mutatesSeed` test (05 H-1).
  *
- * `restoreSeedProfile(id, fields)` removes every avatar object under `avatars/<id>/` and writes the
+ * `restoreSeedProfile(id, fields)` removes every avatar object under `avatars/<id>/`, writes the
  * given columns through the service client (trusted session — `profiles_guard` lets it rename and
- * clear `handle_changed_at`). `readSeedProfile(id)` is the matching read for assertions.
+ * clear `handle_changed_at`) and drops the user's `rate_limit_hits` rows, so back-to-back local runs
+ * never trip the 10-per-10-minutes `onboarding` scope (CI starts from a fresh DB; locally the e2e
+ * lane reuses it). `readSeedProfile(id)` is the matching read for assertions.
  * Playwright-safe: no `import.meta`, no Vitest imports (05 §1.3 rule for helpers specs may import).
  *
  *   test.afterAll(() => restoreSeedProfile(SEED_USERS.seed_user, { handle: 'seed_user' }));
@@ -34,9 +36,13 @@ export async function restoreSeedProfile(
 ): Promise<void> {
   const objects = await listObjects('avatars', id);
   await removeObjects('avatars', objects);
-  const { error } = await loose(asRole('service'))
+  const service = loose(asRole('service'));
+  const { error } = await service
     .from('profiles')
     .update({ avatar_path: null, handle_changed_at: null, ...fields })
     .eq('id', id);
   if (error) throw new Error(`restoreSeedProfile(${id}): ${error.message}`);
+  // Service-only counter table (04 SC-08); keyed by the user id for every accounts scope.
+  const { error: hitsError } = await service.from('rate_limit_hits').delete().eq('key', id);
+  if (hitsError) throw new Error(`restoreSeedProfile(${id}) rate_limit_hits: ${hitsError.message}`);
 }

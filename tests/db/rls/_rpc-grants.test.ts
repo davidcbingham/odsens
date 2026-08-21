@@ -4,9 +4,13 @@
  *   check_handle(text)                              anon D · authenticated A
  *   rate_limit_ok(text,text,integer,interval)       anon/authenticated D · service A
  *   purge_rate_limit_hits(integer)                  anon/authenticated D · service A
+ *   is_reserved_handle(text)                        anon/authenticated/service A — pure, immutable,
+ *                                                   invoker rights (no table access), the one SQL copy
+ *                                                   of the H3 list (ADR-0020)
  * Not yet in the schema (asserted absent so this file is revisited when they land):
  *   record_download, purge_project_downloads → S1.2 · can_comment → S1.4 · record_skin_download → S1.7.
- * Every RPC is `security definer` with `search_path = public` (01 INV-49).
+ * Every table-reading RPC is `security definer` with `search_path = public` (01 INV-49); `is_reserved_handle`
+ * reads no table and stays invoker-rights on purpose (ADR-0020).
  */
 import { describe, expect, it } from 'vitest';
 import { asRole } from '@/tests/helpers/asRole';
@@ -16,6 +20,7 @@ const FUNCTIONS = {
   check_handle: 'public.check_handle(text)',
   rate_limit_ok: 'public.rate_limit_ok(text,text,integer,interval)',
   purge_rate_limit_hits: 'public.purge_rate_limit_hits(integer)',
+  is_reserved_handle: 'public.is_reserved_handle(text)',
 } as const;
 
 function canExecute(role: 'anon' | 'authenticated' | 'service_role', fn: string): boolean {
@@ -52,6 +57,18 @@ describe('T-RLS-129 RPC grants (catalog)', () => {
     },
   );
 
+  it('T-RLS-129 is_reserved_handle: every API role may call it, never PUBLIC; immutable SQL, invoker rights (ADR-0020)', () => {
+    for (const role of ['anon', 'authenticated', 'service_role'] as const) {
+      expect(canExecute(role, FUNCTIONS.is_reserved_handle), role).toBe(true);
+    }
+    expect(publicCanExecute('is_reserved_handle')).toBe(false);
+    // Not security definer on purpose: it reads no table, so it is left out of the definer list below.
+    const rows = sql(
+      "select p.provolatile, p.prosecdef, l.lanname from pg_proc p join pg_namespace n on n.oid = p.pronamespace join pg_language l on l.oid = p.prolang where n.nspname = 'public' and p.proname = 'is_reserved_handle'",
+    );
+    expect(rows).toEqual([['i', 'f', 'sql']]);
+  });
+
   it('T-RLS-129 every S1.1 RPC is security definer with search_path = public', () => {
     const rows = sql(
       "select p.proname, p.prosecdef, coalesce(array_to_string(p.proconfig, ','), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('check_handle','rate_limit_ok','purge_rate_limit_hits','handle_new_user') order by 1",
@@ -82,6 +99,17 @@ describe('T-RLS-129 RPC grants (behaviour through PostgREST)', () => {
     expect(error).not.toBeNull();
     expect(error?.code).toBe('42501');
     expect(data).toBeNull();
+  });
+
+  it('T-RLS-129 is_reserved_handle answers anon and authenticated alike (ADR-0020)', async () => {
+    for (const role of ['anon', 'user'] as const) {
+      const reserved = await asRole(role).rpc('is_reserved_handle', { p_handle: 'OddSense' });
+      expect(reserved.error, role).toBeNull();
+      expect(reserved.data, role).toBe(true);
+      const free = await asRole(role).rpc('is_reserved_handle', { p_handle: 'seed_user' });
+      expect(free.error, role).toBeNull();
+      expect(free.data, role).toBe(false);
+    }
   });
 
   it('T-RLS-129 check_handle: authenticated callers get the four verdicts', async () => {
