@@ -27,7 +27,7 @@ Google Cloud → **APIs & Services → OAuth consent screen** (now under "Google
   (Get the exact value from Supabase → Authentication → Providers → Google → "Callback URL".)
 - Create → copy **Client ID** and **Client secret** → paste into `.env` (`GOOGLE_OAUTH_CLIENT_ID/SECRET`) **and** into Supabase → Authentication → Providers → **Google** → enable, paste, save.
 
-Supabase side (same time): Authentication → URL Configuration → Site URL `https://odsens.com`; Redirect URLs add `https://odsens.com/**`, `https://*.vercel.app/**` (preview deploys), `http://localhost:3000/**`.
+Supabase side (same time): Authentication → URL Configuration → Site URL `https://odsens.com`; Redirect URLs are exactly `https://odsens.com/**`, `https://www.odsens.com/**`, `https://odsens-git-*-studiobing.vercel.app/**` (this project's Vercel preview aliases), `http://localhost:3000/**` (ADR-0011; never a bare `*.vercel.app`). They live in `supabase/config.toml` (`[remotes.production.auth].additional_redirect_urls`), not the dashboard — see Status below.
 
 ## 3. YouTube Data API v3 key
 1. **APIs & Services → Library** → search "YouTube Data API v3" → **Enable**.
@@ -42,7 +42,7 @@ Add the same values as Environment Variables (Production + Preview) in the Verce
 ## Status (2026-08-17) — DONE
 - Google Cloud project `odsens` (org studiobing.com) · OAuth Web client `782276308547-…apps.googleusercontent.com` with redirect `https://dllbekulbimblrsrxuyv.supabase.co/auth/v1/callback` and JS origins odsens.com / www / localhost:3000 · YouTube Data API key created.
 - Values in David's `.env` (`GOOGLE_OAUTH_CLIENT_ID/SECRET`, `YOUTUBE_API_KEY`).
-- **Supabase side configured from the repo, not the dashboard:** `supabase/config.toml` has `[auth.external.google]` (secret via `env(GOOGLE_OAUTH_CLIENT_SECRET)`) and `[remotes.production.auth]` with `site_url = https://odsens.com` + redirect allow-list (odsens.com, www, `*.vercel.app`, localhost). Applied with `set -a; source .env; set +a; supabase config push`. Verified: `/auth/v1/settings` shows google enabled; remote site_url = odsens.com.
+- **Supabase side configured from the repo, not the dashboard:** `supabase/config.toml` has `[auth.external.google]` (secret via `env(GOOGLE_OAUTH_CLIENT_SECRET)`) and `[remotes.production.auth]` with `site_url = https://odsens.com` + redirect allow-list (odsens.com, www, `odsens-git-*-studiobing.vercel.app`, localhost — allow-list narrowed 2026-08-20, ADR-0011). Applied with `set -a; source .env; set +a; supabase config push`. Verified: `/auth/v1/settings` shows google enabled; remote site_url = odsens.com.
 - Re-run `supabase config push` after any auth config change; it prints a diff first.
 
 ## Checklist

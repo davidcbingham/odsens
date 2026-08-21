@@ -1,0 +1,139 @@
+/* ProfilePanel — DESIGN.md §11.3 #11 (pass-3 "Your profile desktop"): one slab, picture row, handle row
+   + SAVE, footer strip on --slab-foot with Delete account in danger. */
+.profile-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--slab);
+  border: 2px solid var(--line-soft);
+}
+
+.profile-panel-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-24);
+  border-bottom: 2px solid var(--line);
+  scroll-margin-top: calc(var(--nav-h) + var(--space-16));
+}
+
+.profile-panel-row-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.profile-panel-label {
+  font-family: var(--font-body);
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+.profile-panel-hint {
+  font-size: var(--text-label);
+  line-height: 1.5;
+  color: var(--mute-dim);
+}
+
+.profile-panel-error {
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--danger);
+}
+
+.profile-panel-handle-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+}
+
+.profile-panel-handle-field {
+  flex: 1;
+}
+
+/* SAVE sits level with the input well (label row above it is 13px + 8px gap) */
+.profile-panel-save {
+  margin-top: var(--space-28);
+}
+
+.profile-panel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  padding: var(--space-20) var(--space-24);
+  background: var(--slab-foot);
+}
+
+.profile-panel-foot-line {
+  flex: 1 1 24ch;
+  max-width: 52ch;
+  font-size: var(--text-small);
+  line-height: 1.5;
+  color: var(--mute-dim);
+}
+
+/* The inline Privacy link sits in a --mute-dim sentence, so colour alone (--indigo-lift vs --mute-dim is
+   ~1.2:1) cannot mark it — DESIGN.md §2 "meaning never rides on colour alone"; axe link-in-text-block. It keeps
+   the site link colour and gets a real underline; hover lifts it to chalk. */
+.profile-panel-foot-line a {
+  color: var(--indigo-lift);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+  transition: color var(--dur-fast) ease-out;
+}
+
+.profile-panel-foot-line a:hover {
+  color: var(--chalk);
+}
+
+.profile-panel-delete {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.profile-panel-delete-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-8) var(--space-16);
+  border: 2px solid var(--danger-line);
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--danger);
+  white-space: nowrap;
+  transition: border-color var(--dur-fast) ease-out;
+}
+
+.profile-panel-delete-button:hover {
+  border-color: var(--danger);
+}
+
+@media (max-width: 599px) {
+  .profile-panel-row {
+    padding: var(--space-16);
+  }
+
+  .profile-panel-handle-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .profile-panel-save {
+    margin-top: 0;
+  }
+
+  .profile-panel-foot {
+    padding: var(--space-16);
+  }
+
+  .profile-panel-delete {
+    align-items: stretch;
+    width: 100%;
+  }
+}

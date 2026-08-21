@@ -126,7 +126,7 @@ const config = [
       'lib/**/*.tsx',
       'components/**/*.tsx',
       'components/**/*.ts',
-      'middleware.ts',
+      'proxy.ts',
       'emails/**/*.tsx',
     ],
     rules: {
@@ -313,6 +313,69 @@ const config = [
             {
               name: '@/lib/env',
               message: 'components import publicEnv from @/lib/env/public (01 INV-87).',
+            },
+            { name: 'react-markdown', message: 'Only lib/markdown.ts (01 INV-86).' },
+            { name: 'remark-gfm', message: 'Only lib/markdown.ts (01 INV-86).' },
+            { name: 'rehype-sanitize', message: 'Only lib/markdown.ts (01 INV-86).' },
+            { name: 'rehype-raw', message: 'rehype-raw is banned everywhere (01 INV-65/INV-86).' },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // ADR-0009 / 02 §3 M2: proxy.ts is the session-refresh seam. It needs the @supabase/ssr cookie client bound
+    // to the request/response pair (lib/supabase/server.ts binds to next/headers, which proxy cannot use).
+    // Everything else stays banned here: admin client, browser client, server client, markdown.
+    files: ['proxy.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/lib/supabase/admin',
+              message: 'proxy.ts never holds the service role (01 INV-14/INV-84).',
+            },
+            { name: '@/lib/supabase/client', message: '01 INV-85.' },
+            {
+              name: '@/lib/supabase/server',
+              message: 'proxy.ts builds its own request-bound client (02 §3).',
+            },
+            {
+              name: '@supabase/supabase-js',
+              message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).',
+            },
+            { name: 'react-markdown', message: 'Only lib/markdown.ts (01 INV-86).' },
+            { name: 'remark-gfm', message: 'Only lib/markdown.ts (01 INV-86).' },
+            { name: 'rehype-sanitize', message: 'Only lib/markdown.ts (01 INV-86).' },
+            { name: 'rehype-raw', message: 'rehype-raw is banned everywhere (01 INV-65/INV-86).' },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // 04 §2.1 A3a / ADR-0002 A14: /auth/callback stamps profiles.email_hash with the service client
+    // (the DB trigger cannot read HASH_SECRET). Same fence as lib/actions/** otherwise.
+    files: ['app/auth/callback/route.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@supabase/supabase-js',
+              message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).',
+            },
+            {
+              name: '@supabase/ssr',
+              message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).',
+            },
+            {
+              name: '@/lib/supabase/client',
+              message:
+                'Browser client only in ViewerProvider, CommentThread, GoogleSignInButton (01 INV-85).',
             },
             { name: 'react-markdown', message: 'Only lib/markdown.ts (01 INV-86).' },
             { name: 'remark-gfm', message: 'Only lib/markdown.ts (01 INV-86).' },

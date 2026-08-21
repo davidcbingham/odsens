@@ -15,9 +15,28 @@ import { PixelLabel } from '@/components/primitives/PixelLabel';
 import { Icon } from '@/components/primitives/Icon';
 import { Avatar } from '@/components/primitives/Avatar';
 import { ViewerProvider } from '@/components/accounts/ViewerProvider';
+import { ProfileMenu } from '@/components/accounts/ProfileMenu';
+import { HandleField } from '@/components/accounts/HandleField';
+import { AvatarUpload } from '@/components/accounts/AvatarUpload';
+import { OnboardingPanel } from '@/components/accounts/OnboardingPanel';
+import { ProfilePanel } from '@/components/accounts/ProfilePanel';
+import { GoogleSignInButton } from '@/components/primitives/GoogleSignInButton';
+import { NoteCallout } from '@/components/primitives/NoteCallout';
+import { AdminGate } from '@/components/admin/AdminGate';
+import { AdminShell } from '@/components/admin/AdminShell';
 import {
+  adminGateFixtures,
+  adminShellFixtures,
   avatarFixtures,
+  avatarUploadFixtures,
   buttonFixtures,
+  googleSignInButtonFixtures,
+  handleFieldFixtures,
+  inlineConfirmFixtures,
+  noteCalloutFixtures,
+  onboardingPanelFixtures,
+  profileMenuFixtures,
+  profilePanelFixtures,
   footerFixtures,
   iconFixtures,
   navFixtures,
@@ -33,7 +52,8 @@ import styles from './page.module.css';
 /**
  * `/dev/components` — dev-only component preview (03 §7; ADR-0002 #44; ADR-0004; 05 T-E2E-48).
  * Renders every 03 §2 component built so far in every 03 §3 state from `tests/fixtures/ui/*`
- * (no DB, no network), grouped by area. Each specimen = `<section data-preview="<Name>">` labelled
+ * (no DB, no network), grouped by area. Components whose states are internal (HandleField checking /
+ * available, AvatarUpload cropping, InlineConfirm open) are reached by interacting with the specimen. Each specimen = `<section data-preview="<Name>">` labelled
  * with a `PixelLabel` "<Name> · <state>". Outside the `(public)` layout, so it mounts its own
  * SkipLink / header / `<main id="main">`. `notFound()` on every Vercel deployment (never ships).
  */
@@ -184,18 +204,111 @@ export default function ComponentsPreviewPage() {
               </Specimen>
             ))}
           </div>
+
+          <div className={styles['preview-group']}>
+            {googleSignInButtonFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="GoogleSignInButton" label={label}>
+                <GoogleSignInButton {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {noteCalloutFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="NoteCallout" label={label}>
+                <NoteCallout {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {inlineConfirmFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="InlineConfirm" label={label}>
+                {/* Render-prop + onConfirm are functions (not passable from this Server Component):
+                    the live strip is on the ProfilePanel specimen (Delete account). Copy shown here. */}
+                <p className={styles['preview-note']}>
+                  {props.question} — {props.confirmLabel} / {props.cancelLabel} ({props.tone})
+                </p>
+              </Specimen>
+            ))}
+          </div>
         </Area>
 
         {/* -------------------------------------------------------------- Accounts (03 §2.5) */}
         <Area id="area-accounts" title="ACCOUNTS">
           <div className={styles['preview-group']} data-wide="">
-            <Specimen name="ViewerProvider" label="ViewerProvider · context">
+            <Specimen name="ViewerProvider" label="ViewerProvider · store">
               <ViewerProvider>
                 <p className={styles['preview-note']}>
-                  Context only, no markup. The viewer slot in the nav arrives in S1.1.
+                  No markup — an external store behind `useViewer()`. `ProfileMenu` below reads it
+                  (anon without a session).
                 </p>
+                <ProfileMenu />
               </ViewerProvider>
             </Specimen>
+          </div>
+
+          <div className={styles['preview-group']}>
+            {profileMenuFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="ProfileMenu" label={label}>
+                <div className={styles['preview-menu-host']}>
+                  <ProfileMenu {...props} />
+                </div>
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {handleFieldFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="HandleField" label={label}>
+                <form className={styles['preview-form']}>
+                  <HandleField {...props} />
+                </form>
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {avatarUploadFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="AvatarUpload" label={label}>
+                <form className={styles['preview-form']}>
+                  <AvatarUpload {...props} />
+                </form>
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {onboardingPanelFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="OnboardingPanel" label={label}>
+                <OnboardingPanel {...props} />
+              </Specimen>
+            ))}
+            {profilePanelFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="ProfilePanel" label={label}>
+                <ProfilePanel {...props} />
+              </Specimen>
+            ))}
+          </div>
+        </Area>
+
+        {/* ----------------------------------------------------------------- Admin (03 §2.10) */}
+        <Area id="area-admin" title="ADMIN">
+          <div className={styles['preview-group']} data-wide="">
+            {adminGateFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="AdminGate" label={label}>
+                <div className={styles['preview-shell-host']}>
+                  <AdminGate {...props} />
+                </div>
+              </Specimen>
+            ))}
+            {adminShellFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="AdminShell" label={label}>
+                <div className={styles['preview-shell-host']}>
+                  <AdminShell {...props} mainLandmark={false} />
+                </div>
+              </Specimen>
+            ))}
           </div>
         </Area>
       </main>

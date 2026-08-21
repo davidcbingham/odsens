@@ -1,0 +1,10 @@
+/* /admin dashboard placeholder — one label, one voice line. */
+.admin-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.admin-home-line {
+  color: var(--mute);
+}

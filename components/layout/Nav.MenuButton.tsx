@@ -2,19 +2,22 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/primitives/Button';
 import { Icon } from '@/components/primitives/Icon';
 import styles from './Nav.module.css';
 
 /**
  * NavMenuButton — 44px burger + full-width phone panel under the bar (03 N-05, N-08).
- * Same links in order, Support last as a full-width gold Button. Esc closes, focus returns to
- * the burger, body scroll is locked while open, closes on route change. Display: none ≥900px.
+ * Same links in order, then the viewer slot (`ProfileMenu`, passed in as a node — S1.1), Support
+ * last as a full-width gold Button. Esc closes, focus returns to the burger, body scroll is locked
+ * while open, closes on route change. Display: none ≥900px.
  */
 export type NavMenuButtonProps = {
   links: { label: string; href: string }[];
   support: { label: string; href: string };
+  /** Viewer slot rendered between the links and Support (03 N-05): `<ProfileMenu />` from `Nav`. */
+  viewer?: ReactNode;
   /** Panel element id (default `nav-menu`); only the component preview passes another value so two instances can coexist (03 C-03). */
   panelId?: string;
 };
@@ -27,7 +30,7 @@ function isCurrentPath(pathname: string | null, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function NavMenuButton({ links, support, panelId = PANEL_ID }: NavMenuButtonProps) {
+export function NavMenuButton({ links, support, viewer, panelId = PANEL_ID }: NavMenuButtonProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const burgerRef = useRef<HTMLButtonElement>(null);
@@ -104,6 +107,7 @@ export function NavMenuButton({ links, support, panelId = PANEL_ID }: NavMenuBut
                 </li>
               ))}
             </ul>
+            {viewer ? <div className={styles['nav-menu-viewer']}>{viewer}</div> : null}
             <div className={styles['nav-menu-support']}>
               <Button
                 variant="gold"

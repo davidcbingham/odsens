@@ -1,25 +1,33 @@
 /**
- * lib/env.ts — the one server-side env reader (01 INV-35/INV-36/INV-37; 04 SC-16; ADR-0002 #18).
+ * lib/env.ts — the one server-side env reader (01 INV-35/INV-36/INV-37; 04 SC-16; ADR-0002 #18;
+ * ADR-0010; ADR-0012).
  *
  * - Parsed with zod at module load; a missing/invalid boot-required name throws at import (fail fast).
- * - Boot-required = exactly the 8 names in 00 S0.AC5. Everything else is optional-with-degradation:
- *   blank → `undefined`, never a crash. `HASH_SECRET` is optional at S0 and becomes required from S1.1
- *   (≥ 32 bytes, server-only — ADR-0002 A14); a missing value surfaces where 04 SC-17 says, not here.
+ * - Boot-required = the 8 names in 00 S0.AC5 + `HASH_SECRET` from S1.1 (≥ 32 chars, ADR-0012) = 9.
+ *   Everything else is optional-with-degradation: blank → `undefined`, never a crash.
  * - Not schema keys (01 §7 env matrix "CLI only" / P2 / platform): `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
  *   `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `CURSEFORGE_MEMBER`,
  *   `KOFI_WEBHOOK_VERIFICATION_TOKEN` (S2.1), `VERCEL_*` (read below for environment detection only).
  * - Browser-safe names live in `lib/env/public.ts` (`publicEnv`); client code never imports this file.
+ *
+ * Pre-fills applied by `parseEnv(source)` BEFORE validation (ADR-0010 / brief §7):
+ *   1. Supabase↔Vercel integration key names: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` fills a blank
+ *      `NEXT_PUBLIC_SUPABASE_ANON_KEY`; `SUPABASE_SECRET_KEY` fills a blank `SUPABASE_SERVICE_ROLE_KEY`.
+ *      The canonical (spec) name wins when both are set. The schema keys stay the canonical names.
+ *   2. Preview site URL: when `VERCEL_ENV === 'preview'` and `VERCEL_BRANCH_URL` is set,
+ *      `NEXT_PUBLIC_SITE_URL = 'https://' + VERCEL_BRANCH_URL` — derived, never hand-built, and it wins
+ *      over any configured value on preview. Production and local use the configured value.
  *
  * `parseEnv(source)` is pure so T-UNIT-16 can exercise the schema without touching `process.env`.
  */
 import 'server-only';
 import { z } from 'zod';
 
-/** Boot-required (8, ADR-0002 #18) — an empty string counts as missing (see `parseEnv`). */
+/** Boot-required — an empty string counts as missing (see `parseEnv`). */
 const required = z.string().min(1);
 
 export const envSchema = z.object({
-  // --- required at boot (8) ---
+  // --- required at boot (9: ADR-0002 #18 + HASH_SECRET, ADR-0012) ---
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: required,
   SUPABASE_SERVICE_ROLE_KEY: required,
@@ -28,6 +36,7 @@ export const envSchema = z.object({
   MODRINTH_USER: required,
   MODRINTH_USER_AGENT: required,
   YOUTUBE_CHANNEL_ID: required,
+  HASH_SECRET: z.string().min(32), // keyed hashing (04 SC-17); ≥ 32 chars, server-only
 
   // --- optional, feature degrades (01 §7 env matrix) ---
   YOUTUBE_API_KEY: z.string().optional(), // from S1.6 — unset → RSS-only sync
@@ -36,8 +45,6 @@ export const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(), // from S1.5 — unset → email rows failed/not_configured
   NOTIFY_FROM_EMAIL: z.string().default('allay@odsens.com'),
   DISCORD_WEBHOOK_URL: z.string().optional(), // seeds site_settings.discord_webhook_url only
-  // Required from S1.1 (≥ 32 bytes; ADR-0002 A14). Optional at S0 — S1.1 tightens this row.
-  HASH_SECRET: z.string().optional(),
   SENTRY_DSN: z.string().optional(), // S1.10
   NEXT_PUBLIC_SENTRY_DSN: z.string().optional(), // S1.10 (ADR-0002 #79)
 
@@ -54,17 +61,32 @@ export const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
+/** Blank (empty / whitespace-only) → `undefined`, so "set to nothing" behaves like "unset". */
+function clean(raw: string | undefined): string | undefined {
+  return raw === undefined || raw.trim() === '' ? undefined : raw;
+}
+
 /**
- * Pure parser: blank values (empty / whitespace-only) are treated as unset for every key, then the schema
- * runs. Throws `Error('Missing required environment variables: A, B')` naming every missing or invalid
- * boot-required variable (schema key order); optional keys never throw.
+ * Pure parser: applies the ADR-0010 pre-fills, treats blank values as unset for every key, then runs
+ * the schema. Throws `Error('Missing required environment variables: A, B')` naming every missing or
+ * invalid boot-required variable (schema key order); optional keys never throw.
  */
 export function parseEnv(source: Record<string, string | undefined>): Env {
   const input: Record<string, string | undefined> = {};
   for (const key of Object.keys(envSchema.shape)) {
-    const raw = source[key];
-    input[key] = raw === undefined || raw.trim() === '' ? undefined : raw;
+    input[key] = clean(source[key]);
   }
+
+  // ADR-0010 (1): integration key-name aliases — canonical wins when both are present.
+  input.NEXT_PUBLIC_SUPABASE_ANON_KEY ??= clean(source.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+  input.SUPABASE_SERVICE_ROLE_KEY ??= clean(source.SUPABASE_SECRET_KEY);
+
+  // ADR-0010 (2): preview deployments derive the site origin from the branch URL (no scheme there).
+  if (source.VERCEL_ENV === 'preview') {
+    const branchUrl = clean(source.VERCEL_BRANCH_URL);
+    if (branchUrl !== undefined) input.NEXT_PUBLIC_SITE_URL = `https://${branchUrl}`;
+  }
+
   const parsed = envSchema.safeParse(input);
   if (!parsed.success) {
     const bad = new Set(parsed.error.issues.map((issue) => String(issue.path[0] ?? '')));

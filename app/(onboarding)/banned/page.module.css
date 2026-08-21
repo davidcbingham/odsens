@@ -1,0 +1,42 @@
+/* /banned — DESIGN.md §11.3 #19 (ADR-0019): the admin gate's 400px slab (§11.3 #18, AdminGate.module.css)
+   centred on --ink under the onboarding shell. Same edges: 2px --line-soft, 6px 6px 0 --ink-deep, radius 0. */
+.banned {
+  display: grid;
+  /* an explicit track: an auto column takes the slab's 400px as its min-content and overflows the phone */
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  min-height: calc(100dvh - var(--nav-h));
+  padding: var(--space-56) var(--space-24);
+}
+
+.banned-slab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-16);
+  width: min(400px, 100%);
+  padding: var(--space-28);
+  background: var(--slab);
+  border: 2px solid var(--line-soft);
+  box-shadow: 6px 6px 0 var(--ink-deep);
+}
+
+.banned-title {
+  font-family: var(--font-display);
+  font-size: var(--text-section-title);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--white);
+}
+
+.banned-line {
+  line-height: 1.65;
+  color: var(--mute);
+}
+
+@media (max-width: 599px) {
+  .banned {
+    min-height: calc(100dvh - var(--nav-h-phone));
+    padding: var(--space-24) var(--space-16) var(--space-40);
+  }
+}

@@ -1,0 +1,84 @@
+/* GoogleSignInButton — DESIGN.md §5 Sign-in prompt (chalk fill, ink text, Google mark), 03 N-04 nav
+   "Sign in" outlined block; 03 §2.2. Pending = aria-busy + disabled look, label unchanged. */
+.google-sign-in-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-12);
+  min-height: 44px;
+  border: 2px solid transparent;
+  border-radius: 0;
+  font-family: var(--font-body);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) ease-out,
+    border-color var(--dur-fast) ease-out,
+    color var(--dur-fast) ease-out,
+    transform var(--dur-fast) ease-out;
+}
+
+/* chalk-filled "Continue with Google" (prompt, admin gate) */
+.google-sign-in-button[data-variant='chalk'] {
+  padding: var(--space-12) var(--space-20);
+  background: var(--chalk);
+  color: var(--ink);
+  font-size: var(--text-ui);
+  box-shadow: 4px 4px 0 var(--ink-deep);
+}
+
+.google-sign-in-button[data-variant='chalk']:hover {
+  background: var(--white);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink-deep);
+}
+
+.google-sign-in-button[data-variant='chalk']:active {
+  background: var(--chalk);
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+.google-sign-in-button-mark {
+  flex: none;
+}
+
+/* outlined "Sign in" in the nav slot (03 N-04: 14px 700, 2px --line-strong) */
+.google-sign-in-button[data-variant='outlined'] {
+  padding: var(--space-8) var(--space-16);
+  background: transparent;
+  color: var(--chalk);
+  border-color: var(--line-strong);
+  font-size: var(--text-small);
+}
+
+.google-sign-in-button[data-variant='outlined']:hover {
+  border-color: var(--indigo-lift);
+  background: var(--slab-raised);
+}
+
+.google-sign-in-button[data-variant='outlined']:active {
+  border-color: var(--indigo);
+  background: var(--ink);
+}
+
+/* pending (ADR-0002 #46 look): disabled fill, no motion */
+.google-sign-in-button:disabled,
+.google-sign-in-button:disabled:hover,
+.google-sign-in-button:disabled:active {
+  background: var(--disabled-fill);
+  color: var(--disabled-text);
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .google-sign-in-button:hover,
+  .google-sign-in-button:active {
+    transform: none;
+  }
+}

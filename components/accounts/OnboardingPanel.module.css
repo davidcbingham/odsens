@@ -1,0 +1,114 @@
+/* OnboardingPanel — DESIGN.md §11.3 #10 (pass-3 "Handle onboarding" desktop + phone frames);
+   03 §2.5, §3 idle | submitting | error. The page paints the hatch; this is the 560px slab. */
+.onboarding-panel {
+  width: min(560px, 100%);
+  background: var(--slab);
+  border: 2px solid var(--line-soft);
+  box-shadow: 6px 6px 0 var(--ink-deep);
+}
+
+.onboarding-panel-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-28) var(--space-32) 0;
+}
+
+.onboarding-panel-title {
+  font-family: var(--font-display);
+  font-size: var(--text-section-title);
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--white);
+}
+
+.onboarding-panel-line {
+  max-width: 44ch;
+  color: var(--mute);
+  line-height: 1.6;
+}
+
+.onboarding-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-24) var(--space-32) 0;
+}
+
+.onboarding-panel-label {
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+.onboarding-panel-optional {
+  font-weight: 500;
+  color: var(--mute-dim);
+}
+
+.onboarding-panel-picture {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-12);
+}
+
+/* footer strip: DONE + the reassurance line; server errors inline below */
+.onboarding-panel-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  margin-top: var(--space-28);
+  padding: var(--space-20) var(--space-32);
+  background: var(--slab-foot);
+  border-top: 2px solid var(--line);
+}
+
+.onboarding-panel-foot-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.onboarding-panel-foot-line {
+  max-width: 34ch;
+  font-size: var(--text-small);
+  line-height: 1.5;
+  color: var(--mute-dim);
+}
+
+.onboarding-panel-error {
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--danger);
+}
+
+@media (max-width: 599px) {
+  .onboarding-panel {
+    box-shadow: none;
+  }
+
+  .onboarding-panel-head,
+  .onboarding-panel-section {
+    padding-left: var(--space-16);
+    padding-right: var(--space-16);
+  }
+
+  .onboarding-panel-head {
+    padding-top: var(--space-20);
+  }
+
+  .onboarding-panel-foot {
+    padding: var(--space-16);
+  }
+
+  .onboarding-panel-foot-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .onboarding-panel-done {
+    width: 100%;
+  }
+}

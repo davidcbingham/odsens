@@ -10,7 +10,7 @@ export type PixelLabelProps = {
   children: string;
   size?: 10 | 11 | 12;
   tone?: 'mute-dim' | 'gold' | 'emerald' | 'chalk' | 'gold-ink';
-  as?: 'span' | 'p' | 'h2' | 'h3';
+  as?: 'span' | 'p' | 'h1' | 'h2' | 'h3';
   /** Carries information the user needs (counts, HELD FOR REVIEW) — forces ≥11px. */
   informational?: boolean;
   fill?: 'gold' | 'indigo-wash' | 'neutral';

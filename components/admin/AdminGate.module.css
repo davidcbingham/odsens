@@ -1,0 +1,29 @@
+/* AdminGate — DESIGN.md §11.3 #18; 03 §2.10. 400px slab centred on --ink. */
+.admin-gate {
+  display: grid;
+  /* an explicit track: an auto column takes the slab's 400px as its min-content and overflows the phone */
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  min-height: 100dvh;
+  padding: var(--space-56) var(--space-24);
+}
+
+.admin-gate-slab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-16);
+  width: min(400px, 100%);
+  padding: var(--space-28);
+  background: var(--slab);
+  border: 2px solid var(--line-soft);
+  box-shadow: 6px 6px 0 var(--ink-deep);
+}
+
+.admin-gate-title {
+  font-family: var(--font-display);
+  font-size: var(--text-section-title);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--white);
+}

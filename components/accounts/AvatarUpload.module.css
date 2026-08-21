@@ -1,0 +1,256 @@
+/* AvatarUpload — DESIGN.md §11.1 Picture upload (pass-3 "Picture states" + crop frame);
+   03 §2.5, §3 empty | cropping | uploading | error | done. */
+.avatar-upload {
+  display: block;
+  min-width: 0;
+}
+
+.avatar-upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-16);
+}
+
+/* the square well: 88 / 120 */
+.avatar-upload-well {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 88px;
+  height: 88px;
+  overflow: hidden;
+  background: var(--slab-sunk);
+  border: 2px solid var(--line-soft);
+  text-align: center;
+}
+
+.avatar-upload[data-size='120'] .avatar-upload-well {
+  width: 120px;
+  height: 120px;
+}
+
+.avatar-upload-empty-label {
+  padding: var(--space-4);
+  line-height: 1.3;
+}
+
+/* done: the picture with a 3px white border (the well's own border goes white) */
+.avatar-upload[data-state='done'] .avatar-upload-well {
+  border: 3px solid var(--white);
+}
+
+.avatar-upload-picture {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* uploading: indigo border, UPLOADING label + flat 10px indeterminate bar over the bottom */
+.avatar-upload[data-state='uploading'] .avatar-upload-well {
+  border-color: var(--indigo);
+}
+
+.avatar-upload[data-state='uploading'] .avatar-upload-picture {
+  opacity: 0.45;
+}
+
+.avatar-upload-progress {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-8);
+  background: var(--scrim-92);
+}
+
+.avatar-upload-bar {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  background: var(--ink);
+  border: 2px solid var(--line-soft);
+}
+
+.avatar-upload-bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 40%;
+  background: var(--indigo);
+  animation: avatar-upload-slide 1.2s linear infinite;
+}
+
+@keyframes avatar-upload-slide {
+  from {
+    left: -40%;
+  }
+
+  to {
+    left: 100%;
+  }
+}
+
+/* error: danger fill/border + ! glyph */
+.avatar-upload[data-state='error'] .avatar-upload-well {
+  background: var(--danger-wash);
+  border-color: var(--danger-field);
+}
+
+.avatar-upload-bang {
+  font-family: var(--font-display);
+  font-size: var(--text-section-title);
+  line-height: 1;
+  color: var(--danger);
+}
+
+.avatar-upload-side {
+  display: flex;
+  flex: 1 1 200px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.avatar-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.avatar-upload-error {
+  font-size: var(--text-label);
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--danger);
+}
+
+.avatar-upload-error-detail {
+  font-weight: 400;
+}
+
+/* limits printed under the well at all times: 13px --mute-dim */
+.avatar-upload-limit {
+  font-size: var(--text-label);
+  color: var(--mute-dim);
+}
+
+/* ---- crop step: dimmed original, 2px gold square crop box, USE THIS / Cancel ---- */
+.avatar-upload-crop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-20);
+  padding: var(--space-20);
+  background: var(--slab);
+  border: 2px solid var(--line);
+}
+
+/* Crop geometry (pass-3 CROP STEP frame): 200px viewport, 150px gold box centred in it — the two
+   literals below mirror VIEWPORT_PX / CROP_PX in the TSX; the inset is derived. */
+.avatar-upload-viewport {
+  --avatar-crop-viewport: 200px;
+  --avatar-crop-box: 150px;
+
+  position: relative;
+  flex: none;
+  width: var(--avatar-crop-viewport);
+  height: var(--avatar-crop-viewport);
+  max-width: 100%;
+  overflow: hidden;
+  background: var(--slab-sunk);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.avatar-upload-viewport:active {
+  cursor: grabbing;
+}
+
+.avatar-upload-dim {
+  position: absolute;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.avatar-upload-box {
+  position: absolute;
+  top: calc((var(--avatar-crop-viewport) - var(--avatar-crop-box)) / 2);
+  left: calc((var(--avatar-crop-viewport) - var(--avatar-crop-box)) / 2);
+  width: var(--avatar-crop-box);
+  height: var(--avatar-crop-box);
+  overflow: hidden;
+  outline: 2px solid var(--gold);
+  pointer-events: none;
+}
+
+.avatar-upload-box-image {
+  position: absolute;
+}
+
+.avatar-upload-crop-side {
+  display: flex;
+  flex: 1 1 200px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.avatar-upload-crop-title {
+  font-family: var(--font-display);
+  font-size: var(--text-card-title);
+  line-height: 1.1;
+  color: var(--white);
+}
+
+.avatar-upload-crop-line {
+  max-width: 26ch;
+  font-size: var(--text-ui);
+  line-height: 1.6;
+  color: var(--mute);
+}
+
+.avatar-upload-zoom {
+  display: flex;
+  gap: var(--space-8);
+}
+
+.avatar-upload-zoom-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--line-strong);
+  background: var(--slab);
+  font-size: var(--text-subhead);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+.avatar-upload-zoom-button:hover {
+  border-color: var(--indigo-lift);
+  background: var(--slab-raised);
+}
+
+.avatar-upload-zoom-button:disabled {
+  color: var(--disabled-text);
+  border-color: transparent;
+  background: var(--disabled-fill);
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-upload-bar-fill {
+    animation: none;
+    left: 0;
+    width: 100%;
+    opacity: 0.8;
+  }
+}

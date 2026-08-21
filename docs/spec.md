@@ -153,6 +153,7 @@ See `docs/questions.md` — running list of open questions (answered items migra
 ---
 
 *Revision log*
+- 2026-08-20 — S1.1 Accounts built on `feat/S1.1-accounts` (ADR-0009 `proxy.ts`, ADR-0010 preview env from the persistent `staging` Supabase branch — supersedes ADR-0006, ADR-0011 OAuth redirect allow-list narrowed, ADR-0012 `HASH_SECRET` boot-required, ADR-0013 `runAction` + `AuthError`, ADR-0014 `ProfilePanel` island + own-row `handle_changed_at`, ADR-0015 admin/mod writes to other users' profiles via the service client only, ADR-0016 `/auth/callback` stamps `email_hash` with the service client); Branching + integrations live; Q47 (Google sign-in on previews) answered 2026-08-20 — persistent `staging` branch (ADR-0010).
 - 2026-08-20 — S0 scaffold built on `feat/S0-scaffold` (ADR-0003 CSP `unsafe-inline`, ADR-0004 `/dev/components`, ADR-0005 placeholder pages static, ADR-0006 preview env fallback); Supabase Branching required before S1.1.
 - 2026-08-17 — **FROZEN v1.0.** Engineering specs `docs/build/` at v1.0; build begins (S0 scaffold).
 - 2026-08-17 — Engineering specs `docs/build/` 00–06 + ADR-0001/0002; spec aligned (About page struck, comments v1 = projects).

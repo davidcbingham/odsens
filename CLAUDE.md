@@ -1,7 +1,7 @@
 # CLAUDE.md — orientation for any Claude session on this repo
 
 This is **odsens.com**, a portfolio site for OddSense (Minecraft creator). **The spec is FROZEN (v1.0, 2026-08-17) and the build is in progress.** Start with `docs/build/START-BUILD.md`, then `docs/build/00-build-plan.md` (slices + acceptance criteria) and `docs/build/_registry.md` (names/IDs). Product context: `docs/spec.md`, `docs/platform-audit.md`. **`DESIGN.md` at repo root is the visual
-source of truth** (v1.3, direction "Crate Poster"); prototypes are in `design/claude-design-export/pass-*/` (open the `.dc.html`
+source of truth** (v1.4, direction "Crate Poster"); prototypes are in `design/claude-design-export/pass-*/` (open the `.dc.html`
 files in a browser), source art in `assets/brand/`. Design process: `docs/design-process.md`.
 
 Ground rules

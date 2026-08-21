@@ -1,5 +1,6 @@
-# odsens.com — Design System (v1.3a)
+# odsens.com — Design System (v1.4)
 
+> v1.4 (2026-08-21): §11.1 Profile menu items are Your profile (and Admin for moderators/admins) + Sign out — "Change handle" / "Change picture" removed (David, S1.1 preview review; all three opened `/profile`) — ADR-0018. §11.3 #10 Handle onboarding: no Skip button, DONE gated on the handle only — ADR-0017. §11.3 #19 Banned page added (the #18 slab with "YOU'RE BANNED" and one line; the shell's Sign out is the only control) — ADR-0019. No other visual change.
 > v1.3a (2026-08-17): build clarifications from ADR-0002 — see §12.7. No visual direction changes.
 > v1.3 (2026-08-17): feature pass — Seen on / mentions, workrooms, notifications matrix, email + Discord templates, supporters leaderboard; see §12 and `design/claude-design-export/pass-3/CHANGELOG.md`.
 > v1.2 (2026-08-17): coverage pass — accounts/onboarding, comment moderation, admin settings/stats/orders, global states, privacy; see §11 and `design/claude-design-export/pass-2/CHANGELOG.md`.
@@ -238,7 +239,7 @@ Everything below is additive. Direction, palette, type and existing components a
 
 **Video facade.** Thumbnail + `rgba(ink,.35)` scrim, an 88px indigo square play block with a white triangle and `5px 5px 0` shadow, duration chip bottom-right (11px Silkscreen on ink, 2px border), and a `CLICK TO LOAD YOUTUBE` chip bottom-left. Nothing from YouTube loads until click. "Up next" rows (132px thumbs) and the Shorts row (9:16, 104px, gold duration chip) use the same facade; selected row keeps the `--indigo-lift` outline.
 
-**Profile menu.** Nav trigger: 28px picture + handle + `▾` in a `--line-strong` outlined block. Open: 236px slab, `4px 4px 0`, header with 40px picture + handle + `SIGNED IN` in Silkscreen, then Your profile / Change handle / Change picture, and **Sign out** in `--danger` behind a 2px top border.
+**Profile menu.** Nav trigger: 28px picture + handle + `▾` in a `--line-strong` outlined block. Open: 236px slab, `4px 4px 0`, header with 40px picture + handle + `SIGNED IN` in Silkscreen, then Your profile (and Admin for moderators/admins), and **Sign out** in `--danger` behind a 2px top border (v1.4, ADR-0018: the former Change handle / Change picture items are gone — all three opened `/profile`, which keeps its `#handle` / `#picture` anchors).
 
 **Mod action row.** Small actions, one accent max: filled emerald **Approve**, outlined **Hide**, danger-bordered **Ban user**. Held and reported comments always show it; on ordinary comments it hides behind a square **Moderate ON/OFF** toggle in the thread header. A `MOD` Silkscreen tag (indigo-wash) sits beside the handle on a moderator's own comments, next to `CREATOR` where both apply. Ban asks once, inline, in plain words and says where to undo it.
 
@@ -257,7 +258,7 @@ Everything below is additive. Direction, palette, type and existing components a
 
 ### 11.3 New pages
 
-10. **Handle onboarding** (first sign-in, blocking) — 560px slab centred on a faint 45° indigo hatch, `STEP 1 OF 1` eyebrow, "PICK A HANDLE", one line ("Pick a handle. It's all anyone will ever see."), handle field, optional picture with Upload / Skip, then a footer strip with **DONE** (disabled until the handle validates) and "You can change both later. Your Google name and email stay hidden." Phone: same order, full-width DONE, 26px title.
+10. **Handle onboarding** (first sign-in, blocking) — 560px slab centred on a faint 45° indigo hatch, `STEP 1 OF 1` eyebrow, "PICK A HANDLE", one line ("Pick a handle. It's all anyone will ever see."), handle field, optional picture (Upload only — no Skip button: leaving it empty and pressing DONE is the skip, ADR-0017), then a footer strip with **DONE** (disabled until the handle validates; the picture never gates it — ADR-0017) and "You can change both later. Your Google name and email stay hidden." Phone: same order, full-width DONE, 26px title.
 11. **Your profile** — 720px column: picture row (Change / Remove), handle row with SAVE and the consequence spelled out ("Changing it renames you on every comment you've left."), then a footer strip listing what we store with a link to Privacy and a **Delete account** action in danger.
 12. **Privacy** — Bungee page title "WHAT WE KEEP", then gold Bungee h2s: What we store (Google account ID for sign-in, handle, optional picture, comments/likes/reports) · What we never show (real name, email, age, location) · Tips and downloads (Ko-fi's terms; counts are numbers) · Deleting your account. Closes on a NOTE callout: under 13, don't sign in — downloads work without an account.
 13. **404** — 80px Bungee `404` in `--indigo`, "THAT PAGE DOESN'T EXIST", "Probably never did.", then GO HOME + "See the projects".
@@ -266,6 +267,7 @@ Everything below is additive. Direction, palette, type and existing components a
 16. **Admin — Stats** — four stat tiles (downloads 7 days, downloads all time, comments with held count, tips 30 days) then one flat stacked bar chart of the last 30 days by source, with the honest line: "Modrinth and CurseForge report their own counts. Direct downloads are the ones we serve."
 17. **Admin — Orders** — status filter chips with counts, then a table (handle · type · asked · status `NEW` gold-wash / `REPLIED` indigo-wash / `CLOSED` neutral · Open). Detail: handle + status tag, a four-up meta grid (type, version, loader, budget), the request in a sunk slab, **REPLY BY EMAIL** with "Opens your mail app. Their email is never shown on the site.", and a square status selector plus their public-posting answer.
 18. **Admin sign-in gate** — 400px slab, "ADMINS ONLY" in Bungee, the chalk Google button. Nothing else on the page.
+19. **Banned** — the #18 slab again (400px, 2px `--line-soft`, `6px 6px 0 --ink-deep`), "YOU'RE BANNED" in Bungee, one line in `--mute`: "This account can't use odsens any more." Nothing else on the page — no links, no Google button; the onboarding shell's wordmark and Sign out are the only controls. A banned account is sent here on every navigation (ADR-0019).
 
 ### 11.4 Support panel — implementation-aware
 

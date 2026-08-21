@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- odsens test fixture: SVG is never an accepted upload type (04 validateUpload) -->
+  <rect width="64" height="64" fill="#1f2433"/>
+  <rect x="8" y="8" width="48" height="48" fill="#ffd63d"/>
+  <script>window.__odsensFixture = true;</script>
+</svg>

@@ -1,0 +1,139 @@
+/* ProfileMenu — DESIGN.md §11.1 Profile menu (pass-3 "NAV — SIGNED IN" frames); 03 §2.5, §3 open | closed.
+   Inside the NavMenuButton panel, Nav.module.css (.nav-menu-profile) turns the popover into a static block. */
+.profile-menu {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.profile-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 44px;
+  padding: var(--space-8) var(--space-12) var(--space-8) var(--space-8);
+  border: 2px solid var(--line-strong);
+  background: transparent;
+  color: var(--chalk);
+  transition:
+    border-color var(--dur-fast) ease-out,
+    background-color var(--dur-fast) ease-out;
+}
+
+.profile-menu-trigger:hover,
+.profile-menu-trigger[aria-expanded='true'] {
+  border-color: var(--indigo-lift);
+  background: var(--slab-raised);
+}
+
+.profile-menu-avatar {
+  display: inline-flex;
+}
+
+.profile-menu-handle {
+  max-width: 16ch;
+  overflow: hidden;
+  font-size: var(--text-small);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-menu-caret {
+  font-size: var(--text-pixel-11);
+  color: var(--mute);
+}
+
+.profile-menu-panel {
+  position: absolute;
+  top: calc(100% + var(--space-8));
+  right: 0;
+  z-index: var(--z-nav);
+  width: 236px;
+  background: var(--slab);
+  border: 2px solid var(--line-soft);
+  box-shadow: 4px 4px 0 var(--ink-deep);
+  animation: profile-menu-in var(--dur-fast) ease-out;
+}
+
+.profile-menu-panel[hidden] {
+  display: none;
+}
+
+.profile-menu-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border-bottom: 2px solid var(--line);
+}
+
+.profile-menu-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.profile-menu-header-handle {
+  overflow: hidden;
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--white);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-menu-item {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-12) var(--space-16);
+  font-size: var(--text-ui);
+  color: var(--chalk);
+  text-decoration: none;
+}
+
+.profile-menu-item:hover,
+.profile-menu-item:focus-visible {
+  background: var(--slab-raised);
+}
+
+.profile-menu-sign-out {
+  border-top: 2px solid var(--line);
+}
+
+.profile-menu-sign-out-button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-12) var(--space-16);
+  font-size: var(--text-ui);
+  color: var(--danger);
+  text-align: left;
+}
+
+.profile-menu-sign-out-button:hover,
+.profile-menu-sign-out-button:focus-visible {
+  background: var(--slab-raised);
+}
+
+@keyframes profile-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-menu-panel {
+    animation: none;
+  }
+}

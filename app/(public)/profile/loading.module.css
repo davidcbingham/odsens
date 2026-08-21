@@ -1,0 +1,36 @@
+/* /profile skeleton — same 720px column as the page, slab shell with the real borders. */
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 720px;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: var(--space-40) var(--space-24) var(--space-80);
+}
+
+.loading-slab {
+  display: flex;
+  flex-direction: column;
+  background: var(--slab);
+  border: 2px solid var(--line-soft);
+}
+
+.loading-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-20);
+  padding: var(--space-24);
+  border-bottom: 2px solid var(--line);
+}
+
+.loading-foot {
+  padding: var(--space-20) var(--space-24);
+  background: var(--slab-foot);
+}
+
+@media (max-width: 599px) {
+  .loading {
+    padding: var(--space-24) var(--space-16) var(--space-64);
+  }
+}

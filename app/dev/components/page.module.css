@@ -141,3 +141,22 @@
 .preview-skeleton-well > * {
   max-width: 100%;
 }
+
+/* S1.1: forms around the field specimens (useFormStatus needs a form); shell host bounds AdminShell. */
+.preview-form {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.preview-shell-host {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--line);
+}
+
+/* AdminShell / AdminGate specimens: keep their 100dvh min-height inside the page (specificity beats
+   the component's own root class regardless of chunk order) */
+.preview-group .preview-shell-host > * {
+  min-height: 0;
+}
