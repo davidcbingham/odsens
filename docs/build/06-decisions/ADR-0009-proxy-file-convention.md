@@ -59,7 +59,7 @@ Kind: deviation
 | Gate | Now checks |
 |---|---|
 | spec-drift-reviewer | `proxy.ts` exists, `middleware.ts` does not; matcher string equals 02 §3 verbatim; named export `proxy` + `config`; `eslint.config.mjs` has the `files: ['proxy.ts']` block of Decision 6 (addendum); this ADR listed under `## ADRs in this PR` |
-| security-reviewer | INV-14 / INV-32 / INV-42 greps run against `proxy.ts` (not `middleware.ts`); `proxy.ts` reads only `profiles.handle` (M4), never `role`; INV-13 / INV-85 (addendum): `proxy.ts` imports `@supabase/ssr` only — `grep -n "supabase-js\|supabase/admin\|supabase/client\|supabase/server" proxy.ts` → none |
+| security-reviewer | INV-14 / INV-32 / INV-42 greps run against `proxy.ts` (not `middleware.ts`); `proxy.ts` reads only `profiles.handle` (M4), never `role`; INV-13 / INV-85 (addendum): `proxy.ts` imports `@supabase/ssr` only — `grep -n "^import.*\(supabase-js\|supabase/admin\|supabase/client\|supabase/server\)" proxy.ts` → none (the file's header comment may name `lib/supabase/server.ts` to explain why it is not used) |
 | frontend-reviewer | INV-30 "middleware shape" review targets `proxy.ts` |
 | backend-reviewer | T-ACT-10 imports `proxy` from `@/proxy`; no `runtime` export in `proxy.ts` |
 | design-fidelity-reviewer, supabase-reviewer, deploy-checker | none |
