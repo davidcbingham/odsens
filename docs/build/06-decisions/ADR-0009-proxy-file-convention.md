@@ -1,7 +1,7 @@
 # ADR-0009 — Middleware file is `proxy.ts` (Next 16 convention)
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-20

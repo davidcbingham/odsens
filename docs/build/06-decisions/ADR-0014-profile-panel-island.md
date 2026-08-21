@@ -1,7 +1,7 @@
 # ADR-0014 — Profile page island and own-row columns
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-20

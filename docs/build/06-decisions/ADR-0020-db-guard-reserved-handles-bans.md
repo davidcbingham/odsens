@@ -1,7 +1,7 @@
 # ADR-0020 — Reserved handles and bans bind the owner's direct `profiles` write
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-21

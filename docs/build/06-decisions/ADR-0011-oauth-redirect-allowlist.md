@@ -1,7 +1,7 @@
 # ADR-0011 — OAuth redirect allow-list narrowed to project previews
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-20

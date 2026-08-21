@@ -1,7 +1,7 @@
 # ADR-0010 — Preview env from persistent `staging` Supabase branch; site URL derived
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-20

@@ -1,7 +1,7 @@
 # ADR-0013 — Action error surfacing: `runAction` + `AuthError` export
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-20

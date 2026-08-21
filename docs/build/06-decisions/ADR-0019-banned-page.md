@@ -1,7 +1,7 @@
 # ADR-0019 — Banned accounts land on `/banned`
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-21
@@ -37,6 +37,8 @@ Kind: security
 - Positive: a ban means what it says everywhere, from the first navigation after Google sign-in; no rename / picture / onboarding / self-delete under a ban; one page, one proxy rule (M4b) and one check in the auth seam — no action needs its own banned branch; the proxy still issues one PK read and never reads `role`.
 - Negative: `requireUser()` costs one own-row read per `checkHandle` / `completeOnboarding` call (it read only the session before; `completeOnboarding` reads the row a second time for its `conflict` check); a banned account cannot delete itself — removal under a ban is an admin act; the sign-in hop is two redirects (`/auth/callback` → `next` or `/welcome` → `/banned`).
 - Follow-ups: S1.4 `banUser` — decide whether a ban also revokes the account's sessions (today M4b catches the next navigation) and keep the composer's own "You can't comment here." slab → owner `backend-robustness` · whether `requireRole` gets the same check (a banned moderator is resolved by demoting) → with the S1.4 moderation actions, owner `security-check` · deleting a banned account's data on request → `docs/questions.md`, owner `keep-docs`.
+
+- Follow-up *(David, 2026-08-21, on merge)*: **banned accounts may delete themselves** — a small follow-up PR lets `deleteAccount` through for banned callers (`requireOnboarded` gains an opt-in that skips the ban check for that one action; D4's "every user action" becomes "every user action except `deleteAccount`") and adds the Delete account control (inline confirm) to `/banned`; recorded as its own ADR when built → owner `backend-robustness` + `design-fidelity`. Look-alike handles (`0ddsense`, `admin1`): David decided to leave them alone for now.
 
 ## Docs amended
 | Doc | Section | Change |

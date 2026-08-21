@@ -1,7 +1,7 @@
 # ADR-0017 — Onboarding panel: no Skip button; document navigation after DONE
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-21

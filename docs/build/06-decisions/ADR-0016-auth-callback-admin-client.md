@@ -1,7 +1,7 @@
 # ADR-0016 — Auth callback writes email_hash with the service client
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-20

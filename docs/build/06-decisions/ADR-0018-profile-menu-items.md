@@ -1,7 +1,7 @@
 # ADR-0018 — Profile menu items: Your profile, Admin, Sign out
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-21

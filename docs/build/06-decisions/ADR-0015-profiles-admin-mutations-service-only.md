@@ -1,7 +1,7 @@
 # ADR-0015 — Profiles mutations on other rows via the service client
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-20

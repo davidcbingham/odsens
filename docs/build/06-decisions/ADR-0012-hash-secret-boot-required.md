@@ -1,7 +1,7 @@
 # ADR-0012 — `HASH_SECRET` boot-required from S1.1
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-20
