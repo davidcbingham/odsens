@@ -49,8 +49,20 @@ export async function syncCurseforge(opts: JobOptions): Promise<JobSummary> {
   // SC-13 — an open run younger than JOB_LOCK_MINUTES holds the lock: no work, no new row.
   const openRun = await findOpenRun(db, SOURCE);
   if (openRun !== null) {
-    log.info({ job: JOB, id: openRun, msg: 'skipped', meta: { reason: 'running', trigger: opts.trigger } });
-    return { ok: true, source: SOURCE, run_id: openRun, items: 0, ms: Date.now() - started, skipped: 'running' };
+    log.info({
+      job: JOB,
+      id: openRun,
+      msg: 'skipped',
+      meta: { reason: 'running', trigger: opts.trigger },
+    });
+    return {
+      ok: true,
+      source: SOURCE,
+      run_id: openRun,
+      items: 0,
+      ms: Date.now() - started,
+      skipped: 'running',
+    };
   }
 
   const runId = opts.runId ?? (await insertRun(db, SOURCE));
@@ -58,8 +70,20 @@ export async function syncCurseforge(opts: JobOptions): Promise<JobSummary> {
   // 04 §3.2 precondition — the skipped run still writes its SC-11 row: ok=true, error='not configured'.
   if (env.CURSEFORGE_API_KEY === undefined) {
     await finalizeRun(db, runId, { ok: true, items: 0, error: 'not configured' });
-    log.info({ job: JOB, id: runId, msg: 'skipped', meta: { reason: 'not_configured', trigger: opts.trigger } });
-    return { ok: true, source: SOURCE, run_id: runId, items: 0, ms: Date.now() - started, skipped: 'not_configured' };
+    log.info({
+      job: JOB,
+      id: runId,
+      msg: 'skipped',
+      meta: { reason: 'not_configured', trigger: opts.trigger },
+    });
+    return {
+      ok: true,
+      source: SOURCE,
+      run_id: runId,
+      items: 0,
+      ms: Date.now() - started,
+      skipped: 'not_configured',
+    };
   }
 
   let ok = true;
@@ -85,8 +109,12 @@ export async function syncCurseforge(opts: JobOptions): Promise<JobSummary> {
       const projectsRead = await db
         .from('projects')
         .select('id, slug')
-        .in('id', rows.map((row) => row.project_id));
-      if (projectsRead.error) throw new Error(`projects read failed: ${projectsRead.error.message}`);
+        .in(
+          'id',
+          rows.map((row) => row.project_id),
+        );
+      if (projectsRead.error)
+        throw new Error(`projects read failed: ${projectsRead.error.message}`);
       for (const project of projectsRead.data) slugById.set(project.id, project.slug);
     }
 
@@ -98,15 +126,21 @@ export async function syncCurseforge(opts: JobOptions): Promise<JobSummary> {
         if (mod.downloadCount !== row.downloads || mod.links.websiteUrl !== row.url) {
           const linkUpdate = await db
             .from('project_links')
-            .update({ downloads: mod.downloadCount, url: mod.links.websiteUrl, synced_at: syncedAt })
+            .update({
+              downloads: mod.downloadCount,
+              url: mod.links.websiteUrl,
+              synced_at: syncedAt,
+            })
             .eq('project_id', row.project_id)
             .eq('platform', SOURCE);
-          if (linkUpdate.error) throw new Error(`project_links update failed: ${linkUpdate.error.message}`);
+          if (linkUpdate.error)
+            throw new Error(`project_links update failed: ${linkUpdate.error.message}`);
           const projectUpdate = await db
             .from('projects')
             .update({ downloads_curseforge: mod.downloadCount })
             .eq('id', row.project_id);
-          if (projectUpdate.error) throw new Error(`projects update failed: ${projectUpdate.error.message}`);
+          if (projectUpdate.error)
+            throw new Error(`projects update failed: ${projectUpdate.error.message}`);
           items += 1;
           const slug = slugById.get(row.project_id);
           if (slug !== undefined) changedSlugs.add(slug);
@@ -117,7 +151,8 @@ export async function syncCurseforge(opts: JobOptions): Promise<JobSummary> {
             .update({ synced_at: syncedAt })
             .eq('project_id', row.project_id)
             .eq('platform', SOURCE);
-          if (touched.error) throw new Error(`project_links touch failed: ${touched.error.message}`);
+          if (touched.error)
+            throw new Error(`project_links touch failed: ${touched.error.message}`);
         }
       } catch (error) {
         // J-P: item error keeps the old numbers and is counted, never rethrown.
@@ -140,10 +175,12 @@ export async function syncCurseforge(opts: JobOptions): Promise<JobSummary> {
     await finalizeRun(db, runId, { ok, items, error: ok ? null : (errorText ?? 'failed') });
   }
 
-  // 04 §3.2 revalidate — after the run row is finalized; nothing on a no-change run.
+  // 04 §3.2 revalidate — after the run row is finalized; nothing on a no-change run. The tags are
+  // the SC-07 set; the 'max' profile is Next 16.3's required second argument (on-demand expiry of
+  // long-lived tagged entries — outside a Server Action `updateTag` is unavailable).
   if (changedSlugs.size > 0) {
-    revalidateTag('projects');
-    for (const slug of changedSlugs) revalidateTag(`project:${slug}`);
+    revalidateTag('projects', 'max');
+    for (const slug of changedSlugs) revalidateTag(`project:${slug}`, 'max');
   }
 
   if (ok) {

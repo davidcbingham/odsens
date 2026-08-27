@@ -35,6 +35,7 @@ import { findOpenRun, finalizeRun, insertRun } from '@/lib/jobs/runs';
 import type { JobOptions, JobSummary } from '@/lib/jobs/types';
 import { log } from '@/lib/log';
 import { createAdminClient } from '@/lib/supabase/admin';
+import type { Database } from '@/lib/supabase/types';
 
 const JOB = 'syncModrinth';
 const SOURCE = 'modrinth' as const;
@@ -43,15 +44,15 @@ const SOURCE = 'modrinth' as const;
 const ERRORS_LIMIT = 20;
 const ERROR_ENTRY_LIMIT = 300;
 
-/** The 04 §3.1 step-2 sync-owned columns (+ id/external_id for matching, status for step 4). */
+/**
+ * The 04 §3.1 step-2 sync-owned columns (+ id/external_id for matching, status for step 4).
+ * Single string literals: supabase-js types the result from the literal select string.
+ */
 const PROJECT_COLUMNS =
-  'id, external_id, slug, project_type, title, description, body_md, icon_url, gallery, ' +
-  'categories, loaders, game_versions, license, source_url, issues_url, discord_url, ' +
-  'downloads_modrinth, followers, published_at, external_updated_at, status';
+  'id, external_id, slug, project_type, title, description, body_md, icon_url, gallery, categories, loaders, game_versions, license, source_url, issues_url, discord_url, downloads_modrinth, followers, published_at, external_updated_at, status';
 
 const VERSION_COLUMNS =
-  'id, external_id, version_number, name, changelog_md, game_versions, loaders, version_type, ' +
-  'date_published, downloads';
+  'id, external_id, version_number, name, changelog_md, game_versions, loaders, version_type, date_published, downloads';
 
 const FILE_COLUMNS = 'id, filename, size_bytes, sha512, url, primary, storage_path';
 
@@ -110,34 +111,53 @@ function projectPayload(mapped: ProjectRow) {
   };
 }
 
-type ExistingProject = Record<string, unknown> & {
-  id: string;
-  external_id: string | null;
-  slug: string;
-  status: string;
-};
+/** The `PROJECT_COLUMNS` row shape, from the generated types (typed selects, no casts). */
+type ExistingProject = Pick<
+  Database['public']['Tables']['projects']['Row'],
+  | 'id'
+  | 'external_id'
+  | 'slug'
+  | 'project_type'
+  | 'title'
+  | 'description'
+  | 'body_md'
+  | 'icon_url'
+  | 'gallery'
+  | 'categories'
+  | 'loaders'
+  | 'game_versions'
+  | 'license'
+  | 'source_url'
+  | 'issues_url'
+  | 'discord_url'
+  | 'downloads_modrinth'
+  | 'followers'
+  | 'published_at'
+  | 'external_updated_at'
+  | 'status'
+>;
 
 /** Same-shape view of a DB row for the change compare (timestamps normalized to ISO UTC). */
 function projectFingerprint(row: ExistingProject): Record<string, unknown> {
   return {
     slug: row.slug,
-    project_type: row['project_type'],
-    title: row['title'],
-    description: row['description'],
-    body_md: row['body_md'],
-    icon_url: row['icon_url'],
-    gallery: row['gallery'],
-    categories: row['categories'],
-    loaders: row['loaders'],
-    game_versions: row['game_versions'],
-    license: row['license'],
-    source_url: row['source_url'],
-    issues_url: row['issues_url'],
-    discord_url: row['discord_url'],
-    downloads_modrinth: row['downloads_modrinth'],
-    followers: row['followers'],
-    published_at: isoOrNull(row['published_at'] as string | null),
-    external_updated_at: isoOrNull(row['external_updated_at'] as string | null),
+    project_type: row.project_type,
+    title: row.title,
+    description: row.description,
+    body_md: row.body_md,
+    icon_url: row.icon_url,
+    gallery: row.gallery,
+    categories: row.categories,
+    loaders: row.loaders,
+    game_versions: row.game_versions,
+    license: row.license,
+    source_url: row.source_url,
+    issues_url: row.issues_url,
+    discord_url: row.discord_url,
+    downloads_modrinth: row.downloads_modrinth,
+    followers: row.followers,
+    published_at: isoOrNull(row.published_at),
+    external_updated_at: isoOrNull(row.external_updated_at),
     status: row.status,
   };
 }
@@ -277,8 +297,20 @@ export async function syncModrinth(opts: JobOptions): Promise<JobSummary> {
   // SC-13 — an open run younger than JOB_LOCK_MINUTES holds the lock: no work, no new row.
   const openRun = await findOpenRun(db, SOURCE);
   if (openRun !== null) {
-    log.info({ job: JOB, id: openRun, msg: 'skipped', meta: { reason: 'running', trigger: opts.trigger } });
-    return { ok: true, source: SOURCE, run_id: openRun, items: 0, ms: Date.now() - started, skipped: 'running' };
+    log.info({
+      job: JOB,
+      id: openRun,
+      msg: 'skipped',
+      meta: { reason: 'running', trigger: opts.trigger },
+    });
+    return {
+      ok: true,
+      source: SOURCE,
+      run_id: openRun,
+      items: 0,
+      ms: Date.now() - started,
+      skipped: 'running',
+    };
   }
 
   const runId = opts.runId ?? (await insertRun(db, SOURCE));
@@ -309,8 +341,9 @@ export async function syncModrinth(opts: JobOptions): Promise<JobSummary> {
 
     if (list !== null) {
       const existingRead = await db.from('projects').select(PROJECT_COLUMNS).eq('source', SOURCE);
-      if (existingRead.error) throw new Error(`projects read failed: ${existingRead.error.message}`);
-      const existingRows = existingRead.data as ExistingProject[];
+      if (existingRead.error)
+        throw new Error(`projects read failed: ${existingRead.error.message}`);
+      const existingRows: ExistingProject[] = existingRead.data;
       const byExternalId = new Map<string, ExistingProject>();
       for (const row of existingRows) {
         if (row.external_id !== null) byExternalId.set(row.external_id, row);
@@ -336,10 +369,16 @@ export async function syncModrinth(opts: JobOptions): Promise<JobSummary> {
           if (existing === undefined) {
             const inserted = await db
               .from('projects')
-              .insert({ source: SOURCE, external_id: mapped.external_id, ...payload, synced_at: syncedAt })
+              .insert({
+                source: SOURCE,
+                external_id: mapped.external_id,
+                ...payload,
+                synced_at: syncedAt,
+              })
               .select('id')
               .single();
-            if (inserted.error) throw new Error(`projects insert failed: ${inserted.error.message}`);
+            if (inserted.error)
+              throw new Error(`projects insert failed: ${inserted.error.message}`);
             projectId = inserted.data.id;
             upserted += 1;
             changedSlugs.add(payload.slug);
@@ -347,14 +386,18 @@ export async function syncModrinth(opts: JobOptions): Promise<JobSummary> {
             projectId = existing.id;
             if (same(projectFingerprint(existing), payload)) {
               // J-I — unchanged upstream data: only `synced_at` moves.
-              const touched = await db.from('projects').update({ synced_at: syncedAt }).eq('id', projectId);
+              const touched = await db
+                .from('projects')
+                .update({ synced_at: syncedAt })
+                .eq('id', projectId);
               if (touched.error) throw new Error(`projects touch failed: ${touched.error.message}`);
             } else {
               const updated = await db
                 .from('projects')
                 .update({ ...payload, synced_at: syncedAt })
                 .eq('id', projectId);
-              if (updated.error) throw new Error(`projects update failed: ${updated.error.message}`);
+              if (updated.error)
+                throw new Error(`projects update failed: ${updated.error.message}`);
               upserted += 1;
               changedSlugs.add(payload.slug);
               // A renamed slug invalidates the old detail page too.
@@ -401,13 +444,19 @@ export async function syncModrinth(opts: JobOptions): Promise<JobSummary> {
     pushError(errors, errorText);
   } finally {
     // SC-11 — exactly one row per invocation, finalized on every path including thrown errors.
-    await finalizeRun(db, runId, { ok, items: upserted, error: ok ? null : (errorText ?? 'failed') });
+    await finalizeRun(db, runId, {
+      ok,
+      items: upserted,
+      error: ok ? null : (errorText ?? 'failed'),
+    });
   }
 
-  // 04 §3.1 revalidate — after the run row is finalized; nothing on a no-change run.
+  // 04 §3.1 revalidate — after the run row is finalized; nothing on a no-change run. The tags are
+  // the SC-07 set; the 'max' profile is Next 16.3's required second argument (on-demand expiry of
+  // long-lived tagged entries — outside a Server Action `updateTag` is unavailable).
   if (changedSlugs.size > 0) {
-    revalidateTag('projects');
-    for (const slug of changedSlugs) revalidateTag(`project:${slug}`);
+    revalidateTag('projects', 'max');
+    for (const slug of changedSlugs) revalidateTag(`project:${slug}`, 'max');
   }
 
   if (ok) {
@@ -415,7 +464,15 @@ export async function syncModrinth(opts: JobOptions): Promise<JobSummary> {
       job: JOB,
       id: runId,
       msg: 'done',
-      meta: { trigger: opts.trigger, items: upserted, hidden, skipped, versions, files, errors: errors.length },
+      meta: {
+        trigger: opts.trigger,
+        items: upserted,
+        hidden,
+        skipped,
+        versions,
+        files,
+        errors: errors.length,
+      },
     });
   } else {
     // ADR-0002 A8 — S1.2 jobs log failures only; `sync.failed` emission starts in S1.5.

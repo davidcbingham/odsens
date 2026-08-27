@@ -6,10 +6,12 @@
  * the route / `requireRole('admin')` in `triggerSync`).
  */
 import 'server-only';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { JOB_LOCK_MINUTES } from '@/lib/jobs/constants';
 import type { SyncSource } from '@/lib/jobs/types';
-import type { Database } from '@/lib/supabase/types';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+/** The service client type without importing `@supabase/supabase-js` (01 INV-85). */
+type Db = ReturnType<typeof createAdminClient>;
 
 /** SC-11: `error` is stored at ≤ 2000 chars (adapter messages are already secret-redacted). */
 const ERROR_LIMIT = 2000;
@@ -22,10 +24,7 @@ export function clipError(text: string): string {
  * SC-13: the id of an open run (`finished_at IS NULL`, `started_at > now() - JOB_LOCK_MINUTES`)
  * for `source`, else null. An older open row is a crashed run — it does not hold the lock.
  */
-export async function findOpenRun(
-  db: SupabaseClient<Database>,
-  source: SyncSource,
-): Promise<string | null> {
+export async function findOpenRun(db: Db, source: SyncSource): Promise<string | null> {
   const cutoff = new Date(Date.now() - JOB_LOCK_MINUTES * 60_000).toISOString();
   const { data, error } = await db
     .from('sync_runs')
@@ -39,10 +38,7 @@ export async function findOpenRun(
 }
 
 /** SC-11 step 1: insert `{source, started_at}` (started_at defaults to now()) and return the id. */
-export async function insertRun(
-  db: SupabaseClient<Database>,
-  source: SyncSource,
-): Promise<string> {
+export async function insertRun(db: Db, source: SyncSource): Promise<string> {
   const { data, error } = await db.from('sync_runs').insert({ source }).select('id').single();
   if (error) throw new Error(`sync_runs insert failed: ${error.message}`);
   return data.id;
@@ -54,7 +50,7 @@ export async function insertRun(
  * `'not configured'` with `ok=true` (01 env matrix wording) — callers pass the value explicitly.
  */
 export async function finalizeRun(
-  db: SupabaseClient<Database>,
+  db: Db,
   runId: string,
   result: { ok: boolean; items: number; error: string | null },
 ): Promise<void> {

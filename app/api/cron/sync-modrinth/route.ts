@@ -56,7 +56,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       meta: { error: error instanceof Error ? error.message : String(error) },
     });
     return NextResponse.json(
-      { ok: false, source: 'modrinth', run_id: '', error: { code: 'job_failed', message: 'Job failed.' } },
+      {
+        ok: false,
+        source: 'modrinth',
+        run_id: '',
+        error: { code: 'job_failed', message: 'Job failed.' },
+      },
       { status: ERROR_STATUS.job_failed, headers: NO_STORE },
     );
   }

@@ -23,7 +23,11 @@ import { syncModrinth } from '@/lib/jobs/syncModrinth';
 import type { JobSummary } from '@/lib/jobs/types';
 import { asRole } from '@/tests/helpers/asRole';
 import { setupActionMocks } from '@/tests/helpers/callAction';
-import { restoreContentTables, snapshotContentTables, type ContentSnapshot } from '@/tests/helpers/contentReset';
+import {
+  restoreContentTables,
+  snapshotContentTables,
+  type ContentSnapshot,
+} from '@/tests/helpers/contentReset';
 import { REPO_ROOT } from '@/tests/helpers/envTest';
 import { cleanupFactories, makeSyncRun } from '@/tests/helpers/factories';
 import { loadFixture } from '@/tests/helpers/fixtures';
@@ -57,13 +61,11 @@ const draftProject = {
   loaders: ['fabric'],
 } as ModrinthProject;
 
-const json =
-  (value: unknown) =>
-  (): Response =>
-    new Response(JSON.stringify(value), {
-      status: 200,
-      headers: { 'content-type': 'application/json; charset=utf-8' },
-    });
+const json = (value: unknown) => (): Response =>
+  new Response(JSON.stringify(value), {
+    status: 200,
+    headers: { 'content-type': 'application/json; charset=utf-8' },
+  });
 
 /** Default routes: the full list (18 importable + shader + draft), chameleon versions, others empty. */
 function routes(list: ModrinthProject[], overrides: FixtureMap = {}): FixtureMap {
@@ -287,7 +289,10 @@ describe('syncModrinth (04 §3.1)', () => {
     const { count: fileCount } = await service
       .from('project_files')
       .select('id', { count: 'exact', head: true })
-      .in('version_id', (versions ?? []).map((row) => row.id));
+      .in(
+        'version_id',
+        (versions ?? []).map((row) => row.id),
+      );
     expect(fileCount).toBe(5);
 
     // Versions absent upstream are kept (ADR-0002 #66): serve only the beta, run, all 3 remain.
@@ -443,7 +448,8 @@ describe('syncModrinth (04 §3.1)', () => {
       const runs = await syncRunCount();
       spyFetch(routes(fullList)); // fresh routes for the real run
       const summary = await run();
-      expect(summary.skipped).toBeUndefined();
+      // Ran for real: `skipped` is §3.1's numeric skipped-types count, not the SC-13 'running' skip.
+      expect(summary.skipped).not.toBe('running');
       expect(summary.ok).toBe(true);
       expect(await syncRunCount()).toBe(runs + 1);
     });

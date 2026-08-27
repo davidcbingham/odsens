@@ -13,13 +13,7 @@
 
 /** The closed `sync_runs.source` list (registry Jobs; sync_runs_source_check). */
 export type SyncSource =
-  | 'modrinth'
-  | 'curseforge'
-  | 'youtube'
-  | 'mentions'
-  | 'stats'
-  | 'notify'
-  | 'skins';
+  'modrinth' | 'curseforge' | 'youtube' | 'mentions' | 'stats' | 'notify' | 'skins';
 
 /** 04 §3 common signature — the options every `lib/jobs/*` job takes. */
 export type JobOptions = {
@@ -30,7 +24,12 @@ export type JobOptions = {
   full?: boolean;
 };
 
-/** 04 §3 verbatim. Per-job extras (`hidden`, `versions`, `errors[]`, …) ride on the index signature. */
+/**
+ * 04 §3 verbatim. Per-job extras (`hidden`, `versions`, `errors[]`, …) ride on the index signature.
+ * `skipped` carries two 04 meanings: the §3/SC-13 skip reason (`'running'`, `'not_configured'` —
+ * a string) and §3.1 step 5's count of skipped Modrinth types (05 T-ACT-50 — a number), so the
+ * declared type is the union of both.
+ */
 export type JobSummary = {
   ok: boolean;
   source: SyncSource;
@@ -38,6 +37,6 @@ export type JobSummary = {
   items: number;
   ms: number;
   error?: string;
-  skipped?: string;
+  skipped?: string | number;
   [k: string]: unknown;
 };
