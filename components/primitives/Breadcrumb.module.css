@@ -20,8 +20,10 @@
   gap: var(--space-8);
 }
 
+/* Link crumbs — DESIGN.md §1 "--indigo-lift: links"; pass-3 detail mockup (Core.dc.html). */
 .breadcrumb-link {
-  color: inherit;
+  color: var(--indigo-lift);
+  font-weight: 700;
   text-decoration: none;
 }
 

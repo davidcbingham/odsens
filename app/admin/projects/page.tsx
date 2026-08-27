@@ -4,7 +4,7 @@ import { ReorderableList, type ReorderableItem } from '@/components/admin/Reorde
 import { SyncStatus, type SyncStatusProps } from '@/components/admin/SyncStatus';
 import { Button } from '@/components/primitives/Button';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
-import { SectionTitle, sectionTitleId } from '@/components/primitives/SectionTitle';
+import { sectionTitleId } from '@/components/primitives/SectionTitle';
 import { StatusPill } from '@/components/primitives/StatusPill';
 import { Table, type TableProps } from '@/components/primitives/Table';
 import { Toggle } from '@/components/primitives/Toggle';
@@ -30,7 +30,8 @@ import styles from './page.module.css';
  * S1.2 RLS policies (01 INV-12/INV-15; ADR-0022) — admins see every status, moderators the
  * RLS-filtered subset, read-only (02 §1.3 auth rule).
  *
- * Sections (each labelled by its 03 §2.2 `SectionTitle` — Bungee gold arrives with S1.2):
+ * Sections (each labelled by an admin header — DESIGN.md §6 #9 "poster type goes": SG 700 chalk,
+ * not the public gold-Bungee `SectionTitle`; ids via `sectionTitleId` for `aria-labelledby`):
  * 1. ALL PROJECTS — `Table` of every project incl. hidden/draft (05 T-E2E-34); columns Project ·
  *    Type (`TypeBadge`) · Status (`StatusPill` draft/hidden/live, fills ADR-0002 #47) ·
  *    Downloads · Featured / Hidden `Toggle`s (first `Toggle` use — 02 §1.3) · Open. Empty copy
@@ -206,7 +207,17 @@ export default async function AdminProjectsPage() {
         className={styles['admin-projects-section']}
         aria-labelledby={sectionTitleId('ALL PROJECTS')}
       >
-        <SectionTitle count={{ value: projects.length, word: 'TOTAL' }}>ALL PROJECTS</SectionTitle>
+        <div className={styles['admin-projects-heading-row']}>
+          <h2 id={sectionTitleId('ALL PROJECTS')} className={styles['admin-projects-heading']}>
+            ALL PROJECTS
+            <span className="visually-hidden">{` ${projects.length} total`}</span>
+          </h2>
+          <span aria-hidden="true">
+            <PixelLabel informational tone="mute-dim">
+              {`${projects.length} TOTAL`}
+            </PixelLabel>
+          </span>
+        </div>
         <Table
           caption="All projects"
           columns={COLUMNS}
@@ -221,7 +232,9 @@ export default async function AdminProjectsPage() {
           className={styles['admin-projects-section']}
           aria-labelledby={sectionTitleId('FEATURED ORDER')}
         >
-          <SectionTitle>FEATURED ORDER</SectionTitle>
+          <h2 id={sectionTitleId('FEATURED ORDER')} className={styles['admin-projects-heading']}>
+            FEATURED ORDER
+          </h2>
           <p className={styles['admin-projects-order-help']}>
             First is the Home hero. The next four fill the Featured row.
           </p>
@@ -238,7 +251,9 @@ export default async function AdminProjectsPage() {
         className={styles['admin-projects-section']}
         aria-labelledby={sectionTitleId('SYNC')}
       >
-        <SectionTitle>SYNC</SectionTitle>
+        <h2 id={sectionTitleId('SYNC')} className={styles['admin-projects-heading']}>
+          SYNC
+        </h2>
         <SyncStatus sources={sources} canTrigger={canCurate} />
       </section>
     </div>

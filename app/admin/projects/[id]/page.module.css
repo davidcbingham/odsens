@@ -14,15 +14,22 @@
   gap: var(--space-8);
 }
 
-/* Page title in the §2 "Section title" role (Bungee, gold) — admin h1 (DESIGN.md §9 headings). */
+/* Page title — DESIGN.md §6 #9 "poster type goes": Space Grotesk 700 chalk, no Bungee/gold. */
 .admin-project-title {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-section-title);
-  font-weight: 400;
-  line-height: 1.1;
-  text-transform: uppercase;
-  color: var(--gold);
+  font-size: var(--text-subhead);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--chalk);
+}
+
+/* Admin section header — DESIGN.md §6 #9: Space Grotesk 700, chalk. */
+.admin-project-heading {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-body);
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .admin-project-meta {

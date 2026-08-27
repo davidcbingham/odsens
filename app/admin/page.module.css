@@ -26,3 +26,12 @@
   flex-direction: column;
   gap: var(--space-16);
 }
+
+/* Admin section header — DESIGN.md §6 #9 "poster type goes": Space Grotesk 700, chalk. */
+.admin-home-heading {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-body);
+  font-weight: 700;
+  line-height: 1.2;
+}

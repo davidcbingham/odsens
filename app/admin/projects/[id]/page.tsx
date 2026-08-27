@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { Button } from '@/components/primitives/Button';
 import { Field } from '@/components/primitives/Field';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
-import { SectionTitle, sectionTitleId } from '@/components/primitives/SectionTitle';
+import { sectionTitleId } from '@/components/primitives/SectionTitle';
 import { StatusPill } from '@/components/primitives/StatusPill';
 import { Toggle } from '@/components/primitives/Toggle';
 import { TypeBadge } from '@/components/primitives/TypeBadge';
@@ -183,7 +183,9 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         className={styles['admin-project-section']}
         aria-labelledby={sectionTitleId('OVERRIDES')}
       >
-        <SectionTitle>OVERRIDES</SectionTitle>
+        <h2 id={sectionTitleId('OVERRIDES')} className={styles['admin-project-heading']}>
+          OVERRIDES
+        </h2>
         <form action={saveOverrides} className={styles['admin-project-form']}>
           <Field
             label="Title override"
@@ -264,7 +266,9 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         className={styles['admin-project-section']}
         aria-labelledby={sectionTitleId('CURSEFORGE')}
       >
-        <SectionTitle>CURSEFORGE</SectionTitle>
+        <h2 id={sectionTitleId('CURSEFORGE')} className={styles['admin-project-heading']}>
+          CURSEFORGE
+        </h2>
         <form action={saveLink} className={styles['admin-project-form']}>
           <Field
             label="CurseForge id or URL"
@@ -289,7 +293,9 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         className={styles['admin-project-section']}
         aria-labelledby={sectionTitleId('EXTRA GALLERY')}
       >
-        <SectionTitle>EXTRA GALLERY</SectionTitle>
+        <h2 id={sectionTitleId('EXTRA GALLERY')} className={styles['admin-project-heading']}>
+          EXTRA GALLERY
+        </h2>
         {override && override.extraGallery.length > 0 ? (
           <ul className={styles['admin-project-gallery']}>
             {override.extraGallery.map((entry) => (

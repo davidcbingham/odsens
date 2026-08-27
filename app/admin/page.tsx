@@ -1,6 +1,6 @@
 import { SyncStatus, type SyncStatusProps } from '@/components/admin/SyncStatus';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
-import { SectionTitle, sectionTitleId } from '@/components/primitives/SectionTitle';
+import { sectionTitleId } from '@/components/primitives/SectionTitle';
 import { StatTile } from '@/components/primitives/StatTile';
 import { getViewer } from '@/lib/auth';
 import { countDraftProjects, listSyncStatus, PROJECT_SYNC_SOURCES } from '@/lib/data/admin';
@@ -67,7 +67,9 @@ export default async function AdminPage() {
       </div>
 
       <section className={styles['admin-home-section']} aria-labelledby={sectionTitleId('SYNC')}>
-        <SectionTitle>SYNC</SectionTitle>
+        <h2 id={sectionTitleId('SYNC')} className={styles['admin-home-heading']}>
+          SYNC
+        </h2>
         <SyncStatus sources={sources} canTrigger={canTrigger} />
       </section>
     </div>

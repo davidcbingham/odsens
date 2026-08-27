@@ -1,5 +1,5 @@
 /* /admin/projects — DESIGN.md §6 #9 (admin: Space Grotesk labels, clarity over flair), §11.1
-   Admin table; 03 §2.2 `SectionTitle` spacing. Tokens only (03 C-08). */
+   Admin table. Tokens only (03 C-08). */
 
 .admin-projects {
   display: flex;
@@ -17,6 +17,21 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
+}
+
+/* Admin section header — DESIGN.md §6 #9 "poster type goes": Space Grotesk 700, chalk. */
+.admin-projects-heading {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-body);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.admin-projects-heading-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-12);
 }
 
 /* Project cell: title over slug, scannable at a glance. */
