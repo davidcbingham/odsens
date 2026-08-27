@@ -1,0 +1,29 @@
+/* PlatformMark — DESIGN.md §4 third-party marks ("official logos at official colours inside a
+   neutral slab"); 03 §2.2 `PlatformMark`. Placeholder marks until the official assets land (Q44). */
+.platform-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/* Neutral slab — 26px default, 24 compact; geometry numbers per 03 §9 (no token member). */
+.platform-mark-slab {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  background: var(--plugin-wash);
+}
+
+.platform-mark-slab[data-size='26'] {
+  width: 26px;
+  height: 26px;
+}
+
+.platform-mark-slab[data-size='24'] {
+  width: 24px;
+  height: 24px;
+}
+
+.platform-mark-logo {
+  display: block;
+}

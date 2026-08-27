@@ -1,25 +1,46 @@
 import Link from 'next/link';
 import { FLAGS } from '@/lib/flags';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
+import { PlatformMark, type PlatformMarkPlatform } from '@/components/primitives/PlatformMark';
 import styles from './Footer.module.css';
 
 /**
  * Footer — DESIGN.md §5 Footer, §11.6, §12.2 footer line; 03 §2.1 `Footer`; 02 RP-13.
  * Server, no props: reads `FLAGS.commissions` directly for the "Custom orders" link (01 INV-74).
+ * "Find me" rows carry the Modrinth / CurseForge / YouTube marks from S1.2 (03 §2.1 Footer row:
+ * "via `PlatformMark` + word") — mark without `withWord` so the slab keeps `role="img"
+ * aria-label="<Platform>"` (03 §2.2 `PlatformMark` Tests cell) while the link text stays the
+ * word, the `GetItPanel` rows precedent.
  */
 export type FooterProps = Record<string, never>;
 
-type FooterLink = { label: string; href: string; external?: boolean };
+type FooterLink = {
+  label: string;
+  href: string;
+  external?: boolean;
+  /** "Find me" rows only — renders the `PlatformMark` slab before the word (S1.2, 03 §2.1). */
+  platform?: PlatformMarkPlatform;
+};
 
-// PlatformMark (Modrinth / CurseForge / YouTube marks) joins these rows in S1.2 (03 §2.2).
 const FIND_ME: FooterLink[] = [
-  { label: 'Modrinth', href: 'https://modrinth.com/user/OddSense/mods', external: true },
+  {
+    label: 'Modrinth',
+    href: 'https://modrinth.com/user/OddSense/mods',
+    external: true,
+    platform: 'modrinth',
+  },
   {
     label: 'CurseForge',
     href: 'https://www.curseforge.com/members/oddsense/projects',
     external: true,
+    platform: 'curseforge',
   },
-  { label: 'YouTube', href: 'https://www.youtube.com/@OdSens', external: true },
+  {
+    label: 'YouTube',
+    href: 'https://www.youtube.com/@OdSens',
+    external: true,
+    platform: 'youtube',
+  },
 ];
 
 const SITE: FooterLink[] = [
@@ -50,6 +71,7 @@ function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) 
                 target="_blank"
                 rel="noopener noreferrer"
               >
+                {link.platform ? <PlatformMark platform={link.platform} size={24} /> : null}
                 {link.label}
                 <span className="visually-hidden"> (opens in new tab)</span>
               </a>

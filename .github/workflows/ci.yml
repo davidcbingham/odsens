@@ -111,7 +111,14 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
       - run: pnpm install --frozen-lockfile
+      # ADR-0023: the build needs the local stack from S1.2 — `generateStaticParams` and the
+      # INV-38 ISR prerender read the DB at build time. `supabase start` applies migrations + seed.
+      - name: Start local Supabase
+        run: supabase start
       # CI-4: build with .env.test; keep the route table as build-output.txt (ADR-0002 A13 / 01 INV-10).
       - name: Build (env from .env.test)
         shell: bash
@@ -127,6 +134,9 @@ jobs:
           name: build-output.txt
           path: build-output.txt
           if-no-files-found: error
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup || true
 
   e2e:
     name: e2e

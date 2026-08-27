@@ -1,10 +1,11 @@
 /**
  * `/robots.txt` (02 RP-07; T-E2E-45a). Disallows the auth, API, onboarding, profile and admin
  * surfaces; those routes also send `X-Robots-Tag: noindex, nofollow` from `next.config.ts` (01 INV-76).
- * `sitemap:` is added in S1.2 together with `app/sitemap.ts` (T-E2E-45b, ADR-0002 A9) — no env read
- * here, so this file stays static.
+ * `sitemap:` points at `app/sitemap.ts` (S1.2 — T-E2E-45b, ADR-0002 A9); the absolute URL comes
+ * from `NEXT_PUBLIC_SITE_URL` (build-time read — the route output stays static).
  */
 import type { MetadataRoute } from 'next';
+import { env } from '@/lib/env';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -13,5 +14,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/admin', '/api', '/auth', '/welcome', '/profile'],
     },
+    sitemap: `${env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')}/sitemap.xml`,
   };
 }

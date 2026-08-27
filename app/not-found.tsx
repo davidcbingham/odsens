@@ -8,6 +8,9 @@ import styles from './not-found.module.css';
  */
 export const metadata: Metadata = {
   title: 'Not found',
+  // ADR-0025: the 404 shell can stream with HTTP 200 on ISR slug routes (Next #45801/#76474) —
+  // noindex keeps crawlers from indexing unknown-slug URLs whatever the status line says.
+  robots: { index: false },
 };
 
 export default function NotFound() {

@@ -1,15 +1,64 @@
-/* Home shell — DESIGN.md §2 Hero (64px / 36px phone), page gutters (§3). */
+/* Home — DESIGN.md §6.1 (hero band + FEATURED PROJECTS 4-up), §2 section title 26px gold,
+   §3 gutters/gap 20, §6 breakpoints (2-up tablet, 1-up phone); 02 §2.1. Empty state (02 §2.1
+   States): intro strip alone — reuses the S0 shell metrics. */
 .home {
+  max-width: var(--measure-page);
+  margin: 0 auto;
+}
+
+/* ---- Featured 4-up (02 §2.1 #2) ---- */
+.home-featured {
   display: flex;
   flex-direction: column;
+  gap: var(--space-20);
+  padding: var(--space-40);
+  border-bottom: 2px solid var(--line);
+}
+
+.home-featured-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
   gap: var(--space-16);
+}
+
+/* Section title: 24–26px Bungee, gold (DESIGN.md §2). */
+.home-featured-title {
+  font-family: var(--font-display);
+  font-size: var(--text-section-title);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.home-featured-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-20);
+}
+
+.home-featured-item {
+  display: flex;
+  min-width: 0;
+}
+
+.home-featured-item > * {
+  flex: 1;
+}
+
+/* ---- Empty state: intro strip alone (02 §2.1 States; transient, no design) ---- */
+.home-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
   max-width: var(--measure-page);
   min-height: 60dvh;
   margin: 0 auto;
   padding: var(--space-80) var(--space-40);
 }
 
-.home-title {
+.home-empty-title {
   font-family: var(--font-display);
   font-size: var(--text-hero);
   line-height: 0.9;
@@ -17,17 +66,44 @@
   color: var(--chalk);
 }
 
-.home-line {
-  max-width: var(--measure-body);
-  color: var(--mute);
+.home-intro {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.home-intro-line {
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+/* tablet 600–899 = 2-up (DESIGN.md §6 breakpoints) */
+@media (max-width: 899px) {
+  .home-featured-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 599px) {
-  .home {
+  .home-featured {
+    padding: var(--space-24) var(--space-20);
+  }
+
+  /* Pass-3 Home phone: section header Bungee 20px. */
+  .home-featured-title {
+    font-size: 20px;
+  }
+
+  .home-featured-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-empty {
     padding: var(--space-48) var(--space-24);
   }
 
-  .home-title {
+  .home-empty-title {
     font-size: var(--text-hero-phone);
   }
 }

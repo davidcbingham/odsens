@@ -1,0 +1,60 @@
+/* TypeBadge — DESIGN.md §5 Type badge (11px 700, .06em, 7×11px padding, radius 0), §4 glyphs; 03 §2.2. */
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 7px 11px;
+  border-radius: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-pixel-11);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Glyph box ~8px drawn (pass-3 badges): the square path insets more, so it gets a larger box. */
+.type-badge-glyph {
+  flex: none;
+  width: 11px;
+  height: 11px;
+}
+
+.type-badge-glyph[data-icon='square'] {
+  width: 14px;
+  height: 14px;
+}
+
+/* fills/text per type (DESIGN.md §5); glyph accents per the pass-3 prototypes */
+.type-badge[data-type='mod'] {
+  background: var(--indigo-wash);
+  color: var(--mod-badge-text);
+}
+
+.type-badge[data-type='mod'] .type-badge-glyph {
+  color: var(--indigo-lift);
+}
+
+.type-badge[data-type='datapack'] {
+  background: var(--emerald-wash);
+  color: var(--emerald-soft);
+}
+
+.type-badge[data-type='datapack'] .type-badge-glyph {
+  color: var(--emerald);
+}
+
+.type-badge[data-type='resourcepack'] {
+  background: var(--gold-wash);
+  color: var(--gold-bright);
+}
+
+.type-badge[data-type='resourcepack'] .type-badge-glyph {
+  color: var(--gold);
+}
+
+.type-badge[data-type='plugin'] {
+  background: var(--plugin-wash);
+  color: var(--chalk);
+}

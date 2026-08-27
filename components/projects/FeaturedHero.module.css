@@ -1,0 +1,153 @@
+/* FeaturedHero — DESIGN.md §6.1 Home hero (featured-project takeover), §3 hatch + 5–6px hero
+   depth, §1 "white text only" on indigo; 03 §2.3 `FeaturedHero`. Desktop: indigo slab left,
+   440px --ink rail right; ≤899px stacks; ≤599px = 36px title, full-width DOWNLOAD. */
+.featured-hero {
+  display: flex;
+  border-bottom: 2px solid var(--line);
+}
+
+.featured-hero-slab {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-20);
+  min-width: 0;
+  padding: var(--space-40);
+  background-color: var(--indigo);
+  background-image: var(--hatch); /* §3: hatch only on indigo/gold slabs */
+}
+
+.featured-hero-badges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.featured-hero-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-hero);
+  line-height: 0.9;
+  text-transform: uppercase;
+  color: var(--white);
+}
+
+.featured-hero-description {
+  margin: 0;
+  max-width: 38ch;
+  font-size: var(--text-subhead);
+  line-height: 1.5;
+  color: var(--white);
+}
+
+.featured-hero-cta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+/* The TrackedLink `<a>` — the visual button is the inner span (see FeaturedHero.tsx header). */
+.featured-hero-download {
+  display: inline-flex;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* §3: offset shadows are 5–6px on hero/large — lift the gold face's resting shadow above the
+   Button default 4px. Specificity beats Button.module.css's variant rules on purpose. */
+.featured-hero-slab .featured-hero-cta .featured-hero-download-face[data-variant='gold'] {
+  box-shadow: 5px 5px 0 var(--gold-deep);
+}
+
+.featured-hero-slab .featured-hero-cta .featured-hero-download-face[data-variant='gold']:hover {
+  box-shadow: 6px 6px 0 var(--gold-deep);
+}
+
+.featured-hero-slab .featured-hero-cta .featured-hero-download-face[data-variant='gold']:active {
+  box-shadow: none;
+}
+
+.featured-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.featured-hero-rail {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 440px;
+  background: var(--ink);
+  border-left: 2px solid var(--line);
+}
+
+.featured-hero-screenshot {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--slab-sunk);
+  border-bottom: 2px solid var(--line);
+}
+
+.featured-hero-screenshot-picture {
+  object-fit: cover;
+}
+
+.featured-hero-intro {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  padding: var(--space-20);
+}
+
+.featured-hero-intro-line {
+  margin: 0;
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--white);
+}
+
+@media (max-width: 899px) {
+  .featured-hero {
+    flex-direction: column;
+  }
+
+  .featured-hero-rail {
+    width: 100%;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 599px) {
+  .featured-hero-slab {
+    padding: var(--space-24) var(--space-20);
+  }
+
+  .featured-hero-title {
+    font-size: var(--text-hero-phone);
+    line-height: 0.92;
+  }
+
+  .featured-hero-description {
+    font-size: var(--text-body-phone);
+  }
+
+  .featured-hero-cta {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .featured-hero-download {
+    display: flex;
+  }
+
+  .featured-hero-download-face {
+    flex: 1;
+  }
+}

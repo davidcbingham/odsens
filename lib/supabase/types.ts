@@ -76,6 +76,317 @@ export type Database = {
         }
         Relationships: []
       }
+      project_files: {
+        Row: {
+          created_at: string
+          download_count: number
+          filename: string
+          id: string
+          primary: boolean
+          sha512: string | null
+          size_bytes: number
+          storage_path: string | null
+          updated_at: string
+          url: string | null
+          version_id: string
+        }
+        Insert: {
+          created_at?: string
+          download_count?: number
+          filename: string
+          id?: string
+          primary?: boolean
+          sha512?: string | null
+          size_bytes: number
+          storage_path?: string | null
+          updated_at?: string
+          url?: string | null
+          version_id: string
+        }
+        Update: {
+          created_at?: string
+          download_count?: number
+          filename?: string
+          id?: string
+          primary?: boolean
+          sha512?: string | null
+          size_bytes?: number
+          storage_path?: string | null
+          updated_at?: string
+          url?: string | null
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_files_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "project_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_links: {
+        Row: {
+          created_at: string
+          downloads: number
+          external_id: string
+          platform: Database["public"]["Enums"]["link_platform"]
+          project_id: string
+          synced_at: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          downloads?: number
+          external_id: string
+          platform: Database["public"]["Enums"]["link_platform"]
+          project_id: string
+          synced_at: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          downloads?: number
+          external_id?: string
+          platform?: Database["public"]["Enums"]["link_platform"]
+          project_id?: string
+          synced_at?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_overrides: {
+        Row: {
+          comments_enabled: boolean
+          created_at: string
+          description_override: string | null
+          extra_gallery: Json
+          featured: boolean
+          featured_order: number | null
+          hidden: boolean
+          notes_md: string | null
+          project_id: string
+          title_override: string | null
+          updated_at: string
+        }
+        Insert: {
+          comments_enabled?: boolean
+          created_at?: string
+          description_override?: string | null
+          extra_gallery?: Json
+          featured?: boolean
+          featured_order?: number | null
+          hidden?: boolean
+          notes_md?: string | null
+          project_id: string
+          title_override?: string | null
+          updated_at?: string
+        }
+        Update: {
+          comments_enabled?: boolean
+          created_at?: string
+          description_override?: string | null
+          extra_gallery?: Json
+          featured?: boolean
+          featured_order?: number | null
+          hidden?: boolean
+          notes_md?: string | null
+          project_id?: string
+          title_override?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_overrides_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_overrides_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_versions: {
+        Row: {
+          changelog_md: string | null
+          created_at: string
+          date_published: string
+          downloads: number
+          external_id: string | null
+          game_versions: string[]
+          id: string
+          loaders: string[]
+          name: string | null
+          project_id: string
+          updated_at: string
+          version_number: string
+          version_type: Database["public"]["Enums"]["version_type"]
+        }
+        Insert: {
+          changelog_md?: string | null
+          created_at?: string
+          date_published: string
+          downloads?: number
+          external_id?: string | null
+          game_versions: string[]
+          id?: string
+          loaders: string[]
+          name?: string | null
+          project_id: string
+          updated_at?: string
+          version_number: string
+          version_type: Database["public"]["Enums"]["version_type"]
+        }
+        Update: {
+          changelog_md?: string | null
+          created_at?: string
+          date_published?: string
+          downloads?: number
+          external_id?: string | null
+          game_versions?: string[]
+          id?: string
+          loaders?: string[]
+          name?: string | null
+          project_id?: string
+          updated_at?: string
+          version_number?: string
+          version_type?: Database["public"]["Enums"]["version_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          body_md: string
+          categories: string[]
+          created_at: string
+          description: string
+          discord_url: string | null
+          downloads_curseforge: number
+          downloads_direct: number
+          downloads_modrinth: number
+          external_id: string | null
+          external_updated_at: string | null
+          followers: number
+          gallery: Json
+          game_versions: string[]
+          icon_url: string | null
+          id: string
+          issues_url: string | null
+          license: string | null
+          loaders: string[]
+          project_type: Database["public"]["Enums"]["project_type"]
+          published_at: string | null
+          search: unknown
+          slug: string
+          source: Database["public"]["Enums"]["project_source"]
+          source_url: string | null
+          status: Database["public"]["Enums"]["project_status"]
+          synced_at: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body_md: string
+          categories: string[]
+          created_at?: string
+          description: string
+          discord_url?: string | null
+          downloads_curseforge?: number
+          downloads_direct?: number
+          downloads_modrinth?: number
+          external_id?: string | null
+          external_updated_at?: string | null
+          followers?: number
+          gallery?: Json
+          game_versions: string[]
+          icon_url?: string | null
+          id?: string
+          issues_url?: string | null
+          license?: string | null
+          loaders: string[]
+          project_type: Database["public"]["Enums"]["project_type"]
+          published_at?: string | null
+          search?: unknown
+          slug: string
+          source: Database["public"]["Enums"]["project_source"]
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          synced_at?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body_md?: string
+          categories?: string[]
+          created_at?: string
+          description?: string
+          discord_url?: string | null
+          downloads_curseforge?: number
+          downloads_direct?: number
+          downloads_modrinth?: number
+          external_id?: string | null
+          external_updated_at?: string | null
+          followers?: number
+          gallery?: Json
+          game_versions?: string[]
+          icon_url?: string | null
+          id?: string
+          issues_url?: string | null
+          license?: string | null
+          loaders?: string[]
+          project_type?: Database["public"]["Enums"]["project_type"]
+          published_at?: string | null
+          search?: unknown
+          slug?: string
+          source?: Database["public"]["Enums"]["project_source"]
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          synced_at?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       rate_limit_hits: {
         Row: {
           key: string
@@ -148,8 +459,76 @@ export type Database = {
           },
         ]
       }
+      sync_runs: {
+        Row: {
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          items: number | null
+          ok: boolean | null
+          source: string
+          started_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items?: number | null
+          ok?: boolean | null
+          source: string
+          started_at?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items?: number | null
+          ok?: boolean | null
+          source?: string
+          started_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
+      projects_public: {
+        Row: {
+          body_md: string | null
+          categories: string[] | null
+          created_at: string | null
+          description: string | null
+          discord_url: string | null
+          downloads_curseforge: number | null
+          downloads_direct: number | null
+          downloads_modrinth: number | null
+          downloads_total: number | null
+          external_id: string | null
+          external_updated_at: string | null
+          followers: number | null
+          gallery: Json | null
+          game_versions: string[] | null
+          icon_url: string | null
+          id: string | null
+          issues_url: string | null
+          license: string | null
+          loaders: string[] | null
+          project_type: Database["public"]["Enums"]["project_type"] | null
+          published_at: string | null
+          slug: string | null
+          source: Database["public"]["Enums"]["project_source"] | null
+          source_url: string | null
+          synced_at: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       public_profiles: {
         Row: {
           avatar_path: string | null
@@ -217,6 +596,7 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_moderator: { Args: never; Returns: boolean }
       is_reserved_handle: { Args: { p_handle: string }; Returns: boolean }
+      project_is_visible: { Args: { p_project_id: string }; Returns: boolean }
       purge_rate_limit_hits: { Args: { p_days: number }; Returns: number }
       rate_limit_ok: {
         Args: {
@@ -229,8 +609,13 @@ export type Database = {
       }
     }
     Enums: {
+      link_platform: "modrinth" | "curseforge"
       moderation_mode: "auto" | "hold_first_time"
+      project_source: "modrinth" | "odsens"
+      project_status: "draft" | "published" | "hidden"
+      project_type: "mod" | "datapack" | "resourcepack" | "plugin"
       user_role: "user" | "moderator" | "admin"
+      version_type: "release" | "beta" | "alpha"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -361,8 +746,13 @@ export const Constants = {
   },
   public: {
     Enums: {
+      link_platform: ["modrinth", "curseforge"],
       moderation_mode: ["auto", "hold_first_time"],
+      project_source: ["modrinth", "odsens"],
+      project_status: ["draft", "published", "hidden"],
+      project_type: ["mod", "datapack", "resourcepack", "plugin"],
       user_role: ["user", "moderator", "admin"],
+      version_type: ["release", "beta", "alpha"],
     },
   },
 } as const

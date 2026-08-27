@@ -1,0 +1,30 @@
+/* /projects — DESIGN.md §6.2 (page title PROJECTS Bungee 40 / 30 phone + count line), §3 page
+   gutters (24 phone / 40 desktop, max content 1280); 02 §2.2. Grid internals live in
+   ProjectGrid.module.css — this file is the page shell only. */
+.projects {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  max-width: var(--measure-page);
+  margin: 0 auto;
+  padding: var(--space-40);
+}
+
+.projects-title {
+  font-family: var(--font-display);
+  font-size: var(--text-page-title);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+
+@media (max-width: 599px) {
+  .projects {
+    gap: var(--space-16);
+    padding: var(--space-24) var(--space-20) var(--space-40);
+  }
+
+  .projects-title {
+    font-size: var(--text-page-title-phone);
+  }
+}

@@ -117,7 +117,12 @@
     padding: var(--space-16) var(--space-16) var(--space-64);
   }
 
-  .preview-group,
+  /* Phone: regular specimens stack one-up (a 2-up 171px cell overflows card-shaped fixtures —
+     T-E2E-48 scrollWidth guard); only the dense icon set keeps the packed columns. */
+  .preview-group {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .preview-group[data-dense] {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }

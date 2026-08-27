@@ -1,0 +1,102 @@
+/* Field — DESIGN.md §5 Admin field; 03 §2.2 `Field`. Well pattern per `HandleField` (S1.1):
+   the well carries the border + the gold focus ring so prefix + input read as one control. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.field-label {
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+.field-well {
+  display: flex;
+  align-items: stretch;
+  background: var(--slab-sunk);
+  border: 2px solid var(--line-soft);
+  border-radius: var(--radius-input);
+  transition: border-color var(--dur-fast) ease-out;
+}
+
+.field-well:focus-within {
+  border-color: var(--indigo-lift);
+}
+
+/* The input's own ring is suppressed below; the well carries the same 3px gold ring (03 C-25). */
+.field-well:has(.field-input:focus-visible) {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.field-well:has(.field-input[aria-invalid='true']) {
+  border-color: var(--danger-field);
+}
+
+.field-well:has(.field-input:disabled) {
+  opacity: 0.45;
+}
+
+.field-prefix {
+  display: flex;
+  align-items: center;
+  padding-left: var(--space-12);
+  font-size: var(--text-ui);
+  color: var(--mute);
+}
+
+.field-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--space-12);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-ui);
+  color: var(--chalk);
+}
+
+.field-input:focus-visible {
+  outline: none; /* replaced by the identical ring on .field-well:has(:focus-visible) above */
+}
+
+/* textarea variant keeps the same well; the box grows instead of the 44px single line */
+textarea.field-input {
+  resize: vertical;
+  min-height: 88px;
+  line-height: 1.5;
+}
+
+.field-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.field-helper {
+  margin: 0;
+  font-size: var(--text-label-sm);
+  line-height: 1.5;
+  color: var(--mute-dim);
+}
+
+.field-error {
+  margin: 0;
+  font-size: var(--text-label-sm);
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--danger);
+}
+
+.field-counter {
+  flex: none;
+  margin-inline-start: auto;
+  font-size: var(--text-label-sm);
+  color: var(--mute-dim);
+}

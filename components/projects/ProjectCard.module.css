@@ -1,0 +1,140 @@
+/* ProjectCard — DESIGN.md §5 "Project card" (hover: --slab-raised fill, --indigo-lift outline,
+   6px 6px 0 --indigo-deep, translate -3/-3); 03 §2.3 ProjectCard tokens. */
+.project-card {
+  display: flex;
+  flex-direction: column;
+  /* The card must shrink to its grid/flex cell: without this, the one-line nowrap description
+     floors the card at its full text width and the page scrolls sideways on phones (390). */
+  min-width: 0;
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+  transition:
+    background-color var(--dur-fast) ease-out,
+    outline-color var(--dur-fast) ease-out,
+    box-shadow var(--dur-fast) ease-out,
+    transform var(--dur-fast) ease-out;
+}
+
+/* Exclusive: gold outline (badge itself is S1.3); count turns gold with it (pass-3 mockup). */
+.project-card[data-exclusive] {
+  outline-color: var(--gold);
+}
+
+.project-card:hover,
+.project-card:focus-within {
+  background: var(--slab-raised);
+  outline-color: var(--indigo-lift);
+  box-shadow: 6px 6px 0 var(--indigo-deep);
+  transform: translate(-3px, -3px);
+}
+
+/* Whole card is one link (03: <article> containing one <a>). */
+.project-card-link {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  color: inherit;
+  text-decoration: none;
+}
+
+.project-card-body {
+  display: flex;
+  gap: var(--space-16);
+  padding: var(--space-20);
+}
+
+/* Icon 64 (56 tight, 52 phone) in an --ink well with its own 2px --line border (DESIGN.md §5). */
+.project-card-icon {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  background: var(--ink);
+  border: 2px solid var(--line);
+  overflow: hidden;
+}
+
+.project-card-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated; /* Minecraft imagery (03 C-29; DESIGN.md §4) */
+}
+
+.project-card[data-density='tight'] .project-card-icon {
+  width: 56px;
+  height: 56px;
+}
+
+.project-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.project-card-title {
+  font-family: var(--font-display);
+  font-size: var(--text-card-title);
+  font-weight: 400;
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+
+/* One-line description in --mute, clamped (DESIGN.md §5). */
+.project-card-desc {
+  font-size: var(--text-small);
+  line-height: 1.5;
+  color: var(--mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+/* Footer strip: --slab-foot, 2px top --line; TypeBadge left, count right. */
+.project-card-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-20);
+  background: var(--slab-foot);
+  border-top: 2px solid var(--line);
+}
+
+/* Silkscreen emerald count — ≥11px, it carries information (03 C-27). */
+.project-card-count {
+  font-family: var(--font-pixel);
+  font-size: var(--text-pixel-11);
+  letter-spacing: var(--track-pixel);
+  color: var(--emerald);
+  white-space: nowrap;
+}
+
+.project-card[data-exclusive] .project-card-count {
+  color: var(--gold);
+}
+
+@media (max-width: 599px) {
+  .project-card-icon,
+  .project-card[data-density='tight'] .project-card-icon {
+    width: 52px;
+    height: 52px;
+  }
+}
+
+/* Reduced motion: keep colour changes, drop the offset move (03 C-28) */
+@media (prefers-reduced-motion: reduce) {
+  .project-card:hover,
+  .project-card:focus-within {
+    transform: none;
+  }
+}

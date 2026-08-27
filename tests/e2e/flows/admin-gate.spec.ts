@@ -75,7 +75,8 @@ test.describe('admin gate', () => {
     await expect(page.locator('nav[aria-label="Admin"] a[href="/admin/comments"]')).toContainText(
       '0',
     );
-    await expect(page.getByText('Nothing to do yet.')).toBeVisible();
+    // The S1.2 dashboard renders inside the shell (02 §1.3 `/admin` row: SyncStatus + tiles).
+    await expect(page.getByRole('heading', { name: 'SYNC' })).toBeVisible();
     await expect(page.locator('header button[aria-haspopup="menu"]')).toContainText('seed_mod');
 
     const settings = await page.goto('/admin/settings');

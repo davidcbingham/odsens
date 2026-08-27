@@ -1,0 +1,55 @@
+/* SearchBox — 03 §2.2 SearchBox (input --slab-sunk, 2px --line-soft, radius 3px, Icon search);
+   02 §2.2: placement="page" on phone, nav on desktop. */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-box[data-placement='page'] {
+  width: 100%;
+}
+
+.search-box[data-placement='nav'] {
+  width: 180px;
+}
+
+/* page instance shows under 900px; the nav instance covers desktop (02 §2.2). */
+@media (min-width: 900px) {
+  .search-box[data-placement='page'] {
+    display: none;
+  }
+}
+
+@media (max-width: 899px) {
+  .search-box[data-placement='nav'] {
+    display: none;
+  }
+}
+
+.search-box-input {
+  width: 100%;
+  min-height: 44px;
+  background: var(--slab-sunk);
+  border: 2px solid var(--line-soft);
+  border-radius: var(--radius-input);
+  padding: var(--space-8) var(--space-12) var(--space-8) var(--space-40);
+  font-size: var(--text-input);
+  color: var(--chalk);
+  transition: border-color var(--dur-fast) ease-out;
+}
+
+.search-box-input::placeholder {
+  color: var(--mute-dim);
+}
+
+.search-box-input:focus {
+  border-color: var(--indigo-lift);
+}
+
+.search-box-icon {
+  position: absolute;
+  left: var(--space-12);
+  color: var(--mute-dim);
+  pointer-events: none;
+}

@@ -1,0 +1,25 @@
+/* TipPanel — DESIGN.md §6 #1/#3 gold tip panel, §3 (hatch only on indigo/gold slabs), §11.4;
+   03 §2.3 (tokens --gold --gold-ink --gold-deep --hatch). */
+.tip-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding: var(--space-18);
+  background-color: var(--gold);
+  background-image: var(--hatch);
+  color: var(--gold-ink);
+}
+
+.tip-panel-line {
+  margin: 0;
+  font-size: var(--text-small);
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--gold-ink);
+}
+
+.tip-panel[data-compact] {
+  padding: var(--space-16);
+  gap: var(--space-8);
+}

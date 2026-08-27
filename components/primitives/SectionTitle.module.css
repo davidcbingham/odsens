@@ -1,0 +1,20 @@
+/* SectionTitle — DESIGN.md §2 Section title (24–26px Bungee, gold); 03 §2.2 `SectionTitle`
+   (tokens: --gold --font-display). Count + action sit beside / right of the heading. */
+.section-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-12);
+}
+
+.section-title-heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-section-title);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.section-title-action {
+  margin-inline-start: auto;
+}

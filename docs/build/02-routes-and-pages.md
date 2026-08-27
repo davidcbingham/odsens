@@ -1,6 +1,6 @@
 # Routes & Pages
 Every URL odsens.com serves — its slice, rendering mode, auth requirement, data, DESIGN.md section, components, route files, metadata and nav placement — plus middleware, the auth flows, revalidation triggers and the deploy smoke list.
-Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0005 (2026-08-17) — amended by ADR-0007 (2026-08-20) — amended by ADR-0009, ADR-0011, ADR-0013 (2026-08-20; ADR-0009 addendum 2026-08-21) — amended by ADR-0017 (2026-08-21) — amended by ADR-0018 (2026-08-21) — amended by ADR-0019 (2026-08-21) — amended by ADR-0021 (2026-08-27)
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0005 (2026-08-17) — amended by ADR-0007 (2026-08-20) — amended by ADR-0009, ADR-0011, ADR-0013 (2026-08-20; ADR-0009 addendum 2026-08-21) — amended by ADR-0017 (2026-08-21) — amended by ADR-0018 (2026-08-21) — amended by ADR-0019 (2026-08-21) — amended by ADR-0021 (2026-08-27) — amended by ADR-0025 (2026-08-27, interim)
 
 Sources: `docs/build/_registry.md` (IDs verbatim), `docs/spec.md`, `docs/data-model.md`, `docs/notifications.md`, `DESIGN.md` v1.3, `docs/design-review.md`, `.claude/skills/{web-quality,vercel-ops,security-check}/SKILL.md`, `.claude/agents/*.md`, `supabase/config.toml`, `docs/build/06-decisions/ADR-0002-spec-reconciliation.md` (binding reconciliation — cited as "ADR-0002 <ref>"). Siblings: `00-build-plan.md` (slice acceptance), `01-architecture.md` (invariants, headers/CSP, env — **wins on cross-cutting invariants and data-access rules; 02 §1 wins for a route's rendering mode** — ADR-0002 precedence, 01 §0), `03-components.md` (component props/states), `04-server-contracts.md` (action/handler shapes, rate limits, cron table — **wins on handler contracts and revalidation tags**), `05-test-plan.md` (test IDs).
 
@@ -292,7 +292,7 @@ Performance note: M1 keeps anonymous traffic free of DB calls; the M4 query is o
 | SM-01 | GET `/` | 200; title `odsens`; `<h1>` present; nav has Projects·Videos·Skins·Art·Seen on; **no** "Commissions"; gold Support link → `/support`; `FloatingSupportButton` present | T-E2E-1, 44 |
 | SM-02 | GET `/projects` | 200; title `Projects — odsens`; ≥1 `ProjectCard` after first sync (0 → empty state text "NOTHING MATCHES") | T-E2E-2, 44 |
 | SM-03 | GET `/projects/<first slug from sitemap>` | 200; title `<title> — odsens`; contains "VERSIONS & FILES" and "COMMENTS" | T-E2E-3, 44 |
-| SM-04 | GET `/projects/does-not-exist-404` | 404; body contains "THAT PAGE DOESN'T EXIST" | T-E2E-14 |
+| SM-04 | GET `/projects/does-not-exist-404` | body contains "THAT PAGE DOESN'T EXIST" + `noindex`; status ∈ {200, 404} while Next #45801/#76474 stands (streamed shell commits 200 before `notFound()` under an RP-10 `loading.tsx` — ADR-0025 interim; static unmatched routes like `/nope-*` still 404) | T-E2E-14 |
 | SM-05 | GET `/videos` | 200; title `Videos — odsens`; no `<iframe>` in initial HTML (facades) | T-E2E-6, 44, 46 |
 | SM-06 | GET `/skins` | 200; title `Skins — odsens` | T-E2E-7, 44 |
 | SM-07 | GET `/art` | 200; title `Art — odsens` | T-E2E-9, 44 |

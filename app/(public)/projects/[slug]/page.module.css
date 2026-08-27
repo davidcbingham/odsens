@@ -1,0 +1,171 @@
+/* /projects/[slug] — DESIGN.md §6 #3 detail layout (pass-3 "Project detail" mockup: 1fr/380px
+   rail grid, 104px icon well, 46px Bungee title, gold Bungee section titles, sticky rail ≥900px);
+   §1 image wells on --slab-sunk, §3 panel outlines --line-soft; tokens only (01 INV-61, 03 C-08). */
+
+.detail {
+  max-width: var(--measure-page);
+  margin: 0 auto;
+  padding: var(--space-20) var(--space-24) var(--space-80);
+}
+
+@media (min-width: 900px) {
+  .detail {
+    padding-left: var(--space-40);
+    padding-right: var(--space-40);
+  }
+}
+
+.detail-breadcrumb {
+  margin-bottom: var(--space-20);
+}
+
+/* 1fr/380px rail grid (pass-3; ProjectDetailSkeleton mirrors it); phone stacks — DESIGN.md §6 #3. */
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-32);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .detail-grid {
+    grid-template-columns: minmax(0, 1fr) 380px;
+  }
+}
+
+.detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-28);
+  min-width: 0;
+}
+
+/* Header: 104px icon well + title column (DESIGN.md §6 #3; icon well per §1 --slab-sunk). */
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-20);
+}
+
+.detail-icon {
+  flex: none;
+  width: 104px;
+  height: 104px;
+  background: var(--slab-sunk);
+  border: 2px solid var(--line-soft);
+  overflow: hidden;
+}
+
+.detail-icon-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated; /* Minecraft imagery (DESIGN.md §4; 03 C-29) */
+}
+
+.detail-titles {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+/* Detail title: 46px Bungee, 26px phone (DESIGN.md §2 type scale). */
+.detail-title {
+  font-family: var(--font-display);
+  font-size: var(--text-detail-title);
+  font-weight: 400;
+  line-height: 0.95;
+  text-transform: uppercase;
+  color: var(--white);
+  overflow-wrap: anywhere;
+}
+
+.detail-description {
+  font-size: var(--text-subhead);
+  line-height: 1.5;
+  color: var(--mute);
+  max-width: 52ch;
+}
+
+/* Badge + chips + count row (02 §2.3 #1). */
+.detail-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.detail-count {
+  letter-spacing: 0.1em;
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* Section titles: 24–26px Bungee, gold (DESIGN.md §2; privacy page precedent). */
+.detail-h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-section-title);
+  font-weight: 400;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* Right rail: sticky under the nav ≥900px (DESIGN.md §6 #3 "Right rail (sticky ≥900px)");
+   plain stacked sections on phone. The whole rail sticks, so GetItPanel's own [data-sticky]
+   rule (scoped to its parent) stays inert here. */
+.detail-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .detail-rail {
+    position: sticky;
+    top: calc(var(--nav-h) + var(--space-16));
+  }
+}
+
+/* DETAILS panel slab — the page owns the slab + eyebrow around `DetailsList` (03 §2.3). */
+.detail-panel {
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+  padding: var(--space-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.detail-panel-eyebrow {
+  color: var(--mute-dim);
+}
+
+.detail-source-link {
+  color: var(--indigo-lift);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.detail-source-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 599px) {
+  .detail-title {
+    font-size: var(--text-detail-title-phone);
+  }
+
+  .detail-description {
+    font-size: var(--text-body-phone);
+  }
+}

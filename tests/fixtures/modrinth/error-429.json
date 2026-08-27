@@ -1,0 +1,4 @@
+{
+  "error": "ratelimit_error",
+  "description": "You are being rate-limited. Slow down."
+}

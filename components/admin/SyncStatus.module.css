@@ -1,0 +1,18 @@
+/* SyncStatus — 03 §2.10 (`Table` tokens + `--danger`); DESIGN.md §12.7 #56: composed from
+   Table + StatusPill + Button + SourceSwatch — no bespoke design. Only the inline error text
+   and the button/error stack are styled here; everything else is the composed primitives. */
+.sync-status {
+  display: block;
+}
+
+.sync-status-now {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+.sync-status-error {
+  color: var(--danger);
+  font-size: var(--text-label);
+}

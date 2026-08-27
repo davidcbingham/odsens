@@ -1,0 +1,56 @@
+/* Toggle — DESIGN.md §11.1 Square toggle; 03 §2.2 `Toggle`. 22px square, ON/OFF word always
+   beside it (Silkscreen 11px). Accents: emerald (notification switches) / indigo (mode,
+   selection) via data-variant. Focus ring moves from the hidden input to the square (03 C-25). */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.toggle-square {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--size-toggle);
+  height: var(--size-toggle);
+  background: var(--slab-sunk);
+  border: 2px solid var(--line-strong);
+  transition:
+    background-color var(--dur-fast) ease-out,
+    border-color var(--dur-fast) ease-out;
+}
+
+.toggle[data-variant='emerald'] .toggle-input:checked + .toggle-square {
+  background: var(--emerald);
+  border-color: var(--emerald);
+}
+
+.toggle[data-variant='indigo'] .toggle-input:checked + .toggle-square {
+  background: var(--indigo-lift);
+  border-color: var(--indigo-lift);
+}
+
+.toggle-check {
+  color: var(--ink);
+}
+
+.toggle-word {
+  font-family: var(--font-pixel);
+  font-size: var(--text-pixel-11);
+  letter-spacing: var(--track-pixel);
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+
+/* The hidden input's own ring is invisible (clipped); the square carries it (03 C-25). */
+.toggle:has(.toggle-input:focus-visible) .toggle-square {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.toggle:has(.toggle-input:disabled) {
+  opacity: 0.45;
+  cursor: default;
+}

@@ -15,7 +15,10 @@ export function screenshotPath(page: Page, name: string): string {
 
 /**
  * Full-page captures must show what a visitor would see after scrolling: walk the page so every
- * lazy `next/image` request fires, wait for fonts and for every image to finish, then return to the top.
+ * lazy `next/image` request fires, wait for fonts and for every image to finish, then return to
+ * the top. "Finished" = `complete` (loaded OR errored): seed media that cannot exist locally yet
+ * (the S1.3 `project-media` Storage icon — ADR-0002 C10) renders as a broken image by design in
+ * S1.2 e2e, and must not hang the capture.
  */
 async function settlePage(page: Page): Promise<void> {
   await page.evaluate(async () => {
@@ -29,7 +32,12 @@ async function settlePage(page: Page): Promise<void> {
     await document.fonts.ready;
   });
   await page.waitForFunction(
-    () => Array.from(document.images).every((img) => img.complete && img.naturalWidth > 0),
+    () =>
+      Array.from(document.images).every(
+        // Display-none images (e.g. the Gallery's desktop-only "+N" thumb at 390) never lazy-load
+        // — only images that actually render must have finished.
+        (img) => img.complete || img.getClientRects().length === 0,
+      ),
     undefined,
     { timeout: 10_000 },
   );

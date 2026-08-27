@@ -1,0 +1,145 @@
+/* Markdown — DESIGN.md §6 #3 ABOUT, §12.5 changelog, §2 type scale; 03 §2.2 `Markdown`. */
+
+/* Base (about/note): body 17px / 1.65, max 68ch, `--chalk` (16px on phone — DESIGN.md §2). */
+.markdown {
+  max-width: var(--measure-body);
+  font-size: var(--text-body);
+  line-height: 1.65;
+  color: var(--chalk);
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol,
+.markdown blockquote,
+.markdown table,
+.markdown pre {
+  margin: 0 0 var(--space-16);
+}
+
+/* about/note headings: h2/h3 Bungee `--gold` (page h1 stays unique — lib demotes h1). */
+.markdown h2,
+.markdown h3 {
+  margin: var(--space-24) 0 var(--space-12);
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.markdown h2 {
+  font-size: var(--text-card-title);
+}
+
+.markdown h3 {
+  font-size: var(--text-body);
+}
+
+/* h4–h6 (unspecified in 03; pass-3 prototype subheads): Space Grotesk 700 `--chalk`. */
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  margin: var(--space-24) 0 var(--space-12);
+  font-size: var(--text-body);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--chalk);
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: var(--space-24);
+}
+
+.markdown li {
+  margin-bottom: var(--space-4);
+}
+
+.markdown a {
+  color: var(--indigo-lift);
+  text-decoration: underline;
+}
+
+/* Inline code (03 look cell: "code inline"). */
+.markdown code {
+  padding: 0 var(--space-4);
+  background: var(--slab-raised);
+  font-size: var(--text-ui);
+}
+
+.markdown pre {
+  padding: var(--space-16);
+  background: var(--slab-sunk);
+  overflow-x: auto;
+}
+
+.markdown pre code {
+  padding: 0;
+  background: none;
+}
+
+/* Plain blockquote (`> NOTE:` becomes `NoteCallout` in lib/markdown.ts instead). */
+.markdown blockquote {
+  padding-left: var(--space-16);
+  border-left: 2px solid var(--line);
+  color: var(--mute);
+}
+
+/* Images: only INV-54 hosts reach here (lib/markdown.ts); intrinsic size is a placeholder
+   ratio — the module makes them responsive. */
+.markdown img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* GFM tables. */
+.markdown th,
+.markdown td {
+  padding: var(--space-8) var(--space-12);
+  border-bottom: 2px solid var(--table-divider);
+  text-align: start;
+}
+
+.markdown th {
+  color: var(--mute);
+}
+
+/* changelog: 15px, no h1/h2 (lib demotes them to h4); headings stay quiet subheads. */
+.markdown[data-variant='changelog'] {
+  font-size: var(--text-ui);
+}
+
+.markdown[data-variant='changelog'] h3,
+.markdown[data-variant='changelog'] h4,
+.markdown[data-variant='changelog'] h5,
+.markdown[data-variant='changelog'] h6 {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: var(--text-ui);
+  text-transform: none;
+  color: var(--chalk);
+}
+
+.markdown[data-variant='changelog'] code {
+  font-size: var(--text-small);
+}
+
+/* Phone: body 16px (DESIGN.md §2); changelog stays 15px via the data-variant rule above. */
+@media (max-width: 599px) {
+  .markdown {
+    font-size: var(--text-body-phone);
+  }
+
+  .markdown[data-variant='changelog'] {
+    font-size: var(--text-ui);
+  }
+}
