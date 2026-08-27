@@ -308,7 +308,8 @@ export async function deleteAccount(
   input: DeleteAccountInput,
 ): Promise<ActionResult<{ deleted: true }>> {
   return runAction('deleteAccount', deleteAccountInput, input, async (_data, ctx) => {
-    const { user, profile } = await requireOnboarded();
+    // ADR-0021: banned accounts may delete themselves — the one action exempt from SC-05's ban check.
+    const { user, profile } = await requireOnboarded({ allowBanned: true });
     await assertRateLimit('delete_account', user.id);
 
     // S1.4: `comments where author_id = me` → status 'deleted'; `comment_likes` / `comment_reports`

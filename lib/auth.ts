@@ -17,6 +17,10 @@
  * caller (04 §1.1). `requireUser()` therefore costs one own-row PK read under RLS (it used to read the
  * session only); `getUser()` / `getViewer()` / `getProfile()` are unchanged. The proxy (02 §3 M4b) keeps
  * a banned browser on `/banned`; this is the server-side half.
+ *
+ * The one exception (ADR-0021, David's S1.1 merge decision): `requireOnboarded({ allowBanned: true })`
+ * skips that ban check so `deleteAccount` — and only `deleteAccount` — works for a banned caller. SC-05
+ * reads "every user action except `deleteAccount`" since that ADR.
  */
 import 'server-only';
 import type { ActionErrorCode } from '@/lib/actions/result';
@@ -143,8 +147,12 @@ export async function requireUser(): Promise<{ id: string }> {
 /**
  * Throws `unauthenticated` for anon, `banned` for a banned account (ADR-0019 — before the handle is
  * looked at), then `onboarding_required` while the handle is still null.
+ *
+ * `{ allowBanned: true }` (ADR-0021) skips the ban check — the `deleteAccount` opt-in, so a banned
+ * account can still delete itself from `/banned`. The onboarding check stays: a banned account that
+ * never picked a handle has nothing of its own to delete, and its removal is an admin act (ADR-0019).
  */
-export async function requireOnboarded(): Promise<{
+export async function requireOnboarded(opts?: { allowBanned?: boolean }): Promise<{
   user: { id: string };
   profile: OnboardedProfile;
 }> {
@@ -152,7 +160,7 @@ export async function requireOnboarded(): Promise<{
   const user = await resolveUser(supabase);
   if (!user) throw new AuthError('unauthenticated', 'Sign in first.');
   const profile = await readOwnProfile(supabase, user.id, 'strict');
-  assertNotBanned(profile);
+  if (!opts?.allowBanned) assertNotBanned(profile);
   if (!profile || profile.handle === null) {
     throw new AuthError('onboarding_required', 'Pick a handle first.');
   }

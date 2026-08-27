@@ -6,6 +6,10 @@
  * like / report cascade and `revalidateTag('project:<slug>')` are S1.4 — those tables do not exist yet
  * (the action carries the `// S1.4` marker). Success rows run on factory users only (a deleted seed user
  * would break every later file).
+ *
+ * ADR-0021 (David's S1.1 merge decision): banned accounts may delete themselves — the banned cell is
+ * A (onboarded) via `requireOnboarded({allowBanned:true})`; a banned account with a NULL handle still
+ * gets `onboarding_required` (removal under a ban before onboarding stays an admin act, ADR-0019).
  */
 import { afterAll, describe, expect, it } from 'vitest';
 import { deleteAccount } from '@/lib/actions/accounts';
@@ -102,22 +106,34 @@ describe('T-ACT-65 deleteAccount', () => {
     expect(await readProfile(id)).toBeNull();
   });
 
-  it('T-ACT-65 banned (factory) → banned; auth user + profile survive, no hit recorded (ADR-0019)', async () => {
+  it('T-ACT-65 banned (factory, with avatar) → ok — banned accounts may delete themselves (ADR-0021)', async () => {
     const id = await makeUser({ banned: true });
-    const error = expectFail(
+    const avatarPath = `${id}/0123456789abcdef.webp`;
+    await uploadFixture('avatars', avatarPath, 'images/tiny.webp');
+    const { error: patchError } = await asRole('service')
+      .from('profiles')
+      .update({ avatar_path: avatarPath })
+      .eq('id', id);
+    expect(patchError).toBeNull();
+
+    const data = expectOk(await callActionAs(deleteAccount, { confirm: true }, { profileId: id }));
+    expect(data).toEqual({ deleted: true });
+
+    expect(await listObjects('avatars', id)).toEqual([]);
+    expect(await authUserExists(id)).toBe(false);
+    expect(await readProfile(id)).toBeNull();
+    expect(await countRateLimitHits('delete_account', id)).toBe(1);
+  });
+
+  it('T-ACT-65 banned with a NULL handle → onboarding_required; auth user survives, no hit (ADR-0021)', async () => {
+    const id = await makeUser({ banned: true, handle: null });
+    expectFail(
       await callActionAs(deleteAccount, { confirm: true }, { profileId: id }),
-      'banned',
+      'onboarding_required',
     );
-    expect(error.message).toBe('This account is banned.');
     expect(await authUserExists(id)).toBe(true);
     expect((await readProfile(id))?.is_banned).toBe(true);
     expect(await countRateLimitHits('delete_account', id)).toBe(0);
-  });
-
-  it('T-ACT-65 banned (seed) → banned, seed_banned still exists (ADR-0019)', async () => {
-    expectFail(await callAction(deleteAccount, { confirm: true }, { role: 'banned' }), 'banned');
-    expect(await authUserExists(SEED_ROLE_IDS.banned)).toBe(true);
-    expect((await readProfile(SEED_ROLE_IDS.banned))?.handle).toBe('seed_banned');
   });
 
   it('T-ACT-65 deleting only touches the caller (own only): other rows survive', async () => {
