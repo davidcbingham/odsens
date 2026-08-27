@@ -270,7 +270,7 @@ test('T-E2E-34 admin: feature/hide/reorder on the list, notes + CF id on [id] �
   await expect(page.getByRole('heading', { name: 'Metal Pipe Mace' })).toHaveCount(0);
   // The detail URL now renders the root 404 shell. Status stays 200: Next 16 streams the
   // notFound() under RP-10's loading.tsx files (see tests/e2e/smoke/shells.spec.ts header —
-  // frozen-spec contradiction, ADR pending); the body is the binding assertion.
+  // ADR-0025 interim tolerance, T-E2E-34 as amended); the body is the binding assertion.
   await expectAtUrl(page, '/projects/metal-pipe-mace', async () => {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       /that page doesn[’']t exist/i,
