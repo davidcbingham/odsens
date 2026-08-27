@@ -1,0 +1,79 @@
+/* ProjectDetailSkeleton — project-detail shell (DESIGN.md §6 #3 layout: 1fr/380px rail grid,
+   104px icon well, 16:9 gallery well + 16:10 thumb row) with skeleton blocks (§11.1). */
+.project-detail-skeleton-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-32);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .project-detail-skeleton-grid {
+    grid-template-columns: minmax(0, 1fr) 380px;
+  }
+}
+
+.project-detail-skeleton-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.project-detail-skeleton-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-20);
+}
+
+.project-detail-skeleton-icon {
+  width: 104px;
+  height: 104px;
+  flex: none;
+  background: var(--slab-sunk);
+  border: 2px solid var(--line);
+}
+
+.project-detail-skeleton-titles {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.project-detail-skeleton-thumbs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-8);
+}
+
+.project-detail-skeleton-thumb {
+  aspect-ratio: 16 / 10;
+  background: var(--skeleton-media);
+}
+
+@media (max-width: 599px) {
+  .project-detail-skeleton-thumbs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .project-detail-skeleton-thumb:nth-child(5) {
+    display: none;
+  }
+}
+
+.project-detail-skeleton-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.project-detail-skeleton-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-20);
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+}

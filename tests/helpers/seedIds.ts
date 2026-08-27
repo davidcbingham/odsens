@@ -2,12 +2,21 @@
  * tests/helpers/seedIds.ts — the fixed seed UUIDs from docs/build/05-test-plan.md §3, mirrored so tests
  * reference rows by constant. Scheme: `00000000-0000-4000-8000-00000000<gg><nn>` (the last block is
  * 12 hex chars — 8 zeros + group + index — so it is a valid v4-shaped uuid); groups
- * `00`=users, `01`=projects, `02`=comments, `03`=mentions, `04`=versions, `05`=files, `06`=skins, `07`=art.
+ * `00`=users, `01`=projects, `02`=comments, `03`=mentions, `04`=versions, `05`=files, `06`=skins,
+ * `07`=art, `08`=sync_runs (SEED-12 extends the scheme — see the seed.sql SEED-12 header).
  * The rows themselves arrive with their slices (SEED-3 users in S1.1, SEED-4.. later); the constants
  * are stable from S0.
  */
 export type SeedGroup =
-  'users' | 'projects' | 'comments' | 'mentions' | 'versions' | 'files' | 'skins' | 'art';
+  | 'users'
+  | 'projects'
+  | 'comments'
+  | 'mentions'
+  | 'versions'
+  | 'files'
+  | 'skins'
+  | 'art'
+  | 'sync_runs';
 
 export const SEED_GROUP_CODE: Readonly<Record<SeedGroup, string>> = {
   users: '00',
@@ -18,6 +27,7 @@ export const SEED_GROUP_CODE: Readonly<Record<SeedGroup, string>> = {
   files: '05',
   skins: '06',
   art: '07',
+  sync_runs: '08',
 };
 
 const SEED_UUID_PREFIX = '00000000-0000-4000-8000-00000000';
@@ -85,4 +95,11 @@ export const SEED_SKINS = {
 export const SEED_ART = {
   avatar: seedId('art', 1), // kind avatar, slug seed-art-avatar
   thumb: seedId('art', 2), // kind thumbnail, slug seed-art-thumb
+} as const;
+
+/** SEED-12 (S1.2 part) — sync_runs: one ok=true run per source, finished 30 min ago (04 J-F edge). */
+export const SEED_SYNC_RUNS = {
+  modrinth: seedId('sync_runs', 1),
+  curseforge: seedId('sync_runs', 2),
+  youtube: seedId('sync_runs', 3),
 } as const;

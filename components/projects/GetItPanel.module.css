@@ -1,0 +1,132 @@
+/* GetItPanel — DESIGN.md §6 #3 GET IT rail; pass-3 detail mockup (slab panel, primary DOWNLOAD
+   with 5px offset shadow — §3 "5–6px on hero/large" — source rows on ink, caption line);
+   03 §2.3 (tokens --slab --line-soft --indigo --emerald --mute --font-pixel). */
+.get-it-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-20);
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+}
+
+/* Desktop rail: sticky under the nav (03 C-14 data-sticky; DESIGN.md §6 #3 — phone: a plain
+   section, so the flag only bites ≥900px). */
+@media (min-width: 900px) {
+  .get-it-panel[data-sticky] {
+    position: sticky;
+    top: calc(var(--nav-h) + var(--space-16));
+  }
+}
+
+.get-it-eyebrow {
+  color: var(--mute-dim);
+}
+
+/* Big download — primary-button look on a TrackedLink <a> (see the component header). */
+.get-it-download {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-16);
+  background: var(--indigo);
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: var(--text-ui);
+  text-transform: uppercase;
+  text-decoration: none;
+  line-height: 1;
+  box-shadow: 5px 5px 0 var(--indigo-deep);
+  transition:
+    transform var(--dur-fast) ease-out,
+    box-shadow var(--dur-fast) ease-out,
+    background-color var(--dur-fast) ease-out;
+}
+
+.get-it-download:hover {
+  background: var(--indigo-hover);
+  box-shadow: 6px 6px 0 var(--indigo-deep);
+  transform: translate(-2px, -2px);
+}
+
+.get-it-download:active {
+  background: var(--indigo-deep);
+  box-shadow: none;
+  transform: translate(2px, 2px);
+}
+
+.get-it-meta {
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-label);
+  color: var(--mute);
+  overflow-wrap: anywhere;
+}
+
+.get-it-rows {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-12) 0 0;
+  border-top: 2px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.get-it-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: 44px;
+  padding: var(--space-12);
+  background: var(--ink);
+  outline: 2px solid var(--line-strong);
+  outline-offset: -2px;
+  color: var(--chalk);
+  text-decoration: none;
+  transition: outline-color var(--dur-fast) ease-out;
+}
+
+.get-it-row:hover {
+  outline-color: var(--indigo-lift);
+}
+
+.get-it-row-word {
+  font-size: var(--text-ui);
+  font-weight: 700;
+}
+
+.get-it-row-count {
+  margin-left: auto;
+}
+
+.get-it-row-glyph {
+  color: var(--mute);
+}
+
+/* Direct downloads (S1.3+): not a link — the count we serve ourselves. */
+.get-it-direct {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: 44px;
+  padding: var(--space-12);
+  background: var(--ink);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+}
+
+.get-it-combined {
+  margin: 0;
+  font-size: var(--text-label);
+  color: var(--mute);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .get-it-download:hover,
+  .get-it-download:active {
+    transform: none;
+  }
+}

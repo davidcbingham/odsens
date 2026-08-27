@@ -1,0 +1,82 @@
+/* Gallery — DESIGN.md §5 Gallery (big 16:9 well on --slab-sunk with 2px --line; 16:10 thumb row,
+   5 desktop / 4 phone, last +N; selected thumb --indigo-lift outline); 03 §2.3 (tokens
+   --slab-sunk --line --indigo-lift). */
+.gallery {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.gallery-well {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  border: 0;
+  background: var(--slab-sunk);
+  outline: 2px solid var(--line);
+  outline-offset: -2px;
+  cursor: zoom-in;
+}
+
+/* The gold :focus-visible ring from globals.css replaces the outline border while focused. */
+
+.gallery-img {
+  object-fit: cover;
+}
+
+.gallery-thumbs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-8);
+}
+
+.gallery-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  padding: 0;
+  border: 0;
+  background: var(--slab-sunk);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+  cursor: pointer;
+  transition: outline-color var(--dur-fast) ease-out;
+}
+
+.gallery-thumb:hover {
+  outline-color: var(--indigo-lift);
+}
+
+.gallery-thumb[aria-current='true'] {
+  outline-color: var(--indigo-lift);
+}
+
+.gallery-more {
+  display: grid;
+  place-items: center;
+  font-family: var(--font-body);
+  font-size: var(--text-label-sm);
+  font-weight: 500;
+  color: var(--mute);
+}
+
+.gallery-phone-only {
+  display: none;
+}
+
+@media (max-width: 599px) {
+  .gallery-thumbs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .gallery-desktop-only {
+    display: none;
+  }
+
+  .gallery-phone-only {
+    display: grid;
+  }
+}

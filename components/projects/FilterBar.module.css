@@ -1,0 +1,114 @@
+/* FilterBar — DESIGN.md §5 "Filter bar" (slab strip 2px --line, Bungee 12px buttons with counts,
+   active = --indigo fill; selects right, 3px radius; phone: type row scrolls, selects stack);
+   03 §2.3 FilterBar tokens. */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  background: var(--slab);
+  outline: 2px solid var(--line);
+  outline-offset: -2px;
+}
+
+.filter-bar-types {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.filter-bar-type {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 44px;
+  padding: var(--space-8) var(--space-12);
+  font-family: var(--font-display);
+  font-size: var(--text-label-sm);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--chalk);
+  text-decoration: none;
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+  transition:
+    background-color var(--dur-fast) ease-out,
+    outline-color var(--dur-fast) ease-out,
+    color var(--dur-fast) ease-out;
+}
+
+.filter-bar-type:hover {
+  outline-color: var(--indigo-lift);
+}
+
+/* Active type = indigo fill, white text (03 C-13: aria-current="true" on the active link). */
+.filter-bar-type[aria-current='true'] {
+  background: var(--indigo);
+  outline-color: var(--indigo);
+  color: var(--white);
+}
+
+.filter-bar-count {
+  color: var(--mute);
+}
+
+.filter-bar-type[aria-current='true'] .filter-bar-count {
+  color: inherit;
+}
+
+/* Type glyphs (DESIGN.md §4): mod square indigo-lift · datapack diamond emerald ·
+   resource pack triangle gold · plugin circle chalk (pass-3 Projects artboard). */
+.filter-bar-glyph {
+  display: inline-flex;
+  flex: none;
+}
+
+.filter-bar-glyph svg {
+  width: 10px;
+  height: 10px;
+}
+
+.filter-bar-glyph[data-type='mod'] {
+  color: var(--indigo-lift);
+}
+
+.filter-bar-glyph[data-type='datapack'] {
+  color: var(--emerald);
+}
+
+.filter-bar-glyph[data-type='resourcepack'] {
+  color: var(--gold);
+}
+
+.filter-bar-glyph[data-type='plugin'] {
+  color: var(--chalk);
+}
+
+.filter-bar-selects {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/* Phone: type row scrolls horizontally (scroll-snap), selects stack (DESIGN.md §5). */
+@media (max-width: 599px) {
+  .filter-bar-types {
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    max-width: 100%;
+  }
+
+  .filter-bar-type {
+    scroll-snap-align: start;
+  }
+
+  .filter-bar-selects {
+    margin-left: 0;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

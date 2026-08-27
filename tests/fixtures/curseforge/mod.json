@@ -1,0 +1,25 @@
+{
+  "data": {
+    "id": 900001,
+    "gameId": 432,
+    "name": "Pixel Chameleon",
+    "slug": "pixel-chameleon",
+    "links": {
+      "websiteUrl": "https://www.curseforge.com/minecraft/mc-mods/pixel-chameleon",
+      "wikiUrl": null,
+      "issuesUrl": null,
+      "sourceUrl": null
+    },
+    "summary": "A tiny chameleon that blends into whatever block it sits on.",
+    "status": 4,
+    "downloadCount": 120,
+    "isFeatured": false,
+    "primaryCategoryId": 411,
+    "classId": 6,
+    "dateCreated": "2025-04-01T12:00:00Z",
+    "dateModified": "2026-07-15T12:00:00Z",
+    "dateReleased": "2026-07-15T12:00:00Z",
+    "allowModDistribution": true,
+    "isAvailable": true
+  }
+}

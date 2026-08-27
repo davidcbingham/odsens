@@ -1,0 +1,54 @@
+/* ChangelogExpander — DESIGN.md §12.5 ("Changes ▾" ghost link in the file cell; markdown inline
+   under the row on a sunk slab); pass-3 "Support and Leftovers" changelog artboard; 03 §2.3
+   (tokens --slab-sunk --indigo-lift). Summary mirrors the ghost Button look at 13px (mockup). */
+.changelog-expander-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 var(--space-8);
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-label);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--indigo-lift);
+}
+
+/* Ghost hover/active per DESIGN.md §5 ghost button (inset underline; active gold). */
+.changelog-expander-summary:hover {
+  box-shadow: inset 0 -2px 0 currentColor;
+}
+
+.changelog-expander-summary:active {
+  color: var(--gold);
+}
+
+.changelog-expander-glyph {
+  display: inline-block;
+  transition: transform var(--dur-fast) ease-out;
+}
+
+.changelog-expander-summary[aria-expanded='true'] .changelog-expander-glyph {
+  transform: rotate(180deg);
+}
+
+/* Expanded row: markdown on the sunk slab (§12.5), same divider as the file rows. */
+.changelog-expander-cell {
+  padding: var(--space-16) var(--space-18);
+  background: var(--slab-sunk);
+  border-bottom: 2px solid var(--table-divider);
+}
+
+.changelog-expander-cell > * + * {
+  margin-top: var(--space-8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .changelog-expander-glyph {
+    transition: none;
+  }
+}

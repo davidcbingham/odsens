@@ -1,0 +1,71 @@
+/* ReorderableList — 03 §2.10 `ReorderableList`; DESIGN.md §12.2 ⠿ drag-reorder, §3 flat offset
+   depth. Rows on --slab with 2px --line-soft; grabbed row lifts (--indigo-lift outline,
+   4px 4px 0 --ink-deep) behind a 2px --indigo-lift drop-target line. No slide animations, so
+   reduced-motion needs no override (03 §2.10: "Reduced-motion: no slide"). */
+.reorderable-list {
+  min-width: 0;
+}
+
+.reorderable-list-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reorderable-list-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: 44px;
+  padding: var(--space-8) var(--space-12);
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+}
+
+.reorderable-list-row[data-state='grabbed'] {
+  outline-color: var(--indigo-lift);
+  box-shadow: 4px 4px 0 var(--ink-deep);
+}
+
+/* Drop-target line at the lifted row's current slot. */
+.reorderable-list-row[data-state='grabbed']::before {
+  content: '';
+  position: absolute;
+  top: calc(-1 * var(--space-8));
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: var(--indigo-lift);
+}
+
+.reorderable-list-handle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mute);
+  cursor: grab;
+  touch-action: none; /* pointer drag owns vertical movement on touch */
+}
+
+.reorderable-list-row[data-state='grabbed'] .reorderable-list-handle {
+  cursor: grabbing;
+}
+
+.reorderable-list-handle:disabled {
+  color: var(--disabled-text);
+  cursor: default;
+}
+
+.reorderable-list-node {
+  flex: 1;
+  min-width: 0;
+}

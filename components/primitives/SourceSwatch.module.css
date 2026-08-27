@@ -1,0 +1,26 @@
+/* SourceSwatch — DESIGN.md §11.1 Flat bar chart ("always with a swatch AND the word";
+   modrinth --emerald · curseforge --orange · direct --indigo-lift); 03 §2.2 `SourceSwatch`. */
+.source-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/* 12px square, radius 0; decorative (aria-hidden) — the word carries the meaning */
+.source-swatch-mark {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.source-swatch[data-source='modrinth'] .source-swatch-mark {
+  background: var(--emerald);
+}
+
+.source-swatch[data-source='curseforge'] .source-swatch-mark {
+  background: var(--orange);
+}
+
+.source-swatch[data-source='direct'] .source-swatch-mark {
+  background: var(--indigo-lift);
+}

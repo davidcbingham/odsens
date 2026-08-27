@@ -1,0 +1,64 @@
+/* Select — DESIGN.md §5 Filter bar selects + §5 Admin field; 03 §2.2 `Select`. Native select,
+   appearance stripped, custom ▾ glyph (aria-hidden) drawn by `Icon`. */
+.select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.select-label {
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+/* compact = filter-bar arrangement: label inline, --mute (DESIGN.md §5 Filter bar). */
+.select[data-compact] {
+  flex-direction: row;
+  align-items: center;
+}
+
+.select[data-compact] .select-label {
+  font-size: var(--text-small);
+  font-weight: 400;
+  color: var(--mute);
+}
+
+.select-well {
+  position: relative;
+  display: inline-flex;
+}
+
+.select-input {
+  min-height: 44px;
+  padding: var(--space-8) var(--space-32) var(--space-8) var(--space-12);
+  appearance: none;
+  background: var(--slab-sunk);
+  border: 2px solid var(--line-soft);
+  border-radius: var(--radius-input);
+  font-family: var(--font-body);
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--chalk);
+  transition: border-color var(--dur-fast) ease-out;
+  cursor: pointer;
+}
+
+.select-input:focus-visible {
+  border-color: var(--indigo-lift);
+}
+
+.select-input:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.select-glyph {
+  position: absolute;
+  top: 50%;
+  right: var(--space-8);
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--mute);
+}

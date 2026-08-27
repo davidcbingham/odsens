@@ -1,0 +1,12 @@
+/* ActiveFilterChips — DESIGN.md §5 Filter bar (removable chips + Clear ghost); 03 §2.3 (as Chip). */
+.active-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.active-filter-chips-item {
+  display: inline-flex;
+  align-items: center;
+}

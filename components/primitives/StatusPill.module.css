@@ -1,0 +1,53 @@
+/* StatusPill — DESIGN.md §5 Admin table worded pill (Silkscreen 11px, radius 0) + §12.7 #47
+   fill map (ADR-0002 #47, O-4); 03 §2.2 `StatusPill`. */
+.status-pill {
+  display: inline-block;
+  padding: var(--space-4) var(--space-8);
+  border-radius: 0;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: var(--text-pixel-11);
+  line-height: 1.2;
+  letter-spacing: var(--track-pixel);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* held · not-set · new · featured · first-comment · stale — gold wash */
+.status-pill[data-status='held'],
+.status-pill[data-status='not-set'],
+.status-pill[data-status='new'],
+.status-pill[data-status='featured'],
+.status-pill[data-status='first-comment'],
+.status-pill[data-status='stale'] {
+  background: var(--gold-wash);
+  color: var(--gold-bright);
+}
+
+/* live · published — emerald wash (LIVE) */
+.status-pill[data-status='live'],
+.status-pill[data-status='published'] {
+  background: var(--emerald-wash);
+  color: var(--emerald-soft);
+}
+
+/* replied · suggested — indigo wash */
+.status-pill[data-status='replied'],
+.status-pill[data-status='suggested'] {
+  background: var(--indigo-wash);
+  color: var(--mod-badge-text);
+}
+
+/* closed · hidden · draft — neutral */
+.status-pill[data-status='closed'],
+.status-pill[data-status='hidden'],
+.status-pill[data-status='draft'] {
+  background: var(--plugin-wash);
+  color: var(--chalk);
+}
+
+/* failed — alert fill behind white micro-text (DESIGN.md §1: passes 4.5:1) */
+.status-pill[data-status='failed'] {
+  background: var(--alert);
+  color: var(--white);
+}

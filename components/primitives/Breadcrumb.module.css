@@ -1,0 +1,35 @@
+/* Breadcrumb — DESIGN.md §6 #3 (project detail breadcrumb); 03 §2.2 `Breadcrumb`. */
+.breadcrumb {
+  font-size: var(--text-small);
+  color: var(--mute);
+}
+
+.breadcrumb-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.breadcrumb-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.breadcrumb-link:hover {
+  text-decoration: underline;
+}
+
+/* Last item — aria-current is the styling hook (03 C-13): `--chalk`. */
+.breadcrumb [aria-current='page'] {
+  color: var(--chalk);
+}

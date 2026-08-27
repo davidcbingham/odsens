@@ -1,0 +1,79 @@
+{
+  "data": [
+    {
+      "id": 900008,
+      "gameId": 432,
+      "name": "Seed Mod Addon",
+      "slug": "seed-mod-addon",
+      "links": {
+        "websiteUrl": "https://www.curseforge.com/minecraft/mc-mods/seed-mod-addon",
+        "wikiUrl": null,
+        "issuesUrl": null,
+        "sourceUrl": null
+      },
+      "summary": "An addon for the seed mod.",
+      "status": 4,
+      "downloadCount": 12,
+      "isFeatured": false,
+      "primaryCategoryId": 411,
+      "classId": 6,
+      "dateCreated": "2025-05-01T12:00:00Z",
+      "dateModified": "2026-01-10T12:00:00Z",
+      "dateReleased": "2026-01-10T12:00:00Z",
+      "allowModDistribution": true,
+      "isAvailable": true
+    },
+    {
+      "id": 900009,
+      "gameId": 432,
+      "name": "Seed Mod",
+      "slug": "seed-mod",
+      "links": {
+        "websiteUrl": "https://www.curseforge.com/minecraft/mc-mods/seed-mod",
+        "wikiUrl": null,
+        "issuesUrl": null,
+        "sourceUrl": null
+      },
+      "summary": "Plants a marker at the world seed origin.",
+      "status": 4,
+      "downloadCount": 77,
+      "isFeatured": false,
+      "primaryCategoryId": 411,
+      "classId": 6,
+      "dateCreated": "2025-02-01T12:00:00Z",
+      "dateModified": "2026-03-05T12:00:00Z",
+      "dateReleased": "2026-03-05T12:00:00Z",
+      "allowModDistribution": true,
+      "isAvailable": true
+    },
+    {
+      "id": 900001,
+      "gameId": 432,
+      "name": "Pixel Chameleon",
+      "slug": "pixel-chameleon",
+      "links": {
+        "websiteUrl": "https://www.curseforge.com/minecraft/mc-mods/pixel-chameleon",
+        "wikiUrl": null,
+        "issuesUrl": null,
+        "sourceUrl": null
+      },
+      "summary": "A tiny chameleon that blends into whatever block it sits on.",
+      "status": 4,
+      "downloadCount": 120,
+      "isFeatured": false,
+      "primaryCategoryId": 411,
+      "classId": 6,
+      "dateCreated": "2025-04-01T12:00:00Z",
+      "dateModified": "2026-07-15T12:00:00Z",
+      "dateReleased": "2026-07-15T12:00:00Z",
+      "allowModDistribution": true,
+      "isAvailable": true
+    }
+  ],
+  "pagination": {
+    "index": 0,
+    "pageSize": 5,
+    "resultCount": 3,
+    "totalCount": 3
+  }
+}

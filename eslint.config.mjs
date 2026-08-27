@@ -154,6 +154,40 @@ const config = [
     rules: { 'no-console': 'off' },
   },
   {
+    // INV-65/INV-86: lib/markdown.ts is the one file allowed to import
+    // react-markdown/remark-gfm/rehype-sanitize (the "allowed only in" half of the fence);
+    // the Supabase fences and the rehype-raw ban still apply here.
+    files: ['lib/markdown.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/lib/supabase/admin',
+              message:
+                'Service-role client only in lib/actions/**, lib/jobs/**, lib/notify/**, lib/files.ts, lib/rate-limit.ts, app/api/** (01 INV-14/INV-84).',
+            },
+            {
+              name: '@supabase/supabase-js',
+              message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).',
+            },
+            {
+              name: '@supabase/ssr',
+              message: 'Import Supabase only inside lib/supabase/*.ts (01 INV-13/INV-85).',
+            },
+            {
+              name: '@/lib/supabase/client',
+              message:
+                'Browser client only in ViewerProvider, CommentThread, GoogleSignInButton (01 INV-85).',
+            },
+            { name: 'rehype-raw', message: 'rehype-raw is banned everywhere (01 INV-65/INV-86).' },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // INV-13/INV-85: only lib/supabase/*.ts imports the Supabase packages
     files: ['lib/supabase/*.ts'],
     rules: {

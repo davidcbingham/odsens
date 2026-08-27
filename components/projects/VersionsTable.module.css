@@ -1,0 +1,128 @@
+/* VersionsTable — DESIGN.md §6 #3 VERSIONS & FILES + §12.5; pass-3 detail mockup. Styling
+   tokens identical to the Table primitive (03): 2px --line-soft outline, header on --slab-sunk
+   with 2px --line bottom, rows ≥44px on 2px --table-divider; + --indigo-lift --slab-sunk. */
+.versions-table-wrap {
+  overflow-x: auto; /* phone: horizontal scroll wrapper (03) */
+}
+
+.versions-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  text-align: start;
+}
+
+.versions-table th {
+  padding: var(--space-12) var(--space-16);
+  background: var(--slab-sunk);
+  border-bottom: 2px solid var(--line);
+  font-weight: 700;
+  color: var(--mute);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.versions-table td {
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 2px solid var(--table-divider);
+  vertical-align: middle;
+}
+
+.versions-file {
+  color: var(--chalk);
+}
+
+.versions-version {
+  font-weight: 700;
+  margin-right: var(--space-8);
+}
+
+.versions-extra-file {
+  color: var(--mute);
+  overflow-wrap: anywhere;
+}
+
+.versions-minecraft,
+.versions-loader {
+  color: var(--chalk);
+}
+
+.versions-size {
+  color: var(--mute);
+  white-space: nowrap;
+}
+
+.versions-download {
+  text-align: end;
+  white-space: nowrap;
+}
+
+/* Newest version's primary file: the primary-button look at sm (Bungee 12px — DESIGN.md §2
+   floor for button labels; mockup's 11px raised to the 12px minimum). */
+.versions-download-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: var(--space-8) var(--space-12);
+  background: var(--indigo);
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: var(--text-label-sm);
+  text-transform: uppercase;
+  text-decoration: none;
+  line-height: 1;
+  box-shadow: 3px 3px 0 var(--indigo-deep);
+  transition:
+    transform var(--dur-fast) ease-out,
+    box-shadow var(--dur-fast) ease-out,
+    background-color var(--dur-fast) ease-out;
+}
+
+.versions-download-primary:hover {
+  background: var(--indigo-hover);
+  box-shadow: 5px 5px 0 var(--indigo-deep);
+  transform: translate(-2px, -2px);
+}
+
+.versions-download-primary:active {
+  background: var(--indigo-deep);
+  box-shadow: none;
+  transform: translate(2px, 2px);
+}
+
+/* Older rows: outlined "Download" link (pass-3 mockup row 2). */
+.versions-download-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: var(--space-8) var(--space-12);
+  border: 2px solid var(--line-strong);
+  color: var(--chalk);
+  font-size: var(--text-label);
+  font-weight: 700;
+  text-decoration: none;
+  line-height: 1;
+  transition:
+    border-color var(--dur-fast) ease-out,
+    background-color var(--dur-fast) ease-out;
+}
+
+.versions-download-link:hover {
+  background: var(--slab-raised);
+  border-color: var(--indigo-lift);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .versions-download-primary:hover,
+  .versions-download-primary:active {
+    transform: none;
+  }
+}

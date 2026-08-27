@@ -1,0 +1,45 @@
+/* Table — DESIGN.md §5 Admin table; 03 §2.2 `Table`. Admin drops the poster type: Space Grotesk,
+   13px, statuses/actions are the caller's cells (≤ one accent per row). */
+.table-scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  outline: 2px solid var(--line-soft);
+  background: var(--slab);
+  font-size: var(--text-label);
+}
+
+.table-header {
+  padding: var(--space-12) var(--space-16);
+  background: var(--slab-sunk);
+  border-bottom: 2px solid var(--line);
+  font-weight: 700;
+  color: var(--mute);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.table-cell {
+  height: 44px; /* acts as min-height on table cells (rows ≥44px) */
+  padding: var(--space-12) var(--space-16);
+  vertical-align: middle;
+  color: var(--chalk);
+  text-align: start;
+}
+
+.table-row + .table-row .table-cell {
+  border-top: 2px solid var(--table-divider);
+}
+
+.table-header[data-align='end'],
+.table-cell[data-align='end'] {
+  text-align: end;
+}
+
+.table-empty {
+  padding: var(--space-16);
+  color: var(--mute);
+}

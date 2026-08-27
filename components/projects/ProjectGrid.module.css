@@ -1,0 +1,54 @@
+/* ProjectGrid — DESIGN.md §6.2 (3-up grid, 2-up tablet, 1-up phone, gap 20; count line;
+   "Showing n of N" 13px --mute-dim); 03 §2.3 ProjectGrid tokens. */
+.project-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+/* "<N> things. Some useful, some not." (§12.7 #39) — 17px --mute under the page title. */
+.project-grid-count {
+  font-size: var(--text-body);
+  color: var(--mute);
+}
+
+.project-grid-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+/* "Showing n of N" — 13px --mute-dim (03 ProjectGrid row). */
+.project-grid-showing {
+  font-size: var(--text-label);
+  color: var(--mute-dim);
+}
+
+.project-grid-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-20);
+}
+
+.project-grid-item {
+  display: flex;
+  min-width: 0;
+}
+
+.project-grid-item > * {
+  flex: 1;
+}
+
+/* tablet 600–899 = 2-up, phone ≤599 = 1-up (DESIGN.md §6 breakpoints) */
+@media (max-width: 899px) {
+  .project-grid-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .project-grid-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

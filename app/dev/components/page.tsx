@@ -10,10 +10,35 @@ import { Footer } from '@/components/layout/Footer';
 import { Toast } from '@/components/layout/Toast';
 import { Skeleton } from '@/components/layout/Skeleton';
 import { ProjectCardSkeleton } from '@/components/layout/ProjectCardSkeleton';
+import { ProjectDetailSkeleton } from '@/components/layout/ProjectDetailSkeleton';
 import { Button } from '@/components/primitives/Button';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
 import { Icon } from '@/components/primitives/Icon';
 import { Avatar } from '@/components/primitives/Avatar';
+import { Breadcrumb } from '@/components/primitives/Breadcrumb';
+import { Chip } from '@/components/primitives/Chip';
+import { EmptyState } from '@/components/primitives/EmptyState';
+import { Field } from '@/components/primitives/Field';
+import { Markdown } from '@/components/primitives/Markdown';
+import { PlatformMark } from '@/components/primitives/PlatformMark';
+import { SearchBox } from '@/components/primitives/SearchBox';
+import { Select } from '@/components/primitives/Select';
+import { SourceSwatch } from '@/components/primitives/SourceSwatch';
+import { StatusPill } from '@/components/primitives/StatusPill';
+import { Table } from '@/components/primitives/Table';
+import { Toggle } from '@/components/primitives/Toggle';
+import { TrackedLink } from '@/components/primitives/TrackedLink';
+import { TypeBadge } from '@/components/primitives/TypeBadge';
+import { ActiveFilterChips } from '@/components/projects/ActiveFilterChips';
+import { DetailsList } from '@/components/projects/DetailsList';
+import { FeaturedHero } from '@/components/projects/FeaturedHero';
+import { FilterBar } from '@/components/projects/FilterBar';
+import { Gallery } from '@/components/projects/Gallery';
+import { GetItPanel } from '@/components/projects/GetItPanel';
+import { ProjectCard } from '@/components/projects/ProjectCard';
+import { ProjectGrid } from '@/components/projects/ProjectGrid';
+import { TipPanel } from '@/components/projects/TipPanel';
+import { VersionsTable } from '@/components/projects/VersionsTable';
 import { ViewerProvider } from '@/components/accounts/ViewerProvider';
 import { ProfileMenu } from '@/components/accounts/ProfileMenu';
 import { HandleField } from '@/components/accounts/HandleField';
@@ -48,6 +73,34 @@ import {
   projectCardSkeletonFixtures,
   skeletonFixtures,
   toastFixtures,
+  activeFilterChipsFixtures,
+  breadcrumbFixtures,
+  changelogExpanderFixtures,
+  chipFixtures,
+  detailsListFixtures,
+  emptyStateFixtures,
+  featuredHeroFixtures,
+  fieldFixtures,
+  filterBarFixtures,
+  galleryFixtures,
+  getItPanelFixtures,
+  lightboxFixtures,
+  markdownFixtures,
+  platformMarkFixtures,
+  projectCardFixtures,
+  projectDetailSkeletonFixtures,
+  projectGridFixtures,
+  reorderableListFixtures,
+  searchBoxFixtures,
+  selectFixtures,
+  sourceSwatchFixtures,
+  statusPillFixtures,
+  tableFixtures,
+  tipPanelFixtures,
+  toggleFixtures,
+  trackedLinkFixtures,
+  typeBadgeFixtures,
+  versionsTableFixtures,
 } from '@/tests/fixtures/ui';
 import styles from './page.module.css';
 
@@ -171,6 +224,14 @@ export default function ComponentsPreviewPage() {
               </Specimen>
             ))}
           </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {projectDetailSkeletonFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="ProjectDetailSkeleton" label={label}>
+                <ProjectDetailSkeleton {...props} />
+              </Specimen>
+            ))}
+          </div>
         </Area>
 
         {/* ------------------------------------------------------------ Primitives (03 §2.2) */}
@@ -231,6 +292,244 @@ export default function ComponentsPreviewPage() {
                 <p className={styles['preview-note']}>
                   {props.question} — {props.confirmLabel} / {props.cancelLabel} ({props.tone})
                 </p>
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-dense="">
+            {typeBadgeFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="TypeBadge" label={label}>
+                <TypeBadge {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-dense="">
+            {statusPillFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="StatusPill" label={label}>
+                <StatusPill {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-dense="">
+            {sourceSwatchFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="SourceSwatch" label={label}>
+                <SourceSwatch {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-dense="">
+            {platformMarkFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="PlatformMark" label={label}>
+                <PlatformMark {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-dense="">
+            {chipFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="Chip" label={label}>
+                <Chip {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {breadcrumbFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="Breadcrumb" label={label}>
+                <Breadcrumb {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {fieldFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="Field" label={label}>
+                <form className={styles['preview-form']}>
+                  <Field {...props} />
+                </form>
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {selectFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="Select" label={label}>
+                <form className={styles['preview-form']}>
+                  <Select {...props} />
+                </form>
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {toggleFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="Toggle" label={label}>
+                {/* No `onChange` from this Server Component — the square renders its fixture
+                    state; live toggling is on /admin/projects. */}
+                <Toggle {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {searchBoxFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="SearchBox" label={label}>
+                {props.placement === 'nav' ? (
+                  <p className={styles['preview-note']}>
+                    Renders nothing off /projects (RP-12, usePathname) — exactly what shows here.
+                  </p>
+                ) : null}
+                <SearchBox {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {trackedLinkFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="TrackedLink" label={label}>
+                <TrackedLink {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {tableFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="Table" label={label}>
+                <Table {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {markdownFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="Markdown" label={label}>
+                <Markdown {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {emptyStateFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="EmptyState" label={label}>
+                <EmptyState {...props} />
+              </Specimen>
+            ))}
+          </div>
+        </Area>
+
+        {/* -------------------------------------------------------------- Projects (03 §2.3) */}
+        <Area id="area-projects" title="PROJECTS">
+          <div className={styles['preview-group']}>
+            {projectCardFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="ProjectCard" label={label}>
+                <ProjectCard {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {projectGridFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="ProjectGrid" label={label}>
+                <ProjectGrid {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {filterBarFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="FilterBar" label={label}>
+                <FilterBar {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {activeFilterChipsFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="ActiveFilterChips" label={label}>
+                <p className={styles['preview-note']}>
+                  Reads the URL — add ?type=mod&amp;version=1.21.x to this page to see chips +
+                  Clear. No params → renders nothing (its empty behaviour).
+                </p>
+                <ActiveFilterChips {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {galleryFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="Gallery" label={label}>
+                <Gallery {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {lightboxFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="Lightbox" label={label}>
+                {/* onClose / onIndex are functions (not passable from this Server Component):
+                    open it through the Gallery specimen above — click the big well; Esc closes. */}
+                <p className={styles['preview-note']}>
+                  Opens from the Gallery specimen above (click the big well; Esc closes, arrows
+                  move). This fixture: {props.images.length}{' '}
+                  {props.images.length === 1 ? 'image, arrows hidden' : 'images'}, starting at index{' '}
+                  {props.index}.
+                </p>
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {versionsTableFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="VersionsTable" label={label}>
+                <VersionsTable {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {changelogExpanderFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="ChangelogExpander" label={label}>
+                {/* `children` is server-rendered Markdown inside a `<tr>` (03 C-19) — the live
+                    expander is in the VersionsTable specimen above ("Changes ▾"). */}
+                <p className={styles['preview-note']}>
+                  Lives inside VersionsTable above — press Changes ▾ there. Group {props.groupName},
+                  row id {props.id}; opening one closes the other in the same group.
+                </p>
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {getItPanelFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="GetItPanel" label={label}>
+                <GetItPanel {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {detailsListFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="DetailsList" label={label}>
+                <DetailsList {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {tipPanelFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="TipPanel" label={label}>
+                <TipPanel {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {featuredHeroFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="FeaturedHero" label={label}>
+                <FeaturedHero {...props} />
               </Specimen>
             ))}
           </div>
@@ -314,6 +613,21 @@ export default function ComponentsPreviewPage() {
                 <div className={styles['preview-shell-host']}>
                   <AdminShell {...props} mainLandmark={false} />
                 </div>
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {reorderableListFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="ReorderableList" label={label}>
+                {/* `onReorder` is a function (not passable from this Server Component — the
+                    InlineConfirm precedent): the live list is on /admin/projects. Copy shown here. */}
+                <p className={styles['preview-note']}>
+                  {props.label} — {props.items.map((item) => item.title ?? item.id).join(' · ')}
+                  {props.disabled
+                    ? ' (moderator view: handles disabled, "Admin only")'
+                    : ' (Space grabs, arrows move, Space drops, Esc cancels)'}
+                </p>
               </Specimen>
             ))}
           </div>

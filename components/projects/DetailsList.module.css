@@ -1,0 +1,30 @@
+/* DetailsList — DESIGN.md §6 #3 DETAILS list; pass-3 detail mockup (rows space-between, label
+   --mute, value 700 --chalk); 03 §2.3 (labels 13px 700 --mute, values 15px --chalk). */
+.details-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.details-list-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.details-list-label {
+  font-family: var(--font-body);
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--mute);
+}
+
+.details-list-value {
+  margin: 0;
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--chalk);
+  text-align: end;
+}
