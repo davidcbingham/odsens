@@ -184,6 +184,7 @@ Rules: **an admin is auto-added as `moderator` to every workroom** (visible in t
 |---|---|---|---|
 | `check_handle(text)` | RPC, security definer | authenticated | handle available / taken / reserved / invalid (reserved = `is_reserved_handle()` — ADR-0020) |
 | `is_reserved_handle(text)` | helper, pure SQL (`immutable`, invoker rights, no table access) | anon, authenticated, service_role; called by `check_handle` and by the `profiles_guard` trigger | the 04 H3 reserved list in SQL once (22 entries, case-insensitive; `lib/validation/handle.ts` `RESERVED_HANDLES` mirrors it — T-ACT-7 parity); binds the owner's direct first-handle write and, with `is_banned`, every own-row write of a banned account (42501) — ADR-0020 |
+| `project_is_visible(uuid)` | helper, plpgsql `security definer` `stable` (`search_path = public`) | anon, authenticated, service_role; called only by the S1.2 SELECT policies (projects, project_versions, project_files, project_links, project_overrides) | the §4 visibility predicate (`status='published'` and not `overrides.hidden`) in SQL once for the policy layer — mutually-referencing inline policies recurse (42P17); the view `projects_public` inlines the same predicate — ADR-0022 |
 | `record_download(file_id, ip_hash, ua_hash)` | RPC, security definer | service role | exclusive-file counters + `project_downloads` log |
 | `record_skin_download(skin_id)` | RPC, security definer | service role | `skins.downloads + 1` |
 | `rate_limit_ok(scope, key, max, window)` | RPC | service role | SQL rate limiting over `rate_limit_hits` only (A4) |
@@ -215,7 +216,7 @@ Uploads go through server routes/actions (validate type/size, generate paths, wr
 |---|---|---|---|---|
 | public_profiles (view) | all | — | — | — |
 | profiles | own row (full); admin does **not** select other rows via RLS (admin client in actions — ADR-0002 #70) | trigger only | own row: `avatar_path` + first handle (only if null→value) — not a reserved handle, and not while banned (`profiles_guard` + `is_reserved_handle()`, 42501 — ADR-0020); renames + `handle_changed_at`, `role`, `is_banned`, `comment_count`, `email_hash` = admin (own row) / service only; **other users' rows: service (admin actions) only** — an admin JWT cannot reach them (select is own-row, so its update filters to 0 rows — ADR-0015) | service (admin actions) only — an admin JWT cannot delete other rows (ADR-0015) |
-| projects / versions / files / links / overrides | all where `status='published'` and not `overrides.hidden`; admin sees all | admin (exclusives) / service role (sync) | same | admin |
+| projects / versions / files / links / overrides | all where `status='published'` and not `overrides.hidden` (enforced via the definer helper `project_is_visible()` — inline cross-referencing policies recurse, ADR-0022); admin sees all | admin (exclusives) / service role (sync) | same | admin |
 | project_downloads | admin | service role (RPC `record_download`) | service role | admin / service (purge) |
 | mentions | published to all; admin all (drafts/suggested/hidden) | admin / service (v1.5 suggested) | admin | admin |
 | videos, skins, art | published to all; admin all | admin/service | admin | admin |
