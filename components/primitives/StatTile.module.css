@@ -1,0 +1,44 @@
+/* StatTile — DESIGN.md §11.1 Stat tile; 03 §2.2 `StatTile` (tokens: --slab --line-soft
+   --font-pixel --font-display --emerald --gold --mute). The 34px number inherits the page
+   `--chalk`; the outline is drawn per DESIGN.md §3 so it never shifts layout. */
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: var(--space-20);
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+}
+
+.stat-tile-label {
+  font-family: var(--font-pixel);
+  font-size: var(--text-pixel-11);
+  letter-spacing: var(--track-pixel);
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+.stat-tile-value {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-stat);
+  line-height: 1;
+}
+
+.stat-tile-context {
+  margin: 0;
+  font-size: var(--text-small);
+}
+
+.stat-tile-context[data-tone='up'] {
+  color: var(--emerald);
+}
+
+.stat-tile-context[data-tone='attention'] {
+  color: var(--gold);
+}
+
+.stat-tile-context[data-tone='neutral'] {
+  color: var(--mute);
+}

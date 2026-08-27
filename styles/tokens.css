@@ -106,6 +106,7 @@
   --text-label-sm: 12px; /* nav Support button, chip text */
   --text-wordmark: 20px; /* ODSENS wordmark in nav/footer */
   --text-input: 16px; /* DESIGN.md §11.1 Handle field value (S1.1) */
+  --text-stat: 34px; /* DESIGN.md §11.1 Stat tile number (S1.2; non-colour — 03 §9, no ADR needed) */
   --text-pixel-10: 10px;
   --text-pixel-11: 11px;
   --text-pixel-12: 12px;

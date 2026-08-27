@@ -1,0 +1,118 @@
+/* /admin/projects/[id] — curate view (DESIGN.md §6 #9 admin, §5 Admin field; 02 §1.3).
+   Tokens only (03 C-08). */
+
+.admin-project {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-40);
+  max-width: 720px;
+}
+
+.admin-project-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* Page title in the §2 "Section title" role (Bungee, gold) — admin h1 (DESIGN.md §9 headings). */
+.admin-project-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-section-title);
+  font-weight: 400;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.admin-project-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+}
+
+.admin-project-source {
+  color: var(--mute-dim);
+  font-size: var(--text-label);
+}
+
+.admin-project-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.admin-project-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.admin-project-actions {
+  display: flex;
+  gap: var(--space-12);
+}
+
+.admin-project-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-small);
+}
+
+.admin-project-toggle-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+  padding-top: var(--space-8);
+}
+
+.admin-project-toggle-label {
+  color: var(--chalk);
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+
+.admin-project-toggle-help {
+  margin: 0;
+  color: var(--mute-dim);
+  font-size: var(--text-label-sm);
+}
+
+.admin-project-gallery {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.admin-project-gallery-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  min-height: 44px;
+  align-items: center;
+  padding: var(--space-8) var(--space-12);
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+}
+
+.admin-project-gallery-path {
+  color: var(--chalk);
+  font-size: var(--text-label);
+  overflow-wrap: anywhere;
+}
+
+.admin-project-gallery-title {
+  color: var(--mute-dim);
+  font-size: var(--text-label-sm);
+}
+
+.admin-project-empty {
+  margin: 0;
+  color: var(--mute);
+  font-size: var(--text-small);
+}

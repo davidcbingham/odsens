@@ -48,8 +48,10 @@ export { fieldFixtures, type FieldFixture } from './field';
 export { markdownFixtures, type MarkdownFixture } from './markdown';
 export { platformMarkFixtures, type PlatformMarkFixture } from './platformMark';
 export { searchBoxFixtures, type SearchBoxFixture } from './searchBox';
+export { sectionTitleFixtures, type SectionTitleFixture } from './sectionTitle';
 export { selectFixtures, type SelectFixture } from './select';
 export { sourceSwatchFixtures, type SourceSwatchFixture } from './sourceSwatch';
+export { statTileFixtures, type StatTileFixture } from './statTile';
 export { statusPillFixtures, type StatusPillFixture } from './statusPill';
 export { tableFixtures, type TableFixture } from './table';
 export { toggleFixtures, type ToggleFixture } from './toggle';
@@ -70,3 +72,4 @@ export { tipPanelFixtures, type TipPanelFixture } from './tipPanel';
 export { versionsTableFixtures, type VersionsTableFixture } from './versionsTable';
 // ---- S1.2 Admin ----
 export { reorderableListFixtures, type ReorderableListFixture } from './reorderableList';
+export { syncStatusFixtures, type SyncStatusFixture } from './syncStatus';

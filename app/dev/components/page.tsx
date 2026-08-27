@@ -22,8 +22,10 @@ import { Field } from '@/components/primitives/Field';
 import { Markdown } from '@/components/primitives/Markdown';
 import { PlatformMark } from '@/components/primitives/PlatformMark';
 import { SearchBox } from '@/components/primitives/SearchBox';
+import { SectionTitle } from '@/components/primitives/SectionTitle';
 import { Select } from '@/components/primitives/Select';
 import { SourceSwatch } from '@/components/primitives/SourceSwatch';
+import { StatTile } from '@/components/primitives/StatTile';
 import { StatusPill } from '@/components/primitives/StatusPill';
 import { Table } from '@/components/primitives/Table';
 import { Toggle } from '@/components/primitives/Toggle';
@@ -50,6 +52,7 @@ import { GoogleSignInButton } from '@/components/primitives/GoogleSignInButton';
 import { NoteCallout } from '@/components/primitives/NoteCallout';
 import { AdminGate } from '@/components/admin/AdminGate';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { SyncStatus } from '@/components/admin/SyncStatus';
 import {
   adminGateFixtures,
   adminShellFixtures,
@@ -92,9 +95,12 @@ import {
   projectGridFixtures,
   reorderableListFixtures,
   searchBoxFixtures,
+  sectionTitleFixtures,
   selectFixtures,
   sourceSwatchFixtures,
+  statTileFixtures,
   statusPillFixtures,
+  syncStatusFixtures,
   tableFixtures,
   tipPanelFixtures,
   toggleFixtures,
@@ -418,6 +424,22 @@ export default function ComponentsPreviewPage() {
               </Specimen>
             ))}
           </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {sectionTitleFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="SectionTitle" label={label}>
+                <SectionTitle {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']}>
+            {statTileFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="StatTile" label={label}>
+                <StatTile {...props} />
+              </Specimen>
+            ))}
+          </div>
         </Area>
 
         {/* -------------------------------------------------------------- Projects (03 §2.3) */}
@@ -628,6 +650,16 @@ export default function ComponentsPreviewPage() {
                     ? ' (moderator view: handles disabled, "Admin only")'
                     : ' (Space grabs, arrows move, Space drops, Esc cancels)'}
                 </p>
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {syncStatusFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="SyncStatus" label={label}>
+                {/* "Sync now" calls the real `triggerSync` — signed out it answers with its
+                    inline error (interaction-only pending/error states, the Toggle precedent). */}
+                <SyncStatus {...props} />
               </Specimen>
             ))}
           </div>

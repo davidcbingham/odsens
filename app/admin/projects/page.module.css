@@ -1,0 +1,56 @@
+/* /admin/projects — DESIGN.md §6 #9 (admin: Space Grotesk labels, clarity over flair), §11.1
+   Admin table; 03 §2.2 `SectionTitle` spacing. Tokens only (03 C-08). */
+
+.admin-projects {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-40);
+}
+
+.admin-projects-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.admin-projects-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* Project cell: title over slug, scannable at a glance. */
+.admin-projects-name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.admin-projects-title {
+  color: var(--chalk);
+  font-weight: 700;
+  font-size: var(--text-ui);
+}
+
+.admin-projects-slug {
+  color: var(--mute-dim);
+  font-size: var(--text-label-sm);
+}
+
+.admin-projects-downloads {
+  color: var(--mute);
+  font-size: var(--text-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-projects-order-help {
+  margin: 0;
+  color: var(--mute-dim);
+  font-size: var(--text-label);
+}
+
+.admin-projects-order-title {
+  color: var(--chalk);
+  font-weight: 500;
+  font-size: var(--text-ui);
+}
