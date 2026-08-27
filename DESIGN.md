@@ -1,5 +1,7 @@
-# odsens.com — Design System (v1.4)
+# odsens.com — Design System (v1.5)
 
+> v1.5 (2026-08-27): §11.3 #19 Banned page gains the Delete account control — the `/profile` trigger + the §11.2 inline confirm on the slab, shown only once onboarded; Sign out stays in the shell (David's S1.1 merge decision — ADR-0021). No other visual change.
+>
 > v1.4 (2026-08-21): §11.1 Profile menu items are Your profile (and Admin for moderators/admins) + Sign out — "Change handle" / "Change picture" removed (David, S1.1 preview review; all three opened `/profile`) — ADR-0018. §11.3 #10 Handle onboarding: no Skip button, DONE gated on the handle only — ADR-0017. §11.3 #19 Banned page added (the #18 slab with "YOU'RE BANNED" and one line; the shell's Sign out is the only control) — ADR-0019. No other visual change.
 > v1.3a (2026-08-17): build clarifications from ADR-0002 — see §12.7. No visual direction changes.
 > v1.3 (2026-08-17): feature pass — Seen on / mentions, workrooms, notifications matrix, email + Discord templates, supporters leaderboard; see §12 and `design/claude-design-export/pass-3/CHANGELOG.md`.
@@ -267,7 +269,7 @@ Everything below is additive. Direction, palette, type and existing components a
 16. **Admin — Stats** — four stat tiles (downloads 7 days, downloads all time, comments with held count, tips 30 days) then one flat stacked bar chart of the last 30 days by source, with the honest line: "Modrinth and CurseForge report their own counts. Direct downloads are the ones we serve."
 17. **Admin — Orders** — status filter chips with counts, then a table (handle · type · asked · status `NEW` gold-wash / `REPLIED` indigo-wash / `CLOSED` neutral · Open). Detail: handle + status tag, a four-up meta grid (type, version, loader, budget), the request in a sunk slab, **REPLY BY EMAIL** with "Opens your mail app. Their email is never shown on the site.", and a square status selector plus their public-posting answer.
 18. **Admin sign-in gate** — 400px slab, "ADMINS ONLY" in Bungee, the chalk Google button. Nothing else on the page.
-19. **Banned** — the #18 slab again (400px, 2px `--line-soft`, `6px 6px 0 --ink-deep`), "YOU'RE BANNED" in Bungee, one line in `--mute`: "This account can't use odsens any more." Nothing else on the page — no links, no Google button; the onboarding shell's wordmark and Sign out are the only controls. A banned account is sent here on every navigation (ADR-0019).
+19. **Banned** — the #18 slab again (400px, 2px `--line-soft`, `6px 6px 0 --ink-deep`), "YOU'RE BANNED" in Bungee, one line in `--mute`: "This account can't use odsens any more." Below the line (v1.5, ADR-0021), once onboarded: the **Delete account** control — the `/profile` trigger verbatim (2px `--danger-line` bordered button, `--danger` text, 44px min height) opening the §11.2 `InlineConfirm` danger strip with the `/profile` question and labels ("Delete your account? Your handle, picture and comments go with it." / "Delete it" / "Keep it"). A banned account that never picked a handle sees the slab without the control. Nothing else on the page — no links, no Google button; the onboarding shell's wordmark and Sign out remain. A banned account is sent here on every navigation (ADR-0019).
 
 ### 11.4 Support panel — implementation-aware
 

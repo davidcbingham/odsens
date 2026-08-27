@@ -20,6 +20,7 @@ import { HandleField } from '@/components/accounts/HandleField';
 import { AvatarUpload } from '@/components/accounts/AvatarUpload';
 import { OnboardingPanel } from '@/components/accounts/OnboardingPanel';
 import { ProfilePanel } from '@/components/accounts/ProfilePanel';
+import { BannedDelete } from '@/components/accounts/BannedDelete';
 import { GoogleSignInButton } from '@/components/primitives/GoogleSignInButton';
 import { NoteCallout } from '@/components/primitives/NoteCallout';
 import { AdminGate } from '@/components/admin/AdminGate';
@@ -28,6 +29,7 @@ import {
   adminGateFixtures,
   adminShellFixtures,
   avatarFixtures,
+  bannedDeleteFixtures,
   avatarUploadFixtures,
   buttonFixtures,
   googleSignInButtonFixtures,
@@ -287,6 +289,11 @@ export default function ComponentsPreviewPage() {
             {profilePanelFixtures.map(({ label, props }) => (
               <Specimen key={label} name="ProfilePanel" label={label}>
                 <ProfilePanel {...props} />
+              </Specimen>
+            ))}
+            {bannedDeleteFixtures.map(({ label }) => (
+              <Specimen key={label} name="BannedDelete" label={label}>
+                <BannedDelete />
               </Specimen>
             ))}
           </div>

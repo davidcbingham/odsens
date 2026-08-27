@@ -32,5 +32,6 @@ export { avatarUploadFixtures, type AvatarUploadFixture } from './avatarUpload';
 export { profileMenuFixtures, type ProfileMenuFixture } from './profileMenu';
 export { onboardingPanelFixtures, type OnboardingPanelFixture } from './onboardingPanel';
 export { profilePanelFixtures, type ProfilePanelFixture } from './profilePanel';
+export { bannedDeleteFixtures, type BannedDeleteFixture } from './bannedDelete';
 export { adminGateFixtures, type AdminGateFixture } from './adminGate';
 export { adminShellFixtures, type AdminShellFixture } from './adminShell';
