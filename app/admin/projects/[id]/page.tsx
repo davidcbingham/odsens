@@ -33,8 +33,9 @@ import styles from './page.module.css';
  * "errors inline, never toast"; admin routes are dynamic, so reading `searchParams` is legal —
  * 02 §0.1; RP-03 restricts public pages only). The `setProjectLink` no-key degradation
  * (`upstream_error` "CurseForge key not configured", 04 §1.4 precondition) surfaces on the same
- * path. `comments_enabled` saves immediately through a bound `curateProject` (the list-page
- * `Toggle` mechanism — `Toggle` is controlled, 03 §2.2).
+ * path. `comments_enabled` saves through the bound `saveCommentsEnabled` server function
+ * (`curateProject` + PRG redirect — the list page's `curateAndRefresh` mechanism; `Toggle` is
+ * controlled, 03 §2.2).
  *
  * Moderators (ADR-0002 C7; 03 §2.10 rule): every field, toggle and save button renders DISABLED
  * (`disabled` + `title="Admin only"` on the control's wrapper + the `Button` `aria-describedby`
@@ -132,6 +133,18 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
     redirect(result.ok ? base : withError(base, 'link', result.error));
   }
 
+  // PRG for the comments Toggle too (the list page's `curateAndRefresh` rationale): tag-only
+  // revalidation does not re-render this dynamic route in the action round trip, so the
+  // controlled Toggle would stay stale without the redirect.
+  async function saveCommentsEnabled(input: {
+    project_id: string;
+    comments_enabled: boolean;
+  }): Promise<void> {
+    'use server';
+    await curateProject(input);
+    redirect(base);
+  }
+
   // ---- Moderator rendering helpers (03 §2.10 rule) -------------------------------------------
 
   const saveButton = (idSuffix: string, label: string, variant: 'primary' | 'secondary') =>
@@ -221,7 +234,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
             <Toggle
               name="comments_enabled"
               checked={commentsEnabled}
-              onChange={curateProject.bind(null, {
+              onChange={saveCommentsEnabled.bind(null, {
                 project_id: id,
                 comments_enabled: !commentsEnabled,
               })}

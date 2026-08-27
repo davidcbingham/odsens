@@ -1,6 +1,10 @@
 /* Table — DESIGN.md §5 Admin table; 03 §2.2 `Table`. Admin drops the poster type: Space Grotesk,
    13px, statuses/actions are the caller's cells (≤ one accent per row). */
 .table-scroll {
+  /* `position: relative` keeps absolutely-positioned `.visually-hidden` spans inside cells in
+     THIS scroll context — without it their containing block is the body and each one widens
+     `document.scrollWidth` past the viewport (phone horizontal scroll). */
+  position: relative;
   overflow-x: auto;
 }
 

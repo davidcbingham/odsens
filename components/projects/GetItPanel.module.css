@@ -118,6 +118,11 @@
   outline-offset: -2px;
 }
 
+/* Combined total (05 T-E2E-3 "combined line total"): compact count above the explainer line. */
+.get-it-combined-total {
+  margin: 0;
+}
+
 .get-it-combined {
   margin: 0;
   font-size: var(--text-label);

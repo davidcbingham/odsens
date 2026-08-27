@@ -17,13 +17,16 @@ import styles from './GetItPanel.module.css';
  * The big download is the PRIMARY look for every `kind` — gold is reserved for the
  * `FeaturedHero` DOWNLOAD and support/tip actions (DESIGN.md §5; 03). Because every download
  * link must be a `TrackedLink event="download"` `{ project: slug, source, from: 'get-it' }`
- * (03 §2.2 emitters; ADR-0002 A10 — `download` is S1.2's one wired event) and `TrackedLink`
- * renders a plain `<a>` with no `data-variant`, the primary-button look lives in this module's
- * CSS (tokens only) rather than on a `Button` — flagged for the wiring pass against the 05
- * `data-variant="primary"` e2e locator. External platform rows open in a new tab
+ * (03 §2.2 emitters; ADR-0002 A10 — `download` is S1.2's one wired event), the primary-button
+ * look lives in this module's CSS (tokens only) rather than on a `Button`; the `<a>` carries
+ * `data-variant="primary"` via `TrackedLink`'s pass-through (03 §2.3 Tests cell; the 05 e2e
+ * locator). External platform rows open in a new tab
  * (`rel="noopener noreferrer"` + sr "(opens in new tab)" via `TrackedLink`). Sticky rail =
  * `data-sticky` flag (03 C-14), applied ≥900px with `top` under the nav (`--nav-h`).
- * Combined-count line: `COMBINED_COUNT_LINE` verbatim (03; 05 T-UNIT-11).
+ * Combined-count block (02 §2.3 rail "combined-count line"; DESIGN.md §6 #3 "a line explaining
+ * the combined count"): the combined total rendered `formatCount` compact (05 T-E2E-3 "combined
+ * line total `1.7K`" — the reason `combined.total` is in the 03 prop shape), then
+ * `COMBINED_COUNT_LINE` verbatim as the last line (03; 05 T-UNIT-11).
  */
 export type GetItPanelProps = {
   primary: {
@@ -63,6 +66,7 @@ export function GetItPanel({ primary, rows, combined, slug, className }: GetItPa
         props={{ project: slug, source: primary.kind, from: 'get-it' }}
         href={primary.href}
         className={styles['get-it-download']}
+        data-variant="primary"
       >
         {primary.label}
       </TrackedLink>
@@ -113,6 +117,11 @@ export function GetItPanel({ primary, rows, combined, slug, className }: GetItPa
           ) : null}
         </ul>
       ) : null}
+      <p className={styles['get-it-combined-total']}>
+        <PixelLabel size={11} informational tone="emerald">
+          {`${formatCount(combined.total)} COMBINED`}
+        </PixelLabel>
+      </p>
       <p className={styles['get-it-combined']}>{COMBINED_COUNT_LINE}</p>
     </aside>
   );

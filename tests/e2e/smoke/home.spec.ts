@@ -1,6 +1,15 @@
 /**
- * tests/e2e/smoke/home.spec.ts — `/` at S0 (00 S0.AC1/AC3/AC8; 05 T-E2E-17, T-E2E-19, T-E2E-45a).
- * Runs in `smoke-desktop` (1280) and `smoke-phone` (390). Home content (T-E2E-1) arrives in S1.2.
+ * tests/e2e/smoke/home.spec.ts — `/` (00 S0.AC1/AC3/AC8; 05 T-E2E-17, T-E2E-19, T-E2E-45a;
+ * S1.2: T-E2E-1 hero + featured, T-E2E-45b sitemap). Runs in `smoke-desktop` (1280) and
+ * `smoke-phone` (390).
+ *
+ * T-E2E-1 S1.2 scope (05 §8 row: "hero + featured; IN THE WILD/videos rows land later"): the
+ * IN THE WILD strip + ReachLine (S1.8), Latest videos facades (S1.6), the footer creators line
+ * (S1.8), `FloatingSupportButton` (S1.9 — 03 Slice cell) and the 4-up `ExclusiveBadge` text
+ * "ONLY ON ODSENS" (S1.3 — 03 `ProjectCard` "the `ExclusiveBadge` itself ships in S1.3") are NOT
+ * asserted yet; their rows extend this spec in those slices. Seed truths (SEED-6): hero =
+ * pixel-chameleon (featured_order 1), Featured 4-up = seed-exclusive-pack only (hero excluded,
+ * 02 §2.1 — no back-fill).
  */
 import { stat } from 'node:fs/promises';
 import { test, expect } from '../fixtures';
@@ -102,11 +111,87 @@ test.describe('home', () => {
     expect(info.size).toBeGreaterThan(0);
   });
 
+  test('T-E2E-1 hero + featured (S1.2 scope): one h1 = pixel-chameleon, gold DOWNLOAD, 4-up = seed-exclusive-pack only, footer lines', async ({
+    page,
+  }) => {
+    const isPhone = (page.viewportSize()?.width ?? 1280) < 900;
+    const response = await page.goto('/');
+    expect(response?.status()).toBe(200);
+    await expect(page).toHaveTitle('odsens'); // 02 SM-01: absolute, no template
+
+    // Exactly one h1 — the Bungee hero title of pixel-chameleon (lowest featured_order).
+    const h1 = page.getByRole('heading', { level: 1 });
+    await expect(h1).toHaveCount(1);
+    await expect(h1).toHaveText('Pixel Chameleon');
+
+    // Wordmark links to `/`; nav has no Commissions; Support button present (02 §2.1 / 03 N-04).
+    await expect(page.locator('header a[aria-label="odsens home"]')).toHaveAttribute('href', '/');
+    await expect(page.getByRole('link', { name: 'Commissions' })).toHaveCount(0);
+    if (!isPhone) {
+      await expect(page.locator('header nav a[href="/support"]')).toBeVisible();
+    }
+
+    // Hero CTAs: gold DOWNLOAD → the Modrinth project URL (synced hero — 02 §2.1 #1), tracked
+    // (`TrackedLink`, gold face via Button recipe); secondary "See the project" → the detail page.
+    const hero = page.locator('section', { has: h1 });
+    const download = hero.getByRole('link', { name: 'DOWNLOAD' });
+    await expect(download).toHaveAttribute('href', 'https://modrinth.com/project/pixel-chameleon');
+    await expect(download.locator('[data-variant="gold"]')).toBeVisible();
+    await expect(hero.getByRole('link', { name: 'See the project' })).toHaveAttribute(
+      'href',
+      '/projects/pixel-chameleon',
+    );
+    await expect(hero.getByText('OddSense makes things for Minecraft.')).toBeVisible();
+
+    // Featured 4-up: seed-exclusive-pack ONLY (hero excluded; no back-fill — 02 §2.1 #2).
+    const featured = page.locator('section', {
+      has: page.getByRole('heading', { name: 'FEATURED PROJECTS' }),
+    });
+    await expect(featured.locator('article')).toHaveCount(1);
+    await expect(featured.getByRole('heading', { name: 'Seed Exclusive Pack' })).toBeVisible();
+    await expect(featured.getByRole('heading', { name: 'Pixel Chameleon' })).toHaveCount(0);
+
+    // Footer (02 RP-13; DESIGN.md §12.2): the Mojang line + the Site links, in order.
+    const footer = page.getByRole('contentinfo');
+    await expect(footer.getByText(/Not affiliated with Mojang\./)).toBeVisible();
+    const siteHrefs = await footer
+      .locator('a[href^="/"]')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+    expect(siteHrefs).toEqual([
+      '/projects',
+      '/seen-on',
+      '/support',
+      '/how-comments-work',
+      '/privacy',
+    ]);
+
+    await expectNoSeriousA11y(page);
+  });
+
+  test('T-E2E-45b /sitemap.xml → 200, lists /projects + published slugs, no noindexed URLs', async ({
+    request,
+  }) => {
+    const res = await request.get('/sitemap.xml');
+    expect(res.status()).toBe(200);
+    const xml = await res.text();
+    expect(xml).toContain('<loc>http://localhost:3000/projects</loc>');
+    // Published, non-hidden slugs are listed (02 RP-07; slugs from the `projects`-tagged read).
+    expect(xml).toContain('<loc>http://localhost:3000/projects/pixel-chameleon</loc>');
+    expect(xml).toContain('<loc>http://localhost:3000/projects/metal-pipe-mace</loc>');
+    expect(xml).toContain('<loc>http://localhost:3000/projects/seed-exclusive-pack</loc>');
+    for (const banned of ['/admin', '/welcome', '/profile', '/__test']) {
+      expect(xml, `${banned} never appears in the sitemap`).not.toContain(banned);
+    }
+  });
+
   test('T-E2E-17 skip link, landmarks, heading order, img alt, focus ring, 44px targets', async ({
     page,
   }) => {
     const isPhone = (page.viewportSize()?.width ?? 1280) < 900;
     await page.goto('/');
+    // An expired ISR entry streams the shell (loading fallback) first — settle on the hero h1
+    // before sampling document structure (heading order is judged on the finished page).
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
 
     // Skip link is the first focusable element and targets #main (03 SkipLink row, N-07).
     await page.keyboard.press('Tab');

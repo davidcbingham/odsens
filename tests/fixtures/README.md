@@ -28,3 +28,10 @@ Checks: `node scripts/check-fixtures.mjs` (in `pnpm lint`) enforces F-3 (no emai
 Serving in e2e: `node scripts/fixture-server.mjs [4010]` (or `startFixtureServer()` from `tests/helpers/fixtureServer.ts`)
 maps `http://127.0.0.1:4010/<source>/<path>` → `tests/fixtures/<source>/<path>`; the test-only `*_API_BASE` names in
 `.env.test` point the adapters there (ADR-0002 #73).
+
+API-path aliases (S1.2, e2e only): the server maps URL paths verbatim, but the adapters request real API shapes
+(`/user/<user>/projects`, `/project/<id>/version`, `/mods/<id>` — 04 §4), so those paths exist as byte-for-byte
+copies of the canonical F-5 files: `modrinth/user/OddSense/projects` = `user-projects.json`,
+`modrinth/project/<id>/version` = `versions-empty.json` (each of the 18 fixture ids; versions absent upstream are
+kept, ADR-0002 #66, so the seeded versions survive an e2e sync — 05 T-E2E-41), `curseforge/mods/900001` = `mod.json`.
+The canonical flat files stay the unit/db-test source of truth (H-5 `mockFetch`); never edit either copy alone.

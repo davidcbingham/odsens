@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { ReorderableList, type ReorderableItem } from '@/components/admin/ReorderableList';
 import { SyncStatus, type SyncStatusProps } from '@/components/admin/SyncStatus';
 import { Button } from '@/components/primitives/Button';
@@ -9,6 +10,7 @@ import { Table, type TableProps } from '@/components/primitives/Table';
 import { Toggle } from '@/components/primitives/Toggle';
 import { TypeBadge } from '@/components/primitives/TypeBadge';
 import { curateProject } from '@/lib/actions/projects';
+import type { CurateProjectInput } from '@/lib/actions/projects.schema';
 import { getViewer } from '@/lib/auth';
 import {
   adminProjectStatus,
@@ -32,10 +34,13 @@ import styles from './page.module.css';
  * 1. ALL PROJECTS — `Table` of every project incl. hidden/draft (05 T-E2E-34); columns Project ·
  *    Type (`TypeBadge`) · Status (`StatusPill` draft/hidden/live, fills ADR-0002 #47) ·
  *    Downloads · Featured / Hidden `Toggle`s (first `Toggle` use — 02 §1.3) · Open. Empty copy
- *    verbatim per ADR-0002 #40 / 03 G-05. Each toggle's `onChange` is `curateProject` BOUND to
- *    the per-project shape `{project_id, featured|hidden: !current}` (the Next "additional
- *    arguments" `.bind` pattern — C-19 "no functions except server actions"); the action's
- *    `revalidateTag` refreshes this dynamic route in the same round trip.
+ *    verbatim per ADR-0002 #40 / 03 G-05. Each toggle's `onChange` is the module-level
+ *    `curateAndRefresh` server function BOUND to the per-project shape
+ *    `{project_id, featured|hidden: !current}` (the Next "additional arguments" `.bind` pattern
+ *    — C-19 "no functions except server actions"). The wrapper `redirect`s back to this URL
+ *    after the action — the `[id]` page's PRG precedent — because tag-only revalidation does
+ *    not re-render an untagged dynamic route in the action round trip, so a bare bound
+ *    `curateProject` would leave the rendered toggle stale until the next navigation.
  * 2. FEATURED ORDER — `ReorderableList` of the featured projects; one completed reorder =
  *    ONE `curateProject` call with the batch shape `{reorder: [{project_id, featured_order}]}`
  *    (ADR-0002 A11; 03 §2.10 "the parent calls `curateProject` once") via the module-level
@@ -67,6 +72,17 @@ async function reorderFeatured(ids: string[]): Promise<void> {
   await curateProject({
     reorder: ids.map((project_id, index) => ({ project_id, featured_order: index + 1 })),
   });
+}
+
+/**
+ * Toggle glue (see header): one `curateProject` call, then PRG back to this URL so the dynamic
+ * page re-renders the stored state (`Toggle` is controlled and has no error surface — a refused
+ * or failed call simply re-renders the unchanged truth; the action logs it server-side).
+ */
+async function curateAndRefresh(input: CurateProjectInput): Promise<void> {
+  'use server';
+  await curateProject(input);
+  redirect('/admin/projects');
 }
 
 const COLUMNS: TableProps['columns'] = [
@@ -102,7 +118,7 @@ function curationToggle(
     );
   }
   // The 04 §1.4 per-project shape, bound at render (Next "additional arguments" pattern): one
-  // flip = one `curateProject` call; the refreshed page then renders the stored state.
+  // flip = one `curateProject` call + PRG; the refreshed page then renders the stored state.
   const input =
     flag === 'featured'
       ? { project_id: project.id, featured: !checked }
@@ -111,7 +127,7 @@ function curationToggle(
     <Toggle
       name={`${flag}-${project.id}`}
       checked={checked}
-      onChange={curateProject.bind(null, input)}
+      onChange={curateAndRefresh.bind(null, input)}
       role="switch"
       accent="indigo"
       label={label}

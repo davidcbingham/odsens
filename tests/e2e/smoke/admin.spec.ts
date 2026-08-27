@@ -32,7 +32,7 @@ test.describe('admin gate', () => {
     expect(await main.getByRole('link').count()).toBe(0);
     await expect(page.locator('nav')).toHaveCount(0);
     await expect(page.locator('footer')).toHaveCount(0);
-    await expect(page.getByText('Nothing to do yet.')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'SYNC' })).toHaveCount(0);
 
     await expectNoSeriousA11y(page);
     await shoot(page, 'admin-gate');

@@ -3,6 +3,9 @@
 .project-card {
   display: flex;
   flex-direction: column;
+  /* The card must shrink to its grid/flex cell: without this, the one-line nowrap description
+     floors the card at its full text width and the page scrolls sideways on phones (390). */
+  min-width: 0;
   background: var(--slab);
   outline: 2px solid var(--line-soft);
   outline-offset: -2px;

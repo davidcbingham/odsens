@@ -16,7 +16,7 @@ export const activeFilterChipsFixtures: ActiveFilterChipsFixture[] = [
       labels: {
         mod: 'MODS',
         datapack: 'DATAPACKS',
-        resourcepack: 'PACKS',
+        resourcepack: 'RESOURCE PACKS',
         plugin: 'PLUGINS',
         '1.21.x': '1.21.x',
         '1.20.x': '1.20.x',

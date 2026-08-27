@@ -28,9 +28,15 @@
 .select-well {
   position: relative;
   display: inline-flex;
+  /* Shrink with the row instead of pushing the page sideways (the native select's option
+     text otherwise fixes the minimum width). */
+  min-width: 0;
+  max-width: 100%;
 }
 
 .select-input {
+  min-width: 0;
+  max-width: 100%;
   min-height: 44px;
   padding: var(--space-8) var(--space-32) var(--space-8) var(--space-12);
   appearance: none;

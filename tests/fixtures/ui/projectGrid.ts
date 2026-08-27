@@ -71,7 +71,7 @@ const GROUPS: ProjectGridProps['groups'] = [
     options: [
       { value: 'mod', label: 'MODS', count: 2 },
       { value: 'datapack', label: 'DATAPACKS', count: 1 },
-      { value: 'resourcepack', label: 'PACKS', count: 1 },
+      { value: 'resourcepack', label: 'RESOURCE PACKS', count: 1 },
       { value: 'plugin', label: 'PLUGINS', count: 0 },
     ],
   },

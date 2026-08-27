@@ -1,7 +1,9 @@
 /**
  * lib/data/admin.ts — read-side queries for the dynamic admin surfaces (02 §1.3 Data columns:
- * `/admin/projects` = `projects` (all statuses) + `project_overrides` + `project_links` +
- * `sync_runs` (modrinth/curseforge); `/admin/projects/[id]` = the same, by id; 01 INV-12 "reads
+ * `/admin` = `sync_runs` (latest per source) + `projects` count where `status='draft'` (the
+ * held-comments count is S1.4, the videos list S1.6 — the row's Slice cell); `/admin/projects` =
+ * `projects` (all statuses) + `project_overrides` + `project_links` + `sync_runs`
+ * (modrinth/curseforge); `/admin/projects/[id]` = the same, by id; 01 INV-12 "reads
  * go through `lib/data/<area>.ts`"; registry Modules `data/<area>.ts` — `admin` added 2026-08-27,
  * registry add-first rule).
  *
@@ -213,6 +215,24 @@ export const getAdminProject = cache(async (id: string): Promise<AdminProjectDet
       : null,
   };
 });
+
+// ---- /admin dashboard ------------------------------------------------------------------------
+
+/**
+ * `projects` count where `status='draft'` (02 §1.3 `/admin` Data cell — the dashboard's S1.2
+ * `StatTile`). Draft rows are admin-only RLS (05 T-RLS-17) — a moderator session counts 0, the
+ * read-only degradation 02 §1.3 accepts (the `listSyncStatus` precedent). Head-only count: no
+ * rows cross the wire.
+ */
+export async function countDraftProjects(): Promise<number> {
+  const db = await createServerClient();
+  const { count, error } = await db
+    .from('projects')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'draft');
+  if (error) throw new Error(`admin draft count failed: ${error.code}`);
+  return count ?? 0;
+}
 
 // ---- Sync status (`sync_runs`) ---------------------------------------------------------------
 

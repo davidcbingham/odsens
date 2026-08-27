@@ -15,7 +15,7 @@ const PROJECT_GROUPS: FilterBarProps['groups'] = [
     options: [
       { value: 'mod', label: 'MODS', count: 7 },
       { value: 'datapack', label: 'DATAPACKS', count: 4 },
-      { value: 'resourcepack', label: 'PACKS', count: 5 },
+      { value: 'resourcepack', label: 'RESOURCE PACKS', count: 5 },
       { value: 'plugin', label: 'PLUGINS', count: 2 },
     ],
   },

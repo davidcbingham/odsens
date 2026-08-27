@@ -2,6 +2,9 @@
    tokens identical to the Table primitive (03): 2px --line-soft outline, header on --slab-sunk
    with 2px --line bottom, rows ≥44px on 2px --table-divider; + --indigo-lift --slab-sunk. */
 .versions-table-wrap {
+  /* `position: relative` keeps the `.visually-hidden` filename spans (absolute-positioned) in
+     THIS scroll context — otherwise they widen `document.scrollWidth` on phones. */
+  position: relative;
   overflow-x: auto; /* phone: horizontal scroll wrapper (03) */
 }
 

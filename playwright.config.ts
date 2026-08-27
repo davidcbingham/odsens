@@ -81,9 +81,14 @@ export default defineConfig({
       },
     },
     {
+      // Admin flows mutate seed content (curate toggles, a real fixture-server sync — 05
+      // T-E2E-34/41) and restore it afterwards; running them AFTER the read-only projects keeps
+      // the seed-truth smoke/e2e assertions (hero, card counts) deterministic. `dependencies`
+      // orders projects without changing the 05 §1.1 project set.
       name: 'admin',
       testMatch: /admin\/.*\.spec\.ts/,
       fullyParallel: false,
+      dependencies: ['smoke-desktop', 'smoke-phone', 'e2e'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 800 },

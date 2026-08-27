@@ -6,7 +6,10 @@ import styles from './Table.module.css';
  * actions are the caller's client leaves (01 INV-08). 2px `--line-soft` outline, header row on
  * `--slab-sunk` with a 2px `--line` bottom rule, rows ≥44px separated by 2px `--table-divider`.
  * ≤ one accent per row is the caller's duty. Phone: horizontal scroll inside the
- * `overflow-x: auto` wrapper. Reordering is not a `Table` prop — use `ReorderableList` (03 §2.10).
+ * `overflow-x: auto` wrapper — which is `role="region"` + `tabindex="0"` named by the caption
+ * (the focusable-scroll-region pattern) so keyboard users can scroll a table whose cells hold
+ * no focusable content (a moderator's all-disabled controls — axe `scrollable-region-focusable`,
+ * 05 T-E2E-42/48). Reordering is not a `Table` prop — use `ReorderableList` (03 §2.10).
  * Empty rows (03 G-05): `empty` is one `--mute` line in voice per 02 §1.3
  * ("No projects yet. Run a sync.").
  */
@@ -29,7 +32,7 @@ export type TableProps = {
 
 export function Table({ caption, columns, rows, rowKey, empty }: TableProps) {
   return (
-    <div className={styles['table-scroll']}>
+    <div className={styles['table-scroll']} role="region" aria-label={caption} tabIndex={0}>
       <table className={styles.table}>
         <caption className="visually-hidden">{caption}</caption>
         {columns.some((column) => column.width) ? (
