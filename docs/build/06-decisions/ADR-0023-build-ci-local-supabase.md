@@ -1,7 +1,7 @@
 # ADR-0023 — CI `build` job starts local Supabase (build-time reads exist from S1.2)
 
 ## Status
-Proposed (flips to Accepted at merge — ship step 8)
+Accepted (2026-08-27 — S1.2 merge, v0.3)
 
 ## Date
 2026-08-27

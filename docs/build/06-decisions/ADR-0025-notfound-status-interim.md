@@ -1,7 +1,7 @@
 # ADR-0025 — unknown ISR slug routes: accept HTTP 200 + 404 body until the Next streaming fix (interim)
 
 ## Status
-Proposed (flips to Accepted at merge — ship step 8) — **interim**: superseded automatically when the upstream fix lands (see Follow-ups)
+Accepted (2026-08-27 — S1.2 merge, v0.3) — **interim**: superseded automatically when the upstream fix lands (see Follow-ups)
 
 ## Date
 2026-08-27

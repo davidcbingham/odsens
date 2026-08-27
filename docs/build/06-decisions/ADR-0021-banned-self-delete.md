@@ -1,7 +1,7 @@
 # ADR-0021 — Banned accounts may delete themselves
 
 ## Status
-Proposed (flips to Accepted at merge — ship step 8 / START-BUILD step 4 Session B)
+Accepted (2026-08-27 — merged with PR #3 / superseding squash in the S1.2 v0.3 merge)
 
 ## Date
 2026-08-27

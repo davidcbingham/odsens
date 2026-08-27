@@ -1,7 +1,7 @@
 # ADR-0024 — page-scoped `'use server'` glue on dynamic admin routes
 
 ## Status
-Proposed (flips to Accepted at merge — ship step 8)
+Accepted (2026-08-27 — S1.2 merge, v0.3)
 
 ## Date
 2026-08-27

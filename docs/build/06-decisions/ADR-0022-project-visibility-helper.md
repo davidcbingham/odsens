@@ -1,7 +1,7 @@
 # ADR-0022 — `project_is_visible()`: the §4 visibility predicate as one SQL helper
 
 ## Status
-Proposed (flips to Accepted at merge — ship step 8)
+Accepted (2026-08-27 — S1.2 merge, v0.3)
 
 ## Date
 2026-08-27
