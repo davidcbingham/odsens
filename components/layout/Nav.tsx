@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { FLAGS } from '@/lib/flags';
 import { Avatar } from '@/components/primitives/Avatar';
 import { Button } from '@/components/primitives/Button';
+import { SearchBox } from '@/components/primitives/SearchBox';
 import { ProfileMenu } from '@/components/accounts/ProfileMenu';
 import { NavLinks } from './Nav.Links';
 import { NavMenuButton } from './Nav.MenuButton';
@@ -10,9 +12,12 @@ import styles from './Nav.module.css';
 /**
  * Nav — sticky top bar (DESIGN.md §5 Nav, §12.2; 03 §4 N-01..N-09). Server shell, no props:
  * the link list is a constant here and `FLAGS.commissions` is read directly (01 INV-74).
- * Client leaves: `NavLinks` (aria-current via usePathname), `NavMenuButton` (burger + panel) and the
- * viewer slot `ProfileMenu` (03 N-04; reads `useViewer()` — anon/loading renders "Sign in"). The same
- * slot is passed into the phone panel as the `viewer` node (03 N-05: same order, Support last).
+ * Client leaves: `NavLinks` (aria-current via usePathname), `NavMenuButton` (burger + panel),
+ * `SearchBox placement="nav"` (S1.2, 02 RP-12: self-renders only on `/projects` via
+ * `usePathname`; desktop-only ≥900px — the `/projects` page carries the `placement="page"`
+ * instance under 900px) and the viewer slot `ProfileMenu` (03 N-04; reads `useViewer()` —
+ * anon/loading renders "Sign in"). The same slot is passed into the phone panel as the
+ * `viewer` node (03 N-05: same order, Support last).
  */
 export type NavProps = Record<string, never>;
 
@@ -41,7 +46,13 @@ export function Nav() {
         <NavLinks links={LINKS} />
 
         <div className={styles['nav-right']}>
-          {/* Viewer slot (03 N-04): SearchBox placement="nav" precedes it from S1.2. */}
+          {/* 02 RP-12 right side, S1.2: SearchBox before the viewer slot. Suspense per 02 RP-02
+              — useSearchParams needs a boundary on ISR pages; fallback none (the box is a
+              client control and only renders on /projects anyway). */}
+          <Suspense fallback={null}>
+            <SearchBox placement="nav" />
+          </Suspense>
+          {/* Viewer slot (03 N-04). */}
           <div className={styles['nav-viewer']}>
             <ProfileMenu />
           </div>
