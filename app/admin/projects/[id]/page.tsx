@@ -165,13 +165,17 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   // ---- Error round-trip (see header) ---------------------------------------------------------
   const errorForm = queryValue(query.form);
   const errorField = queryValue(query.field);
+  // A dotted zod issue path (`loaders.0`) maps onto its root Field, like /new does.
+  const errorFieldRoot = errorField === null ? null : (errorField.split('.')[0] ?? null);
   const errorMessage = queryValue(query.error);
   const fieldError = (form: FormName, field: string): string | undefined =>
-    errorForm === form && errorField === field && errorMessage !== null ? errorMessage : undefined;
+    errorForm === form && errorFieldRoot === field && errorMessage !== null
+      ? errorMessage
+      : undefined;
   const formLevelError = (form: FormName, fields: readonly string[]): string | null =>
     errorForm === form &&
     errorMessage !== null &&
-    (errorField === null || !fields.includes(errorField))
+    (errorFieldRoot === null || !fields.includes(errorFieldRoot))
       ? errorMessage
       : null;
   const OVERRIDE_FIELDS = ['title_override', 'description_override', 'notes_md'];

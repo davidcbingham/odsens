@@ -195,8 +195,20 @@ export async function setProjectLink(
     await assertRateLimit('project_link', user.id, 30, '1 hour');
     const admin = createAdminClient();
 
-    const slug = await readProjectSlug(admin, data.project_id);
-    if (slug === null) return fail('not_found', NOT_FOUND_PROJECT);
+    const { data: project, error: projectError } = await admin
+      .from('projects')
+      .select('slug, source')
+      .eq('id', data.project_id)
+      .maybeSingle();
+    if (projectError) throw new Error(`projects read failed: ${projectError.code}`);
+    if (project === null) return fail('not_found', NOT_FOUND_PROJECT);
+    // Q39 scopes CF links to SYNCED projects; a link on an exclusive would also un-earn its
+    // badge everywhere the list reads derive `exclusive` from `source` alone (00 S1.3.AC8 —
+    // `isExclusive` demands zero `project_links` rows).
+    if (project.source === 'odsens') {
+      return fail('validation', 'Exclusives live only here — no CurseForge link to add.');
+    }
+    const slug = project.slug;
 
     if (data.ref === null) {
       // 04 §1.4: `null` removes the link and zeroes the combined-count contribution.

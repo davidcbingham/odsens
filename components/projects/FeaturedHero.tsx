@@ -5,7 +5,7 @@ import buttonStyles from '@/components/primitives/Button.module.css';
 import { Chip } from '@/components/primitives/Chip';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
 import { TrackedLink } from '@/components/primitives/TrackedLink';
-import { ExclusiveBadge } from '@/components/projects/ExclusiveBadge';
+import { ExclusiveBadge } from '@/components/primitives/ExclusiveBadge';
 import type { ProjectType } from '@/lib/format/project';
 import styles from './FeaturedHero.module.css';
 

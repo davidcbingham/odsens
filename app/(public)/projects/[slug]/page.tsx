@@ -8,7 +8,7 @@ import { NoteCallout } from '@/components/primitives/NoteCallout';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
 import { TypeBadge } from '@/components/primitives/TypeBadge';
 import { DetailsList, type DetailsListItem } from '@/components/projects/DetailsList';
-import { ExclusiveBadge } from '@/components/projects/ExclusiveBadge';
+import { ExclusiveBadge } from '@/components/primitives/ExclusiveBadge';
 import { Gallery } from '@/components/projects/Gallery';
 import { GetItPanel, type GetItPanelProps } from '@/components/projects/GetItPanel';
 import { TipPanel } from '@/components/projects/TipPanel';

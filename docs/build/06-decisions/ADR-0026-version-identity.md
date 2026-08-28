@@ -38,7 +38,13 @@ Kind: deviation
 | Doc | Section | Change |
 |---|---|---|
 | `docs/data-model.md` | §2.2 `project_versions` | unique row replaced with "unique(external_id) — ADR-0026; unique(project_id, version_number) where external_id is null (exclusives)" |
-| `docs/build/05-test-plan.md` | §12 | dated note: T-ACT-48 extended with the duplicate-`version_number` case (two upstream versions, one `version_number` → two rows; rerun idempotent) — ADR-0026 |
+| `docs/build/05-test-plan.md` | §12 + Status line | dated note: T-ACT-48 extended with the duplicate-`version_number` case (two upstream versions, one `version_number` → two rows; rerun idempotent) — ADR-0026 |
+| `docs/build/00-build-plan.md` | §6 changelog + Status line | ADR-0026 changelog row |
+| `docs/questions.md` | S1.3 build notes | decision recorded (resolves the 2026-08-27 S1.2 finding) |
 
 ## Gate impact
-`supabase-reviewer` (constraint change + migration), `backend-reviewer` (sync match rule), `spec-drift-reviewer` (data-model §2.2 edit carries this ADR's number).
+| Gate agent | What it now checks differently |
+|---|---|
+| `supabase-reviewer` | `project_versions` uniques = `external_id` (plain) + the exclusive partial index; migration `20260827200000` |
+| `backend-reviewer` | `syncModrinth` matches versions by `external_id` only — a `version_number` fallback anywhere is a regression |
+| `spec-drift-reviewer` | data-model §2.2 + 05 §12 read as amended here |

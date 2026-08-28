@@ -1,6 +1,6 @@
 # Server Contracts
 Purpose: the checkable contract for every Server Action, route handler, cron job, and external adapter in `_registry.md` §Server contract registry — names, files, auth, input schema, preconditions, effects, return shape, rate limits, idempotency, external calls, logging, and required tests — so gate agents can diff code against it.
-Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0009, ADR-0010, ADR-0012, ADR-0013 (2026-08-20) — amended by ADR-0014 (2026-08-20) — amended by ADR-0015 (2026-08-20) — amended by ADR-0019 (2026-08-21) — amended by ADR-0020 (2026-08-21) — amended by ADR-0021 (2026-08-27) — amended by ADR-0024 (2026-08-27)
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0009, ADR-0010, ADR-0012, ADR-0013 (2026-08-20) — amended by ADR-0014 (2026-08-20) — amended by ADR-0015 (2026-08-20) — amended by ADR-0019 (2026-08-21) — amended by ADR-0020 (2026-08-21) — amended by ADR-0021 (2026-08-27) — amended by ADR-0024 (2026-08-27) — amended by ADR-0027 (2026-08-27)
 
 Decisions applied: `06-decisions/ADR-0002-spec-reconciliation.md` (binding — C1–C22 + OPEN defaults 13–80); every OPEN item below that ADR-0002 settles is marked **DECIDED (ADR-0002 <ref>)**.
 
@@ -293,7 +293,7 @@ Shared: `PROJECT_TYPE = z.enum(['mod','datapack','resourcepack','plugin'])` · `
 |---|---|
 | Trigger | `/admin/projects/new` form. |
 | Auth | `requireRole('admin')`. |
-| Input (`createExclusiveProjectInput`) | `{slug: SLUG, title: 1..80, description: 1..256, body_md: ≤ 65536, project_type: PROJECT_TYPE, categories: string[≤32][] max 10, loaders: LOADERS[] max 10, game_versions: GAME_VERSION[] max 60, license?: ≤ 64, source_url?, issues_url?, discord_url?: URL}`. |
+| Input (`createExclusiveProjectInput`) | `{slug: SLUG, title: 1..80, description: 1..256, body_md: ≤ 65536, project_type: PROJECT_TYPE, categories: string[≤32][] max 10, loaders: LOADERS[] max 10, game_versions: GAME_VERSION[] max 60, license?: ≤ 64, source_url?, issues_url?, discord_url?: URL}` — `body_md`/`categories`/`loaders`/`game_versions` are optional-with-empty-defaults (absent = `''`/`[]`; value bounds unchanged — ADR-0027). |
 | Effects | Insert `projects {source:'odsens', external_id:null, status:'draft', downloads_* 0, published_at:null}`; slug conflict (citext, incl. Modrinth slugs) → `conflict`. No revalidation (draft invisible). SC-24. |
 | Returns | `{ok:true, data:{id, slug}}`. Errors: `forbidden`, `validation`, `conflict`. |
 | Tests (05) | T-ACT-34, T-ACT-35; T-RLS-17, T-RLS-19; T-UNIT-20. |
@@ -301,7 +301,7 @@ Shared: `PROJECT_TYPE = z.enum(['mod','datapack','resourcepack','plugin'])` · `
 #### `updateExclusiveProject`
 | Item | Contract |
 |---|---|
-| Auth | `requireRole('admin')`. Input (`updateExclusiveProjectInput`) `{id: uuid} & Partial<createExclusiveProject input>` (slug change allowed while `status='draft'` only, else `conflict`); `source`, `external_id`, `downloads_*` never accepted. |
+| Auth | `requireRole('admin')`. Input (`updateExclusiveProjectInput`) `{id: uuid} & Partial<createExclusiveProject input>` (slug change allowed while `status='draft'` only, else `conflict`); the four clearable optionals `license`/`source_url`/`issues_url`/`discord_url` also accept `null` to clear the stored value (absent = keep — ADR-0027); `source`, `external_id`, `downloads_*` never accepted. |
 | Preconditions | `projects.source = 'odsens'` else `forbidden` (synced rows are curated via `curateProject`). |
 | Effects | Update columns; `revalidateTag('projects')`, `revalidateTag('project:<slug>')` (old and new slug if changed). SC-24. |
 | Returns | `{ok:true, data:{id, slug}}`. Tests (05): T-ACT-36. |
@@ -343,7 +343,7 @@ Applies to `uploadProjectMedia`, `uploadProjectFile`, `createArt`/`updateArt` im
 |---|---|---|---|
 | `begin` | `{phase:'begin', …target ids, filename, size_bytes, mime}` | role check → `assertRateLimit('upload:<bucket>', profile_id, …)` (§5.5) → validate declared size ≤ cap and extension allowlist → compute path (SC-21; `{hash}` is not known yet, so `begin` uses a `crypto.randomUUID()` placeholder segment which `commit` renames to `{hash}` via `storage.move`) → `lib/files.ts` signed-URL builder → `storage.from(bucket).createSignedUploadUrl(path)` (service role, token valid `UPLOAD_TOKEN_HOURS`, default 2 h; the only call site is `lib/files.ts`, 01 INV-51) → insert **no DB row yet** | `{ok:true, data:{path, token, signed_url}}` |
 | (browser) | `PUT` the file to `signed_url` with the token (Supabase `uploadToSignedUrl`) | — | — |
-| `commit` | `{phase:'commit', path, …metadata}` | role check → path must match the pattern for the caller's target ids → `download` the object (streaming) → check magic bytes (SC-19), actual size ≤ cap, image dimensions (`sharp.metadata()`), sha512 (files) → on failure **delete the object** and return error → on success `move` to the final `{hash}` path (media/art), write DB row(s) → revalidate | `{ok:true, data:{row}}` |
+| `commit` | `{phase:'commit', path, …metadata}` | role check → path must match the pattern for the caller's target ids → `download` the object (buffered — the caps sit inside function memory; ADR-0027) → check magic bytes (SC-19), actual size ≤ cap, image dimensions (`sharp.metadata()`), sha512 (files) → on failure **delete the object** and return error → on success `move` to the final `{hash}` path (media/art), write DB row(s) → revalidate | `{ok:true, data:{row}}` |
 
 Rules: U1 an object with no committed row is garbage — `snapshotStats` (S1.9; the orphan-cleanup acceptance moved from S1.3.AC11 to S1.9 — ADR-0002 #80) deletes objects older than 24 h whose path is not referenced by `project_files.storage_path`, `projects.icon_url`, `projects.gallery[].url`, `project_overrides.extra_gallery[].path`, `art.image_path` (avatars `profiles.avatar_path` and skins `skins.texture_path`/`render_bust_path` are **excluded** — inline uploads never orphan). U2 `begin` rate limits apply per §5.5 (`rate_limit_hits`). U3 commit is idempotent on `path` (`conflict` → return existing row). U4 Client `UploadWell` shows the printed limits from `UPLOAD_KINDS` (03's remit).
 
@@ -364,7 +364,7 @@ Rules: U1 an object with no committed row is garbage — `snapshotStats` (S1.9; 
 | Auth | `requireRole('admin')`. Bucket `project-files` (**private**). Only `source='odsens'` projects (`forbidden` otherwise). |
 | Input (begin) | `{phase:'begin', project_id, version_number: /^[0-9A-Za-z.\-+_]{1,32}$/, filename (ext ∈ .jar .zip .mrpack after SC-20), size_bytes ≤ 104_857_600, mime}` — `begin` computes `version_id` = existing `project_versions (project_id, version_number)` id or a fresh uuid reserved in the returned path; the version row is upserted only at commit. |
 | Input (commit) | `{phase:'commit', project_id, path, version: {version_number, name?: ≤80, changelog_md?: ≤20000, game_versions: GAME_VERSION[] min 1, loaders: LOADERS[] min 1, version_type: z.enum(['release','beta','alpha']), date_published?: iso (default now)}, primary?: boolean}`. |
-| Validation (commit) | ZIP magic bytes; size ≤ 100 MB (ADR-0002 #31); sha512 computed by streaming; filename unique within version (`conflict`). |
+| Validation (commit) | ZIP magic bytes; size ≤ 100 MB (ADR-0002 #31); sha512 computed over the buffered bytes (ADR-0027); filename unique within version (`conflict`), checked before the version-metadata upsert. |
 | Effects | Upsert `project_versions` (external_id null); insert `project_files {version_id, filename, size_bytes, sha512, url:null, storage_path: path, primary, download_count:0}`; if `primary` true → clear `primary` on siblings; if version has no primary → this file becomes primary. Revalidate `projects`, `project:<slug>`. SC-24. |
 | Returns | `{ok:true, data:{version_id, file:{id, filename, size_bytes, sha512}}}` — sha512 is displayed in `VersionsTable` (security-check). |
 | Tests (05) | T-ACT-39 (path per SC-21), T-ACT-73; T-UNIT-17, T-UNIT-18, T-UNIT-22; T-RLS-117, T-RLS-119. |

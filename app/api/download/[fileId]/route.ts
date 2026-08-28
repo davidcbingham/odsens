@@ -134,3 +134,8 @@ export function PATCH(): NextResponse {
 export function DELETE(): NextResponse {
   return methodNotAllowed();
 }
+// Without this, Next auto-answers OPTIONS 204 with an Allow header listing every export above —
+// actively misleading for a GET-only route (ADR-0002 C17 "others → 405").
+export function OPTIONS(): NextResponse {
+  return methodNotAllowed();
+}

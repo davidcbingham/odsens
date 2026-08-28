@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Chip } from '@/components/primitives/Chip';
 import { TypeBadge } from '@/components/primitives/TypeBadge';
-import { ExclusiveBadge } from '@/components/projects/ExclusiveBadge';
+import { ExclusiveBadge } from '@/components/primitives/ExclusiveBadge';
 import { formatCount, formatCountFull } from '@/lib/format/number';
 import type { ProjectType } from '@/lib/format/project';
 import styles from './ProjectCard.module.css';

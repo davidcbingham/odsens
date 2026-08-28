@@ -17,10 +17,13 @@
  *              → on failure DELETE the object and fail → on success move media to its `{hash16}`
  *              path, write the DB row(s), revalidate.
  *
- * Idempotency (U3, on `path`): media commits dedupe on the content-addressed final path (a re-PUT +
- * re-commit of the same bytes returns the existing entry, no duplicate row); file commits find the
- * existing `(version_id, filename)` row — same sha512 → the existing row (`ok`), different bytes
- * under the same name → `conflict` (04 §1.4 "filename unique within version").
+ * Idempotency (U3 — content-based for media, ADR-0027): media commits dedupe on the
+ * content-addressed final path (a re-PUT + re-commit of the same bytes returns the existing entry,
+ * no duplicate row; a bare commit retry AFTER a successful commit finds the pending object moved
+ * and answers `validation` "never arrived" — the client re-sends the bytes, which converges).
+ * File commits are path-idempotent per the 04 letter: same `(version_id, filename)` + same sha512
+ * → the existing row (`ok`), different bytes under the same name → `conflict` (04 §1.4 "filename
+ * unique within version"), checked BEFORE the version-metadata upsert.
  *
  * Admin-only for every kind and source (ADR-0002 C7); `uploadProjectFile` and media `kind='icon'`
  * additionally require `source='odsens'` (synced icons/files belong to Modrinth — 04 §1.4);
@@ -362,6 +365,51 @@ export async function uploadProjectFile(
     }
     const sha512 = sha512Hex(bytes);
 
+    // Existing files of this version — U3 idempotency + filename uniqueness run BEFORE the
+    // version-metadata upsert (04 §1.4 lists the filename check under Validation; §1.4.5
+    // sequences validation → write, so a `conflict` return must leave the version untouched).
+    // A null versionRow has no files yet; the arrays stay empty.
+    type SiblingRow = {
+      id: string;
+      filename: string;
+      sha512: string | null;
+      size_bytes: number;
+      primary: boolean;
+    };
+    let siblings: SiblingRow[] = [];
+    if (versionRow !== null) {
+      const { data: rows, error: siblingsError } = await admin
+        .from('project_files')
+        .select('id, filename, sha512, size_bytes, primary')
+        .eq('version_id', versionRow.id);
+      if (siblingsError) throw new Error(`project_files read failed: ${siblingsError.code}`);
+      siblings = rows;
+
+      const existing = siblings.find((row) => row.filename === parsed.filename);
+      if (existing !== undefined) {
+        if (existing.sha512 === sha512) {
+          // Same bytes re-committed — the existing row, no duplicate, no metadata rewrite (U3).
+          logAdmin(
+            'uploadProjectFile',
+            ctx,
+            user.id,
+            { type: 'project', id: data.project_id },
+            data,
+          );
+          return ok<UploadProjectFileData>({
+            version_id: versionRow.id,
+            file: {
+              id: existing.id,
+              filename: existing.filename,
+              size_bytes: existing.size_bytes,
+              sha512,
+            },
+          });
+        }
+        return fail('conflict', FILENAME_TAKEN, { field: 'filename' });
+      }
+    }
+
     // Upsert the version (external_id null — exclusive) under the ADR-0026 partial unique.
     let versionId: string;
     if (versionRow === null) {
@@ -413,31 +461,7 @@ export async function uploadProjectFile(
       }
     }
 
-    // Existing files of this version: idempotency (U3) + the primary rule (04 §1.4).
-    const { data: siblings, error: siblingsError } = await admin
-      .from('project_files')
-      .select('id, filename, sha512, size_bytes, primary')
-      .eq('version_id', versionId);
-    if (siblingsError) throw new Error(`project_files read failed: ${siblingsError.code}`);
-
-    const existing = siblings.find((row) => row.filename === parsed.filename);
-    if (existing !== undefined) {
-      if (existing.sha512 === sha512) {
-        // Same bytes re-committed — the existing row, no duplicate (U3).
-        logAdmin('uploadProjectFile', ctx, user.id, { type: 'project', id: data.project_id }, data);
-        return ok<UploadProjectFileData>({
-          version_id: versionId,
-          file: {
-            id: existing.id,
-            filename: existing.filename,
-            size_bytes: existing.size_bytes,
-            sha512,
-          },
-        });
-      }
-      return fail('conflict', FILENAME_TAKEN, { field: 'filename' });
-    }
-
+    // Primary rule (04 §1.4): `primary:true` demotes siblings; a version's first file is primary.
     const hasPrimary = siblings.some((row) => row.primary);
     const makePrimary = data.primary === true || !hasPrimary;
     if (data.primary === true && hasPrimary) {

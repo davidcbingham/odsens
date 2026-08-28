@@ -60,7 +60,7 @@ Videos: `VideoFacade` (sizes 88/44/56; `variant=upnext`), `VideoCard`, `UpNextLi
 Skins/Art: `SkinViewer3D`, `SkinCard`, `ArtMasonry` + `ArtMasonryLightbox` (`ArtMasonry.Lightbox.tsx`, C), `ArtCard`
 Seen on: `MentionCard`, `ReachLine`, `SeenOnRow`, `InTheWildStrip`, `MentionPreview` (admin)
 Support: `AmountPicker`, `KofiPanelSlot` (iframe 712/620, mounts in place), `Leaderboard` (+ `LeaderboardRow`)
-Admin: `AdminShell` (sidebar) + `AdminNav` (`AdminShell.Nav.tsx`, C), `UploadWell` (+ client variant P2), `NotificationMatrix`, `AdminGate` ("Admins only" + Google button, anon only), `SyncStatus` (= `Table`+`StatusPill`+`Button`+`SourceSwatch`), `ReorderableList` (C)
+Admin: `AdminShell` (sidebar) + `AdminNav` (`AdminShell.Nav.tsx`, C), `UploadWell` (+ client variant P2) + `ProjectFileWell` (same `UploadWell.tsx` island file — version fields + payload merge for `uploadProjectFile`; added 2026-08-27, registry add-first rule, ADR-0027), `NotificationMatrix`, `AdminGate` ("Admins only" + Google button, anon only), `SyncStatus` (= `Table`+`StatusPill`+`Button`+`SourceSwatch`), `ReorderableList` (C)
 Email (`emails/`): `EmailLayout`, `EmailButton`, `EmailBadge`, templates `CommentNew`, `CommentHeld`, `CommentReported`, `SyncFailed`
 Phase 2: `MilestonePills`, `ParticipantsRow`, `WorkroomPost`, `WorkroomFilesList`, `WorkroomStatusRail`, `EmailOptInPanel` (`components/workrooms/`); `OrderForm`, `OrderConfirmation`, `OrdersTable`, `OrderDetail` (`components/orders/`)
 Derived tokens: 03 §9 list (`--indigo-hover … --hatch` + non-colour tokens) + `--ink-deep #0A0F16` (ADR-0002 #45).

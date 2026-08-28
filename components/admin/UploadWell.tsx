@@ -61,6 +61,12 @@ export type UploadWellProps = {
   onCommitted?: (row: unknown) => void;
   /** Moderator view: rendered disabled + `title="Admin only"` (03 §2.10 preamble). */
   disabled?: boolean;
+  /**
+   * The `title` shown while disabled. Defaults to the moderator rule's "Admin only";
+   * `ProjectFileWell` swaps in its not-ready gate copy so an ADMIN with empty version fields
+   * never sees the moderator wording (additive optional prop, C-03 precedent).
+   */
+  disabledTitle?: string;
   className?: string;
 };
 
@@ -169,6 +175,7 @@ export function UploadWell({
   multiple = false,
   onCommitted,
   disabled = false,
+  disabledTitle = ADMIN_ONLY_TITLE,
   className,
 }: UploadWellProps) {
   const router = useRouter();
@@ -341,7 +348,7 @@ export function UploadWell({
     <div
       className={classes}
       data-state={state.name}
-      {...(disabled ? { 'aria-disabled': 'true' as const, title: ADMIN_ONLY_TITLE } : {})}
+      {...(disabled ? { 'aria-disabled': 'true' as const, title: disabledTitle } : {})}
     >
       <div
         className={styles['upload-well-zone']}
@@ -579,6 +586,7 @@ export function ProjectFileWell({
         action={wrappedAction}
         targetIds={{ project_id: projectId, version_number: versionNumber }}
         disabled={disabled || !ready}
+        disabledTitle={disabled ? ADMIN_ONLY_TITLE : 'Fill the version fields first.'}
       />
     </div>
   );

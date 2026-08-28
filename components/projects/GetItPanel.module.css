@@ -69,7 +69,7 @@
 .get-it-sha {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--text-label-sm); /* 12px — the Space Grotesk floor; only Silkscreen goes lower */
   color: var(--mute-dim);
   word-break: break-all;
 }

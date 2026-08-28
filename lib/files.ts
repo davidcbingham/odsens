@@ -228,8 +228,6 @@ export function mediaExtForMime(mime: string): ProjectMediaExt | null {
 
 /** `{uuid}` — the `begin`-phase placeholder segment (04 §1.4.5: `{hash}` is unknown until commit). */
 const PENDING_SEGMENT_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-/** `{hash16}` — the final content-addressed segment (SC-21). */
-const HASH16_RE = /^[0-9a-f]{16}$/;
 /** A filename `sanitizeFilename` could have produced, ending in one of the three file extensions. */
 const PROJECT_FILE_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/;
 
@@ -264,7 +262,8 @@ export function projectFilePath(projectId: string, versionId: string, filename: 
  * Parses a `begin`-phase media path back into `{kind, ext, segment}` — null unless the path
  * matches THIS project's pending pattern exactly (INV-53: commit rejects any path that does
  * not match the caller's target ids). Accepts the uuid placeholder segment only, never a
- * committed `{hash16}` path (U3 idempotency is handled by the caller from the DB row).
+ * committed `{hash16}` path — media idempotency is CONTENT-based (a re-PUT + re-commit of the
+ * same bytes hashes to the same final path and returns the stored entry; ADR-0027).
  */
 export function parseProjectMediaPendingPath(
   projectId: string,
@@ -284,20 +283,6 @@ export function parseProjectMediaPendingPath(
   if (!PENDING_SEGMENT_RE.test(segment)) return null;
   if (ext !== 'png' && ext !== 'jpg' && ext !== 'webp') return null;
   return { kind, ext };
-}
-
-/** True for a committed media path (`{hash16}` segment) of THIS project — used by U3 re-commits. */
-export function isProjectMediaFinalPath(projectId: string, path: string): boolean {
-  if (!UUID_RE.test(projectId)) return false;
-  const prefix = `${PROJECT_MEDIA_BUCKET}/${projectId}/`;
-  if (!path.startsWith(prefix)) return false;
-  const rest = path.slice(prefix.length).split('/');
-  const [kind, name] = rest;
-  if (rest.length !== 2 || kind === undefined || name === undefined) return false;
-  if (kind !== 'icon' && kind !== 'gallery') return false;
-  const dot = name.lastIndexOf('.');
-  if (dot <= 0) return false;
-  return HASH16_RE.test(name.slice(0, dot)) && ['png', 'jpg', 'webp'].includes(name.slice(dot + 1));
 }
 
 /**
