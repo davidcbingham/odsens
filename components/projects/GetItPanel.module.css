@@ -65,6 +65,19 @@
   overflow-wrap: anywhere;
 }
 
+/* sha512 line (00 S1.3.AC3): full 128-hex value, broken to fit the rail. */
+.get-it-sha {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--mute-dim);
+  word-break: break-all;
+}
+
+.get-it-sha-label {
+  font-weight: 700;
+}
+
 .get-it-rows {
   list-style: none;
   margin: 0;

@@ -8,6 +8,7 @@ import { NoteCallout } from '@/components/primitives/NoteCallout';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
 import { TypeBadge } from '@/components/primitives/TypeBadge';
 import { DetailsList, type DetailsListItem } from '@/components/projects/DetailsList';
+import { ExclusiveBadge } from '@/components/projects/ExclusiveBadge';
 import { Gallery } from '@/components/projects/Gallery';
 import { GetItPanel, type GetItPanelProps } from '@/components/projects/GetItPanel';
 import { TipPanel } from '@/components/projects/TipPanel';
@@ -31,9 +32,9 @@ import styles from './page.module.css';
  * render on demand (02 §2.3 "Data (ISR shell)").
  *
  * Sections in DOM order per 02 §2.3: Breadcrumb (Projects › title) · header (104px icon well,
- * `h1` title, description, row = `TypeBadge` + up to 4 `Chip`s + `downloads_total` — the
- * `ExclusiveBadge` component ships in S1.3 and is omitted here, matching `ProjectCard`/
- * `FeaturedHero`) · `Gallery`+`Lightbox` (renders nothing at 0 images) · ABOUT
+ * `h1` title, description, row = `ExclusiveBadge` first when `detail.exclusive` (the
+ * `isExclusive` predicate — 00 S1.3.AC1/AC8) + `TypeBadge` + up to 4 `Chip`s +
+ * `downloads_total`) · `Gallery`+`Lightbox` (renders nothing at 0 images) · ABOUT
  * (`Markdown(body_md)`, then `overrides.notes_md` under a `NoteCallout`) · VERSIONS & FILES
  * (`VersionsTable` — Download hrefs computed by `lib/data/projects.ts` per ADR-0002 #42) ·
  * COMMENTS (slot reserved; `CommentThread` mounts here in S1.4 — 00 S1.2 scope OUT; fragment
@@ -221,6 +222,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                 <p className={styles['detail-description']}>{detail.description}</p>
               ) : null}
               <div className={styles['detail-meta-row']}>
+                {detail.exclusive ? <ExclusiveBadge /> : null}
                 <TypeBadge type={detail.type} />
                 {chips.map((chip) => (
                   <Chip key={chip} label={chip} />

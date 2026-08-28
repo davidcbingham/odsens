@@ -137,8 +137,7 @@ function findGalleryEntry(json: Json, key: 'url' | 'path', path: string): Json |
 // ---------------------------------------------------------------------------------------------
 
 type UploadProjectMediaData =
-  | { path: string; token: string; signed_url: string }
-  | { path: string; entry: Json };
+  { path: string; token: string; signed_url: string } | { path: string; entry: Json };
 
 export async function uploadProjectMedia(
   input: UploadProjectMediaInput,
@@ -232,7 +231,13 @@ export async function uploadProjectMedia(
       // Exclusive gallery lives on `projects.gallery` (U3: same final path → the existing entry).
       const existing = findGalleryEntry(project.gallery, 'url', finalPath);
       if (existing !== null) {
-        logAdmin('uploadProjectMedia', ctx, user.id, { type: 'project', id: data.project_id }, data);
+        logAdmin(
+          'uploadProjectMedia',
+          ctx,
+          user.id,
+          { type: 'project', id: data.project_id },
+          data,
+        );
         return ok<UploadProjectMediaData>({ path: finalPath, entry: existing });
       }
       const entry: Json = {
@@ -243,10 +248,7 @@ export async function uploadProjectMedia(
         featured: false,
       };
       const gallery = Array.isArray(project.gallery) ? [...project.gallery, entry] : [entry];
-      const { error } = await admin
-        .from('projects')
-        .update({ gallery })
-        .eq('id', data.project_id);
+      const { error } = await admin.from('projects').update({ gallery }).eq('id', data.project_id);
       if (error) throw new Error(`projects update failed: ${error.code}`);
       revalidateTag('projects', 'max');
       revalidateTag(`project:${project.slug}`, 'max');

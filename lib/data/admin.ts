@@ -3,7 +3,8 @@
  * `/admin` = `sync_runs` (latest per source) + `projects` count where `status='draft'` (the
  * held-comments count is S1.4, the videos list S1.6 — the row's Slice cell); `/admin/projects` =
  * `projects` (all statuses) + `project_overrides` + `project_links` + `sync_runs`
- * (modrinth/curseforge); `/admin/projects/[id]` = the same, by id; 01 INV-12 "reads
+ * (modrinth/curseforge); `/admin/projects/[id]` = the same, by id, plus the S1.3 exclusive-editor
+ * columns and `project_versions` + `project_files` (`listAdminProjectVersions`); 01 INV-12 "reads
  * go through `lib/data/<area>.ts`"; registry Modules `data/<area>.ts` — `admin` added 2026-08-27,
  * registry add-first rule).
  *
@@ -23,7 +24,8 @@ import 'server-only';
 import { cache } from 'react';
 import { combinedDownloads } from '@/lib/format/downloads';
 import { createServerClient } from '@/lib/supabase/server';
-import type { Database } from '@/lib/supabase/types';
+import type { Database, Json } from '@/lib/supabase/types';
+import { sortVersionsForTable } from '@/lib/versions';
 
 type ProjectType = Database['public']['Enums']['project_type'];
 type ProjectSource = Database['public']['Enums']['project_source'];
@@ -134,6 +136,20 @@ export type AdminProjectDetail = {
   source: ProjectSource;
   status: ProjectStatus;
   downloadsTotal: number;
+  /** S1.3 exclusive-editor columns (04 §1.4 `updateExclusiveProject` fields + publish state). */
+  bodyMd: string;
+  categories: string[];
+  loaders: string[];
+  gameVersions: string[];
+  license: string | null;
+  sourceUrl: string | null;
+  issuesUrl: string | null;
+  discordUrl: string | null;
+  /** Raw stored value — Modrinth CDN URL or Storage path (data-model §2); the page resolves it. */
+  iconUrl: string | null;
+  publishedAt: string | null;
+  /** Raw `projects.gallery` jsonb — the page parses it tolerantly (`parseGalleryEntries`). */
+  gallery: Json;
   /** Null when no override row exists yet — the form renders empty defaults. */
   override: {
     featured: boolean;
@@ -160,7 +176,7 @@ export const getAdminProject = cache(async (id: string): Promise<AdminProjectDet
   const project = await db
     .from('projects')
     .select(
-      'id, slug, title, description, project_type, source, status, downloads_modrinth, downloads_curseforge, downloads_direct',
+      'id, slug, title, description, project_type, source, status, downloads_modrinth, downloads_curseforge, downloads_direct, body_md, categories, loaders, game_versions, license, source_url, issues_url, discord_url, icon_url, published_at, gallery',
     )
     .eq('id', id)
     .maybeSingle();
@@ -194,6 +210,17 @@ export const getAdminProject = cache(async (id: string): Promise<AdminProjectDet
     source: project.data.source,
     status: project.data.status,
     downloadsTotal: combinedDownloads(project.data),
+    bodyMd: project.data.body_md,
+    categories: project.data.categories,
+    loaders: project.data.loaders,
+    gameVersions: project.data.game_versions,
+    license: project.data.license,
+    sourceUrl: project.data.source_url,
+    issuesUrl: project.data.issues_url,
+    discordUrl: project.data.discord_url,
+    iconUrl: project.data.icon_url,
+    publishedAt: project.data.published_at,
+    gallery: project.data.gallery,
     override: override.data
       ? {
           featured: override.data.featured,
@@ -215,6 +242,72 @@ export const getAdminProject = cache(async (id: string): Promise<AdminProjectDet
       : null,
   };
 });
+
+// ---- /admin/projects/[id] versions & files (S1.3 exclusive editor) ---------------------------
+
+export type AdminVersionFile = {
+  id: string;
+  filename: string;
+  sizeBytes: number;
+  sha512: string | null;
+  storagePath: string | null;
+  url: string | null;
+  primary: boolean;
+  downloadCount: number;
+};
+
+export type AdminVersion = {
+  id: string;
+  versionNumber: string;
+  name: string | null;
+  versionType: 'release' | 'beta' | 'alpha';
+  gameVersions: string[];
+  loaders: string[];
+  datePublished: string;
+  changelogMd: string | null;
+  files: AdminVersionFile[];
+};
+
+/**
+ * Every version of one project with its files embedded, in the `VersionsTable` order (05
+ * T-UNIT-30 via `sortVersionsForTable`): versions newest-first, files primary-first. One select —
+ * `project_files` rides the `project_versions` FK embed. Same RLS story as `getAdminProject`:
+ * a moderator on a draft/hidden project never reaches this call (the page 404s first).
+ */
+export async function listAdminProjectVersions(projectId: string): Promise<AdminVersion[]> {
+  const db = await createServerClient();
+  const { data, error } = await db
+    .from('project_versions')
+    .select(
+      'id, version_number, name, version_type, game_versions, loaders, date_published, changelog_md, project_files ( id, filename, size_bytes, sha512, storage_path, url, primary, download_count )',
+    )
+    .eq('project_id', projectId)
+    .order('date_published', { ascending: false });
+  if (error) throw new Error(`admin versions read failed: ${error.code}`);
+
+  return sortVersionsForTable(
+    data.map((row) => ({
+      id: row.id,
+      versionNumber: row.version_number,
+      name: row.name,
+      versionType: row.version_type,
+      gameVersions: row.game_versions,
+      loaders: row.loaders,
+      datePublished: row.date_published,
+      changelogMd: row.changelog_md,
+      files: row.project_files.map((file) => ({
+        id: file.id,
+        filename: file.filename,
+        sizeBytes: file.size_bytes,
+        sha512: file.sha512,
+        storagePath: file.storage_path,
+        url: file.url,
+        primary: file.primary,
+        downloadCount: file.download_count,
+      })),
+    })),
+  );
+}
 
 // ---- /admin dashboard ------------------------------------------------------------------------
 

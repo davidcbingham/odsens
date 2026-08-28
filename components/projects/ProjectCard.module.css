@@ -1,6 +1,8 @@
 /* ProjectCard — DESIGN.md §5 "Project card" (hover: --slab-raised fill, --indigo-lift outline,
    6px 6px 0 --indigo-deep, translate -3/-3); 03 §2.3 ProjectCard tokens. */
 .project-card {
+  /* Anchor for the ExclusiveBadge pinned at the top-left corner (S1.3). */
+  position: relative;
   display: flex;
   flex-direction: column;
   /* The card must shrink to its grid/flex cell: without this, the one-line nowrap description
@@ -16,9 +18,17 @@
     transform var(--dur-fast) ease-out;
 }
 
-/* Exclusive: gold outline (badge itself is S1.3); count turns gold with it (pass-3 mockup). */
+/* Exclusive: gold outline; count turns gold with it (pass-3 mockup). */
 .project-card[data-exclusive] {
   outline-color: var(--gold);
+}
+
+/* ExclusiveBadge in the card's top-left corner, overlapping the 2px outline by 1px
+   (DESIGN.md §5 "sits in the card's top-left corner (overlapping the border by 1px)"). */
+.project-card-badge {
+  position: absolute;
+  top: -1px;
+  left: -1px;
 }
 
 .project-card:hover,

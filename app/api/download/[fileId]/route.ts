@@ -83,7 +83,11 @@ export async function GET(
     if (rpcError) throw new Error(`${downloadable.counter} failed: ${rpcError.code}`);
 
     // D5/D6 — 60 s signed URL with Content-Disposition attachment, then 302.
-    const url = await createDownloadUrl(downloadable.bucket, downloadable.path, downloadable.filename);
+    const url = await createDownloadUrl(
+      downloadable.bucket,
+      downloadable.path,
+      downloadable.filename,
+    );
     return new NextResponse(null, {
       status: 302,
       headers: {

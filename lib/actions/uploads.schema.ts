@@ -92,11 +92,9 @@ export type UploadProjectMediaInput = UploadProjectMediaBeginInput | UploadProje
 /** 04 §1.4: `version_number` grammar. */
 export const VERSION_NUMBER_RE = /^[0-9A-Za-z.\-+_]{1,32}$/;
 
-const versionNumberSchema = z
-  .string({ error: 'Type a version number.' })
-  .regex(VERSION_NUMBER_RE, {
-    error: 'Version numbers use letters, numbers and . - + _ (up to 32).',
-  });
+const versionNumberSchema = z.string({ error: 'Type a version number.' }).regex(VERSION_NUMBER_RE, {
+  error: 'Version numbers use letters, numbers and . - + _ (up to 32).',
+});
 
 const fileSizeSchema = z
   .number({ error: 'Say how big the file is.' })

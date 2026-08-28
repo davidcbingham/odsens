@@ -297,10 +297,7 @@ export function isProjectMediaFinalPath(projectId: string, path: string): boolea
   if (kind !== 'icon' && kind !== 'gallery') return false;
   const dot = name.lastIndexOf('.');
   if (dot <= 0) return false;
-  return (
-    HASH16_RE.test(name.slice(0, dot)) &&
-    ['png', 'jpg', 'webp'].includes(name.slice(dot + 1))
-  );
+  return HASH16_RE.test(name.slice(0, dot)) && ['png', 'jpg', 'webp'].includes(name.slice(dot + 1));
 }
 
 /**
@@ -351,7 +348,10 @@ export async function createSignedUpload(
 }
 
 /** Downloads a stored object's bytes for commit-phase re-validation; null when it is missing. */
-export async function downloadObjectBytes(bucket: string, dbPath: string): Promise<Uint8Array | null> {
+export async function downloadObjectBytes(
+  bucket: string,
+  dbPath: string,
+): Promise<Uint8Array | null> {
   const objectPath = objectPathInBucket(bucket, dbPath);
   if (objectPath === null) return null;
   const admin = createAdminClient();
@@ -361,7 +361,11 @@ export async function downloadObjectBytes(bucket: string, dbPath: string): Promi
 }
 
 /** Moves an object to its final content-addressed path (04 §1.4.5 commit). */
-export async function moveObject(bucket: string, fromDbPath: string, toDbPath: string): Promise<void> {
+export async function moveObject(
+  bucket: string,
+  fromDbPath: string,
+  toDbPath: string,
+): Promise<void> {
   const from = objectPathInBucket(bucket, fromDbPath);
   const to = objectPathInBucket(bucket, toDbPath);
   if (from === null || to === null) throw new StorageError('storage_error', UPLOAD_SAVE_FAILED);

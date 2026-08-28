@@ -1,0 +1,17 @@
+/* ExclusiveBadge — DESIGN.md §5 Exclusive badge (Silkscreen 10px, --gold fill, --gold-ink text,
+   hatch overlay, 3px 3px 0 --gold-deep); 03 §2.2. No position rules — the parent places it. */
+.exclusive-badge {
+  display: inline-block;
+  padding: var(--space-4) var(--space-8);
+  background-color: var(--gold);
+  background-image: var(--hatch); /* §3 hatch layered over the fill — the FeaturedHero recipe */
+  color: var(--gold-ink);
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  font-size: var(--text-pixel-10);
+  line-height: 1.2;
+  letter-spacing: var(--track-pixel);
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 3px 3px 0 var(--gold-deep);
+}

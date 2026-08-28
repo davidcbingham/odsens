@@ -5,14 +5,16 @@ import buttonStyles from '@/components/primitives/Button.module.css';
 import { Chip } from '@/components/primitives/Chip';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
 import { TrackedLink } from '@/components/primitives/TrackedLink';
+import { ExclusiveBadge } from '@/components/projects/ExclusiveBadge';
 import type { ProjectType } from '@/lib/format/project';
 import styles from './FeaturedHero.module.css';
 
 /**
  * FeaturedHero — the Home featured-project takeover (DESIGN.md §6.1; 03 §2.3 `FeaturedHero`;
- * 02 §2.1 #1). Server Component. Indigo hatched slab: badges (`PixelLabel` NEW when the page
- * computed `published_at` < 30 days — ADR-0002 #41; `ExclusiveBadge` lands in S1.3 and is not
- * rendered here yet), 64px Bungee `h1` (36 phone, leading .9), one-line description, gold
+ * 02 §2.1 #1). Server Component. Indigo hatched slab: badges (`ExclusiveBadge` first when the
+ * page's `isExclusive` predicate set `exclusive` — 00 S1.3.AC8; then `PixelLabel` NEW when the
+ * page computed `published_at` < 30 days — ADR-0002 #41), 64px Bungee `h1` (36 phone, leading
+ * .9), one-line description, gold
  * DOWNLOAD + secondary "See the project", `Chip`s max 4 then `+N` (ADR-0002 #54). Right rail:
  * 16:9 screenshot well + intro strip (`Avatar` 56 + the dry line). `project` null → renders
  * nothing; the fallback ordering (featured → highest downloads) lives in the page (02 §2.1).
@@ -62,12 +64,15 @@ export function FeaturedHero({ project, screenshot }: FeaturedHeroProps) {
   return (
     <section className={styles['featured-hero']}>
       <div className={styles['featured-hero-slab']}>
-        {project.isNew ? (
+        {project.exclusive || project.isNew ? (
           <div className={styles['featured-hero-badges']}>
-            {/* `ExclusiveBadge` (S1.3) will sit first in this row; S1.2 heroes are Modrinth-synced. */}
-            <PixelLabel size={10} tone="chalk">
-              {NEW_LABEL}
-            </PixelLabel>
+            {/* `ExclusiveBadge` first, then NEW (03 §2.3 badges order); never when synced. */}
+            {project.exclusive ? <ExclusiveBadge /> : null}
+            {project.isNew ? (
+              <PixelLabel size={10} tone="chalk">
+                {NEW_LABEL}
+              </PixelLabel>
+            ) : null}
           </div>
         ) : null}
         <h1 className={styles['featured-hero-title']}>{project.title}</h1>

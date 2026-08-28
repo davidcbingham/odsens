@@ -90,7 +90,8 @@
   max-width: 52ch;
 }
 
-/* Badge + chips + count row (02 §2.3 #1). */
+/* Badges + chips + count row (02 §2.3 #1): ExclusiveBadge (S1.3) sits first, inline —
+   centre-aligned with the TypeBadge/chips; its 3px offset shadow lives inside the 8px gap. */
 .detail-meta-row {
   display: flex;
   flex-wrap: wrap;
