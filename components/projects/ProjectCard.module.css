@@ -54,6 +54,11 @@
   padding: var(--space-20);
 }
 
+/* Exclusive: body drops below the corner badge (pass-3 exclusive cards bump top padding). */
+.project-card[data-exclusive] .project-card-body {
+  padding-top: var(--space-40);
+}
+
 /* Icon 64 (56 tight, 52 phone) in an --ink well with its own 2px --line border (DESIGN.md §5). */
 .project-card-icon {
   flex: none;

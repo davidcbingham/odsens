@@ -697,7 +697,8 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     // File upload: version fields gate the well (client state — a fresh page, so refill), primary
     // checked; commit upserts version 1.0.0 + the file row (ADR-0026 partial unique).
     await fillVersionFields(page);
-    await versions.getByRole('checkbox', { name: 'Primary file' }).check();
+    await toggleFor(page, 'Primary file').label.click({ force: true });
+    await expect(toggleFor(page, 'Primary file').input).toBeChecked();
     const fileWell = versions.locator('[data-state]');
     await fileWell.locator('input[type="file"]').setInputFiles(fixturePath('files', 'pack.zip'));
     await expect(fileWell).toHaveAttribute('data-state', 'done', { timeout: 15_000 });
@@ -804,7 +805,7 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     for (const label of ['Version number', 'Game versions', 'Loaders', 'Changelog']) {
       await expect(versions.getByLabel(label, { exact: true })).toBeDisabled();
     }
-    await expect(versions.getByRole('checkbox', { name: 'Primary file' })).toBeDisabled();
+    await expect(toggleFor(page, 'Primary file').input).toBeDisabled();
   });
 
   // ---------------------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 /* UploadWell + ProjectFileWell — 03 §2.10 `UploadWell` row; DESIGN.md §11.1 Upload well.
    States via [data-state] on the root (03 C-12): idle dashed --line-strong · dragover
-   --slab-raised fill + dashed --indigo-lift · uploading solid --indigo · done --emerald square
+   --slab-raised fill + dashed --indigo-lift · uploading solid --indigo-lift · done --emerald square
    · error --danger-wash fill / --danger-field border. Limits line 13px --mute-dim at all times. */
 .upload-well {
   display: flex;
@@ -16,7 +16,6 @@
   padding: var(--space-16);
   background: var(--slab-sunk);
   border: 2px dashed var(--line-strong);
-  border-radius: var(--radius-input);
   transition:
     background-color var(--dur-fast) ease-out,
     border-color var(--dur-fast) ease-out;
@@ -29,7 +28,7 @@
 
 .upload-well[data-state='uploading'] .upload-well-zone {
   border-style: solid;
-  border-color: var(--indigo);
+  border-color: var(--indigo-lift);
 }
 
 .upload-well[data-state='done'] .upload-well-zone {
@@ -108,7 +107,7 @@
 
 .upload-well-bar-fill {
   height: 100%;
-  background: var(--indigo);
+  background: var(--indigo-lift);
   transition: width var(--dur-fast) ease-out;
 }
 
@@ -178,6 +177,7 @@
   gap: var(--space-16);
 }
 
+/* Caption + system `Toggle` (§11.1 square toggle; the Toggle dims itself when disabled). */
 .project-file-well-primary {
   display: inline-flex;
   align-items: center;
@@ -187,19 +187,6 @@
   font-size: var(--text-label);
   font-weight: 700;
   color: var(--chalk);
-  cursor: pointer;
-}
-
-.project-file-well-primary-box {
-  width: var(--size-toggle);
-  height: var(--size-toggle);
-  margin: 0;
-  accent-color: var(--indigo);
-}
-
-.project-file-well-primary:has(input:disabled) {
-  opacity: 0.45;
-  cursor: default;
 }
 
 .project-file-well-gate {

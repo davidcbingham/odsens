@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/primitives/Button';
 import { Field } from '@/components/primitives/Field';
 import { Select } from '@/components/primitives/Select';
+import { Toggle } from '@/components/primitives/Toggle';
 import type { ActionResult } from '@/lib/actions/result';
 import { formatFileSize } from '@/lib/format/size';
 import { UPLOAD_KINDS, sizeLimitMessage, typeMessage } from '@/lib/validation/files';
@@ -22,7 +23,7 @@ import styles from './UploadWell.module.css';
  * `data-state` on the root (03 C-12): `idle` (dashed `--line-strong`, "Drop a file here / or
  * pick one") · `dragover` (`--slab-raised` fill, dashed `--indigo-lift`, "Let go." + the file
  * name when the DataTransfer exposes it — usually not during dragover; omitted silently then) ·
- * `uploading` (solid `--indigo` border, name, percent, flat bar, Cancel; covers begin → PUT →
+ * `uploading` (solid `--indigo-lift` border, name, percent, flat bar, Cancel; covers begin → PUT →
  * commit, "Checking…" with the bar full while commit runs) · `done` (`--emerald` square `✔`,
  * name + size via `formatFileSize`, Remove — a local reset only; committed rows are managed
  * elsewhere) · `error` (`--danger-wash` fill, `--danger-field` border, `role="alert"` message,
@@ -567,16 +568,18 @@ export function ProjectFileWell({
           disabled={disabled}
           inputProps={{ value: changelog, onChange: inputChange(setChangelog) }}
         />
-        <label className={styles['project-file-well-primary']}>
-          <input
-            type="checkbox"
+        <div className={styles['project-file-well-primary']}>
+          <span>Primary file</span>
+          <Toggle
+            name="version_is_primary"
             checked={primaryChecked}
+            onChange={setPrimaryChecked}
+            role="switch"
+            accent="indigo"
+            label="Primary file"
             disabled={disabled}
-            onChange={(event) => setPrimaryChecked(event.currentTarget.checked)}
-            className={styles['project-file-well-primary-box']}
           />
-          Primary file
-        </label>
+        </div>
       </div>
       {ready ? null : (
         <p className={styles['project-file-well-gate']}>Fill the version fields first.</p>
