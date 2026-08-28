@@ -166,7 +166,9 @@ async function insertContentRow(
 }
 
 export const makeProject: Factory<ProjectOverrides> = async (overrides = {}) => {
-  const id = randomUUID();
+  // An `id` override must ALSO be the tracked id, or cleanup deletes a phantom row and the
+  // factory project leaks past the run (found by S1.3's publishProject suite, 2026-08-27).
+  const id = typeof overrides.id === 'string' ? overrides.id : randomUUID();
   const tag = shortTag(id);
   const row: Record<string, Json> = {
     id,
@@ -189,7 +191,7 @@ export const makeVersion: Factory<VersionOverrides> = async (overrides = {}) => 
   if (typeof overrides.project_id !== 'string') {
     throw new Error('makeVersion: pass project_id (create the parent with makeProject first)');
   }
-  const id = randomUUID();
+  const id = typeof overrides.id === 'string' ? overrides.id : randomUUID();
   const row: Record<string, Json> = {
     id,
     version_number: `t_${shortTag(id)}`,
@@ -206,7 +208,7 @@ export const makeFile: Factory<FileOverrides> = async (overrides = {}) => {
   if (typeof overrides.version_id !== 'string') {
     throw new Error('makeFile: pass version_id (create the parent with makeVersion first)');
   }
-  const id = randomUUID();
+  const id = typeof overrides.id === 'string' ? overrides.id : randomUUID();
   const row: Record<string, Json> = {
     id,
     filename: `t_${shortTag(id)}.zip`,
@@ -223,7 +225,7 @@ export const makeSkin: Factory = notYet('makeSkin');
 export const makeArt: Factory = notYet('makeArt');
 
 export const makeSyncRun: Factory<SyncRunOverrides> = async (overrides = {}) => {
-  const id = randomUUID();
+  const id = typeof overrides.id === 'string' ? overrides.id : randomUUID();
   const row: Record<string, Json> = {
     id,
     source: 'modrinth',

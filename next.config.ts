@@ -90,6 +90,13 @@ const nextConfig: NextConfig = {
       { source: '/welcome', headers: [noindex] },
       { source: '/profile', headers: [noindex] },
       { source: '/api/:path*', headers: [noindex] },
+      // 04 §2.3 D6: the download 302 must carry `Referrer-Policy: no-referrer` — configured
+      // headers overwrite handler-set ones per key, so the global strict-origin value above
+      // would clobber the route's; this later, more specific rule wins for the one route (S1.3).
+      {
+        source: '/api/download/:path*',
+        headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }],
+      },
     ];
   },
 };
