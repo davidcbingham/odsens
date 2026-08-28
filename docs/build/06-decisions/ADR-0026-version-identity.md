@@ -1,7 +1,7 @@
 # ADR-0026 — Version identity: `external_id` for synced versions, `(project_id, version_number)` for exclusives only
 
 ## Status
-Proposed
+Accepted (2026-08-27 — S1.3 merge, v0.4)
 
 ## Date
 2026-08-27

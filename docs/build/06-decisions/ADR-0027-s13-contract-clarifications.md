@@ -1,7 +1,7 @@
 # ADR-0027 — S1.3 contract clarifications (create-page flow, download-route referrer header, upload-contract letter)
 
 ## Status
-Proposed
+Accepted (2026-08-27 — S1.3 merge, v0.4)
 
 ## Date
 2026-08-27
