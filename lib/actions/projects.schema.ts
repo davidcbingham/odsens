@@ -14,6 +14,7 @@
  */
 import { z } from 'zod';
 import { parseRef } from '@/lib/adapters/curseforge';
+import { slugSchema } from '@/lib/validation/slug';
 
 /** 04 §1.4: `featured_order` is an int 1..99 (both shapes). */
 const featuredOrderSchema = z
@@ -129,4 +130,155 @@ export type SetProjectLinkInput = {
   project_id: string;
   platform: 'curseforge';
   ref: string | null;
+};
+
+// ---------------------------------------------------------------------------------------------
+// S1.3 — exclusive projects (04 §1.4 shared enums + createExclusiveProject / updateExclusiveProject
+// / publishProject input cells verbatim; slug via lib/validation/slug.ts slugSchema)
+// ---------------------------------------------------------------------------------------------
+
+/** 04 §1.4 shared: `PROJECT_TYPE`. */
+export const PROJECT_TYPE = z.enum(['mod', 'datapack', 'resourcepack', 'plugin'], {
+  error: 'Pick a type.',
+});
+
+/** 04 §1.4 shared: `LOADERS`. */
+export const LOADERS = z.enum(
+  [
+    'fabric',
+    'forge',
+    'neoforge',
+    'quilt',
+    'paper',
+    'spigot',
+    'bukkit',
+    'purpur',
+    'folia',
+    'velocity',
+    'bungeecord',
+    'waterfall',
+    'sponge',
+    'datapack',
+    'minecraft',
+  ],
+  { error: "That loader isn't on the list." },
+);
+
+/** 04 §1.4 shared: `GAME_VERSION` — `1.21`, `1.21.1`, `24w14a`, … */
+export const GAME_VERSION_RE = /^[0-9][0-9A-Za-z.\-+_]{0,19}$/;
+
+const gameVersionSchema = z
+  .string()
+  .regex(GAME_VERSION_RE, { error: 'Game versions look like 1.21 or 24w14a.' });
+
+/** 04 §1.4 shared: `URL` — https only, ≤ 512. */
+const httpsUrlSchema = z
+  .url({ error: 'Needs to be a full https:// link.' })
+  .startsWith('https://', { error: 'Links start with https://.' })
+  .max(512, { error: 'Too long. 512 characters maximum.' });
+
+const titleSchema = z
+  .string({ error: 'Type a title.' })
+  .min(1, { error: 'Type a title.' })
+  .max(80, { error: 'Too long. 80 characters maximum.' });
+
+const descriptionSchema = z
+  .string({ error: 'Type a description.' })
+  .min(1, { error: 'Type a description.' })
+  .max(256, { error: 'Too long. 256 characters maximum.' });
+
+const bodyMdSchema = z.string().max(65536, { error: 'Too long. 65536 characters maximum.' });
+
+const categoriesSchema = z
+  .array(z.string().min(1).max(32, { error: 'Too long. 32 characters per category.' }))
+  .max(10, { error: '10 categories maximum.' });
+
+const loadersListSchema = z.array(LOADERS).max(10, { error: '10 loaders maximum.' });
+
+const gameVersionsListSchema = z
+  .array(gameVersionSchema)
+  .max(60, { error: '60 game versions maximum.' });
+
+const licenseSchema = z.string().max(64, { error: 'Too long. 64 characters maximum.' });
+
+/**
+ * 04 §1.4 `createExclusiveProject` input. `source` / `external_id` / `downloads_*` / `status` are
+ * not schema keys — zod strips unknown object keys, so they are ignored (05 T-ACT-35).
+ */
+export const createExclusiveProjectInput = z.object({
+  slug: slugSchema,
+  title: titleSchema,
+  description: descriptionSchema,
+  body_md: bodyMdSchema.default(''),
+  project_type: PROJECT_TYPE,
+  categories: categoriesSchema.default([]),
+  loaders: loadersListSchema.default([]),
+  game_versions: gameVersionsListSchema.default([]),
+  license: licenseSchema.optional(),
+  source_url: httpsUrlSchema.optional(),
+  issues_url: httpsUrlSchema.optional(),
+  discord_url: httpsUrlSchema.optional(),
+});
+
+export type CreateExclusiveProjectInput = {
+  slug: string;
+  title: string;
+  description: string;
+  body_md?: string;
+  project_type: 'mod' | 'datapack' | 'resourcepack' | 'plugin';
+  categories?: string[];
+  loaders?: string[];
+  game_versions?: string[];
+  license?: string;
+  source_url?: string;
+  issues_url?: string;
+  discord_url?: string;
+};
+
+/**
+ * 04 §1.4 `updateExclusiveProject` input: `{id} & Partial<create>` — optional fields may also be
+ * `null` to clear the stored value (license/links). Slug changes are draft-only (checked in the
+ * action — needs the stored row).
+ */
+export const updateExclusiveProjectInput = z.object({
+  id: projectIdSchema,
+  slug: slugSchema.optional(),
+  title: titleSchema.optional(),
+  description: descriptionSchema.optional(),
+  body_md: bodyMdSchema.optional(),
+  project_type: PROJECT_TYPE.optional(),
+  categories: categoriesSchema.optional(),
+  loaders: loadersListSchema.optional(),
+  game_versions: gameVersionsListSchema.optional(),
+  license: licenseSchema.nullable().optional(),
+  source_url: httpsUrlSchema.nullable().optional(),
+  issues_url: httpsUrlSchema.nullable().optional(),
+  discord_url: httpsUrlSchema.nullable().optional(),
+});
+
+export type UpdateExclusiveProjectInput = {
+  id: string;
+  slug?: string;
+  title?: string;
+  description?: string;
+  body_md?: string;
+  project_type?: 'mod' | 'datapack' | 'resourcepack' | 'plugin';
+  categories?: string[];
+  loaders?: string[];
+  game_versions?: string[];
+  license?: string | null;
+  source_url?: string | null;
+  issues_url?: string | null;
+  discord_url?: string | null;
+};
+
+/** 04 §1.4 `publishProject` input. */
+export const publishProjectInput = z.object({
+  id: projectIdSchema,
+  status: z.enum(['draft', 'published', 'hidden'], { error: 'Pick a status.' }),
+});
+
+export type PublishProjectInput = {
+  id: string;
+  status: 'draft' | 'published' | 'hidden';
 };

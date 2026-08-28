@@ -164,7 +164,7 @@ describe('gallery helpers (02 §2.1 #1, §2.3 #2)', () => {
 });
 
 describe('small predicates and URL builders', () => {
-  it('isExclusive: odsens source without cross-post links only (DESIGN.md §5 badge rule)', () => {
+  it('T-UNIT-36 isExclusive: odsens source without cross-post links only (DESIGN.md §5 badge rule; 00 S1.3.AC8)', () => {
     expect(isExclusive('odsens')).toBe(true);
     expect(isExclusive('modrinth')).toBe(false);
     expect(isExclusive('odsens', [{ platform: 'curseforge' }])).toBe(false);

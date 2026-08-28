@@ -77,7 +77,7 @@ Generated/derived: `downloads_total = modrinth + curseforge + direct` (view colu
 | game_versions text[]; loaders text[]; version_type enum `release|beta|alpha` | |
 | date_published timestamptz | |
 | downloads int | Modrinth per-version |
-| unique(project_id, version_number) | |
+| unique(external_id) — ADR-0026; unique(project_id, version_number) **where external_id is null** (exclusives only — partial index) | synced versions are identified by `external_id` alone (the 04 §3.1 idempotency key; Modrinth allows duplicate `version_number`s per project); exclusives keep the per-project pair unique for `uploadProjectFile`'s find-or-create |
 
 **`project_files`** — files per version
 | col | notes |

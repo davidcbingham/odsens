@@ -139,6 +139,15 @@ describe('lib/hash.ts (T-UNIT-23)', () => {
     expect(sha256Hex(new TextEncoder().encode('abc')).slice(0, 16)).toBe('ba7816bf8f01cfea');
   });
 
+  it('T-UNIT-23 sha512Hex is plain SHA-512 of the bytes (project_files.sha512, 04 §1.4)', async () => {
+    const { sha512Hex } = await loadWithSecret(SECRET_A);
+    expect(sha512Hex(new TextEncoder().encode('abc'))).toBe(
+      'ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a' +
+        '2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f',
+    );
+    expect(sha512Hex(new Uint8Array(0))).toMatch(/^[0-9a-f]{128}$/);
+  });
+
   it('T-UNIT-23 the module refuses to load without a ≥ 32-char HASH_SECRET (ADR-0012)', async () => {
     await expect(loadWithSecret('x'.repeat(31))).rejects.toThrow(
       /Missing required environment variables: .*HASH_SECRET/,

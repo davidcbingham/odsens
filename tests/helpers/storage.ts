@@ -59,10 +59,26 @@ export async function listObjects(bucket: Bucket, prefix: string): Promise<strin
   return (data ?? []).filter((o) => o.id !== null).map((o) => `${prefix}/${o.name}`);
 }
 
-export const putSigned: (
+/**
+ * The browser step of the two-phase upload (04 §1.4.5): a raw `PUT` of the fixture bytes to the
+ * `signed_url` a `begin` phase returned (the token rides the URL's query string). Content type
+ * defaults to `application/zip` for `files/*` fixtures — `UploadWell` always declares that for
+ * project files (the `project-files` bucket's `allowed_mime_types` is exactly that) — and to the
+ * extension-derived type otherwise. Returns the raw `Response` so tests can assert non-2xx paths.
+ */
+export async function putSigned(
   signedUrl: string,
-  token: string,
+  _token: string,
   fixtureFile: string,
-) => Promise<Response> = () => {
-  throw new Error('putSigned: available from S1.3');
-};
+  options: { contentType?: string } = {},
+): Promise<Response> {
+  const { source, name } = splitFixtureRef(fixtureFile);
+  const bytes = await readFile(fixturePath(source, name));
+  const contentType =
+    options.contentType ?? (source === 'files' ? 'application/zip' : mimeForName(name));
+  return fetch(signedUrl, {
+    method: 'PUT',
+    headers: { 'content-type': contentType, 'x-upsert': 'false' },
+    body: new Uint8Array(bytes),
+  });
+}
