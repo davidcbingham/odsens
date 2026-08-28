@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Chip } from '@/components/primitives/Chip';
 import { TypeBadge } from '@/components/primitives/TypeBadge';
+import { ExclusiveBadge } from '@/components/primitives/ExclusiveBadge';
 import { formatCount, formatCountFull } from '@/lib/format/number';
 import type { ProjectType } from '@/lib/format/project';
 import styles from './ProjectCard.module.css';
@@ -16,7 +17,10 @@ import styles from './ProjectCard.module.css';
  * download count right in Silkscreen `--emerald` (≥11px — 03 C-27 informational). Hover /
  * focus-within: `--slab-raised` fill, `--indigo-lift` outline, `6px 6px 0 --indigo-deep`,
  * translate −3/−3. Whole card is ONE link; the badge is not separately clickable.
- * `data-exclusive` marks the gold outline (the `ExclusiveBadge` itself ships in S1.3).
+ * `data-exclusive` marks the gold outline and pins the `ExclusiveBadge` top-left, overlapping
+ * the outline by 1px (DESIGN.md §5; 00 S1.3.AC1) — the badge sits OUTSIDE the `<a>`, inside the
+ * `<article>`, so the whole card stays one link. Never rendered unless `exclusive` (the
+ * `isExclusive` predicate computed upstream — 00 S1.3.AC8).
  */
 export type ProjectCardProps = {
   project: {
@@ -50,6 +54,7 @@ export function ProjectCard({ project, density = 'default', className }: Project
       data-density={density}
       {...(exclusive ? { 'data-exclusive': '' } : {})}
     >
+      {exclusive ? <ExclusiveBadge className={styles['project-card-badge']} /> : null}
       <Link href={`/projects/${slug}`} className={styles['project-card-link']}>
         <div className={styles['project-card-body']}>
           <span className={styles['project-card-icon']} aria-hidden={iconUrl === null || undefined}>

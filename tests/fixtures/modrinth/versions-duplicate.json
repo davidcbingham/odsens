@@ -1,0 +1,64 @@
+[
+  {
+    "id": "sdv00407",
+    "project_id": "sd000102",
+    "author_id": "sdu00001",
+    "featured": false,
+    "name": "1.1.0",
+    "version_number": "1.1.0",
+    "changelog": "## 1.1.0\n\n- Faster colour matching",
+    "changelog_url": null,
+    "date_published": "2025-06-02T12:00:00Z",
+    "downloads": 340,
+    "version_type": "release",
+    "status": "listed",
+    "requested_status": null,
+    "dependencies": [],
+    "game_versions": ["1.21"],
+    "loaders": ["fabric"],
+    "files": [
+      {
+        "hashes": {
+          "sha1": "e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5",
+          "sha512": "e5f6a1b2e5f6a1b2e5f6a1b2e5f6a1b2e5f6a1b2e5f6a1b2e5f6a1b2e5f6a1b2e5f6a1b2e5f6a1b2e5f6a1b2e5f6a1b2e5f6a1b2e5f6a1b2e5f6a1b2e5f6a1b2"
+        },
+        "url": "https://cdn.modrinth.com/data/sd000102/versions/sdv00407/pixel-chameleon-1.1.0.jar",
+        "filename": "pixel-chameleon-1.1.0.jar",
+        "primary": true,
+        "size": 155648,
+        "file_type": null
+      }
+    ]
+  },
+  {
+    "id": "sdv00408",
+    "project_id": "sd000102",
+    "author_id": "sdu00001",
+    "featured": false,
+    "name": "1.1.0",
+    "version_number": "1.1.0",
+    "changelog": "## 1.1.0\n\n- Faster colour matching (NeoForge build)",
+    "changelog_url": null,
+    "date_published": "2025-06-02T12:30:00Z",
+    "downloads": 120,
+    "version_type": "release",
+    "status": "listed",
+    "requested_status": null,
+    "dependencies": [],
+    "game_versions": ["1.21"],
+    "loaders": ["neoforge"],
+    "files": [
+      {
+        "hashes": {
+          "sha1": "f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6",
+          "sha512": "f6a1b2c3f6a1b2c3f6a1b2c3f6a1b2c3f6a1b2c3f6a1b2c3f6a1b2c3f6a1b2c3f6a1b2c3f6a1b2c3f6a1b2c3f6a1b2c3f6a1b2c3f6a1b2c3f6a1b2c3f6a1b2c3"
+        },
+        "url": "https://cdn.modrinth.com/data/sd000102/versions/sdv00408/pixel-chameleon-1.1.0-neoforge.jar",
+        "filename": "pixel-chameleon-1.1.0-neoforge.jar",
+        "primary": true,
+        "size": 156672,
+        "file_type": null
+      }
+    ]
+  }
+]

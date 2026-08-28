@@ -454,4 +454,105 @@ describe('syncModrinth (04 §3.1)', () => {
       expect(await syncRunCount()).toBe(runs + 1);
     });
   });
+
+  describe('T-ACT-48 duplicate upstream version_number (ADR-0026)', () => {
+    // Modrinth allows two versions of one project to share a `version_number` (distinct version
+    // ids); since ADR-0026 the identity is `external_id` alone, so both become rows. The fixture
+    // serves ONLY the two duplicate 1.1.0 versions — chameleon's 3 versions.json rows are absent
+    // upstream and kept (ADR-0002 #66).
+    const DUPLICATE_URL = `${PROJECT_PREFIX}${CHAMELEON_ID}/version`;
+
+    it('T-ACT-48 two versions sharing a version_number insert as two rows with their files, zero per-item errors', async () => {
+      const chameleon = await projectBySlug('pixel-chameleon');
+      spyFetch(routes(fullList, { [DUPLICATE_URL]: 'modrinth/versions-duplicate.json' }));
+      const summary = await run();
+      expect(summary.ok).toBe(true);
+      expect(summary.errors).toEqual([]);
+      expect(summary.versions).toBe(2);
+      expect(summary.files).toBe(2);
+
+      const { data: dupes } = await service
+        .from('project_versions')
+        .select('*')
+        .eq('project_id', chameleon.id as string)
+        .eq('version_number', '1.1.0')
+        .order('external_id');
+      expect(dupes).toHaveLength(2);
+      expect(dupes?.map((row) => row.external_id)).toEqual(['sdv00407', 'sdv00408']);
+      expect(dupes?.[0]?.id).not.toBe(dupes?.[1]?.id);
+
+      // Each duplicate carries its own file row, keyed on its own (version_id, filename).
+      for (const [externalId, filename] of [
+        ['sdv00407', 'pixel-chameleon-1.1.0.jar'],
+        ['sdv00408', 'pixel-chameleon-1.1.0-neoforge.jar'],
+      ] as const) {
+        const version = dupes?.find((row) => row.external_id === externalId);
+        const { data: versionFiles } = await service
+          .from('project_files')
+          .select('filename, primary')
+          .eq('version_id', version?.id ?? '');
+        expect(versionFiles).toHaveLength(1);
+        expect(versionFiles?.[0]?.filename).toBe(filename);
+        expect(versionFiles?.[0]?.primary).toBe(true);
+      }
+
+      // 3 kept (absent upstream, ADR-0002 #66) + 2 duplicates = 5 versions total.
+      const { count } = await service
+        .from('project_versions')
+        .select('id', { count: 'exact', head: true })
+        .eq('project_id', chameleon.id as string);
+      expect(count).toBe(5);
+    });
+
+    it('T-ACT-48 rerun with the same duplicate fixture adds no rows; only synced_at moves', async () => {
+      const chameleon = await projectBySlug('pixel-chameleon');
+      const { data: versionsBefore } = await service
+        .from('project_versions')
+        .select('*')
+        .eq('project_id', chameleon.id as string)
+        .order('external_id');
+      const { data: filesBefore } = await service
+        .from('project_files')
+        .select('*')
+        .in(
+          'version_id',
+          (versionsBefore ?? []).map((row) => row.id),
+        )
+        .order('id');
+      const projectsBefore = await modrinthProjects();
+
+      spyFetch(routes(fullList, { [DUPLICATE_URL]: 'modrinth/versions-duplicate.json' }));
+      const summary = await run();
+      expect(summary.ok).toBe(true);
+      expect(summary.errors).toEqual([]);
+      expect(summary.items).toBe(0);
+      expect(summary.versions).toBe(0);
+      expect(summary.files).toBe(0);
+
+      // Unchanged versions/files get no write at all (J-I) — the rows come back identical.
+      const { data: versionsAfter } = await service
+        .from('project_versions')
+        .select('*')
+        .eq('project_id', chameleon.id as string)
+        .order('external_id');
+      expect(versionsAfter).toEqual(versionsBefore);
+      const { data: filesAfter } = await service
+        .from('project_files')
+        .select('*')
+        .in(
+          'version_id',
+          (versionsAfter ?? []).map((row) => row.id),
+        )
+        .order('id');
+      expect(filesAfter).toEqual(filesBefore);
+
+      // Projects: same ids, same values — only `synced_at` (and the trigger's `updated_at`) move.
+      const projectsAfter = await modrinthProjects();
+      expect(projectsAfter.map((row) => row.id)).toEqual(projectsBefore.map((row) => row.id));
+      expect(projectsAfter.map(stable)).toEqual(projectsBefore.map(stable));
+      for (const [index, row] of projectsAfter.entries()) {
+        expect(row.synced_at).not.toBe(projectsBefore[index]?.synced_at);
+      }
+    });
+  });
 });

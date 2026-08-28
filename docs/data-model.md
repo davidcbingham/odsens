@@ -77,7 +77,7 @@ Generated/derived: `downloads_total = modrinth + curseforge + direct` (view colu
 | game_versions text[]; loaders text[]; version_type enum `release|beta|alpha` | |
 | date_published timestamptz | |
 | downloads int | Modrinth per-version |
-| unique(project_id, version_number) | |
+| unique(external_id) — ADR-0026; unique(project_id, version_number) **where external_id is null** (exclusives only — partial index) | synced versions are identified by `external_id` alone (the 04 §3.1 idempotency key; Modrinth allows duplicate `version_number`s per project); exclusives keep the per-project pair unique for `uploadProjectFile`'s find-or-create |
 
 **`project_files`** — files per version
 | col | notes |
@@ -105,7 +105,7 @@ Generated/derived: `downloads_total = modrinth + curseforge + direct` (view colu
 | notes_md text null | site-only write-up appended under About |
 | comments_enabled bool default true | |
 
-**`project_downloads`** — raw log for exclusive direct downloads (for stats + abuse checks); `project_id, file_id, ip_hash, ua_hash, created_at`. Written only by RPC **`record_download(p_file_id, p_ip_hash, p_ua_hash)`** (one transaction: `project_files.download_count+1`, `projects.downloads_direct+1`, insert log row; `security definer`, service role only). `ip_hash = HMAC-SHA256(HASH_SECRET, ip|utcDay)`. Aggregated nightly into `stats_daily`; rows purged after 90 days by RPC `purge_project_downloads(90)`. Also the rate-limit source for the download route (30 / min per `ip_hash`).
+**`project_downloads`** — raw log for exclusive direct downloads (for stats + abuse checks); `project_id, file_id, ip_hash, ua_hash, created_at`. Written only by RPC **`record_download(p_file_id, p_ip_hash, p_ua_hash)`** (one transaction: `project_files.download_count+1`, `projects.downloads_direct+1`, insert log row; `security definer`, service role only). `ip_hash = HMAC-SHA256(HASH_SECRET, ip|utcDay)`. Aggregated nightly into `stats_daily`; rows purged after 90 days by RPC `purge_project_downloads(90)`. Analytics only — the download route's 30 / min per `ip_hash` limit counts `rate_limit_hits`, never this table (ADR-0002 A4; §2.10; the earlier "rate-limit source" wording here predated A4 — prose fix 2026-08-27).
 
 ### 2.3 Videos (synced)
 **`videos`** — `id uuid; youtube_id text unique; title; description; thumbnail_url; published_at; duration_seconds; is_short bool; view_count; like_count; synced_at; hidden bool` (hidden set by Oliver). Shorts detection: duration ≤ 60s or `#shorts` — Data API has no flag; refine at build.

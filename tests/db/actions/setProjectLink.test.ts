@@ -88,7 +88,9 @@ async function cfDownloads(): Promise<number> {
 
 beforeAll(async () => {
   adminId = await makeUser({ role: 'admin' });
-  projectId = await makeProject();
+  // The target must be SYNCED: since the S1.3 AC8 guard, `setProjectLink` refuses exclusives
+  // (Q39 scopes manual CF ids to synced rows; a link would un-earn the badge).
+  projectId = await makeProject({ source: 'modrinth', external_id: `t_${Date.now()}` });
   const { data, error } = await service
     .from('projects')
     .select('slug')
@@ -290,5 +292,20 @@ describe('T-ACT-41 setProjectLink', () => {
     // The rejected call still recorded its own hit (ADR-0002 A4).
     expect(await countRateLimitHits('project_link', burner)).toBe(31);
     await clearRateLimitHits('project_link', burner);
+  });
+
+  it('T-ACT-41 an exclusive target → validation, nothing written (S1.3 AC8 guard)', async () => {
+    routes();
+    const exclusiveId = await makeProject(); // factory default: source 'odsens'
+    expectFail(
+      await callActionAs(setProjectLink, input('900001', exclusiveId), { profileId: adminId }),
+      'validation',
+    );
+    const { data, error } = await service
+      .from('project_links')
+      .select('project_id')
+      .eq('project_id', exclusiveId);
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
   });
 });

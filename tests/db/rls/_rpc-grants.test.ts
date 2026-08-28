@@ -7,20 +7,25 @@
  *   is_reserved_handle(text)                        anon/authenticated/service A — pure, immutable,
  *                                                   invoker rights (no table access), the one SQL copy
  *                                                   of the H3 list (ADR-0020)
+ *   record_download(uuid,text,text)                 anon/authenticated D · service A (S1.3)
+ *   purge_project_downloads(integer)                anon/authenticated D · service A (S1.3)
  * Not yet in the schema (asserted absent so this file is revisited when they land):
- *   record_download, purge_project_downloads → S1.2 · can_comment → S1.4 · record_skin_download → S1.7.
+ *   can_comment → S1.4 · record_skin_download → S1.7.
  * Every table-reading RPC is `security definer` with `search_path = public` (01 INV-49); `is_reserved_handle`
  * reads no table and stays invoker-rights on purpose (ADR-0020).
  */
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { asRole } from '@/tests/helpers/asRole';
 import { sql } from '@/tests/helpers/db';
+import { cleanupFactories, makeFile, makeProject, makeVersion } from '@/tests/helpers/factories';
 
 const FUNCTIONS = {
   check_handle: 'public.check_handle(text)',
   rate_limit_ok: 'public.rate_limit_ok(text,text,integer,interval)',
   purge_rate_limit_hits: 'public.purge_rate_limit_hits(integer)',
   is_reserved_handle: 'public.is_reserved_handle(text)',
+  record_download: 'public.record_download(uuid,text,text)',
+  purge_project_downloads: 'public.purge_project_downloads(integer)',
 } as const;
 
 function canExecute(role: 'anon' | 'authenticated' | 'service_role', fn: string): boolean {
@@ -47,7 +52,12 @@ describe('T-RLS-129 RPC grants (catalog)', () => {
     expect(publicCanExecute('check_handle')).toBe(false);
   });
 
-  it.each(['rate_limit_ok', 'purge_rate_limit_hits'] as const)(
+  it.each([
+    'rate_limit_ok',
+    'purge_rate_limit_hits',
+    'record_download',
+    'purge_project_downloads',
+  ] as const)(
     'T-RLS-129 %s: anon/authenticated denied, service_role allowed, never PUBLIC',
     (name) => {
       expect(canExecute('anon', FUNCTIONS[name])).toBe(false);
@@ -85,9 +95,20 @@ describe('T-RLS-129 RPC grants (catalog)', () => {
     }
   });
 
-  it('T-RLS-129 later-slice RPCs are not present yet (record_download/purge_project_downloads S1.2, can_comment S1.4, record_skin_download S1.7)', () => {
+  it('T-RLS-129 every S1.3 RPC is security definer with search_path = public', () => {
     const rows = sql(
-      "select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('can_comment','record_download','record_skin_download','purge_project_downloads')",
+      "select p.proname, p.prosecdef, coalesce(array_to_string(p.proconfig, ','), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('record_download','purge_project_downloads') order by 1",
+    );
+    expect(rows.map(([name]) => name)).toEqual(['purge_project_downloads', 'record_download']);
+    for (const [name, secdef, config] of rows) {
+      expect(secdef, `${name} security definer`).toBe('t');
+      expect(config, `${name} search_path`).toContain('search_path=public');
+    }
+  });
+
+  it('T-RLS-129 later-slice RPCs are not present yet (can_comment S1.4, record_skin_download S1.7)', () => {
+    const rows = sql(
+      "select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('can_comment','record_skin_download')",
     );
     expect(rows).toEqual([]);
   });
@@ -173,5 +194,74 @@ describe('T-RLS-129 RPC grants (behaviour through PostgREST)', () => {
     expect(purge.error).toBeNull();
     expect(typeof purge.data).toBe('number');
     sql("delete from public.rate_limit_hits where scope = 't_rls_129'");
+  });
+});
+
+describe('T-RLS-129 record_download / purge_project_downloads (behaviour, S1.3)', () => {
+  // A factory exclusive chain — record_download only accepts a direct file (storage_path set).
+  // The log rows it writes cascade from the project when cleanupFactories removes it.
+  let projectId: string;
+  let fileId: string;
+
+  beforeAll(async () => {
+    projectId = await makeProject({ source: 'odsens', status: 'published' });
+    const versionId = await makeVersion({ project_id: projectId });
+    fileId = await makeFile({
+      version_id: versionId,
+      storage_path: `project-files/${projectId}/${versionId}/t_rls129.zip`,
+    });
+  });
+
+  afterAll(cleanupFactories);
+
+  it.each(['anon', 'user', 'mod', 'admin'] as const)(
+    'T-RLS-129 %s cannot call record_download / purge_project_downloads',
+    async (role) => {
+      const client = asRole(role);
+      const rec = await client.rpc('record_download', {
+        p_file_id: fileId,
+        p_ip_hash: 't_rls129_ip',
+        p_ua_hash: 't_rls129_ua',
+      });
+      expect(rec.error?.code).toBe('42501');
+      const purge = await client.rpc('purge_project_downloads', { p_days: 90 });
+      expect(purge.error?.code).toBe('42501');
+      expect(purge.data).toBeNull();
+      // The denied call recorded nothing: no log row, counters untouched.
+      expect(
+        sql(`select count(*) from public.project_downloads where file_id = '${fileId}'`),
+      ).toEqual([['0']]);
+    },
+  );
+
+  it('T-RLS-129 service record_download increments the file + project counters and logs one row', async () => {
+    const service = asRole('service');
+    const { error } = await service.rpc('record_download', {
+      p_file_id: fileId,
+      p_ip_hash: 't_rls129_ip',
+      p_ua_hash: 't_rls129_ua',
+    });
+    expect(error).toBeNull();
+
+    const file = await service
+      .from('project_files')
+      .select('download_count')
+      .eq('id', fileId)
+      .single();
+    expect(file.data?.download_count).toBe(1);
+    const project = await service
+      .from('projects')
+      .select('downloads_direct')
+      .eq('id', projectId)
+      .single();
+    expect(project.data?.downloads_direct).toBe(1);
+    const log = await service
+      .from('project_downloads')
+      .select('project_id, ip_hash, ua_hash')
+      .eq('file_id', fileId);
+    expect(log.error).toBeNull();
+    expect(log.data).toEqual([
+      { project_id: projectId, ip_hash: 't_rls129_ip', ua_hash: 't_rls129_ua' },
+    ]);
   });
 });

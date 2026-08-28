@@ -1,0 +1,204 @@
+/* UploadWell + ProjectFileWell — 03 §2.10 `UploadWell` row; DESIGN.md §11.1 Upload well.
+   States via [data-state] on the root (03 C-12): idle dashed --line-strong · dragover
+   --slab-raised fill + dashed --indigo-lift · uploading solid --indigo-lift · done --emerald square
+   · error --danger-wash fill / --danger-field border. Limits line 13px --mute-dim at all times. */
+.upload-well {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.upload-well-zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  background: var(--slab-sunk);
+  border: 2px dashed var(--line-strong);
+  transition:
+    background-color var(--dur-fast) ease-out,
+    border-color var(--dur-fast) ease-out;
+}
+
+.upload-well[data-state='dragover'] .upload-well-zone {
+  background: var(--slab-raised);
+  border-color: var(--indigo-lift);
+}
+
+.upload-well[data-state='uploading'] .upload-well-zone {
+  border-style: solid;
+  border-color: var(--indigo-lift);
+}
+
+.upload-well[data-state='done'] .upload-well-zone {
+  border-style: solid;
+}
+
+.upload-well[data-state='error'] .upload-well-zone {
+  background: var(--danger-wash);
+  border-style: solid;
+  border-color: var(--danger-field);
+}
+
+.upload-well[aria-disabled='true'] .upload-well-zone {
+  opacity: 0.45;
+}
+
+/* ---- drop zone: a <label> for the visually-hidden file input ---- */
+.upload-well-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  min-height: 96px;
+  padding: var(--space-12);
+  text-align: center;
+  cursor: pointer;
+}
+
+.upload-well[aria-disabled='true'] .upload-well-drop {
+  cursor: default;
+}
+
+/* The input is .visually-hidden; the label carries the gold ring (03 C-25, `Field` well pattern). */
+.upload-well-drop:has(input:focus-visible) {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.upload-well-lead {
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+.upload-well-sub {
+  font-size: var(--text-small);
+  color: var(--mute);
+  overflow-wrap: anywhere;
+}
+
+/* ---- uploading: name, percent, flat bar, Cancel ---- */
+.upload-well-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.upload-well-name {
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--chalk);
+  overflow-wrap: anywhere;
+}
+
+.upload-well-percent {
+  font-size: var(--text-label);
+  color: var(--mute);
+}
+
+.upload-well-bar {
+  height: 8px;
+  background: var(--slab-raised);
+  border-radius: 0;
+}
+
+.upload-well-bar-fill {
+  height: 100%;
+  background: var(--indigo-lift);
+  transition: width var(--dur-fast) ease-out;
+}
+
+.upload-well-action {
+  align-self: flex-start;
+}
+
+/* ---- done: emerald square ✔, name + size, Remove ---- */
+.upload-well-done {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.upload-well-check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  background: var(--emerald);
+  color: var(--ink);
+  font-size: var(--text-small);
+  line-height: 1;
+}
+
+.upload-well-size {
+  font-size: var(--text-label);
+  color: var(--mute-dim);
+}
+
+/* ---- error: message (role=alert), Try again ---- */
+.upload-well-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.upload-well-message {
+  margin: 0;
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--danger);
+}
+
+/* ---- limits line: under the well at all times, 13px --mute-dim (04 U4) ---- */
+.upload-well-limits {
+  margin: 0;
+  font-size: var(--text-label);
+  color: var(--mute-dim);
+}
+
+/* ---- ProjectFileWell: version fields above the well (03 §2.10; 04 §1.4) ---- */
+.project-file-well {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+.project-file-well-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* Caption + system `Toggle` (§11.1 square toggle; the Toggle dims itself when disabled). */
+.project-file-well-primary {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-8);
+  min-height: 44px;
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+.project-file-well-gate {
+  margin: 0;
+  font-size: var(--text-label);
+  color: var(--mute-dim);
+}
+
+/* Reduced motion: drop the fill/border/bar movement (03 C-28) */
+@media (prefers-reduced-motion: reduce) {
+  .upload-well-zone,
+  .upload-well-bar-fill {
+    transition: none;
+  }
+}

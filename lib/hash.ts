@@ -46,3 +46,8 @@ export function emailHash(email: string): string {
 export function sha256Hex(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
 }
+
+/** Unkeyed SHA-512 hex of content bytes — `project_files.sha512` (04 §1.4 `uploadProjectFile`). */
+export function sha512Hex(bytes: Uint8Array): string {
+  return createHash('sha512').update(bytes).digest('hex');
+}

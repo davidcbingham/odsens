@@ -29,11 +29,17 @@
  */
 import { revalidateTag } from 'next/cache';
 import {
+  createExclusiveProjectInput,
   curateProjectInput,
+  publishProjectInput,
   setProjectLinkInput,
+  updateExclusiveProjectInput,
+  type CreateExclusiveProjectInput,
   type CurateProjectInput,
   type CurateProjectOverrideInput,
+  type PublishProjectInput,
   type SetProjectLinkInput,
+  type UpdateExclusiveProjectInput,
 } from '@/lib/actions/projects.schema';
 import { fail, ok, type ActionResult } from '@/lib/actions/result';
 import { runAction, type ActionContext } from '@/lib/actions/run';
@@ -189,8 +195,20 @@ export async function setProjectLink(
     await assertRateLimit('project_link', user.id, 30, '1 hour');
     const admin = createAdminClient();
 
-    const slug = await readProjectSlug(admin, data.project_id);
-    if (slug === null) return fail('not_found', NOT_FOUND_PROJECT);
+    const { data: project, error: projectError } = await admin
+      .from('projects')
+      .select('slug, source')
+      .eq('id', data.project_id)
+      .maybeSingle();
+    if (projectError) throw new Error(`projects read failed: ${projectError.code}`);
+    if (project === null) return fail('not_found', NOT_FOUND_PROJECT);
+    // Q39 scopes CF links to SYNCED projects; a link on an exclusive would also un-earn its
+    // badge everywhere the list reads derive `exclusive` from `source` alone (00 S1.3.AC8 —
+    // `isExclusive` demands zero `project_links` rows).
+    if (project.source === 'odsens') {
+      return fail('validation', 'Exclusives live only here — no CurseForge link to add.');
+    }
+    const slug = project.slug;
 
     if (data.ref === null) {
       // 04 §1.4: `null` removes the link and zeroes the combined-count contribution.
@@ -270,5 +288,191 @@ export async function setProjectLink(
     revalidateTag(`project:${slug}`, 'max');
     logAdmin('setProjectLink', ctx, user.id, { type: 'project_link', id: data.project_id }, data);
     return ok({ link });
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
+// S1.3 — exclusive projects (04 §1.4 createExclusiveProject / updateExclusiveProject /
+// publishProject; ADR-0002 C7 admin-only, #38 no draft previews, #65 publish preconditions)
+// ---------------------------------------------------------------------------------------------
+
+type ProjectRow = Database['public']['Tables']['projects']['Row'];
+type ProjectPatch = Database['public']['Tables']['projects']['Update'];
+
+const UNIQUE_VIOLATION = '23505';
+const SLUG_TAKEN = "That slug's taken.";
+const NOT_EXCLUSIVE = 'Synced projects are curated, not edited.';
+
+/** The stored exclusive row the update/publish actions check preconditions against. */
+async function readExclusiveProject(
+  admin: ReturnType<typeof createAdminClient>,
+  projectId: string,
+): Promise<
+  | { found: false }
+  | {
+      found: true;
+      exclusive: boolean;
+      row: Pick<ProjectRow, 'slug' | 'status' | 'icon_url' | 'published_at' | 'source'>;
+    }
+> {
+  const { data, error } = await admin
+    .from('projects')
+    .select('slug, status, icon_url, published_at, source')
+    .eq('id', projectId)
+    .maybeSingle();
+  if (error) throw new Error(`projects read failed: ${error.code}`);
+  if (data === null) return { found: false };
+  return { found: true, exclusive: data.source === 'odsens', row: data };
+}
+
+export async function createExclusiveProject(
+  input: CreateExclusiveProjectInput,
+): Promise<ActionResult<{ id: string; slug: string }>> {
+  return runAction(
+    'createExclusiveProject',
+    createExclusiveProjectInput,
+    input,
+    async (data, ctx) => {
+      const { user } = await requireRole('admin');
+      const admin = createAdminClient();
+
+      const { data: row, error } = await admin
+        .from('projects')
+        .insert({
+          source: 'odsens',
+          external_id: null,
+          slug: data.slug,
+          project_type: data.project_type,
+          title: data.title,
+          description: data.description,
+          body_md: data.body_md,
+          categories: data.categories,
+          loaders: data.loaders,
+          game_versions: data.game_versions,
+          license: data.license ?? null,
+          source_url: data.source_url ?? null,
+          issues_url: data.issues_url ?? null,
+          discord_url: data.discord_url ?? null,
+          status: 'draft',
+          published_at: null,
+        })
+        .select('id, slug')
+        .single();
+      if (error) {
+        // citext unique across BOTH sources (04 §1.4: "slug conflict (citext, incl. Modrinth slugs)").
+        if (error.code === UNIQUE_VIOLATION) {
+          return fail('conflict', SLUG_TAKEN, { field: 'slug' });
+        }
+        throw new Error(`projects insert failed: ${error.code}`);
+      }
+
+      // No revalidation — a draft is invisible everywhere (04 §1.4; ADR-0002 #38: no preview URLs).
+      logAdmin('createExclusiveProject', ctx, user.id, { type: 'project', id: row.id }, data);
+      return ok({ id: row.id, slug: row.slug });
+    },
+  );
+}
+
+export async function updateExclusiveProject(
+  input: UpdateExclusiveProjectInput,
+): Promise<ActionResult<{ id: string; slug: string }>> {
+  return runAction(
+    'updateExclusiveProject',
+    updateExclusiveProjectInput,
+    input,
+    async (data, ctx) => {
+      const { user } = await requireRole('admin');
+      const admin = createAdminClient();
+
+      const current = await readExclusiveProject(admin, data.id);
+      if (!current.found) return fail('not_found', NOT_FOUND_PROJECT);
+      if (!current.exclusive) return fail('forbidden', NOT_EXCLUSIVE);
+
+      const oldSlug = current.row.slug;
+      const slugChanges =
+        data.slug !== undefined && data.slug.toLowerCase() !== oldSlug.toLowerCase();
+      // 04 §1.4: slug change allowed while `status='draft'` only, else `conflict`.
+      if (slugChanges && current.row.status !== 'draft') {
+        return fail('conflict', 'Slugs are fixed once a project is published.', { field: 'slug' });
+      }
+
+      const patch: ProjectPatch = {};
+      if (data.slug !== undefined) patch.slug = data.slug;
+      if (data.title !== undefined) patch.title = data.title;
+      if (data.description !== undefined) patch.description = data.description;
+      if (data.body_md !== undefined) patch.body_md = data.body_md;
+      if (data.project_type !== undefined) patch.project_type = data.project_type;
+      if (data.categories !== undefined) patch.categories = data.categories;
+      if (data.loaders !== undefined) patch.loaders = data.loaders;
+      if (data.game_versions !== undefined) patch.game_versions = data.game_versions;
+      if (data.license !== undefined) patch.license = data.license;
+      if (data.source_url !== undefined) patch.source_url = data.source_url;
+      if (data.issues_url !== undefined) patch.issues_url = data.issues_url;
+      if (data.discord_url !== undefined) patch.discord_url = data.discord_url;
+
+      const { data: row, error } = await admin
+        .from('projects')
+        .update(patch)
+        .eq('id', data.id)
+        .select('id, slug')
+        .single();
+      if (error) {
+        if (error.code === UNIQUE_VIOLATION) {
+          return fail('conflict', SLUG_TAKEN, { field: 'slug' });
+        }
+        throw new Error(`projects update failed: ${error.code}`);
+      }
+
+      revalidateTag('projects', 'max');
+      revalidateTag(`project:${oldSlug}`, 'max');
+      if (row.slug !== oldSlug) revalidateTag(`project:${row.slug}`, 'max');
+      logAdmin('updateExclusiveProject', ctx, user.id, { type: 'project', id: data.id }, data);
+      return ok({ id: row.id, slug: row.slug });
+    },
+  );
+}
+
+export async function publishProject(
+  input: PublishProjectInput,
+): Promise<ActionResult<{ id: string; status: 'draft' | 'published' | 'hidden' }>> {
+  return runAction('publishProject', publishProjectInput, input, async (data, ctx) => {
+    const { user } = await requireRole('admin');
+    const admin = createAdminClient();
+
+    const current = await readExclusiveProject(admin, data.id);
+    if (!current.found) return fail('not_found', NOT_FOUND_PROJECT);
+    if (!current.exclusive) return fail('forbidden', NOT_EXCLUSIVE);
+
+    if (data.status === 'published') {
+      // ADR-0002 #65: publish needs an icon AND ≥ 1 version with ≥ 1 stored file. The message
+      // lists exactly what is missing (05 T-ACT-37).
+      const missing: string[] = [];
+      if (current.row.icon_url === null) missing.push('The project needs an icon.');
+
+      const { data: fileRows, error: filesError } = await admin
+        .from('project_files')
+        .select('id, storage_path, version:project_versions!inner(project_id)')
+        .eq('version.project_id', data.id)
+        .not('storage_path', 'is', null)
+        .limit(1);
+      if (filesError) throw new Error(`project_files read failed: ${filesError.code}`);
+      if (fileRows.length === 0) missing.push('Nothing to download yet.');
+
+      if (missing.length > 0) {
+        return fail('precondition_failed', missing.join(' '));
+      }
+    }
+
+    const patch: ProjectPatch = { status: data.status };
+    if (data.status === 'published' && current.row.published_at === null) {
+      patch.published_at = new Date().toISOString();
+    }
+    const { error } = await admin.from('projects').update(patch).eq('id', data.id);
+    if (error) throw new Error(`projects update failed: ${error.code}`);
+
+    revalidateTag('projects', 'max');
+    revalidateTag(`project:${current.row.slug}`, 'max');
+    logAdmin('publishProject', ctx, user.id, { type: 'project', id: data.id }, data);
+    return ok({ id: data.id, status: data.status });
   });
 }

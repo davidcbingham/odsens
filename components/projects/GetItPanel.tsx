@@ -27,6 +27,10 @@ import styles from './GetItPanel.module.css';
  * the combined count"): the combined total rendered `formatCount` compact (05 T-E2E-3 "combined
  * line total `1.7K`" — the reason `combined.total` is in the 03 prop shape), then
  * `COMBINED_COUNT_LINE` verbatim as the last line (03; 05 T-UNIT-11).
+ *
+ * File meta shows the sha512 when the file carries one (00 S1.3.AC3 "sha512 stored and
+ * displayed in GetItPanel file meta"): a labelled line under the loaders/size/filename line,
+ * full 128-hex value in its own `<span>` so the 05 e2e can read the whole hash.
  */
 export type GetItPanelProps = {
   primary: {
@@ -75,6 +79,11 @@ export function GetItPanel({ primary, rows, combined, slug, className }: GetItPa
           {[meta.loaders.join(', '), formatFileSize(meta.sizeBytes), meta.filename]
             .filter((part) => part !== '')
             .join(' · ')}
+        </p>
+      ) : null}
+      {meta?.sha512 !== undefined ? (
+        <p className={styles['get-it-sha']}>
+          <span className={styles['get-it-sha-label']}>sha512</span> <span>{meta.sha512}</span>
         </p>
       ) : null}
       {rows.length > 0 || combined.direct > 0 ? (

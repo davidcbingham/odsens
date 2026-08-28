@@ -10,7 +10,7 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
 
 /** Extend when a slice merges (05 §8; 00 DoD-4). */
-const SHIPPED_SLICES = ['S0', 'S1.1', 'S1.2'];
+const SHIPPED_SLICES = ['S0', 'S1.1', 'S1.2', 'S1.3'];
 
 const ROOT = process.cwd();
 const DOC = path.join(ROOT, 'docs', 'build', '05-test-plan.md');

@@ -5,8 +5,9 @@
  *
  * Pipeline: lock (SC-13) → insert `sync_runs` → work → finalize (SC-11, try/finally) → revalidate
  * tags → return `JobSummary`. Idempotency keys: `projects (source='modrinth', external_id)`,
- * `project_versions.external_id`, `project_files (version_id, filename)` — matched in code because
- * only the projects pair has a DB unique constraint. J-I: every write is preceded by a column
+ * `project_versions.external_id` (a DB unique since ADR-0026 — duplicate upstream `version_number`s
+ * are legal and become their own rows), `project_files (version_id, filename)` — the files pair is
+ * matched in code only. J-I: every write is preceded by a column
  * compare, so a run with unchanged upstream data touches nothing but `synced_at` (and the
  * `set_updated_at` trigger's `updated_at`). Versions/files absent upstream are kept (ADR-0002 #66);
  * projects absent from the list go `status='hidden'`, never removed (step 4, skipped when the list
@@ -192,8 +193,9 @@ function filePayload(file: VersionFileRow) {
 type Db = ReturnType<typeof createAdminClient>;
 
 /**
- * Step 3: upsert versions on `external_id` (fallback: `version_number`, the DB unique pair) and
- * files on `(version_id, filename)`. Absent-upstream rows are kept (ADR-0002 #66); `download_count`
+ * Step 3: upsert versions on `external_id` ONLY (the DB unique since ADR-0026 — Modrinth allows
+ * duplicate `version_number`s per project, so there is no fallback match) and files on
+ * `(version_id, filename)`. Absent-upstream rows are kept (ADR-0002 #66); `download_count`
  * is never written by sync. Returns changed-row counts (unchanged rows get no write — J-I).
  */
 async function upsertVersions(
@@ -211,9 +213,7 @@ async function upsertVersions(
   let filesChanged = 0;
   for (const raw of rawVersions) {
     const { version, files } = mapVersion(raw);
-    const current =
-      existing.find((row) => row.external_id === version.external_id) ??
-      existing.find((row) => row.version_number === version.version_number);
+    const current = existing.find((row) => row.external_id === version.external_id);
     const payload = versionPayload(version, current?.date_published ?? null);
 
     let versionId: string;

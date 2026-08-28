@@ -1,7 +1,8 @@
 /**
- * tests/unit/files.test.ts — T-UNIT-17: `sniffMime(bytes)` magic bytes (04 SC-19) and T-UNIT-18:
+ * tests/unit/files.test.ts — T-UNIT-17: `sniffMime(bytes)` magic bytes (04 SC-19); T-UNIT-18:
  * `UPLOAD_KINDS` / `validateUpload` caps + copy with the actual numbers (01 INV-52; ADR-0002 #31),
- * including the `supabase/config.toml` `[storage] file_size_limit = "100MiB"` read (05 CI-13).
+ * including the `supabase/config.toml` `[storage] file_size_limit = "100MiB"` read (05 CI-13);
+ * T-UNIT-19: `pngDimensions` / `isSkinTexture`; T-UNIT-22: `sanitizeFilename` (04 SC-20).
  * Bytes are hand-built or read from tests/fixtures/{images,files} (05 §1.2) — nothing is uploaded.
  */
 import { readFileSync } from 'node:fs';
@@ -353,8 +354,8 @@ describe('validateUpload type copy + project-file extension (T-UNIT-18)', () => 
   });
 });
 
-describe('pngDimensions / isSkinTexture (T-UNIT-18)', () => {
-  it('T-UNIT-18 reads IHDR width/height; non-PNG and zero sizes → null', () => {
+describe('pngDimensions / isSkinTexture (T-UNIT-19)', () => {
+  it('T-UNIT-19 reads IHDR width/height; non-PNG and zero sizes → null', () => {
     expect(pngDimensions(fixture('images/avatar-600.png'))).toEqual({ width: 600, height: 600 });
     expect(pngDimensions(pngHead(64, 64))).toEqual({ width: 64, height: 64 });
     expect(pngDimensions(pngHead(0, 64))).toBeNull();
@@ -367,7 +368,7 @@ describe('pngDimensions / isSkinTexture (T-UNIT-18)', () => {
   });
 });
 
-describe('sanitizeFilename (04 SC-20)', () => {
+describe('sanitizeFilename (T-UNIT-22, 04 SC-20)', () => {
   it.each([
     ['mod.jar', 'mod.jar'],
     ['My Mod v1.2.JAR', 'MyModv1.2.jar'],

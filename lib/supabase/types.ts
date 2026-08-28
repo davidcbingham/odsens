@@ -76,6 +76,55 @@ export type Database = {
         }
         Relationships: []
       }
+      project_downloads: {
+        Row: {
+          created_at: string
+          file_id: string
+          id: string
+          ip_hash: string
+          project_id: string
+          ua_hash: string
+        }
+        Insert: {
+          created_at?: string
+          file_id: string
+          id?: string
+          ip_hash: string
+          project_id: string
+          ua_hash: string
+        }
+        Update: {
+          created_at?: string
+          file_id?: string
+          id?: string
+          ip_hash?: string
+          project_id?: string
+          ua_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_downloads_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "project_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_downloads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_downloads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_files: {
         Row: {
           created_at: string
@@ -597,6 +646,7 @@ export type Database = {
       is_moderator: { Args: never; Returns: boolean }
       is_reserved_handle: { Args: { p_handle: string }; Returns: boolean }
       project_is_visible: { Args: { p_project_id: string }; Returns: boolean }
+      purge_project_downloads: { Args: { p_days: number }; Returns: number }
       purge_rate_limit_hits: { Args: { p_days: number }; Returns: number }
       rate_limit_ok: {
         Args: {
@@ -606,6 +656,10 @@ export type Database = {
           p_window: string
         }
         Returns: boolean
+      }
+      record_download: {
+        Args: { p_file_id: string; p_ip_hash: string; p_ua_hash: string }
+        Returns: undefined
       }
     }
     Enums: {
