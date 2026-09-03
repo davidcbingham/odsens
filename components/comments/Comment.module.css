@@ -1,0 +1,186 @@
+/* Comment — DESIGN.md §5 Comment bubble (40px avatar / 34px replies, 2px border; handle 14px 700
+   + --mute-dim time; --slab-raised bubble with 2px --line), §5 Reply (52px margin = avatar + gap,
+   16px padding, 2px --line left border), §5 Held for review (dashed --gold-deep), §11.2 hidden /
+   deleted slots (sunk slab, 15px --mute) and editing (--indigo-lift field). 03 §2.4, §3 — this
+   file selects only published | held | hidden | deleted | editing, data-own / data-creator /
+   data-mod / data-depth (C-31). Also hosts `Reply`'s depth-1 look (C-01 exemption). */
+.comment {
+  list-style: none;
+  min-width: 0;
+}
+
+.comment-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+}
+
+.comment-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.comment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
+  line-height: 1.2;
+}
+
+.comment-handle {
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--white);
+}
+
+.comment-time {
+  font-size: var(--text-label);
+  color: var(--mute-dim);
+}
+
+/* The bubble: --slab-raised, 2px --line; 14px padding on roots, 13px → 12px on replies. */
+.comment-bubble {
+  padding: var(--space-16);
+  background: var(--slab-raised);
+  outline: 2px solid var(--line);
+  outline-offset: -2px;
+}
+
+.comment[data-depth='1'] .comment-bubble {
+  padding: var(--space-12);
+}
+
+/* Held for review: same fill, dashed --gold-deep border (DESIGN.md §5). */
+.comment[data-state='held'] .comment-bubble {
+  outline-style: dashed;
+  outline-color: var(--gold-deep);
+}
+
+.comment-text {
+  font-size: var(--text-body-phone);
+  line-height: 1.6;
+  color: var(--chalk);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Linkified B3 links inside a chalk sentence: colour + underline (meaning never colour alone). */
+.comment-text a {
+  color: var(--indigo-lift);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.comment-text a:hover {
+  color: var(--chalk);
+}
+
+/* Pending optimistic bubble (aria-busy on the article): a touch dimmer until the action returns. */
+.comment-row[aria-busy='true'] .comment-bubble {
+  opacity: 0.7;
+}
+
+/* Editing: the bubble becomes a --slab-sunk field with the --indigo-lift border (DESIGN.md §11.2). */
+.comment-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.comment[data-state='editing'] .comment-edit-textarea {
+  display: block;
+  width: 100%;
+  min-height: 88px;
+  padding: var(--space-12);
+  border: 2px solid var(--indigo-lift);
+  border-radius: var(--radius-input);
+  background: var(--slab-sunk);
+  font-family: var(--font-body);
+  font-size: var(--text-body-phone);
+  line-height: 1.6;
+  color: var(--chalk);
+  resize: vertical;
+}
+
+.comment[data-state='editing'] .comment-edit-textarea[aria-invalid='true'] {
+  border-color: var(--danger-field);
+}
+
+.comment-edit-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.comment-edit-note {
+  margin-inline-start: auto;
+  font-size: var(--text-label);
+  color: var(--mute-dim);
+}
+
+.comment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
+}
+
+/* The delete confirm strip takes the whole row when open (DESIGN.md §11.2 "asks once, inline"). */
+.comment-delete[data-state='open'],
+.comment-delete[data-state='pending'] {
+  flex: 1 1 100%;
+}
+
+.comment-error {
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--danger);
+}
+
+/* Hidden / deleted slots: empty --slab square where the avatar was, sunk slab with 15px --mute. */
+.comment-slot-avatar {
+  flex: none;
+  width: var(--size-avatar-nav);
+  height: var(--size-avatar-nav);
+  background: var(--slab);
+  border: 2px solid var(--line-soft);
+}
+
+.comment[data-depth='1'] .comment-slot-avatar {
+  width: 34px;
+  height: 34px;
+}
+
+.comment-slot {
+  padding: var(--space-16);
+  background: var(--slab-sunk);
+  outline: 2px solid var(--line);
+  outline-offset: -2px;
+  font-size: var(--text-ui);
+  color: var(--mute);
+}
+
+/* Replies (DESIGN.md §5 Reply): one level — 52px left margin (the 40px avatar + 12px gap, so the
+   block sits in the body column), 16px left padding, 2px --line left border. */
+.comment-replies {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  margin-top: var(--space-12);
+  margin-left: calc(var(--size-avatar-nav) + var(--space-12));
+  padding-left: var(--space-16);
+  border-left: 2px solid var(--line);
+}
+
+@media (max-width: 599px) {
+  /* Phone (pass-3 "COMMENT THREAD / PHONE 390"): the indent shrinks so bubbles keep their width. */
+  .comment-replies {
+    margin-left: var(--space-8);
+    padding-left: var(--space-12);
+  }
+}

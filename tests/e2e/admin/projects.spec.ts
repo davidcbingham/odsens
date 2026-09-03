@@ -22,24 +22,44 @@
  *    unhidden. The DB is snapshot-restored afterwards and one no-op `curateProject` save
  *    revalidates the `projects` tag (carried by every S1.2 cache entry) to repair the caches.
  *
+ *  - S1.4 (same file — the `admin` project is serial only within a file): T-E2E-42 gains the
+ *    `/admin/comments` leg (axe + 1280 AND 390 screenshots — 05 §7.5: phone shots for
+ *    `/admin/settings` and `/admin/comments` only) at the top, pristine seed first; T-E2E-36 (the
+ *    moderation queue as `seed_mod`) is the last describe below.
+ *
  * Seed truths: SEED-4..6 (3 published projects; overrides featured 1 = pixel-chameleon,
- * 2 = seed-exclusive-pack; CF link 900001 on pixel-chameleon), SEED-12 (one ok run per source).
+ * 2 = seed-exclusive-pack; CF link 900001 on pixel-chameleon), SEED-12 (one ok run per source),
+ * SEED-9 (the held `…0203` by seed_user2, the hidden + reported `…0204`).
  */
 import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
+import { freeHandle, readProfile } from '../../helpers/arrange';
 import { asRole, loose } from '../../helpers/asRole';
 import { expectNoSeriousA11y } from '../../helpers/axe';
+import {
+  deleteNonSeedComments,
+  readCommentRow,
+  restoreSeedHeldComment,
+} from '../../helpers/commentsReset';
 import {
   restoreContentTables,
   snapshotContentTables,
   type ContentSnapshot,
 } from '../../helpers/contentReset';
 import { loadEnvTest } from '../../helpers/envTest';
+import {
+  cleanupFactories,
+  makeComment,
+  makeUser,
+  purgeNotificationEvents,
+  restoreSeedCommentCounts,
+} from '../../helpers/factories';
 import { fixturePath } from '../../helpers/fixtures';
 import { loginAs } from '../../helpers/loginAs';
 import { shoot } from '../../helpers/screenshots';
 import { listObjects, removeObjects } from '../../helpers/storage';
-import { SEED_PROJECTS } from '../../helpers/seedIds';
+import { SEED_COMMENTS, SEED_PROJECTS, SEED_USERS } from '../../helpers/seedIds';
+import { repairThreadCache } from '../../helpers/threadCache';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -93,7 +113,7 @@ async function expectAtUrl(page: Page, url: string, assert: () => Promise<void>)
 // T-E2E-42 — a11y + screenshots, pristine seed state first
 // ---------------------------------------------------------------------------------------------
 
-test('T-E2E-42 admin routes: axe zero serious/critical + 1280 screenshots (/admin, /admin/projects, /admin/projects/[id])', async ({
+test('T-E2E-42 admin routes: axe zero serious/critical + 1280 screenshots (/admin, /admin/projects, /admin/projects/[id]) + /admin/comments at 1280 and 390', async ({
   page,
 }) => {
   await loginAs(page, 'admin');
@@ -112,6 +132,19 @@ test('T-E2E-42 admin routes: axe zero serious/critical + 1280 screenshots (/admi
   await expect(page.getByRole('heading', { name: 'OVERRIDES' })).toBeVisible();
   await expectNoSeriousA11y(page);
   await shoot(page, 'admin-project-detail');
+
+  // S1.4: the moderation queue — desktop AND phone (05 T-E2E-42; 00 S1.4.AC14/AC17).
+  await page.goto('/admin/comments');
+  await expect(page).toHaveTitle('Comments · Admin');
+  await expect(page.getByRole('heading', { name: 'MODERATION QUEUE' })).toBeVisible();
+  await expect(page.getByText('HELD', { exact: true })).toBeVisible(); // seed …0203
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-comments');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('heading', { name: 'MODERATION QUEUE' })).toBeVisible();
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-comments');
+  await page.setViewportSize({ width: 1280, height: 800 });
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -839,5 +872,148 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
         },
       );
     });
+  });
+});
+
+/**
+ * T-E2E-36 (05 §7.5; 00 S1.4.AC14; 02 §1.3 `/admin/comments`; DESIGN.md §5 Admin table, §11.1 Mod
+ * action row; ADR-0028 D6): the moderation queue as `seed_mod` — every action on this page is a
+ * moderator action, so nothing here is "Admin only" (02 §1.3 auth rule; unlike `/admin/projects`).
+ * Held `…0203` first (HELD gold-wash pill + FIRST COMMENT), the reported hidden `…0204` ("1 report");
+ * Approve (the row's one filled accent, emerald) → LIVE + the sidebar held count 1 → 0 (the leaf's
+ * `router.refresh()` re-renders the layout); Hide → HIDDEN, Unhide → LIVE, Ban user (danger text,
+ * inline confirm in plain words) and Rename handle (`Field` + neutral confirm → `renameUserHandle`,
+ * asserted via the service client) all on a FACTORY user's comment. `mutatesSeed`: `…0203` goes
+ * back to held (+ `moderated_*` NULL, seed_user2 `comment_count` 0) in `afterAll`, the factory rows
+ * leave, `notification_events` is emptied (SEED-12), and the `project:pixel-chameleon` ISR entry the
+ * approve/hide/unhide regenerated is repaired last through one more revalidating action
+ * (`repairThreadCache` — FLK-4).
+ */
+test.describe('moderation queue (T-E2E-36)', () => {
+  const HELD_TEXT = 'first comment here, the tail is great';
+  const REPORTED_TEXT = 'cheap diamonds at totally-legit.example';
+  const EMERALD = 'rgb(23, 185, 79)'; // --emerald #17b94f
+  const DANGER = 'rgb(240, 131, 107)'; // --danger #f0836b
+  const RUN = Math.random().toString(36).slice(2, 8);
+  const BODY = `t_${RUN} queue row from e2e`;
+
+  let userId = '';
+  let handle = '';
+  let commentId = '';
+
+  test.beforeAll(async () => {
+    loadEnvTest();
+    userId = await makeUser();
+    handle = (await readProfile(userId))?.handle ?? '';
+    expect(handle).toMatch(/^t_/);
+    commentId = await makeComment({ author_id: userId, body: BODY });
+  });
+
+  test.afterAll(async ({ browser }) => {
+    await restoreSeedHeldComment();
+    await cleanupFactories();
+    await deleteNonSeedComments();
+    await restoreSeedCommentCounts();
+    await purgeNotificationEvents();
+    await repairThreadCache(browser, {
+      path: '/projects/pixel-chameleon',
+      rootText: 'The chameleon blends into my kitchen floor. Ten out of ten.',
+      expectedTotal: 3,
+    });
+    await service().from('rate_limit_hits').delete().eq('key', SEED_USERS.seed_user);
+  });
+
+  function service() {
+    return loose(asRole('service'));
+  }
+
+  /** Toast slabs inside the `ToastProvider` region. */
+  function toast(page: Page, text: string) {
+    return page
+      .locator('[role="status"][aria-live="polite"] div[data-state]')
+      .filter({ hasText: text });
+  }
+
+  test('T-E2E-36 /admin/comments as mod: HELD + FIRST COMMENT first, "1 report" on the reported row; Approve → LIVE + sidebar 1 → 0; Hide → HIDDEN; Unhide → LIVE; Ban user inline confirm; Rename handle', async ({
+    page,
+  }) => {
+    await loginAs(page, 'mod');
+    await page.goto('/admin/comments');
+    await expect(page).toHaveTitle('Comments · Admin');
+    const table = page.locator('table', { has: page.getByText('Moderation queue') });
+    const rows = table.locator('tbody tr');
+    const heldRow = rows.filter({ hasText: HELD_TEXT });
+    const reportedRow = rows.filter({ hasText: REPORTED_TEXT });
+    const row = rows.filter({ hasText: BODY });
+    const sidebar = page.locator('nav[aria-label="Admin"] a[href="/admin/comments"]');
+
+    // Order + pills: held first (HELD + FIRST COMMENT), then the reported hidden row ("1 report").
+    await expect(rows.first()).toContainText(HELD_TEXT);
+    await expect(heldRow.getByText('HELD', { exact: true })).toBeVisible();
+    await expect(heldRow.getByText('FIRST COMMENT', { exact: true })).toBeVisible();
+    await expect(rows.nth(1)).toContainText(REPORTED_TEXT);
+    await expect(reportedRow.getByText('HIDDEN', { exact: true })).toBeVisible();
+    await expect(reportedRow.getByText('1 report', { exact: true })).toBeVisible();
+    await expect(reportedRow.getByRole('button', { name: 'Unhide', exact: true })).toBeVisible();
+    await expect(row.getByText('LIVE', { exact: true })).toBeVisible();
+    await expect(row).toContainText(`@${handle}`);
+    await expect(row.getByRole('link', { name: 'Pixel Chameleon' })).toHaveAttribute(
+      'href',
+      '/projects/pixel-chameleon#comments',
+    );
+    await expect(page.getByText('Admin only')).toHaveCount(0);
+    await expect(sidebar).toHaveText(/Comments\s*1\s*held/);
+
+    // Approve (filled emerald — the one accent) → LIVE; the held count in the sidebar drops to 0.
+    const approve = heldRow.getByRole('button', { name: 'Approve' });
+    expect(await approve.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(EMERALD);
+    await expect(row.getByRole('button', { name: 'Approve' })).toHaveCount(0); // never on LIVE
+    await approve.click();
+    await expect(toast(page, 'Approved.')).toBeVisible();
+    await expect(heldRow.getByText('LIVE', { exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(heldRow.getByRole('button', { name: 'Approve' })).toHaveCount(0);
+    await expect(sidebar).toHaveText(/Comments\s*0\s*held/);
+    expect(await readCommentRow(SEED_COMMENTS.held)).toMatchObject({
+      status: 'published',
+      moderated_by: SEED_USERS.seed_mod,
+    });
+
+    // Hide → HIDDEN; Unhide → LIVE (the factory row).
+    await row.getByRole('button', { name: 'Hide', exact: true }).click();
+    await expect(toast(page, 'Hidden.')).toBeVisible();
+    await expect(row.getByText('HIDDEN', { exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(row.getByRole('button', { name: 'Hide', exact: true })).toHaveCount(0);
+    expect((await readCommentRow(commentId))?.status).toBe('hidden');
+    await row.getByRole('button', { name: 'Unhide', exact: true }).click();
+    await expect(row.getByText('LIVE', { exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(row.getByRole('button', { name: 'Unhide', exact: true })).toHaveCount(0);
+    expect((await readCommentRow(commentId))?.status).toBe('published');
+
+    // Ban user: danger text, asks once inline in plain words and says where to undo.
+    const ban = row.getByRole('button', { name: 'Ban user' });
+    await expect.poll(() => ban.evaluate((el) => getComputedStyle(el).color)).toBe(DANGER);
+    await ban.click();
+    const banStrip = row.getByRole('group', {
+      name: `Ban @${handle}? They can't comment anywhere. Undo in Admin → Comments.`,
+    });
+    await expect(banStrip).toBeVisible();
+    await expect(banStrip.getByRole('button', { name: 'Keep' })).toBeFocused();
+    await expect(page.locator('dialog')).toHaveCount(0);
+    await banStrip.getByRole('button', { name: 'Ban', exact: true }).click();
+    await expect(toast(page, 'Banned.')).toBeVisible();
+    await expect.poll(async () => (await readProfile(userId))?.is_banned).toBe(true);
+
+    // Rename handle: Field + neutral confirm → renameUserHandle (00 S1.4.AC14; 05 T-ACT-67).
+    const next = freeHandle();
+    await row.getByRole('button', { name: 'Rename handle' }).click();
+    await row.getByLabel('New handle').fill(next);
+    await row.getByRole('button', { name: 'Rename', exact: true }).click();
+    const renameStrip = row.getByRole('group', { name: `Rename @${handle} to @${next}?` });
+    await expect(renameStrip).toBeVisible();
+    await renameStrip.getByRole('button', { name: 'Rename', exact: true }).click();
+    await expect(row).toContainText(`@${next}`, { timeout: 10_000 });
+    await expect(row).not.toContainText(`@${handle}`);
+    expect((await readProfile(userId))?.handle).toBe(next);
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0);
   });
 });

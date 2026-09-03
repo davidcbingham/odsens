@@ -1,0 +1,50 @@
+/* LikeButton — DESIGN.md §5 Comment bubble like button: `♥ 12`, 2px --line, 13px 700 chalk;
+   liked = --indigo-lift fill with --ink text (aria-pressed, 03 §3). 44px target (03 C-24). */
+.like-button-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.like-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 44px;
+  min-width: 44px;
+  padding: var(--space-8) var(--space-12);
+  border: 2px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-label);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--chalk);
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-fast) ease-out,
+    border-color var(--dur-fast) ease-out,
+    color var(--dur-fast) ease-out;
+}
+
+.like-button:hover {
+  border-color: var(--indigo-lift);
+}
+
+.like-button[aria-pressed='true'] {
+  background: var(--indigo-lift);
+  border-color: var(--indigo-lift);
+  color: var(--ink);
+}
+
+.like-button[aria-busy='true'] {
+  cursor: default;
+}
+
+.like-button-error {
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--danger);
+}

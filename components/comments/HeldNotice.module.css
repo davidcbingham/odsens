@@ -1,0 +1,21 @@
+/* HeldNotice — DESIGN.md §5 Held for review (pass-3 held bubble): gold Silkscreen label, body,
+   one --mute line at 14px. The dashed --gold-deep bubble border is Comment[data-state='held']. */
+.held-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.held-notice-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--gold);
+  line-height: 1;
+}
+
+.held-notice-line {
+  font-size: var(--text-small);
+  line-height: 1.55;
+  color: var(--mute);
+}

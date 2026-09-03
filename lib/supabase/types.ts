@@ -34,6 +34,265 @@ export type Database = {
   }
   public: {
     Tables: {
+      comment_likes: {
+        Row: {
+          comment_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comment_reports: {
+        Row: {
+          comment_id: string
+          created_at: string
+          id: string
+          note: string | null
+          reason: Database["public"]["Enums"]["report_reason"]
+          reporter_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          reason: Database["public"]["Enums"]["report_reason"]
+          reporter_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          reason?: Database["public"]["Enums"]["report_reason"]
+          reporter_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_reports_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_reports_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comments: {
+        Row: {
+          author_id: string | null
+          body: string
+          created_at: string
+          edited_at: string | null
+          id: string
+          like_count: number
+          moderated_at: string | null
+          moderated_by: string | null
+          parent_id: string | null
+          status: Database["public"]["Enums"]["comment_status"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["comment_target"]
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          body: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          like_count?: number
+          moderated_at?: string | null
+          moderated_by?: string | null
+          parent_id?: string | null
+          status?: Database["public"]["Enums"]["comment_status"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["comment_target"]
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          body?: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          like_count?: number
+          moderated_at?: string | null
+          moderated_by?: string | null
+          parent_id?: string | null
+          status?: Database["public"]["Enums"]["comment_status"]
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["comment_target"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_moderated_by_fkey"
+            columns: ["moderated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_moderated_by_fkey"
+            columns: ["moderated_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          payload: Json
+          subject_id: string
+          subject_type: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          payload?: Json
+          subject_id: string
+          subject_type: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          subject_id?: string
+          subject_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_path: string | null
@@ -546,6 +805,60 @@ export type Database = {
       }
     }
     Views: {
+      comments_public: {
+        Row: {
+          author_id: string | null
+          body: string | null
+          created_at: string | null
+          edited_at: string | null
+          id: string | null
+          like_count: number | null
+          parent_id: string | null
+          status: Database["public"]["Enums"]["comment_status"] | null
+          target_id: string | null
+          target_type: Database["public"]["Enums"]["comment_target"] | null
+        }
+        Insert: {
+          author_id?: never
+          body?: never
+          created_at?: string | null
+          edited_at?: never
+          id?: string | null
+          like_count?: number | null
+          parent_id?: string | null
+          status?: Database["public"]["Enums"]["comment_status"] | null
+          target_id?: string | null
+          target_type?: Database["public"]["Enums"]["comment_target"] | null
+        }
+        Update: {
+          author_id?: never
+          body?: never
+          created_at?: string | null
+          edited_at?: never
+          id?: string | null
+          like_count?: number | null
+          parent_id?: string | null
+          status?: Database["public"]["Enums"]["comment_status"] | null
+          target_id?: string | null
+          target_type?: Database["public"]["Enums"]["comment_target"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects_public: {
         Row: {
           body_md: string | null
@@ -641,10 +954,35 @@ export type Database = {
       }
     }
     Functions: {
+      can_comment: {
+        Args: { p_target_id: string; p_target_type: string }
+        Returns: boolean
+      }
       check_handle: { Args: { p_handle: string }; Returns: string }
+      comment_target_visible: {
+        Args: { p_target_id: string; p_target_type: string }
+        Returns: boolean
+      }
       is_admin: { Args: never; Returns: boolean }
       is_moderator: { Args: never; Returns: boolean }
       is_reserved_handle: { Args: { p_handle: string }; Returns: boolean }
+      moderator_thread: {
+        Args: { p_target_id: string; p_target_type: string }
+        Returns: {
+          author_id: string
+          body: string
+          created_at: string
+          edited_at: string
+          id: string
+          is_first_comment: boolean
+          like_count: number
+          parent_id: string
+          report_count: number
+          status: string
+          target_id: string
+          target_type: string
+        }[]
+      }
       project_is_visible: { Args: { p_project_id: string }; Returns: boolean }
       purge_project_downloads: { Args: { p_days: number }; Returns: number }
       purge_rate_limit_hits: { Args: { p_days: number }; Returns: number }
@@ -663,11 +1001,14 @@ export type Database = {
       }
     }
     Enums: {
+      comment_status: "published" | "held" | "hidden" | "deleted"
+      comment_target: "project" | "skin" | "art" | "video"
       link_platform: "modrinth" | "curseforge"
       moderation_mode: "auto" | "hold_first_time"
       project_source: "modrinth" | "odsens"
       project_status: "draft" | "published" | "hidden"
       project_type: "mod" | "datapack" | "resourcepack" | "plugin"
+      report_reason: "spam" | "rude" | "other"
       user_role: "user" | "moderator" | "admin"
       version_type: "release" | "beta" | "alpha"
     }
@@ -800,11 +1141,14 @@ export const Constants = {
   },
   public: {
     Enums: {
+      comment_status: ["published", "held", "hidden", "deleted"],
+      comment_target: ["project", "skin", "art", "video"],
       link_platform: ["modrinth", "curseforge"],
       moderation_mode: ["auto", "hold_first_time"],
       project_source: ["modrinth", "odsens"],
       project_status: ["draft", "published", "hidden"],
       project_type: ["mod", "datapack", "resourcepack", "plugin"],
+      report_reason: ["spam", "rude", "other"],
       user_role: ["user", "moderator", "admin"],
       version_type: ["release", "beta", "alpha"],
     },

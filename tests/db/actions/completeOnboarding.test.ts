@@ -9,7 +9,7 @@
  * clear the subject's hits between cases instead of burning through the 10 / 10 min budget.
  */
 import sharp from 'sharp';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { completeOnboarding } from '@/lib/actions/accounts';
 import { avatarTooSmall } from '@/lib/files';
 import { RATE_LIMITED_MESSAGE } from '@/lib/rate-limit';
@@ -17,6 +17,7 @@ import { sizeLimitMessage, typeMessage } from '@/lib/validation/files';
 import {
   HANDLE_RESERVED,
   HANDLE_TAKEN,
+  REASON_CHARSET,
   RESERVED_HANDLES,
   handleReason,
 } from '@/lib/validation/handle';
@@ -31,9 +32,10 @@ import {
 import { expectFail, expectOk } from '@/tests/helpers/actionResult';
 import { asRole, SEED_ROLE_IDS, type SeedRole } from '@/tests/helpers/asRole';
 import { callAction, callActionAs, setupActionMocks } from '@/tests/helpers/callAction';
+import { expectInternal, withDbFault, withDbHook } from '@/tests/helpers/dbFault';
 import { cleanupFactories, makeUser } from '@/tests/helpers/factories';
 import { fixtureFile } from '@/tests/helpers/fixtures';
-import { spyRevalidateTag } from '@/tests/helpers/spies';
+import { spyLog, spyRevalidateTag, type LogSpy } from '@/tests/helpers/spies';
 import { listObjects } from '@/tests/helpers/storage';
 
 setupActionMocks();
@@ -326,5 +328,73 @@ describe('T-ACT-3 completeOnboarding side effects', () => {
 
   it('T-ACT-3 no revalidateTag call anywhere in this file (accounts touch no ISR tag)', () => {
     expect(tags.calls).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-2 — the races between check_handle and the write (the unique index / the `.is('handle',
+// null)` guard answer), the RPC's verdict over the TS rules, and DB faults (T-ACT-0 (1))
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-2 completeOnboarding races + DB faults', () => {
+  let logs: LogSpy;
+
+  beforeEach(() => {
+    logs = spyLog();
+  });
+
+  afterEach(() => {
+    logs.restore();
+  });
+
+  it('T-ACT-2 the handle is taken between check_handle and the write → handle_taken (the unique index answers), subject stays un-onboarded', async () => {
+    const subject = await makeUser({ handle: null });
+    const rival = await makeUser();
+    const handle = freeHandle();
+    const res = await withDbHook(
+      { rpc: 'check_handle' },
+      () => patchProfile(rival, { handle }),
+      () => callActionAs(completeOnboarding, { handle }, { profileId: subject }),
+      { when: 'after' },
+    );
+    const error = expectFail(res, 'handle_taken');
+    expect(error.field).toBe('handle');
+    expect((await readProfile(subject))?.handle).toBeNull();
+    expect((await readProfile(rival))?.handle).toBe(handle);
+  });
+
+  it("T-ACT-2 a double submit: the subject's own handle lands between check_handle and the write → conflict", async () => {
+    const subject = await makeUser({ handle: null });
+    const handle = freeHandle();
+    const res = await withDbHook(
+      { rpc: 'check_handle' },
+      () => patchProfile(subject, { handle }),
+      () => callActionAs(completeOnboarding, { handle }, { profileId: subject }),
+      { when: 'after' },
+    );
+    const error = expectFail(res, 'conflict');
+    expect(error.message).toBe('You already have a handle.');
+    expect((await readProfile(subject))?.handle).toBe(handle);
+  });
+
+  it("T-ACT-2 the RPC says 'invalid' for a handle the TS rules accept → validation with the charset line", async () => {
+    const subject = await makeUser({ handle: null });
+    const error = expectFail(
+      await withDbFault({ rpc: 'check_handle' }, { result: { data: 'invalid', error: null } }, () =>
+        callActionAs(completeOnboarding, { handle: freeHandle() }, { profileId: subject }),
+      ),
+      'validation',
+    );
+    expect(error.message).toBe(REASON_CHARSET);
+    expect(error.issues).toEqual([{ path: 'handle', message: REASON_CHARSET }]);
+    expect((await readProfile(subject))?.handle).toBeNull();
+  });
+
+  it('T-ACT-2 the profiles write fails → internal + one log.error line, subject stays un-onboarded', async () => {
+    const subject = await makeUser({ handle: null });
+    const res = await withDbFault({ table: 'profiles', op: 'update' }, {}, () =>
+      callActionAs(completeOnboarding, { handle: freeHandle() }, { profileId: subject }),
+    );
+    expectInternal(res, 'completeOnboarding', logs);
+    expect((await readProfile(subject))?.handle).toBeNull();
   });
 });

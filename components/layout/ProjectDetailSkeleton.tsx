@@ -1,13 +1,16 @@
+import { CommentThreadSkeleton } from './CommentThreadSkeleton';
 import { Skeleton } from './Skeleton';
 import styles from './ProjectDetailSkeleton.module.css';
 
 /**
  * ProjectDetailSkeleton — project-detail-shaped shells (DESIGN.md §11.1/§11.8; 03 §2.1
  * `ProjectDetailSkeleton`: "Header (icon well + title lines) + gallery well + about lines +
- * rail panel shells"; G-01 `/projects/[slug]/loading.tsx`). Mirrors `ProjectCardSkeleton`:
- * real detail-page shells (104px icon well, 1fr/380px rail grid — pass-3 detail mockup) with
- * two-depth `Skeleton` blocks inside, ≤ one screenful, region `aria-busy` + one visually-hidden
- * "Loading…". The comments block (`CommentThreadSkeleton`) joins with the comments slice.
+ * rail panel shells"; G-01 `/projects/[slug]/loading.tsx` "incl. the thread block as
+ * `CommentThreadSkeleton`"). Mirrors `ProjectCardSkeleton`: real detail-page shells (104px icon
+ * well, 1fr/380px rail grid — pass-3 detail mockup) with two-depth `Skeleton` blocks inside,
+ * ≤ one screenful, region `aria-busy` + one visually-hidden "Loading…". The thread block
+ * (`CommentThreadSkeleton`, S1.4) closes the main column; it is `aria-hidden` here because this
+ * region already announces one "Loading…" (03 §2.1 `Skeleton` a11y rule).
  */
 export type ProjectDetailSkeletonProps = {
   className?: string;
@@ -36,6 +39,9 @@ export function ProjectDetailSkeleton({ className }: ProjectDetailSkeletonProps)
             ))}
           </div>
           <Skeleton kind="text" lines={4} />
+          <div aria-hidden="true">
+            <CommentThreadSkeleton count={2} />
+          </div>
         </div>
         <div className={styles['project-detail-skeleton-rail']}>
           <div className={styles['project-detail-skeleton-panel']}>

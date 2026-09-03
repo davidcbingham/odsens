@@ -71,9 +71,9 @@ test.describe('admin gate', () => {
     expect(response?.status()).toBe(200);
     await expect(page).toHaveTitle('Admin — odsens');
     expect(await sidebarLabels(page)).toEqual(MOD_ORDER);
-    // Comments carries the held count (0 until S1.4).
-    await expect(page.locator('nav[aria-label="Admin"] a[href="/admin/comments"]')).toContainText(
-      '0',
+    // Comments carries the held count — 1 from S1.4 (SEED-9: the held `…0203`; "N held" sr text).
+    await expect(page.locator('nav[aria-label="Admin"] a[href="/admin/comments"]')).toHaveText(
+      /Comments\s*1\s*held/,
     );
     // The S1.2 dashboard renders inside the shell (02 §1.3 `/admin` row: SyncStatus + tiles).
     await expect(page.getByRole('heading', { name: 'SYNC' })).toBeVisible();

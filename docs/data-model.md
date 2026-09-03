@@ -152,7 +152,7 @@ Moderator view of held/reported comments in the public thread (ADR-0002 A2): mod
 UI/identity/moderation and can't do handle-only Google-via-Supabase; GitHub-backed ones (Giscus) are GitHub-only;
 self-hosted servers (Remark42, Isso) need their own host and user store. Our version: tables above + ~6 Server Actions
 (`postComment, editComment(15 min), deleteComment(soft), toggleLike, reportComment, moderate`) + `<CommentThread>` components
-mapped to DESIGN.md states; optimistic UI via React 19 `useOptimistic` (except a first-timer's post under hold mode); plain-text bodies auto-linkified; rate limit in SQL (`rate_limit_ok`, §2.10);
+mapped to DESIGN.md states; optimistic UI via React 19 `useOptimistic` (only under `moderation_mode = 'auto'`; never under `hold_first_time` — ADR-0028 D13); plain-text bodies auto-linkified; rate limit in SQL (`rate_limit_ok`, §2.10);
 Supabase Realtime optional later. Remark42's data model is a good reference, not a dependency.
 
 ### 2.6 Notifications (admin only, v1)
@@ -189,10 +189,13 @@ Rules: **an admin is auto-added as `moderator` to every workroom** (visible in t
 | `record_skin_download(skin_id)` | RPC, security definer | service role | `skins.downloads + 1` |
 | `rate_limit_ok(scope, key, max, window)` | RPC | service role | SQL rate limiting over `rate_limit_hits` only (A4) |
 | `purge_project_downloads(days)`, `purge_rate_limit_hits(days)` | RPC | service role | nightly housekeeping |
+| `comment_target_visible(target_type, target_id)` | helper, security definer, stable | anon, authenticated, service_role; called by the `comments` SELECT policy, `can_comment`, `comments_public` and `moderator_thread` | the one v1 target-visibility predicate: `project` → `project_is_visible()`, every other type → false until its thread opens (ADR-0002 C21) — ADR-0028 D4 |
 | `can_comment(target_type, target_id)` | helper, security definer | authenticated (inside policies) | comment/like/report insert precondition |
 | `moderator_thread(target_type, target_id)` | RPC, security definer | authenticated; raises unless `is_moderator()` (ADR-0002 A2) | held/hidden/reported rows + `is_first_comment`, `report_count` for the mods-only thread view |
 | `is_moderator()`, `is_admin()` | helpers | policies | role checks on `profiles.role` |
-| `comments_set_status()` | trigger BEFORE INSERT on `comments` | — | authoritative held/published status |
+| `comments_set_status()` | trigger BEFORE INSERT on `comments` | — | authoritative held/published status (recomputed for JWT callers; service/no-JWT sessions keep the given status — seed and tests) |
+| `comments_guard()` | trigger BEFORE UPDATE on `comments` | — | the §4 column rules for JWT callers (author body edits ≤ 15 min; author may set `deleted` only; `like_count`/`author_id`/`target_*`/`parent_id`/`created_at` immutable; moderators change status and get `moderated_by/at` stamped); nested-trigger writes pass (`pg_trigger_depth() > 1`) — ADR-0028 D3/D4 |
+| `comments_bump_comment_count()`, `comment_likes_count()` | triggers AFTER INSERT/UPDATE on `comments`, AFTER INSERT/DELETE on `comment_likes` (security definer) | — | `profiles.comment_count` +1 the first time a row reaches `published` (never −1); `comments.like_count` maintenance — ADR-0028 D4 |
 | `public_profiles`, `comments_public`, `site_settings_public` | views | all roles | the only public reads of `profiles`, non-published comment slots, settings (incl. `moderation_mode` — A3) |
 
 Constraints are not objects in this table: the CHECK `profiles_avatar_path_own` on `profiles.avatar_path` (migration `20260820120400_profiles_avatar_path_check.sql`, ADR-0015) adds no function, view or trigger.
@@ -222,11 +225,11 @@ Uploads go through server routes/actions (validate type/size, generate paths, wr
 | videos, skins, art | published to all; admin all | admin/service | admin | admin |
 | site_settings | admin (public read via view `site_settings_public`) | service role (seeded) | admin | service only |
 | site_settings_public (view) | all | — | — | — |
-| comments | published to all; own held/hidden rows to author; mods/admins all (public slot rendering via view `comments_public`) | authenticated + `can_comment(target_type, target_id)` (not banned, target visible, comments enabled); status set by trigger `comments_set_status()` | author (body, within 15 min → sets edited_at) ; mods (status) | author (soft → status deleted) / mods |
+| comments | published (on a visible target) to all; own held/hidden rows to author; mods/admins all (public slot rendering via view `comments_public`) | authenticated + `can_comment(target_type, target_id)` (not banned, target visible, comments enabled); status set by trigger `comments_set_status()`, which for JWT callers also pins the timestamps, validates `parent_id` (a published root on the same target) and backstops direct inserts at 60 / min · 600 / day per author (column grant: `id, target_type, target_id, author_id, parent_id, body, status` — ADR-0028 D12) | author (body, within 15 min — `edited_at` set by the action) ; mods (status) — column rules bound by `comments_guard()` (ADR-0028 D4); `author_id` is nullable `on delete set null` so a deleted account's rows survive as slots | author (soft → status deleted) / mods (hard delete = `is_moderator()`) |
 | comments_public (view) | all (own non-published bodies visible only to their author) | — | — | — |
 | moderator_thread (RPC) | mod/admin only (`is_moderator()`; user/anon/banned denied — ADR-0002 A2) | — | — | — |
-| comment_likes | all | authenticated, `user_id = auth.uid()`, `can_comment()` | — | own |
-| comment_reports | mods | authenticated, `reporter_id = auth.uid()`, `can_comment()`; unique (comment_id, reporter_id) | mods (`resolved_at/by`) | service only |
+| comment_likes | all | authenticated, `user_id = auth.uid()`, `can_comment()` (column grant: `comment_id, user_id` — ADR-0028 D12) | — | own |
+| comment_reports | mods | authenticated, `reporter_id = auth.uid()`, `can_comment()`; unique (comment_id, reporter_id) (column grant: `id, comment_id, reporter_id, reason, note` — ADR-0028 D12) | mods (`resolved_at/by` — column grant) | service only |
 | orders | own; mods all | authenticated | mods (status/notes) | — |
 | notification_events, kofi_events, supporters, stats_daily, sync_runs | admin | service role | service/admin | admin |
 | notification_recipients | admin (`address` masked in the app; Discord recipient `address` = webhook URL) | service role | service/admin | admin |
