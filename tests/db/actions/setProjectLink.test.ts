@@ -17,7 +17,7 @@
  * "CurseForge key not configured"; SC-24 audit line; revalidates `projects` + `project:<slug>`.
  */
 import { randomUUID } from 'node:crypto';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { setProjectLink } from '@/lib/actions/projects';
 import type { SetProjectLinkInput } from '@/lib/actions/projects.schema';
 import { env } from '@/lib/env';
@@ -26,8 +26,15 @@ import { clearRateLimitHits, countRateLimitHits } from '@/tests/helpers/arrange'
 import { expectFail, expectOk } from '@/tests/helpers/actionResult';
 import { asRole, SEED_ROLE_IDS } from '@/tests/helpers/asRole';
 import { callAction, callActionAs, setupActionMocks } from '@/tests/helpers/callAction';
+import { expectInternal, withDbFault, type DbCallTarget } from '@/tests/helpers/dbFault';
 import { cleanupFactories, makeProject, makeUser } from '@/tests/helpers/factories';
-import { spyFetch, spyLog, spyRevalidateTag, type FetchSpy } from '@/tests/helpers/spies';
+import {
+  spyFetch,
+  spyLog,
+  spyRevalidateTag,
+  type FetchSpy,
+  type LogSpy,
+} from '@/tests/helpers/spies';
 
 setupActionMocks();
 
@@ -308,4 +315,72 @@ describe('T-ACT-41 setProjectLink', () => {
     expect(error).toBeNull();
     expect(data).toEqual([]);
   });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-41 — DB faults (T-ACT-0 (1)) on each write of the two paths (ref null / ref given); a
+// fresh factory admin keeps this block clear of the file's project_link budget
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-41 setProjectLink DB faults', () => {
+  let faultAdmin = '';
+  let logs: LogSpy;
+
+  beforeAll(async () => {
+    faultAdmin = await makeUser({ role: 'admin' });
+  });
+
+  beforeEach(() => {
+    logs = spyLog();
+  });
+
+  afterEach(() => {
+    logs.restore();
+  });
+
+  afterAll(async () => {
+    await clearRateLimitHits('project_link', faultAdmin);
+  });
+
+  it('T-ACT-41 the project read fails → internal + one log.error line, no CurseForge call', async () => {
+    const fetchSpy = routes();
+    const res = await withDbFault({ table: 'projects', op: 'select' }, {}, () =>
+      callActionAs(setProjectLink, input('900001'), { profileId: faultAdmin }),
+    );
+    expectInternal(res, 'setProjectLink', logs);
+    expect(fetchSpy.calls).toEqual([]);
+  });
+
+  it.each<{ name: string; ref: string | null; target: DbCallTarget }>([
+    {
+      name: 'ref:null — the link delete',
+      ref: null,
+      target: { table: 'project_links', op: 'delete' },
+    },
+    {
+      name: 'ref:null — the count zeroing',
+      ref: null,
+      target: { table: 'projects', op: 'update' },
+    },
+    {
+      name: "ref '900001' — the link upsert",
+      ref: '900001',
+      target: { table: 'project_links', op: 'upsert' },
+    },
+    {
+      name: "ref '900001' — the count write",
+      ref: '900001',
+      target: { table: 'projects', op: 'update' },
+    },
+  ])(
+    'T-ACT-41 $name fails → internal + one log.error line, no revalidate',
+    async ({ ref, target }) => {
+      routes();
+      const tags = spyRevalidateTag();
+      const res = await withDbFault(target, {}, () =>
+        callActionAs(setProjectLink, input(ref), { profileId: faultAdmin }),
+      );
+      expectInternal(res, 'setProjectLink', logs);
+      expect(tags.calls).toEqual([]);
+    },
+  );
 });

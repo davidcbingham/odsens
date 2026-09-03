@@ -18,14 +18,15 @@
  * DENIED call, so seed rows stay byte-identical (05 H-1).
  */
 import { randomUUID } from 'node:crypto';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { publishProject } from '@/lib/actions/projects';
 import { expectFail, expectOk } from '@/tests/helpers/actionResult';
 import { asRole } from '@/tests/helpers/asRole';
 import { callAction, setupActionMocks } from '@/tests/helpers/callAction';
+import { expectInternal, withDbFault, type DbCallTarget } from '@/tests/helpers/dbFault';
 import { cleanupFactories, makeFile, makeProject, makeVersion } from '@/tests/helpers/factories';
 import { SEED_PROJECTS } from '@/tests/helpers/seedIds';
-import { spyRevalidateTag } from '@/tests/helpers/spies';
+import { spyLog, spyRevalidateTag, type LogSpy } from '@/tests/helpers/spies';
 
 setupActionMocks();
 
@@ -214,4 +215,39 @@ describe('T-ACT-37 publishProject', () => {
     // Untouched (05 H-1).
     expect((await statusAndPublishedAt(SEED_PROJECTS.metalPipeMace)).status).toBe('published');
   });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-37 — DB faults (T-ACT-0 (1)): the precondition read and the status write
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-37 publishProject DB faults', () => {
+  let logs: LogSpy;
+
+  beforeEach(() => {
+    logs = spyLog();
+  });
+
+  afterEach(() => {
+    logs.restore();
+  });
+
+  it.each<{ name: string; target: DbCallTarget }>([
+    { name: 'the stored-file precondition read', target: { table: 'project_files', op: 'select' } },
+    { name: 'the status write', target: { table: 'projects', op: 'update' } },
+  ])(
+    'T-ACT-37 $name fails → internal + one log.error line, still draft, no revalidate',
+    async ({ target }) => {
+      const { projectId } = await makePublishableDraft();
+      const tags = spyRevalidateTag();
+      const res = await withDbFault(target, {}, () =>
+        callAction(publishProject, { id: projectId, status: 'published' }, { role: 'admin' }),
+      );
+      expectInternal(res, 'publishProject', logs);
+      expect(await statusAndPublishedAt(projectId)).toEqual({
+        status: 'draft',
+        published_at: null,
+      });
+      expect(tags.calls).toEqual([]);
+    },
+  );
 });

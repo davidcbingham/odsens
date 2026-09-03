@@ -21,14 +21,15 @@
  * `afterAll`; factory rows fall to `cleanupFactories`. Seed rows are never mutated (05 H-1).
  */
 import { randomUUID } from 'node:crypto';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createExclusiveProject } from '@/lib/actions/projects';
 import type { CreateExclusiveProjectInput } from '@/lib/actions/projects.schema';
 import { expectFail, expectOk } from '@/tests/helpers/actionResult';
 import { asRole } from '@/tests/helpers/asRole';
 import { callAction, setupActionMocks } from '@/tests/helpers/callAction';
+import { expectInternal, withDbFault } from '@/tests/helpers/dbFault';
 import { cleanupFactories, makeProject } from '@/tests/helpers/factories';
-import { spyRevalidateTag } from '@/tests/helpers/spies';
+import { spyLog, spyRevalidateTag, type LogSpy } from '@/tests/helpers/spies';
 
 setupActionMocks();
 
@@ -225,6 +226,37 @@ describe('T-ACT-35 createExclusiveProject validation', () => {
     });
 
     // ADR-0002 #38: a draft is invisible everywhere — nothing to revalidate on create.
+    expect(tags.calls).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-35 — a DB fault on the insert that is NOT a slug clash (T-ACT-0 (1))
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-35 createExclusiveProject DB faults', () => {
+  let logs: LogSpy;
+
+  beforeEach(() => {
+    logs = spyLog();
+  });
+
+  afterEach(() => {
+    logs.restore();
+  });
+
+  it('T-ACT-35 the insert fails (not a slug clash) → internal + one log.error line, no row, no revalidate', async () => {
+    const slug = uniqueSlug();
+    const tags = spyRevalidateTag();
+    const res = await withDbFault({ table: 'projects', op: 'insert' }, {}, () =>
+      callAction(
+        createExclusiveProject,
+        { slug, title: 'Faulted', description: 'Never lands.', project_type: 'mod' },
+        { role: 'admin' },
+      ),
+    );
+    expectInternal(res, 'createExclusiveProject', logs);
+    const { data } = await service.from('projects').select('id').eq('slug', slug);
+    expect(data).toEqual([]);
     expect(tags.calls).toEqual([]);
   });
 });

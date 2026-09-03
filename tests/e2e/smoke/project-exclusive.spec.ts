@@ -10,10 +10,11 @@
  *    `.get-it-sha` line shows the full 128-hex sha512 (00 S1.3.AC3); DETAILS "Source" reads
  *    "Only on odsens"; VERSIONS & FILES Download href = the same `/api/download/…` id
  *    (ADR-0002 #42 direct branch); SEEN ON absent (S1.8).
- *  - DEFERRED (05 §12 note 2026-08-27): T-E2E-4's "Comments closed state text" clause —
- *    "Comments are off for this one. The old ones stay." — needs the S1.4 `CommentThread`;
- *    the S1.4 run adds that assertion here (same pattern as T-E2E-3's S1.2 "except
- *    comments/SEEN ON" scope).
+ *  - COMMENTS part (S1.4; 05 §12 note 2026-08-27 — the clause S1.3 deferred): SEED-6 sets
+ *    `comments_enabled=false` on …0103, so anon sees the `CommentThread` closed shell
+ *    (`data-state="closed"`, 03 §3): the CLOSED `PixelLabel` + "Comments are off for this one.
+ *    The old ones stay." (03 §2.4; DESIGN.md §11.2). The signed-in run of the same shell is
+ *    T-E2E-29 (flows/comments.spec.ts).
  *  - Grid: on `/projects`, the seed-exclusive-pack card carries `data-exclusive` + the badge;
  *    the Modrinth-sourced metal-pipe-mace card carries neither (00 S1.3.AC1/AC8).
  *
@@ -29,7 +30,7 @@ import { SEED_FILES } from '../../helpers/seedIds';
 const DOWNLOAD_HREF = `/api/download/${SEED_FILES.exclusiveZip}`;
 
 test.describe('project exclusive', () => {
-  test('T-E2E-4 /projects/seed-exclusive-pack — badge, GET IT direct href + sha512, DETAILS source, versions href, no SEEN ON', async ({
+  test('T-E2E-4 /projects/seed-exclusive-pack — badge, GET IT direct href + sha512, DETAILS source, versions href, no SEEN ON, comments closed', async ({
     page,
   }) => {
     const response = await page.goto('/projects/seed-exclusive-pack');
@@ -87,6 +88,15 @@ test.describe('project exclusive', () => {
 
     // SEEN ON is S1.8 — no heading yet (05 T-E2E-4 "SEEN ON absent").
     await expect(page.getByRole('heading', { name: 'SEEN ON' })).toHaveCount(0);
+
+    // COMMENTS closed state (05 T-E2E-4 "Comments closed state text"; SEED-6 comments_enabled=false):
+    // the thread shell is `closed` for anon too (closed wins over signed-out), CLOSED label + line.
+    const thread = page.locator('section#comments > div[data-state]');
+    await expect(thread).toHaveAttribute('data-state', 'closed');
+    await expect(thread.getByText('CLOSED', { exact: true })).toBeVisible();
+    await expect(
+      thread.getByText('Comments are off for this one. The old ones stay.'),
+    ).toBeVisible();
 
     await expectNoSeriousA11y(page);
     await shoot(page, 'project-exclusive');

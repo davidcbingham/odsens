@@ -11,7 +11,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { checkHandle } from '@/lib/actions/accounts';
 import { RATE_LIMITED_MESSAGE } from '@/lib/rate-limit';
 import { RESERVED_HANDLES } from '@/lib/validation/handle';
@@ -20,8 +20,10 @@ import { expectFail, expectOk } from '@/tests/helpers/actionResult';
 import { asRole, SEED_ROLE_IDS, type SeedRole } from '@/tests/helpers/asRole';
 import { callAction, callActionAs, setupActionMocks } from '@/tests/helpers/callAction';
 import { sql } from '@/tests/helpers/db';
+import { expectInternal, withDbFault, type DbFaultOptions } from '@/tests/helpers/dbFault';
 import { REPO_ROOT } from '@/tests/helpers/envTest';
 import { cleanupFactories, makeUser } from '@/tests/helpers/factories';
+import { spyLog, type LogSpy } from '@/tests/helpers/spies';
 
 setupActionMocks();
 
@@ -157,4 +159,34 @@ describe('T-ACT-7 checkHandle', () => {
     const inFile = [...body.matchAll(/'([^']+)'/g)].map((m) => m[1] ?? '');
     expect(inFile).toEqual([...RESERVED_HANDLES]);
   });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-7 — the RPC misbehaving (T-ACT-0 (1)): an error, or a verdict outside the four statuses
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-7 checkHandle RPC faults', () => {
+  let logs: LogSpy;
+
+  beforeEach(() => {
+    logs = spyLog();
+  });
+
+  afterEach(() => {
+    logs.restore();
+  });
+
+  it.each<{ name: string; options: DbFaultOptions }>([
+    { name: 'an RPC error', options: {} },
+    { name: 'an unknown verdict string', options: { result: { data: 'weird', error: null } } },
+    { name: 'a non-string verdict', options: { result: { data: null, error: null } } },
+  ])(
+    'T-ACT-7 check_handle answering $name → internal + one log.error line (never a made-up status)',
+    async ({ options }) => {
+      const id = await makeUser();
+      const res = await withDbFault({ rpc: 'check_handle' }, options, () =>
+        callActionAs(checkHandle, { handle: freeHandle() }, { profileId: id }),
+      );
+      expectInternal(res, 'checkHandle', logs);
+    },
+  );
 });

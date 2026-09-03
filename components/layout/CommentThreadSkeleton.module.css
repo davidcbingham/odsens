@@ -1,0 +1,33 @@
+/* CommentThreadSkeleton — DESIGN.md §11.1 Skeleton inside the comment bubble shell (§5: 40px
+   avatar square + 12px gap, handle line, --slab-raised bubble). 03 §2.1, G-06. */
+.comment-thread-skeleton {
+  display: block;
+}
+
+.comment-thread-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+
+.comment-thread-skeleton-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+}
+
+.comment-thread-skeleton-avatar {
+  flex: none;
+  width: var(--size-avatar-nav);
+  height: var(--size-avatar-nav);
+  background: var(--skeleton-media);
+  border: 2px solid var(--line);
+}
+
+.comment-thread-skeleton-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}

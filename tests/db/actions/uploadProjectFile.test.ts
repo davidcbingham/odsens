@@ -522,6 +522,93 @@ describe('T-ACT-39 uploadProjectFile', () => {
     });
   });
 
+  // ---- commit validation shape (04 SC-02 plain issues) + optional version fields ----------------
+
+  it('T-ACT-39 commit without `version` → validation with the plain "Required." issue (never a zod internal)', async () => {
+    const input = {
+      phase: 'commit',
+      project_id: exclusiveId,
+      path: `project-files/${exclusiveId}/${randomUUID()}/pack.zip`,
+    } as unknown as UploadProjectFileCommitInput;
+    const error = expectFail(
+      await callAction(uploadProjectFile, input, { role: 'admin' }),
+      'validation',
+    );
+    expect(error.issues).toContainEqual({ path: 'version', message: 'Required.' });
+    for (const issue of error.issues ?? [])
+      expect(issue.message).not.toMatch(/invalid_type|expected/i);
+  });
+
+  it('T-ACT-39 commit with primary:"yes" → validation "Check this field." on primary', async () => {
+    const input = {
+      ...commitInput(exclusiveId, `project-files/${exclusiveId}/${randomUUID()}/pack.zip`),
+      primary: 'yes',
+    } as unknown as UploadProjectFileCommitInput;
+    const error = expectFail(
+      await callAction(uploadProjectFile, input, { role: 'admin' }),
+      'validation',
+    );
+    expect(error.issues).toContainEqual({ path: 'primary', message: 'Check this field.' });
+  });
+
+  it('T-ACT-39 version name/changelog omitted → NULL on insert; a later commit into the same version updates type + date_published', async () => {
+    const projectId = await makeProject({ source: 'odsens' });
+    const bare: UploadProjectFileCommitInput['version'] = {
+      version_number: '2.0.0',
+      game_versions: ['1.21.4'],
+      loaders: ['datapack'],
+      version_type: 'beta',
+    };
+
+    const first = await beginAsAdmin(beginInput(projectId, { version_number: '2.0.0' }));
+    trackObject(first.path);
+    expect((await putSigned(first.signed_url, first.token, 'files/pack.zip')).ok).toBe(true);
+    const committed = await commitAsAdmin({
+      phase: 'commit',
+      project_id: projectId,
+      path: first.path,
+      version: bare,
+    });
+    expect(await versionRows(projectId)).toEqual([
+      expect.objectContaining({
+        id: committed.version_id,
+        name: null,
+        changelog_md: null,
+        version_type: 'beta',
+      }),
+    ]);
+
+    // Same version, second file: the metadata upsert takes the update path this time.
+    const second = await beginAsAdmin(
+      beginInput(projectId, { version_number: '2.0.0', filename: 'extra.zip' }),
+    );
+    expect(second.path).toBe(`project-files/${projectId}/${committed.version_id}/extra.zip`);
+    trackObject(second.path);
+    expect((await putSigned(second.signed_url, second.token, 'files/pack.zip')).ok).toBe(true);
+    const again = await commitAsAdmin({
+      phase: 'commit',
+      project_id: projectId,
+      path: second.path,
+      version: { ...bare, version_type: 'release', date_published: '2026-01-02T03:04:05.000Z' },
+    });
+    expect(again.version_id).toBe(committed.version_id);
+    const { data: row, error } = await service
+      .from('project_versions')
+      .select('name, changelog_md, version_type, date_published')
+      .eq('id', committed.version_id)
+      .single();
+    expect(error).toBeNull();
+    expect(row?.name).toBeNull();
+    expect(row?.changelog_md).toBeNull();
+    expect(row?.version_type).toBe('release');
+    expect(new Date(row?.date_published ?? '').toISOString()).toBe('2026-01-02T03:04:05.000Z');
+    // The first file stays primary; the second joins as a sibling.
+    expect((await fileRows(committed.version_id)).map((f) => [f.filename, f.primary])).toEqual([
+      ['extra.zip', false],
+      ['pack.zip', true],
+    ]);
+  });
+
   // ---- T-ACT-73 upload commons (04 §1.4.5 U1/U3; 01 INV-53) -----------------------------------
 
   it("T-ACT-73 commit with a crafted path naming ANOTHER project's version id → forbidden, object untouched", async () => {

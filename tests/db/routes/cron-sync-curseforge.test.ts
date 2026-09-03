@@ -10,7 +10,7 @@
  * still finalized (SC-11).
  */
 import { NextRequest } from 'next/server';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as route from '@/app/api/cron/sync-curseforge/route';
 import type { JobSummary } from '@/lib/jobs/types';
 import { asRole } from '@/tests/helpers/asRole';
@@ -20,7 +20,20 @@ import {
   snapshotContentTables,
   type ContentSnapshot,
 } from '@/tests/helpers/contentReset';
-import { spyFetch } from '@/tests/helpers/spies';
+import { spyFetch, spyLog } from '@/tests/helpers/spies';
+
+/**
+ * Set by the route-guard rows only (the job mocked to answer / throw a shape the real job never
+ * produces — 04 §3 jobs finalize their row and return `ok:false`); read inside the hoisted factory.
+ */
+const jobOverride = vi.hoisted(() => ({ run: null as null | (() => Promise<JobSummary>) }));
+
+vi.mock('@/lib/jobs/syncCurseforge', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/jobs/syncCurseforge')>();
+  const syncCurseforge: typeof actual.syncCurseforge = (opts) =>
+    jobOverride.run ? jobOverride.run() : actual.syncCurseforge(opts);
+  return { ...actual, syncCurseforge };
+});
 
 setupActionMocks();
 
@@ -126,4 +139,61 @@ describe('T-ACT-33 /api/cron/sync-curseforge', () => {
     expect(route.runtime).toBe('nodejs');
     expect(route.maxDuration).toBe(300);
   });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-33 — the route's own guards, with the job mocked: a summary without an error text, and a
+// job that throws past its try/finally (the "last resort" catch — 500, run_id '', one log line)
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-33 /api/cron/sync-curseforge route guards (job mocked)', () => {
+  afterEach(() => {
+    jobOverride.run = null;
+  });
+
+  it("T-ACT-33 a summary ok:false without an error text → 500 job_failed with the fallback 'Job failed.'", async () => {
+    jobOverride.run = async () => ({
+      ok: false,
+      source: 'curseforge',
+      run_id: 't_run',
+      items: 0,
+      ms: 1,
+    });
+    const res = await route.GET(request({ authorization: `Bearer ${CRON_SECRET}` }));
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({
+      ok: false,
+      source: 'curseforge',
+      run_id: 't_run',
+      error: { code: 'job_failed', message: 'Job failed.' },
+    });
+  });
+
+  it.each<{ name: string; thrown: unknown; logged: string }>([
+    { name: 'an Error', thrown: new Error('t_ boom'), logged: 't_ boom' },
+    { name: 'a non-Error value', thrown: 't_ string rejection', logged: 't_ string rejection' },
+  ])(
+    "T-ACT-33 the job throwing $name → 500 job_failed, run_id '', one route_unhandled log line",
+    async ({ thrown, logged }) => {
+      jobOverride.run = () => Promise.reject(thrown);
+      const logs = spyLog();
+      try {
+        const res = await route.GET(request({ authorization: `Bearer ${CRON_SECRET}` }));
+        expect(res.status).toBe(500);
+        expect(await res.json()).toEqual({
+          ok: false,
+          source: 'curseforge',
+          run_id: '',
+          error: { code: 'job_failed', message: 'Job failed.' },
+        });
+      } finally {
+        logs.restore();
+      }
+      const lines = logs.lines.filter(
+        (entry) => (entry as { msg?: string }).msg === 'route_unhandled',
+      ) as Array<{ job?: string; meta?: { error?: string } }>;
+      expect(lines).toHaveLength(1);
+      expect(lines[0]?.job).toBe('syncCurseforge');
+      expect(lines[0]?.meta?.error).toBe(logged);
+    },
+  );
 });
