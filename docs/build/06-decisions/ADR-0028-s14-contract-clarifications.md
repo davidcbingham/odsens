@@ -1,7 +1,7 @@
 # ADR-0028 — S1.4 contract clarifications (deleted-slot rule, report preconditions, comment-count trigger vs `profiles_guard`, schema helper names, `commentBodySchema` home, banned reach, moderator merge read)
 
 ## Status
-Proposed
+Accepted (2026-09-03 — S1.4 merge, v0.5)
 
 ## Date
 2026-09-03
