@@ -4,7 +4,8 @@
  * `afterEach` / `afterAll`).
  *
  * S1.1: `makeUser` + `cleanupFactories`. S1.2: `makeProject` / `makeVersion` / `makeFile` /
- * `makeSyncRun` (05 §8 row S1.2). Later content factories (`makeComment`…) stay stubs until their slice.
+ * `makeSyncRun` (05 §8 row S1.2). S1.4: `makeComment` (+ `restoreSeedCommentCounts`, `trackComment`,
+ * `purgeNotificationEvents`). Later content factories (`makeMention`…) stay stubs until their slice.
  *
  *   const id = await makeUser({ role: 'moderator' });          // handle `t_<8 hex>`, not banned
  *   const newbie = await makeUser({ handle: null });           // onboarding incomplete
@@ -26,6 +27,7 @@ import {
   registerUserEmail,
   SEED_PASSWORD,
 } from './asRole';
+import { SEED_PROJECTS, SEED_USERS } from './seedIds';
 import { forgetSessionCookies } from './sessionCookies';
 import { listObjects, removeObjects } from './storage';
 
@@ -44,6 +46,20 @@ export type VersionOverrides = FactoryOverrides & {
 export type FileOverrides = FactoryOverrides & {
   /** Required — create the parent with `makeVersion` first. */
   version_id?: string;
+};
+export type CommentOverrides = FactoryOverrides & {
+  target_type?: 'project' | 'skin' | 'art' | 'video';
+  /** Default: seed project …0102 (pixel-chameleon). */
+  target_id?: string;
+  /** Default: `seed_user` (…0003). A published insert bumps the author's `comment_count` (trigger). */
+  author_id?: string;
+  parent_id?: string | null;
+  status?: 'published' | 'held' | 'hidden' | 'deleted';
+  body?: string;
+  created_at?: string;
+  moderated_by?: string | null;
+  moderated_at?: string | null;
+  edited_at?: string | null;
 };
 export type SyncRunOverrides = FactoryOverrides & {
   /** The 7 registry values (sync_runs_source_check). */
@@ -218,7 +234,67 @@ export const makeFile: Factory<FileOverrides> = async (overrides = {}) => {
   return insertContentRow('makeFile', 'project_files', row, createdFiles, id);
 };
 
-export const makeComment: Factory = notYet('makeComment');
+const createdComments: string[] = [];
+
+/**
+ * S1.4: a comment row through the service client (the status trigger keeps the given status for
+ * service writes; the `comment_count` trigger bumps the author on a published insert —
+ * `cleanupFactories` re-asserts the SEED-3 counts so seed users keep their documented values).
+ */
+export const makeComment: Factory<CommentOverrides> = async (overrides = {}) => {
+  const id = typeof overrides.id === 'string' ? overrides.id : randomUUID();
+  const row: Record<string, Json> = {
+    id,
+    target_type: 'project',
+    target_id: SEED_PROJECTS.pixelChameleon,
+    author_id: SEED_USERS.seed_user,
+    body: `t_${shortTag(id)} factory comment`,
+    status: 'published',
+    ...defined(overrides),
+  };
+  return insertContentRow('makeComment', 'comments', row, createdComments, id);
+};
+
+/**
+ * S1.4: adopts a comment row created OUTSIDE the factories (by `postComment` in an action test) into
+ * the cleanup list, so it leaves with the file like a `makeComment` row would (05 H-1). Tracking an id
+ * that never lands is harmless — the delete affects 0 rows.
+ */
+export function trackComment(id: string): void {
+  createdComments.push(id);
+}
+
+/**
+ * S1.4: empties `notification_events` (SEED-12: the seed keeps it at 0 rows). Action tests call it in
+ * `afterAll` so the events they caused (`comment.new` …) never reach the next file. Service-only
+ * table (05 T-RLS-91).
+ */
+export async function purgeNotificationEvents(): Promise<void> {
+  const { error } = await loose(asRole('service'))
+    .from('notification_events')
+    .delete()
+    .not('id', 'is', null);
+  if (error) throw new Error(`purgeNotificationEvents: ${error.message}`);
+}
+
+/** SEED-3 `comment_count` values (05 §3) — restored after factory comments touched them. */
+const SEED_COMMENT_COUNTS: ReadonlyArray<[string, number]> = [
+  [SEED_USERS.oddsense, 1],
+  [SEED_USERS.seed_mod, 0],
+  [SEED_USERS.seed_user, 2],
+  [SEED_USERS.seed_user2, 0],
+  [SEED_USERS.seed_banned, 1],
+  [SEED_USERS.seed_newbie, 0],
+];
+
+export async function restoreSeedCommentCounts(): Promise<void> {
+  const service = loose(asRole('service'));
+  for (const [id, comment_count] of SEED_COMMENT_COUNTS) {
+    const { error } = await service.from('profiles').update({ comment_count }).eq('id', id);
+    if (error) throw new Error(`restoreSeedCommentCounts: ${error.message}`);
+  }
+}
+
 export const makeMention: Factory = notYet('makeMention');
 export const makeVideo: Factory = notYet('makeVideo');
 export const makeSkin: Factory = notYet('makeSkin');
@@ -243,7 +319,9 @@ export const makeSyncRun: Factory<SyncRunOverrides> = async (overrides = {}) => 
  */
 export const cleanupFactories: () => Promise<void> = async () => {
   const service = asRole('service');
+  const touchedComments = createdComments.length > 0;
   const contentTables: [table: string, ids: string[]][] = [
+    ['comments', createdComments],
     ['project_files', createdFiles],
     ['project_versions', createdVersions],
     ['projects', createdProjects],
@@ -255,6 +333,7 @@ export const cleanupFactories: () => Promise<void> = async () => {
     const { error } = await loose(service).from(table).delete().in('id', ids);
     if (error) throw new Error(`cleanupFactories: ${table} delete failed: ${error.message}`);
   }
+  if (touchedComments) await restoreSeedCommentCounts();
   const ids = createdUsers.splice(0, createdUsers.length);
   const storageFailures: string[] = [];
   for (const id of ids) {

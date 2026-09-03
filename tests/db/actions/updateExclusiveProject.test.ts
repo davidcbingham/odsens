@@ -17,15 +17,16 @@
  * shortcut past `publishProject`'s icon+file preconditions.
  */
 import { randomUUID } from 'node:crypto';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { updateExclusiveProject } from '@/lib/actions/projects';
 import type { UpdateExclusiveProjectInput } from '@/lib/actions/projects.schema';
 import { expectFail, expectOk } from '@/tests/helpers/actionResult';
 import { asRole } from '@/tests/helpers/asRole';
 import { callAction, setupActionMocks } from '@/tests/helpers/callAction';
+import { expectInternal, withDbFault, type DbCallTarget } from '@/tests/helpers/dbFault';
 import { cleanupFactories, makeProject } from '@/tests/helpers/factories';
 import { SEED_PROJECTS } from '@/tests/helpers/seedIds';
-import { spyRevalidateTag } from '@/tests/helpers/spies';
+import { spyLog, spyRevalidateTag, type LogSpy } from '@/tests/helpers/spies';
 
 setupActionMocks();
 
@@ -165,4 +166,100 @@ describe('T-ACT-36 updateExclusiveProject', () => {
       title: 'Kept title',
     });
   });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-36 — every optional field, the slug clash the unique index answers, DB faults (T-ACT-0 (1))
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-36 updateExclusiveProject fields + slug clash + DB faults', () => {
+  let logs: LogSpy;
+
+  beforeEach(() => {
+    logs = spyLog();
+  });
+
+  afterEach(() => {
+    logs.restore();
+  });
+
+  it('T-ACT-36 every optional field lands (description, project_type, categories, game_versions, license, source_url, issues_url; discord_url null clears it)', async () => {
+    const projectId = await makeProject({
+      status: 'draft',
+      discord_url: 'https://discord.gg/t-old',
+    });
+    const slug = await slugOf(projectId);
+    const tags = spyRevalidateTag();
+    expectOk(
+      await callAction(
+        updateExclusiveProject,
+        {
+          id: projectId,
+          description: 'New blurb',
+          project_type: 'datapack',
+          categories: ['decoration', 'utility'],
+          game_versions: ['1.21.4', '1.21.5'],
+          license: 'MIT',
+          source_url: 'https://github.com/odsens/t-pack',
+          issues_url: 'https://github.com/odsens/t-pack/issues',
+          discord_url: null,
+        },
+        { role: 'admin' },
+      ),
+    );
+    const { data: row, error } = await service
+      .from('projects')
+      .select(
+        'description, project_type, categories, game_versions, license, source_url, issues_url, discord_url',
+      )
+      .eq('id', projectId)
+      .single();
+    expect(error).toBeNull();
+    expect(row).toEqual({
+      description: 'New blurb',
+      project_type: 'datapack',
+      categories: ['decoration', 'utility'],
+      game_versions: ['1.21.4', '1.21.5'],
+      license: 'MIT',
+      source_url: 'https://github.com/odsens/t-pack',
+      issues_url: 'https://github.com/odsens/t-pack/issues',
+      discord_url: null,
+    });
+    expect(tags.calls).toEqual(['projects', `project:${slug}`]);
+  });
+
+  it('T-ACT-36 a slug already taken (the Modrinth seed slug) while draft → conflict "That slug\'s taken.", slug unchanged', async () => {
+    const projectId = await makeProject({ status: 'draft' });
+    const keptSlug = await slugOf(projectId);
+    const tags = spyRevalidateTag();
+    const error = expectFail(
+      await callAction(
+        updateExclusiveProject,
+        { id: projectId, slug: 'pixel-chameleon' },
+        { role: 'admin' },
+      ),
+      'conflict',
+    );
+    expect(error.message).toBe("That slug's taken.");
+    expect(error.field).toBe('slug');
+    expect(await slugOf(projectId)).toBe(keptSlug);
+    expect(tags.calls).toEqual([]);
+  });
+
+  it.each<{ name: string; target: DbCallTarget }>([
+    { name: 'the project read', target: { table: 'projects', op: 'select' } },
+    { name: 'the update', target: { table: 'projects', op: 'update' } },
+  ])(
+    'T-ACT-36 $name fails → internal + one log.error line, row unchanged, no revalidate',
+    async ({ target }) => {
+      const projectId = await makeProject({ status: 'draft' });
+      const tags = spyRevalidateTag();
+      const res = await withDbFault(target, {}, () =>
+        callAction(updateExclusiveProject, { id: projectId, title: 'Faulted' }, { role: 'admin' }),
+      );
+      expectInternal(res, 'updateExclusiveProject', logs);
+      const { data } = await service.from('projects').select('title').eq('id', projectId).single();
+      expect(data?.title).not.toBe('Faulted');
+      expect(tags.calls).toEqual([]);
+    },
+  );
 });

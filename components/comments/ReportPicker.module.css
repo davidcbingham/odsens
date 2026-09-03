@@ -1,0 +1,83 @@
+/* ReportPicker — DESIGN.md §11.2 Report (pass-3 "REPORT — INLINE REASON PICKER"): sunk slab,
+   question 15px 700, 3px-radius reason chips (checked = --indigo-lift fill, --ink text), SEND
+   REPORT primary, one-line confirmation with the 6px --gold bar. 03 §2.4, §3 picking | sending |
+   done | error. */
+.report-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  background: var(--slab-sunk);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+}
+
+.report-picker[data-state='done'] {
+  padding: 0;
+  background: transparent;
+  outline: none;
+}
+
+.report-picker-question {
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+.report-picker-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.report-picker-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-8) var(--space-16);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  font-weight: 500;
+  color: var(--chalk);
+  transition:
+    background-color var(--dur-fast) ease-out,
+    border-color var(--dur-fast) ease-out,
+    color var(--dur-fast) ease-out;
+}
+
+.report-picker-chip:hover {
+  border-color: var(--indigo-lift);
+}
+
+.report-picker-chip[aria-checked='true'] {
+  background: var(--indigo-lift);
+  border-color: var(--indigo-lift);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.report-picker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.report-picker-error {
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--danger);
+}
+
+/* "Reported. OddSense will look at it." — the pass-3 confirmation slab (gold left bar). */
+.report-picker-done {
+  padding: var(--space-12) var(--space-16);
+  background: var(--slab);
+  border: 2px solid var(--line);
+  border-left: 6px solid var(--gold);
+  font-size: var(--text-ui);
+  color: var(--chalk);
+}

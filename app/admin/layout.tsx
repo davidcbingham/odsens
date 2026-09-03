@@ -6,6 +6,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { SkipLink } from '@/components/layout/SkipLink';
 import { ToastProvider } from '@/components/layout/Toast';
 import { getViewer } from '@/lib/auth';
+import { countHeldComments } from '@/lib/data/admin';
 import { publicEnv } from '@/lib/env/public';
 
 /**
@@ -49,6 +50,13 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   if (!profile || !profile.handle) redirect('/welcome?next=/admin');
   if (profile.role === 'user') notFound();
 
+  // 02 §1.3 `/admin` Data cell: `comments` count where `status='held'` — the RP-14 sidebar count
+  // (S1.4). Read after the role gate on the request-cookie client (`lib/data/admin.ts`, 01
+  // INV-12); moderators read every comment row (data-model §4), so the number is exact for
+  // both roles. The layout is `force-dynamic`, so a `router.refresh()` from `ModActionRow`
+  // re-reads it (05 T-E2E-36 "queue count in sidebar updates").
+  const heldComments = await countHeldComments();
+
   return (
     <>
       <SkipLink />
@@ -59,8 +67,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             role: profile.role,
             avatarUrl: avatarUrl(profile.avatar_path),
           }}
-          // S1.4 wires the held-comments count (comments table does not exist yet).
-          counts={{ heldComments: 0 }}
+          counts={{ heldComments }}
         >
           {children}
         </AdminShell>

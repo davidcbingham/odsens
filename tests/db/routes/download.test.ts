@@ -27,6 +27,7 @@ import { RATE_LIMITED_MESSAGE } from '@/lib/rate-limit';
 import { clearRateLimitHits, countRateLimitHits } from '@/tests/helpers/arrange';
 import { asRole } from '@/tests/helpers/asRole';
 import { setupActionMocks } from '@/tests/helpers/callAction';
+import { withDbFault } from '@/tests/helpers/dbFault';
 import { cleanupFactories, makeFile, makeProject, makeVersion } from '@/tests/helpers/factories';
 import { SEED_FILES, SEED_PROJECTS, SEED_VERSIONS, seedId } from '@/tests/helpers/seedIds';
 import { spyLog } from '@/tests/helpers/spies';
@@ -61,7 +62,20 @@ const IP_43 = '203.0.113.43'; // T-ACT-43 valid 302
 const IP_44 = '203.0.113.44'; // T-ACT-44 counters + concurrency
 const IP_LIMIT = '203.0.113.45'; // T-ACT-44 31st request
 const IP_500 = '203.0.113.46'; // T-ACT-44 signed-URL failure
-const TEST_IPS = [IP_43, IP_44, IP_LIMIT, IP_500] as const;
+const IP_REAL = '203.0.113.47'; // T-ACT-43 x-real-ip fallback
+const IP_BLANK_HOP = '203.0.113.48'; // T-ACT-43 blank first x-forwarded-for hop
+const IP_LOOPBACK = '127.0.0.1'; // T-ACT-43 no client-ip header at all (the loopback marker)
+const IP_FAULT = '203.0.113.49'; // T-ACT-44 RPC faults
+const TEST_IPS = [
+  IP_43,
+  IP_44,
+  IP_LIMIT,
+  IP_500,
+  IP_REAL,
+  IP_BLANK_HOP,
+  IP_LOOPBACK,
+  IP_FAULT,
+] as const;
 
 /** SEED-5: …0501 download_count 7 and …0103 downloads_direct 7 — the restore target (H-1). */
 const SEED_DOWNLOAD_COUNT = 7;
@@ -216,6 +230,32 @@ describe('T-ACT-43 /api/download/[fileId] resolution + response shape', () => {
     }
   });
 
+  it('T-ACT-43 client identity fallbacks (D3): x-real-ip when x-forwarded-for is absent, a blank first hop is skipped, no header → the loopback marker, no user-agent → the empty-string hash', async () => {
+    const cases: Array<{ headers: Record<string, string>; ip: string; ua: string }> = [
+      { headers: { 'x-real-ip': IP_REAL, 'user-agent': UA }, ip: IP_REAL, ua: UA },
+      {
+        headers: { 'x-forwarded-for': ' ', 'x-real-ip': IP_BLANK_HOP, 'user-agent': UA },
+        ip: IP_BLANK_HOP,
+        ua: UA,
+      },
+      { headers: {}, ip: IP_LOOPBACK, ua: '' },
+    ];
+    for (const { headers, ip, ua } of cases) {
+      const request = new NextRequest(`${ROUTE_BASE}/${SEED_FILES.exclusiveZip}`, { headers });
+      const res = await route.GET(request, {
+        params: Promise.resolve({ fileId: SEED_FILES.exclusiveZip }),
+      });
+      expect(res.status).toBe(302);
+      const { data, error } = await service
+        .from('project_downloads')
+        .select('ua_hash')
+        .eq('file_id', SEED_FILES.exclusiveZip)
+        .eq('ip_hash', ipHash(ip));
+      expect(error).toBeNull();
+      expect(data).toEqual([{ ua_hash: uaHash(ua) }]);
+    }
+  });
+
   it('T-ACT-43 valid seed file → 302 signed URL (object path + token + download=… + 60 s expiry) and D6 headers', async () => {
     const res = await get(SEED_FILES.exclusiveZip, IP_43);
     expect(res.status).toBe(302);
@@ -320,6 +360,43 @@ describe('T-ACT-44 /api/download/[fileId] side effects', () => {
     expect(await downloadRowCount(key)).toBe(0);
     expect(await countRateLimitHits('download', key)).toBe(31);
   });
+
+  it.each<{ name: string; rpc: string; throws?: unknown; metaName: string }>([
+    { name: 'the rate limiter RPC fails (not a limit)', rpc: 'rate_limit_ok', metaName: 'Error' },
+    { name: 'record_download fails', rpc: 'record_download', metaName: 'Error' },
+    {
+      name: 'record_download rejects with a non-Error',
+      rpc: 'record_download',
+      throws: 'boom',
+      metaName: 'unknown',
+    },
+  ])(
+    'T-ACT-44 $name → 500 internal, no counter moved, no log row, one route_unhandled line',
+    async ({ rpc, throws, metaName }) => {
+      const before = await seedCounts();
+      const logs = spyLog();
+      try {
+        const res = await withDbFault({ rpc }, throws === undefined ? {} : { throws }, () =>
+          get(SEED_FILES.exclusiveZip, IP_FAULT),
+        );
+        expect(res.status).toBe(500);
+        expect(await res.json()).toEqual({
+          ok: false,
+          error: { code: 'internal', message: 'Something broke.' },
+        });
+      } finally {
+        logs.restore();
+      }
+      expect(await seedCounts()).toEqual(before);
+      expect(await downloadRowCount(ipHash(IP_FAULT))).toBe(0);
+      const lines = logs.lines.filter(
+        (entry) => (entry as { msg?: string }).msg === 'route_unhandled',
+      ) as Array<{ action?: string; meta?: { name?: string } }>;
+      expect(lines).toHaveLength(1);
+      expect(lines[0]?.action).toBe('download');
+      expect(lines[0]?.meta?.name).toBe(metaName);
+    },
+  );
 
   it('T-ACT-44 signed-URL failure after the counters → 500 internal (counters already moved — 04 §2.3 Errors row)', async () => {
     const before = await seedCounts();

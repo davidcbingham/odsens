@@ -13,7 +13,7 @@
  * ("point my row at your object, then removeAvatar") can therefore no longer be arranged, so the
  * T-ACT-6 ownership cells assert the guard on the unit it lives in plus "remove touches only mine".
  */
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { updateProfile } from '@/lib/actions/accounts';
 import type { UpdateProfileInput } from '@/lib/actions/accounts.schema';
 import { AVATAR_NOT_YOURS, AvatarError, deleteAvatar, isOwnAvatarPath } from '@/lib/files';
@@ -24,9 +24,15 @@ import { freeHandle, patchProfile, readProfile } from '@/tests/helpers/arrange';
 import { expectFail, expectOk } from '@/tests/helpers/actionResult';
 import { asRole, SEED_ROLE_IDS } from '@/tests/helpers/asRole';
 import { callAction, callActionAs, setupActionMocks } from '@/tests/helpers/callAction';
+import {
+  expectInternal,
+  withDbFault,
+  withDbHook,
+  type DbCallTarget,
+} from '@/tests/helpers/dbFault';
 import { cleanupFactories, makeUser } from '@/tests/helpers/factories';
 import { fixtureFile } from '@/tests/helpers/fixtures';
-import { spyRevalidateTag } from '@/tests/helpers/spies';
+import { spyLog, spyRevalidateTag, type LogSpy } from '@/tests/helpers/spies';
 import { listObjects, uploadFixture } from '@/tests/helpers/storage';
 
 setupActionMocks();
@@ -375,4 +381,87 @@ describe('T-ACT-6 updateProfile avatar effects', () => {
   it('T-ACT-6 no revalidateTag call anywhere in this file', () => {
     expect(tags.calls).toEqual([]);
   });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-5/6 — the rename race the unique index answers, and DB faults (T-ACT-0 (1)) on every
+// profiles write of the action; the row never half-applies
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-5 updateProfile races + DB faults', () => {
+  let logs: LogSpy;
+
+  beforeEach(() => {
+    logs = spyLog();
+  });
+
+  afterEach(() => {
+    logs.restore();
+  });
+
+  it('T-ACT-5 the new handle is taken between check_handle and the write → handle_taken, row unchanged', async () => {
+    const id = await makeUser();
+    const rival = await makeUser();
+    const handle = freeHandle();
+    const before = await readProfile(id);
+    const res = await withDbHook(
+      { rpc: 'check_handle' },
+      () => patchProfile(rival, { handle }),
+      () => callActionAs(updateProfile, { handle }, { profileId: id }),
+      { when: 'after' },
+    );
+    const error = expectFail(res, 'handle_taken');
+    expect(error.field).toBe('handle');
+    expect(await readProfile(id)).toEqual(before);
+  });
+
+  it.each<{
+    name: string;
+    target: DbCallTarget;
+    nth?: number;
+    input: () => Promise<UpdateProfileInput | FormData>;
+    withAvatar: boolean;
+  }>([
+    {
+      // nth 2: `requireOnboarded` reads the own row first (strict); the handle_changed_at read is next.
+      name: 'the handle_changed_at read',
+      target: { table: 'profiles', op: 'select' },
+      nth: 2,
+      input: async () => ({ handle: freeHandle() }),
+      withAvatar: false,
+    },
+    {
+      name: 'the rename write',
+      target: { table: 'profiles', op: 'update' },
+      input: async () => ({ handle: freeHandle() }),
+      withAvatar: false,
+    },
+    {
+      name: 'the avatar_path write (after the new object exists)',
+      target: { table: 'profiles', op: 'update' },
+      input: () => avatarForm('avatar-600.png'),
+      withAvatar: false,
+    },
+    {
+      name: 'the avatar_path clear (after the object went)',
+      target: { table: 'profiles', op: 'update' },
+      input: async () => ({ removeAvatar: true }),
+      withAvatar: true,
+    },
+  ])(
+    'T-ACT-6 $name fails → internal + one log.error line, row unchanged',
+    async ({ target, nth, input, withAvatar }) => {
+      const id = await makeUser();
+      if (withAvatar) {
+        const avatarPath = `${id}/0123456789abcdef.webp`;
+        await uploadFixture('avatars', avatarPath, 'images/tiny.webp');
+        await patchProfile(id, { avatar_path: avatarPath });
+      }
+      const before = await readProfile(id);
+      const res = await withDbFault(target, nth === undefined ? {} : { nth }, async () =>
+        callActionAs(updateProfile, await input(), { profileId: id }),
+      );
+      expectInternal(res, 'updateProfile', logs);
+      expect(await readProfile(id)).toEqual(before);
+    },
+  );
 });

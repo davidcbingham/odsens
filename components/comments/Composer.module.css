@@ -1,0 +1,103 @@
+/* Composer — DESIGN.md §11.2 Composer error + pass-3 thread frames: --slab panel with 2px --line,
+   viewer avatar, --slab-sunk textarea (2px --line-soft, 3px radius; focus --indigo-lift; error
+   --danger-field), POST primary, the rule + counter beside it. 03 §2.4, §3 idle | submitting |
+   error. */
+.composer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  background: var(--slab);
+  outline: 2px solid var(--line);
+  outline-offset: -2px;
+  scroll-margin-top: calc(var(--nav-h) + var(--space-16));
+}
+
+/* Reply composers sit inside the body column already — no slab of their own (a class, not a
+   `data-*` selector: 03 §3 lists idle | submitting | error for the Composer, C-31). */
+.composer-reply {
+  padding: 0;
+  background: transparent;
+  outline: none;
+}
+
+.composer-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.composer-reply-to {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.composer-reply-word {
+  font-size: var(--text-label);
+  color: var(--mute-dim);
+}
+
+.composer-textarea {
+  display: block;
+  width: 100%;
+  min-height: 88px;
+  padding: var(--space-12);
+  border: 2px solid var(--line-soft);
+  border-radius: var(--radius-input);
+  background: var(--slab-sunk);
+  font-family: var(--font-body);
+  font-size: var(--text-body-phone);
+  line-height: 1.6;
+  color: var(--chalk);
+  resize: vertical;
+  transition: border-color var(--dur-fast) ease-out;
+}
+
+/* --mute-dim on --slab-sunk clears the 4.5:1 text floor; the pass-3 frame's disabled-text placeholder did not. */
+.composer-textarea::placeholder {
+  color: var(--mute-dim);
+}
+
+.composer-textarea:focus-visible {
+  border-color: var(--indigo-lift);
+}
+
+.composer[data-state='error'] .composer-textarea {
+  border-color: var(--danger-field);
+}
+
+.composer[data-state='submitting'] .composer-textarea {
+  opacity: 0.7;
+}
+
+.composer-error {
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--danger);
+}
+
+.composer-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12) var(--space-16);
+}
+
+/* The rule restated beside POST at all times (DESIGN.md §11.2; 13px --mute-dim). */
+.composer-meta {
+  font-size: var(--text-label);
+  line-height: 1.4;
+  color: var(--mute-dim);
+}
+
+.composer-handle {
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+.composer-counter {
+  margin-inline-start: auto;
+}

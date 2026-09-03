@@ -6,6 +6,7 @@
  *   patchProfile(id, patch)         → service update (e.g. restore a seed row — H-1 `mutatesSeed`,
  *                                     or move `handle_changed_at` back 8 days for the 7-day rule)
  *   clearRateLimitHits(scope, key)  → forget the hits for one key (so validation loops never trip a limit)
+ *   clearRateLimitHitsFor(scopes, keys) → the same for several scopes × keys (seed users across files, S1.4)
  *   countRateLimitHits(scope, key)  → rows in `rate_limit_hits` for one key
  *   freeHandle()                    → `t_<8 hex>` — passes H1/H3, never collides with seed handles
  */
@@ -38,6 +39,20 @@ export async function clearRateLimitHits(scope: string, key: string): Promise<vo
     .eq('scope', scope)
     .eq('key', key);
   if (error) throw new Error(`clearRateLimitHits(${scope}, ${key}): ${error.message}`);
+}
+
+/** Forgets every hit of the given scopes for the given keys (seed roles shared by many files). */
+export async function clearRateLimitHitsFor(
+  scopes: readonly string[],
+  keys: readonly string[],
+): Promise<void> {
+  if (scopes.length === 0 || keys.length === 0) return;
+  const { error } = await asRole('service')
+    .from('rate_limit_hits')
+    .delete()
+    .in('scope', [...scopes])
+    .in('key', [...keys]);
+  if (error) throw new Error(`clearRateLimitHitsFor(${scopes.join(',')}): ${error.message}`);
 }
 
 export async function countRateLimitHits(scope: string, key: string): Promise<number> {

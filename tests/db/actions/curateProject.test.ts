@@ -16,14 +16,15 @@
  * ADR-0002 C10), both as `validation`.
  */
 import { randomUUID } from 'node:crypto';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { curateProject } from '@/lib/actions/projects';
 import type { CurateProjectInput } from '@/lib/actions/projects.schema';
 import { expectFail, expectOk } from '@/tests/helpers/actionResult';
 import { asRole, SEED_ROLE_IDS } from '@/tests/helpers/asRole';
 import { callAction, setupActionMocks } from '@/tests/helpers/callAction';
+import { expectInternal, withDbFault } from '@/tests/helpers/dbFault';
 import { cleanupFactories, makeProject } from '@/tests/helpers/factories';
-import { spyLog, spyRevalidateTag } from '@/tests/helpers/spies';
+import { spyLog, spyRevalidateTag, type LogSpy } from '@/tests/helpers/spies';
 
 setupActionMocks();
 
@@ -295,4 +296,57 @@ describe('T-ACT-40 curateProject', () => {
     );
     expect(error.field).toBe('extra_gallery');
   });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-40 — DB faults (T-ACT-0 (1)): the project read, the per-project upsert, the batch upsert
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-40 curateProject DB faults', () => {
+  let logs: LogSpy;
+
+  beforeEach(() => {
+    logs = spyLog();
+  });
+
+  afterEach(() => {
+    logs.restore();
+  });
+
+  async function overrideRows(projectId: string): Promise<number> {
+    const { data, error } = await service
+      .from('project_overrides')
+      .select('project_id')
+      .eq('project_id', projectId);
+    if (error) throw new Error(error.message);
+    return data.length;
+  }
+
+  it.each<{ name: string; target: { table: string; op: 'select' | 'upsert' }; batch: boolean }>([
+    { name: 'the project read', target: { table: 'projects', op: 'select' }, batch: false },
+    {
+      name: 'the per-project override upsert',
+      target: { table: 'project_overrides', op: 'upsert' },
+      batch: false,
+    },
+    {
+      name: 'the batch reorder upsert (not an FK miss)',
+      target: { table: 'project_overrides', op: 'upsert' },
+      batch: true,
+    },
+  ])(
+    'T-ACT-40 $name fails → internal + one log.error line, no override row, no revalidate',
+    async ({ target, batch }) => {
+      const projectId = await makeProject();
+      const tags = spyRevalidateTag();
+      const input: CurateProjectInput = batch
+        ? { reorder: [{ project_id: projectId, featured_order: 1 }] }
+        : { project_id: projectId, featured: true };
+      const res = await withDbFault(target, {}, () =>
+        callAction(curateProject, input, { role: 'admin' }),
+      );
+      expectInternal(res, 'curateProject', logs);
+      expect(await overrideRows(projectId)).toBe(0);
+      expect(tags.calls).toEqual([]);
+    },
+  );
 });

@@ -2,11 +2,18 @@
  * tests/e2e/smoke/project-detail.spec.ts — `/projects/[slug]` (02 §2.3, SM-03; DESIGN.md §6 #3,
  * §12.5, §5 Gallery). Runs in `smoke-desktop` and `smoke-phone`.
  *
- *  - T-E2E-3, S1.2 scope (05 §8 row: "except comments/SEEN ON"): title/breadcrumb/header, ABOUT
+ *  - T-E2E-3, S1.2 + S1.4 scope (05 §8 rows: "except SEEN ON"): title/breadcrumb/header, ABOUT
  *    markdown, VERSIONS & FILES ("Download", never "Get"; `Changes ▾` expander), GET IT panel
- *    (primary → Modrinth URL; rows `1.6K` / `120`; combined line `1.7K`), DETAILS list. The
- *    COMMENTS thread content ("N TOTAL", slots — S1.4) and SEEN ON row (S1.8) extend this spec
- *    in their slices; the reserved COMMENTS heading is SM-03's assertion.
+ *    (primary → Modrinth URL; rows `1.6K` / `120`; combined line `1.7K`), DETAILS list, and the
+ *    COMMENTS part (S1.4; 03 §2.2 `SectionTitle`, ADR-0002 #76, ADR-0028 D1): anon on SEED-9 sees
+ *    `3 TOTAL` = the published root `…0201`, the creator reply `…0202` (CREATOR tag —
+ *    `owner_profile_id`) and the `…0204` "Hidden by a moderator." slot; the deleted `…0205` has no
+ *    replies (no "Deleted." slot) and the held `…0203` is invisible to anon; `SignInPrompt` in the
+ *    composer slot ("Sign in to comment. Your handle is all anyone sees."). The SEEN ON row (S1.8)
+ *    still extends this spec in its slice.
+ *    Like counts and the `seed_user` handle are deliberately not asserted: the parallel `e2e`
+ *    project likes/unlikes `…0201` (flows/comments.spec.ts repair) and renames `seed_user`
+ *    (flows/profile.spec.ts) while this project runs.
  *    Note: seed has exactly one version with a changelog (…0404), so "one open at a time" is
  *    exercised as open→close on the single group member; the multi-member exclusivity is the
  *    component contract (03 `ChangelogExpander` groupName store).
@@ -22,7 +29,7 @@ import { expectNoSeriousA11y } from '../../helpers/axe';
 import { shoot } from '../../helpers/screenshots';
 
 test.describe('project detail', () => {
-  test('T-E2E-3 /projects/pixel-chameleon — header, ABOUT, VERSIONS & FILES, changelog, GET IT, DETAILS', async ({
+  test('T-E2E-3 /projects/pixel-chameleon — header, ABOUT, VERSIONS & FILES, changelog, GET IT, DETAILS, COMMENTS (3 TOTAL, slots, sign-in prompt)', async ({
     page,
   }) => {
     const response = await page.goto('/projects/pixel-chameleon');
@@ -112,8 +119,55 @@ test.describe('project detail', () => {
       'https://modrinth.com/project/pixel-chameleon',
     );
 
-    // Reserved COMMENTS heading (SM-03; the thread itself is S1.4).
-    await expect(page.getByRole('heading', { name: 'COMMENTS' })).toBeVisible();
+    // COMMENTS (S1.4 part of T-E2E-3): the section points at the thread's SectionTitle heading,
+    // which announces "COMMENTS 3 total" once (03 §2.2); the visible `3 TOTAL` PixelLabel beside it.
+    const comments = page.locator('section#comments');
+    await expect(comments).toHaveAttribute('aria-labelledby', 'section-title-comments');
+    await expect(
+      comments.getByRole('heading', { level: 2, name: 'COMMENTS 3 total', exact: true }),
+    ).toBeVisible();
+    await expect(comments.getByText('3 TOTAL', { exact: true })).toBeVisible();
+    await expect(comments.getByRole('link', { name: /How comments work/ })).toHaveAttribute(
+      'href',
+      '/how-comments-work',
+    );
+    const thread = comments.locator('> div[data-state]');
+    await expect(thread).toHaveAttribute('data-state', 'signed-out');
+
+    // Slots: two roots — the published `…0201` (with its one reply) and the hidden `…0204`.
+    const roots = comments.locator('li[data-depth="0"]');
+    await expect(roots).toHaveCount(2);
+    const root = roots.filter({
+      hasText: 'The chameleon blends into my kitchen floor. Ten out of ten.',
+    });
+    await expect(root).toHaveAttribute('data-state', 'published');
+    await expect(root.locator('> article')).toHaveAttribute('aria-labelledby', /.+/);
+    await expect(root.locator('> article time')).toHaveAttribute('datetime', /.+/);
+    const reply = root.locator('li[data-depth="1"]');
+    await expect(reply).toHaveCount(1);
+    await expect(reply).toHaveAttribute('data-state', 'published');
+    await expect(reply).toHaveAttribute('data-creator', '');
+    await expect(reply).toContainText('@oddsense');
+    await expect(reply).toContainText('The kitchen floor is a valid biome.');
+    await expect(reply.getByText('CREATOR', { exact: true })).toBeVisible();
+    const hidden = comments.locator('li[data-state="hidden"]');
+    await expect(hidden).toHaveCount(1);
+    await expect(hidden.getByText('Hidden by a moderator.', { exact: true })).toBeVisible();
+    // The hidden body, the held comment and the reply-less deleted root never reach the HTML.
+    await expect(comments.getByText('cheap diamonds')).toHaveCount(0);
+    await expect(comments.getByText('first comment here, the tail is great')).toHaveCount(0);
+    await expect(comments.getByText('Deleted.', { exact: true })).toHaveCount(0);
+    await expect(comments.locator('li[data-state="held"]')).toHaveCount(0);
+
+    // Sign-in prompt in place of the composer (00 S1.4.AC1).
+    const prompt = comments.locator('section#comments-sign-in');
+    await expect(prompt.getByRole('heading', { name: 'SIGN IN TO COMMENT' })).toBeVisible();
+    await expect(
+      prompt.getByText('Sign in to comment. Your handle is all anyone sees.'),
+    ).toBeVisible();
+    await expect(prompt.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
+    await expect(comments.locator('textarea')).toHaveCount(0);
+    await expect(comments.getByRole('button', { name: 'Post', exact: true })).toHaveCount(0);
 
     await expectNoSeriousA11y(page);
     await shoot(page, 'project-detail');

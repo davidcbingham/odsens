@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
+import { CommentThread } from '@/components/comments/CommentThread';
 import { Breadcrumb } from '@/components/primitives/Breadcrumb';
 import { Chip } from '@/components/primitives/Chip';
 import { Markdown } from '@/components/primitives/Markdown';
 import { NoteCallout } from '@/components/primitives/NoteCallout';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
+import { sectionTitleId } from '@/components/primitives/SectionTitle';
 import { TypeBadge } from '@/components/primitives/TypeBadge';
 import { DetailsList, type DetailsListItem } from '@/components/projects/DetailsList';
 import { ExclusiveBadge } from '@/components/primitives/ExclusiveBadge';
@@ -13,7 +15,9 @@ import { Gallery } from '@/components/projects/Gallery';
 import { GetItPanel, type GetItPanelProps } from '@/components/projects/GetItPanel';
 import { TipPanel } from '@/components/projects/TipPanel';
 import { VersionsTable } from '@/components/projects/VersionsTable';
+import { listPublicComments } from '@/lib/data/comments';
 import { getProjectDetail, listPublishedProjects, type ProjectDetail } from '@/lib/data/projects';
+import { getPublicSettings } from '@/lib/data/settings';
 import { relativeTime } from '@/lib/format/date';
 import { formatCountFull } from '@/lib/format/number';
 import type { ProjectType } from '@/lib/format/project';
@@ -23,13 +27,15 @@ import styles from './page.module.css';
  * `/projects/[slug]` — project detail (02 §1.1/§2.3; 00 S1.2 "Public routes"; DESIGN.md §6 #3,
  * §12.5; pass-3 "Project detail" mockup).
  *
- * ISR(600; projects, project:<slug>) — 01 INV-38, 02 §0.1/§5/RP-23: `revalidate = 600` matches
- * `lib/data/projects.ts` `getProjectDetail`, whose `unstable_cache` entry carries the two tags.
- * The page never touches a Supabase client or `cookies()` (01 INV-09/INV-12, 02 RP-03); the one
- * data read is `getProjectDetail(slug)`. Unknown slug, `status <> 'published'` or
- * `overrides.hidden` → the view has no row → `notFound()` (02 §2.3; 00 S1.2.AC9; SM-04).
- * `generateStaticParams` = all published non-hidden slugs, `dynamicParams = true` so new slugs
- * render on demand (02 §2.3 "Data (ISR shell)").
+ * ISR(600; projects, project:<slug>, settings) — 01 INV-38, 02 §0.1/§5/RP-23: `revalidate = 600`
+ * matches `lib/data/projects.ts` `getProjectDetail`, whose `unstable_cache` entry carries the two
+ * project tags; `lib/data/settings.ts` adds `settings` and `lib/data/comments.ts` re-uses
+ * `project:<slug>` (every comment action revalidates it — 02 §5). The page never touches a
+ * Supabase client or `cookies()` (01 INV-09/INV-12, 02 RP-03); the data reads are
+ * `getProjectDetail(slug)`, `getPublicSettings()` and `listPublicComments(target)`. Unknown slug,
+ * `status <> 'published'` or `overrides.hidden` → the view has no row → `notFound()` (02 §2.3;
+ * 00 S1.2.AC9; SM-04). `generateStaticParams` = all published non-hidden slugs,
+ * `dynamicParams = true` so new slugs render on demand (02 §2.3 "Data (ISR shell)").
  *
  * Sections in DOM order per 02 §2.3: Breadcrumb (Projects › title) · header (104px icon well,
  * `h1` title, description, row = `ExclusiveBadge` first when `detail.exclusive` (the
@@ -37,8 +43,11 @@ import styles from './page.module.css';
  * `downloads_total`) · `Gallery`+`Lightbox` (renders nothing at 0 images) · ABOUT
  * (`Markdown(body_md)`, then `overrides.notes_md` under a `NoteCallout`) · VERSIONS & FILES
  * (`VersionsTable` — Download hrefs computed by `lib/data/projects.ts` per ADR-0002 #42) ·
- * COMMENTS (slot reserved; `CommentThread` mounts here in S1.4 — 00 S1.2 scope OUT; fragment
- * `#comments` target per 02 §2.3). Right rail (sticky ≥900px, plain sections on phone —
+ * COMMENTS (`CommentThread`, the ADR-0002 C1 client seam — 02 §2.3 #6, 00 S1.4: the public
+ * thread from `listPublicComments` is in the ISR HTML as props, the viewer's own rows merge in
+ * after hydration; `commentsEnabled = overrides.comments_enabled ?? !comments_closed_default`;
+ * the `<section id="comments">` is the `#comments` fragment target and points its
+ * `aria-labelledby` at the `SectionTitle` heading the thread renders). Right rail (sticky ≥900px, plain sections on phone —
  * DESIGN.md §6 #3): `GetItPanel` (synced primary → the Modrinth page "Download on Modrinth",
  * exclusive → the latest version's primary file; rows + combined-count line — 02 §2.3 rail),
  * DETAILS panel (`DetailsList`: type, updated = `external_updated_at ?? updated_at`, licence,
@@ -189,6 +198,11 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const detail = await getProjectDetail(slug);
   if (detail === null) notFound();
 
+  const target = { type: 'project' as const, id: detail.id, slug: detail.slug };
+  const [settings, thread] = await Promise.all([getPublicSettings(), listPublicComments(target)]);
+  // 02 §2.3 / 04 §1.2: coalesce(project_overrides.comments_enabled, not comments_closed_default).
+  const commentsEnabled = detail.commentsEnabledOverride ?? !settings.commentsClosedDefault;
+
   const chips = detail.chips.slice(0, HEADER_CHIP_CAP);
   const extraChips = detail.chips.length - chips.length;
   const getIt = getItProps(detail);
@@ -268,16 +282,21 @@ export default async function ProjectDetailPage({ params }: PageProps) {
             </section>
           ) : null}
 
-          {/* Reserved COMMENTS slot (00 S1.2 scope OUT: thread arrives S1.4). The heading keeps
-              SM-03's "COMMENTS" on the page and `#comments` is the 02 §2.3 fragment target. */}
+          {/* COMMENTS (02 §2.3 #6; 00 S1.4): `#comments` is the fragment target; the heading is
+              the `SectionTitle` inside `CommentThread` (`sectionTitleId('COMMENTS')`). */}
           <section
             id="comments"
-            aria-labelledby="comments-title"
+            aria-labelledby={sectionTitleId('COMMENTS')}
             className={styles['detail-section']}
           >
-            <h2 id="comments-title" className={styles['detail-h2']}>
-              COMMENTS
-            </h2>
+            <CommentThread
+              target={target}
+              comments={thread.comments}
+              total={thread.total}
+              commentsEnabled={commentsEnabled}
+              ownerProfileId={settings.ownerProfileId}
+              moderationMode={settings.moderationMode}
+            />
           </section>
         </div>
 

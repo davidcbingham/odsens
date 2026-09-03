@@ -1,0 +1,112 @@
+/* CommentThread — DESIGN.md §5 / §11.2 (pass-3 "COMMENT THREAD / DESKTOP 1280"): header row with
+   a 2px --line rule, composer above the list, roots separated by a 2px --table-divider rule, the
+   CLOSED sunk slab and the banned slab; §11.1 Square toggle "Moderate" in an outlined block.
+   03 §2.4, §3 normal | empty | closed | banned | signed-out (no state-specific styling needed —
+   the slots decide what renders). */
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  min-width: 0;
+}
+
+.thread-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12) var(--space-16);
+  padding-bottom: var(--space-12);
+  border-bottom: 2px solid var(--line);
+}
+
+.thread-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 599px) {
+  /* Phone (pass-3 "COMMENT THREAD / PHONE 390"): the title + count stay on one line and the
+     "How comments work" ghost drops under them instead of squeezing the count. */
+  .thread-title {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+
+  .thread-title > a {
+    flex-basis: 100%;
+    margin-inline-start: 0;
+    justify-content: flex-start;
+  }
+}
+
+/* The Moderate switch (pass-3 "NORMAL COMMENTS — BEHIND A TOGGLE"): outlined block; ON fills
+   --indigo-wash with an --indigo-lift border. The word is visible beside the square + ON/OFF. */
+.thread-moderate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 0 var(--space-12);
+  border: 2px solid var(--line-strong);
+  transition:
+    background-color var(--dur-fast) ease-out,
+    border-color var(--dur-fast) ease-out;
+}
+
+.thread-moderate:has(input:checked) {
+  background: var(--indigo-wash);
+  border-color: var(--indigo-lift);
+}
+
+.thread-moderate-word {
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+.thread-composer {
+  min-width: 0;
+}
+
+.thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+
+/* Roots oldest first, a 2px --table-divider rule between them (pass-3 thread frame). */
+.thread-list > li + li {
+  padding-top: var(--space-20);
+  border-top: 2px solid var(--table-divider);
+}
+
+/* Comments closed (DESIGN.md §11.2): sunk slab, CLOSED Silkscreen label, one --mute line. */
+.thread-closed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-20);
+  background: var(--slab-sunk);
+  outline: 2px solid var(--line);
+  outline-offset: -2px;
+}
+
+.thread-closed-line {
+  font-size: var(--text-body-phone);
+  color: var(--mute);
+}
+
+/* Banned viewer (DESIGN.md §11.2): slab with the dimmed avatar and one line. */
+.thread-banned {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  background: var(--slab);
+  outline: 2px solid var(--line);
+  outline-offset: -2px;
+}
+
+.thread-banned-line {
+  font-size: var(--text-body-phone);
+  color: var(--mute);
+}

@@ -1,0 +1,91 @@
+/* ModActionRow — DESIGN.md §11.1 Mod action row (pass-3 "MODERATOR VIEW — HELD COMMENT"): one
+   accent max — filled --emerald Approve (--ink text), outlined --line-strong Hide / Unhide /
+   Rename handle, danger text on --danger-line for Ban user / Delete; the inline confirms are
+   `InlineConfirm` strips. 14px 700, 44px targets (03 C-24). */
+.mod-action-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.mod-action-row-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
+}
+
+.mod-action-row-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-8) var(--space-16);
+  border: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--chalk);
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-fast) ease-out,
+    border-color var(--dur-fast) ease-out,
+    color var(--dur-fast) ease-out;
+}
+
+.mod-action-row-button[data-tone='approve'] {
+  background: var(--emerald);
+  color: var(--ink);
+}
+
+.mod-action-row-button[data-tone='approve']:hover {
+  background: var(--emerald-soft);
+}
+
+.mod-action-row-button[data-tone='outline'] {
+  border-color: var(--line-strong);
+}
+
+.mod-action-row-button[data-tone='outline']:hover {
+  border-color: var(--indigo-lift);
+}
+
+.mod-action-row-button[data-tone='danger'] {
+  color: var(--danger);
+  border-color: var(--danger-line);
+}
+
+.mod-action-row-button[data-tone='danger']:hover {
+  border-color: var(--danger);
+}
+
+/* disabled / pending (ADR-0002 #46 look) */
+.mod-action-row-button:disabled,
+.mod-action-row-button:disabled:hover {
+  background: var(--disabled-fill);
+  color: var(--disabled-text);
+  border-color: transparent;
+  cursor: default;
+}
+
+/* An open confirm strip takes the full row width so the question reads on one line. */
+.mod-action-row-confirm[data-state='open'],
+.mod-action-row-confirm[data-state='pending'] {
+  flex: 1 1 100%;
+}
+
+.mod-action-row-rename {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  max-width: 420px;
+}
+
+.mod-action-row-error {
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--danger);
+}

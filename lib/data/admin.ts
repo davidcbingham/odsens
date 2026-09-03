@@ -22,6 +22,7 @@
  */
 import 'server-only';
 import { cache } from 'react';
+import { avatarUrlFor, type CommentAuthor } from '@/lib/data/comments';
 import { combinedDownloads } from '@/lib/format/downloads';
 import { createServerClient } from '@/lib/supabase/server';
 import type { Database, Json } from '@/lib/supabase/types';
@@ -403,4 +404,135 @@ export async function listSyncStatus<TSource extends string>(
       };
     }),
   );
+}
+
+// ---- /admin/comments — the moderation queue (S1.4; 02 §1.3 row; 00 S1.4.AC14) -----------------
+
+/**
+ * `comments` count where `status='held'` (02 §1.3 `/admin` Data cell; the sidebar count of
+ * 03 `AdminShell`). Moderators read every comment row (data-model §4) — no degradation here.
+ */
+export async function countHeldComments(): Promise<number> {
+  const db = await createServerClient();
+  const { count, error } = await db
+    .from('comments')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'held');
+  if (error) throw new Error(`admin held count failed: ${error.code}`);
+  return count ?? 0;
+}
+
+export type ModerationQueueRow = {
+  id: string;
+  body: string;
+  status: 'published' | 'held' | 'hidden';
+  createdAt: string;
+  editedAt: string | null;
+  likeCount: number;
+  /** Unresolved reports (from RPC `moderator_thread`; 0 when the row is not in its result). */
+  reportCount: number;
+  /** The author's `profiles.comment_count = 0` (RPC `moderator_thread`; held rows only matter). */
+  isFirstComment: boolean;
+  author: CommentAuthor | null;
+  /** The comment's project through `projects_public`; null when the view no longer shows it. */
+  target: { type: 'project'; id: string; title: string; slug: string } | null;
+};
+
+const QUEUE_ORDER: Record<ModerationQueueRow['status'], number> = {
+  held: 0,
+  published: 1,
+  hidden: 2,
+};
+
+/**
+ * The moderation queue (02 §1.3 `/admin/comments` Data cell: `comments` (all statuses but
+ * deleted) + `public_profiles`, `comment_reports` (unresolved, via RPC `moderator_thread` per
+ * target — the mods-only read, ADR-0002 A2), `projects_public` (target titles)). Order: held
+ * first, then reported, then hidden, then published — newest first inside each group; capped at
+ * `limit` rows after ordering. Session-backed, moderator or admin (the layout gate).
+ */
+export async function listModerationQueue(limit = 100): Promise<ModerationQueueRow[]> {
+  const db = await createServerClient();
+  const { data: rows, error } = await db
+    .from('comments')
+    .select(
+      'id, target_type, target_id, author_id, body, status, created_at, edited_at, like_count',
+    )
+    .neq('status', 'deleted')
+    .order('created_at', { ascending: false })
+    .limit(300);
+  if (error) throw new Error(`admin comments read failed: ${error.code}`);
+
+  const targetIds = [...new Set(rows.map((row) => row.target_id))];
+  const authorIds = [...new Set(rows.flatMap((row) => (row.author_id ? [row.author_id] : [])))];
+
+  const [threads, profiles, projects] = await Promise.all([
+    Promise.all(
+      targetIds.map(async (targetId) => {
+        const { data, error: rpcError } = await db.rpc('moderator_thread', {
+          p_target_type: 'project',
+          p_target_id: targetId,
+        });
+        if (rpcError) throw new Error(`moderator_thread failed: ${rpcError.code}`);
+        return data;
+      }),
+    ),
+    authorIds.length > 0
+      ? db.from('public_profiles').select('id, handle, avatar_path, role').in('id', authorIds)
+      : Promise.resolve({ data: [], error: null }),
+    targetIds.length > 0
+      ? db.from('projects_public').select('id, slug, title').in('id', targetIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (profiles.error) throw new Error(`admin profiles read failed: ${profiles.error.code}`);
+  if (projects.error) throw new Error(`admin projects read failed: ${projects.error.code}`);
+
+  const flags = new Map<string, { reportCount: number; isFirstComment: boolean }>();
+  for (const row of threads.flat()) {
+    flags.set(row.id, { reportCount: row.report_count, isFirstComment: row.is_first_comment });
+  }
+  const authors = new Map<string, CommentAuthor>();
+  for (const profile of profiles.data) {
+    if (profile.id === null || profile.handle === null || profile.role === null) continue;
+    authors.set(profile.id, {
+      id: profile.id,
+      handle: profile.handle,
+      avatarUrl: avatarUrlFor(profile.avatar_path),
+      role: profile.role,
+    });
+  }
+  const targets = new Map<string, { id: string; slug: string; title: string }>();
+  for (const project of projects.data) {
+    if (project.id === null || project.slug === null || project.title === null) continue;
+    targets.set(project.id, { id: project.id, slug: project.slug, title: project.title });
+  }
+
+  const queue: ModerationQueueRow[] = rows.flatMap((row) => {
+    if (row.status === 'deleted') return [];
+    const flag = flags.get(row.id);
+    const target = targets.get(row.target_id);
+    return [
+      {
+        id: row.id,
+        body: row.body,
+        status: row.status,
+        createdAt: row.created_at,
+        editedAt: row.edited_at,
+        likeCount: row.like_count,
+        reportCount: flag?.reportCount ?? 0,
+        isFirstComment: flag?.isFirstComment ?? false,
+        author: row.author_id ? (authors.get(row.author_id) ?? null) : null,
+        target: target ? { type: 'project', ...target } : null,
+      },
+    ];
+  });
+
+  const group = (row: ModerationQueueRow): number =>
+    row.status === 'held' ? 0 : row.reportCount > 0 ? 1 : QUEUE_ORDER[row.status] + 1;
+  return queue
+    .sort(
+      (a, b) =>
+        group(a) - group(b) || (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0),
+    )
+    .slice(0, limit);
 }

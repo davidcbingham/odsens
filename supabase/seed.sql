@@ -11,7 +11,7 @@
 --   SEED-6  project_links (1) + project_overrides (2)     — S1.2 (below)
 --   SEED-7  skins (2)                                     — arrives in S1.7
 --   SEED-8  art (2)                                       — arrives in S1.7
---   SEED-9  comments (5) + comment_likes + comment_reports — arrives in S1.4
+--   SEED-9  comments (5) + comment_likes + comment_reports — S1.4 (below)
 --   SEED-10 mentions (2)                                  — arrives in S1.8
 --   SEED-11 videos (3)                                    — arrives in S1.6
 --   SEED-12 sync_runs (3) — S1.2 (below); stats_daily (6) — arrives in S1.9
@@ -234,6 +234,64 @@ insert into public.project_overrides (
   ('00000000-0000-4000-8000-000000000102', true, 1, false, null, null, '[]'::jsonb, 'seed note', true),
   ('00000000-0000-4000-8000-000000000103', true, 2, false, null, null, '[]'::jsonb, null, false)
 on conflict (project_id) do nothing;
+
+-- =============================================================================================
+-- SEED-9 — comments (5) on project …0102 (pixel-chameleon) + 1 like + 1 report per 05 §3
+-- (ids from tests/helpers/seedIds.ts SEED_COMMENTS). This file runs without a JWT, so the
+-- `comments_set_status()` trigger keeps the statuses written here (held / hidden / deleted rows
+-- are seed truths for T-RLS-63..66 / T-RLS-128 / T-E2E-3). `…0204` carries the moderator stamp;
+-- `…0205` was created 2 days ago. The like insert bumps `…0201.like_count` to 1 through the
+-- `comment_likes_count()` trigger; the report id is generated (unique per (comment, reporter)
+-- keeps the block idempotent).
+-- =============================================================================================
+insert into public.comments (
+  id, target_type, target_id, author_id, parent_id, body, status,
+  moderated_by, moderated_at, created_at
+) values
+  ('00000000-0000-4000-8000-000000000201', 'project', '00000000-0000-4000-8000-000000000102',
+   '00000000-0000-4000-8000-000000000003', null,
+   'The chameleon blends into my kitchen floor. Ten out of ten.', 'published',
+   null, null, now() - interval '3 days'),
+  ('00000000-0000-4000-8000-000000000202', 'project', '00000000-0000-4000-8000-000000000102',
+   '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000201',
+   'The kitchen floor is a valid biome.', 'published',
+   null, null, now() - interval '2 days'),
+  ('00000000-0000-4000-8000-000000000203', 'project', '00000000-0000-4000-8000-000000000102',
+   '00000000-0000-4000-8000-000000000004', null,
+   'first comment here, the tail is great', 'held',
+   null, null, now() - interval '1 hour'),
+  ('00000000-0000-4000-8000-000000000204', 'project', '00000000-0000-4000-8000-000000000102',
+   '00000000-0000-4000-8000-000000000005', null,
+   'cheap diamonds at totally-legit.example, no questions asked', 'hidden',
+   '00000000-0000-4000-8000-000000000001', now() - interval '1 day', now() - interval '2 days'),
+  ('00000000-0000-4000-8000-000000000205', 'project', '00000000-0000-4000-8000-000000000102',
+   '00000000-0000-4000-8000-000000000003', null,
+   'never mind, found the setting', 'deleted',
+   null, null, now() - interval '2 days')
+on conflict (id) do nothing;
+
+insert into public.comment_likes (comment_id, user_id)
+values ('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000004')
+on conflict (comment_id, user_id) do nothing;
+
+insert into public.comment_reports (comment_id, reporter_id, reason)
+values ('00000000-0000-4000-8000-000000000204', '00000000-0000-4000-8000-000000000003', 'spam')
+on conflict (comment_id, reporter_id) do nothing;
+
+-- The published inserts above bump `profiles.comment_count` (T-RLS-126); re-assert the SEED-3
+-- values so the seed shape is the documented one (oddsense 1 · seed_mod 0 · seed_user 2 ·
+-- seed_user2 0 · seed_banned 1 · seed_newbie 0).
+update public.profiles as p
+   set comment_count = v.comment_count
+  from (values
+    ('00000000-0000-4000-8000-000000000001'::uuid, 1),
+    ('00000000-0000-4000-8000-000000000002'::uuid, 0),
+    ('00000000-0000-4000-8000-000000000003'::uuid, 2),
+    ('00000000-0000-4000-8000-000000000004'::uuid, 0),
+    ('00000000-0000-4000-8000-000000000005'::uuid, 1),
+    ('00000000-0000-4000-8000-000000000006'::uuid, 0)
+  ) as v (id, comment_count)
+ where p.id = v.id;
 
 -- =============================================================================================
 -- SEED-12 (S1.2 part) — sync_runs (3): one ok=true run per source (modrinth, curseforge, youtube)

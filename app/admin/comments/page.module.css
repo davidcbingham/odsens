@@ -1,0 +1,107 @@
+/* /admin/comments — the moderation queue. DESIGN.md §5 Admin table (2px outline, --slab-sunk
+   header row, rows ≥44px, one accent per row — the Table primitive draws the geometry), §6 #9
+   (admin: Space Grotesk labels, clarity over flair), §11.1 Mod action row; 03 §2.2 `Table`.
+   Tokens only (03 C-08); the Comment cell's min/max widths are geometry numbers (03 §9
+   non-colour row) so the column reads as a column, not the whole table, and the phone scroll
+   region keeps a sensible width. */
+
+.admin-comments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-40);
+}
+
+.admin-comments-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.admin-comments-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* Admin section header — DESIGN.md §6 #9 "poster type goes": Space Grotesk 700, chalk. */
+.admin-comments-heading {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-body);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Comment cell: author line over the body. */
+.admin-comments-comment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 280px;
+  max-width: 560px;
+}
+
+.admin-comments-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/* Handle 14px 700 + relative time in --mute-dim — the §5 Comment bubble header, table-sized. */
+.admin-comments-handle {
+  color: var(--chalk);
+  font-size: var(--text-small);
+  font-weight: 700;
+}
+
+.admin-comments-time {
+  color: var(--mute-dim);
+  font-size: var(--text-label);
+}
+
+/* The full body as typed: line breaks kept, long tokens (links) wrap instead of widening the row. */
+.admin-comments-body {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-small);
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* Links inside a body are underlined — colour alone never marks a link in prose (03 C-26). */
+.admin-comments-body a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.admin-comments-project {
+  color: var(--chalk);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.admin-comments-project:hover {
+  color: var(--indigo-lift);
+}
+
+/* "—" for a missing author / project. */
+.admin-comments-none {
+  color: var(--mute-dim);
+}
+
+/* Worded pill + "n reports" beside it. */
+.admin-comments-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.admin-comments-reports {
+  color: var(--mute);
+  font-size: var(--text-label);
+  white-space: nowrap;
+}

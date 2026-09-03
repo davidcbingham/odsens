@@ -72,8 +72,13 @@ export default defineConfig({
       },
     },
     {
+      // S1.4: the comment flows mutate the pixel-chameleon thread (rows, …0203 approve, a
+      // transient like on …0201) that both smoke projects assert as seed truth (`3 TOTAL`);
+      // every mutation is restored, but running the flows AFTER the read-only smoke projects
+      // removes the overlap race outright — the same `dependencies` device `admin` already uses.
       name: 'e2e',
       testMatch: /flows\/.*\.spec\.ts/,
+      dependencies: ['smoke-desktop', 'smoke-phone'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 800 },

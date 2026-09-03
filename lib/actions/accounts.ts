@@ -16,8 +16,10 @@
  * for that user (`isOwnAvatarPath`). The DB CHECK `profiles_avatar_path_own` mirrors both.
  *
  * Input schemas live in `./accounts.schema.ts` (a `'use server'` module may export only async
- * functions). No `revalidateTag` here — accounts touch no ISR tag (05 T-ACT-3).
+ * functions). The only `revalidateTag` here is `deleteAccount`'s per-target `project:<slug>` for
+ * the S1.4 comment cascade (04 §1.1; 02 §5) — the other account actions touch no ISR tag (05 T-ACT-3).
  */
+import { revalidateTag } from 'next/cache';
 import {
   checkHandleInput,
   completeOnboardingInput,
@@ -304,6 +306,47 @@ export async function updateProfile(
 // deleteAccount — 04 §1.1 (ADR-0002 #28)
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * The S1.4 half of `deleteAccount` (04 §1.1): every comment by the user becomes `deleted` (service
+ * client — `comments_guard()` passes service writes; `comment_count` is untouched), the user's
+ * likes and reports are removed, and each distinct comment target is revalidated once
+ * (`project:<slug>` — 02 §5). Runs before the avatar/auth deletion so a failure leaves the account
+ * intact and retryable.
+ */
+async function cascadeComments(userId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { data: mine, error: readError } = await admin
+    .from('comments')
+    .select('target_type, target_id')
+    .eq('author_id', userId);
+  if (readError) throw new Error(`comments read failed: ${readError.code}`);
+
+  if (mine.length > 0) {
+    const { error } = await admin
+      .from('comments')
+      .update({ status: 'deleted' })
+      .eq('author_id', userId)
+      .neq('status', 'deleted');
+    if (error) throw new Error(`comments cascade failed: ${error.code}`);
+  }
+
+  const likes = await admin.from('comment_likes').delete().eq('user_id', userId);
+  if (likes.error) throw new Error(`comment_likes cascade failed: ${likes.error.code}`);
+  const reports = await admin.from('comment_reports').delete().eq('reporter_id', userId);
+  if (reports.error) throw new Error(`comment_reports cascade failed: ${reports.error.code}`);
+
+  const projectIds = [
+    ...new Set(mine.filter((row) => row.target_type === 'project').map((row) => row.target_id)),
+  ];
+  if (projectIds.length === 0) return;
+  const { data: projects, error: slugError } = await admin
+    .from('projects')
+    .select('slug')
+    .in('id', projectIds);
+  if (slugError) throw new Error(`projects read failed: ${slugError.code}`);
+  for (const project of projects) revalidateTag(`project:${project.slug}`, 'max');
+}
+
 export async function deleteAccount(
   input: DeleteAccountInput,
 ): Promise<ActionResult<{ deleted: true }>> {
@@ -312,8 +355,11 @@ export async function deleteAccount(
     const { user, profile } = await requireOnboarded({ allowBanned: true });
     await assertRateLimit('delete_account', user.id);
 
-    // S1.4: `comments where author_id = me` → status 'deleted'; `comment_likes` / `comment_reports`
-    // by me deleted; `revalidateTag('project:<slug>')` per distinct target — those tables do not exist yet.
+    // S1.4 (04 §1.1; ADR-0002 #28; 05 T-ACT-65): the comment cascade runs BEFORE the account goes —
+    // comments → status 'deleted' (rows and their replies survive as "Deleted." slots; the
+    // profiles FK sets author_id NULL once the row is gone), likes and reports removed (the
+    // like_count trigger re-runs), one `project:<slug>` revalidation per distinct target.
+    await cascadeComments(user.id);
 
     if (profile.avatar_path) {
       await deleteAvatarQuietly(user.id, profile.avatar_path, {

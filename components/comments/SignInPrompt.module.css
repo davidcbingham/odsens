@@ -1,0 +1,29 @@
+/* SignInPrompt — DESIGN.md §5 Sign-in prompt (pass-3 "COMMENTS CLOSED · SIGNED OUT" frame):
+   slab panel, 2px --line-soft, Bungee 17px title, one --mute line, chalk Google button. 03 §2.4. */
+.sign-in-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding: var(--space-20);
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+  scroll-margin-top: calc(var(--nav-h) + var(--space-16));
+}
+
+/* Bungee 17px (DESIGN.md §5) — the 17px step of the type scale is `--text-body`. */
+.sign-in-prompt-title {
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  font-weight: 400;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+
+.sign-in-prompt-line {
+  font-size: var(--text-ui);
+  line-height: 1.5;
+  color: var(--mute);
+}

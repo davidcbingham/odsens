@@ -66,6 +66,10 @@ const securityHeaders = [
 const noindex = { key: 'X-Robots-Tag', value: 'noindex, nofollow' };
 
 const nextConfig: NextConfig = {
+  // Next 16.3 `next dev` upserts a managed `nextjs-agent-rules` block into CLAUDE.md whenever it
+  // detects a coding agent; CLAUDE.md is this repo's hand-written orientation file (docs), so the
+  // rewrite is disabled — every S1.4 visual check had to revert it (recorded in questions.md).
+  agentRules: false,
   reactStrictMode: true,
   poweredByHeader: false,
   images: {
