@@ -152,7 +152,7 @@ Moderator view of held/reported comments in the public thread (ADR-0002 A2): mod
 UI/identity/moderation and can't do handle-only Google-via-Supabase; GitHub-backed ones (Giscus) are GitHub-only;
 self-hosted servers (Remark42, Isso) need their own host and user store. Our version: tables above + ~6 Server Actions
 (`postComment, editComment(15 min), deleteComment(soft), toggleLike, reportComment, moderate`) + `<CommentThread>` components
-mapped to DESIGN.md states; optimistic UI via React 19 `useOptimistic` (except a first-timer's post under hold mode); plain-text bodies auto-linkified; rate limit in SQL (`rate_limit_ok`, §2.10);
+mapped to DESIGN.md states; optimistic UI via React 19 `useOptimistic` (only under `moderation_mode = 'auto'`; never under `hold_first_time` — ADR-0028 D13); plain-text bodies auto-linkified; rate limit in SQL (`rate_limit_ok`, §2.10);
 Supabase Realtime optional later. Remark42's data model is a good reference, not a dependency.
 
 ### 2.6 Notifications (admin only, v1)
