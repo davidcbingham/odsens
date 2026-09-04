@@ -33,7 +33,7 @@ Build green · preview smoke: home, projects, a project detail, sign-in round-tr
 `vercel rollback` (or promote a previous deployment in the dashboard) → confirm with the human → open a fix branch. Never hotfix on `main` directly.
 
 ## Troubleshooting map
-Build fails → read the exact error, check Node version (22), env var missing at build · 500 in prod only → env var missing in Production scope · Sign-in loop → redirect URLs / Site URL mismatch · Cron not running → vercel.json path typo or missing `CRON_SECRET` · Stale pages → revalidate tag not called.
+Build fails on `wait-for-schema: … not ready` → the Supabase integration has not applied the branch's migrations yet (ADR-0029): check `supabase migration list --linked` (production) or the staging branch, then `vercel redeploy <url>`; a relation missing forever means a migration never applied · Build fails → read the exact error, check Node version (24), env var missing at build · 500 in prod only → env var missing in Production scope · Sign-in loop → redirect URLs / Site URL mismatch · Cron not running → vercel.json path typo or missing `CRON_SECRET` · Stale pages → revalidate tag not called.
 
 ## Boundaries & hand-offs (see `docs/skill-handoffs.md`)
 - **Owns:** project config, env per environment, cron, ISR strategy, domain, rollback, deploy troubleshooting. **Does not own:** app code, DB, merging feature PRs (that's `ship`).

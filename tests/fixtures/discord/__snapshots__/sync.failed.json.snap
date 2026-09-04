@@ -1,0 +1,6 @@
+{
+  "title": "Sync failed — Modrinth",
+  "description": "The allay came back empty-handed. It'll keep trying.\nCause: list: GET https://api.modrinth.com/v2/user/OddSense/projects → 429\nThe site keeps showing the last good numbers. Nothing is on fire.",
+  "url": "http://localhost:3000/admin",
+  "color": 13384234
+}

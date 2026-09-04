@@ -26,6 +26,11 @@
  *    `/admin/comments` leg (axe + 1280 AND 390 screenshots — 05 §7.5: phone shots for
  *    `/admin/settings` and `/admin/comments` only) at the top, pristine seed first; T-E2E-36 (the
  *    moderation queue as `seed_mod`) is the last describe below.
+ *  - S1.5 (same file, same reason): T-E2E-42 gains the `/admin/settings` leg (axe + 1280 AND
+ *    390) right after `/admin/comments`, pristine seed first; T-E2E-37 (the whole settings page
+ *    as `oddsense` — matrix, webhook against the :4010 fixture server, admin emails, moderators
+ *    through `setUserRole`, Ko-fi) is the final describe; SEED-1 + SEED-2 restored in its
+ *    `afterAll` through `restoreSeedSettings()`.
  *
  * Seed truths: SEED-4..6 (3 published projects; overrides featured 1 = pixel-chameleon,
  * 2 = seed-exclusive-pack; CF link 900001 on pixel-chameleon), SEED-12 (one ok run per source),
@@ -43,6 +48,7 @@ import {
 } from '../../helpers/commentsReset';
 import {
   restoreContentTables,
+  restoreSeedSettings,
   snapshotContentTables,
   type ContentSnapshot,
 } from '../../helpers/contentReset';
@@ -144,6 +150,19 @@ test('T-E2E-42 admin routes: axe zero serious/critical + 1280 screenshots (/admi
   await expect(page.getByRole('heading', { name: 'MODERATION QUEUE' })).toBeVisible();
   await expectNoSeriousA11y(page);
   await shoot(page, 'admin-comments');
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  // S1.5: the settings page — desktop AND phone (05 T-E2E-42; 00 S1.5.AC1/AC2), seed state.
+  await page.goto('/admin/settings');
+  await expect(page).toHaveTitle('Settings · Admin');
+  await expect(page.getByRole('heading', { name: 'NOTIFICATIONS' })).toBeVisible();
+  await expect(page.getByText('COMING LATER', { exact: true })).toHaveCount(3);
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-settings');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('heading', { name: 'NOTIFICATIONS' })).toBeVisible();
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-settings');
   await page.setViewportSize({ width: 1280, height: 800 });
 });
 
@@ -611,7 +630,11 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     page,
   }) => {
     await loginAs(page, 'admin');
-    await page.goto('/admin/projects/new');
+    // Entry point per 02 §1.3: the list's heading-row "New exclusive project" link.
+    await page.goto('/admin/projects');
+    await page.getByRole('link', { name: 'New exclusive project', exact: true }).click();
+    await page.waitForURL('**/admin/projects/new');
+    await expect(page.getByRole('heading', { name: 'New project' })).toBeVisible();
 
     await page.getByLabel('Slug').fill(SLUG);
     await page.getByLabel('Title').fill(TITLE);
@@ -1015,5 +1038,467 @@ test.describe('moderation queue (T-E2E-36)', () => {
     await expect(row).not.toContainText(`@${handle}`);
     expect((await readProfile(userId))?.handle).toBe(next);
     await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0);
+  });
+});
+
+/**
+ * T-E2E-37 (05 §7.5; 00 S1.5.AC1/AC2/AC3/AC4/AC11; 02 §2.8; DESIGN.md §11.1 Square toggle /
+ * Toast, §11.3 #15, §12.1 Notification matrix, §12.7 #43; 03 §2.10 `NotificationMatrix`;
+ * ADR-0030 D5 / D8): the whole `/admin/settings` page as `oddsense`. Lives in THIS file for the
+ * T-E2E-35 reason (the `admin` project is serial only within a file; these writes must never race
+ * the flows above). Legs:
+ *  - Moderation: square radios (one filled, worded ON/OFF, consequence lines), `moderation_mode`
+ *    round trip, the `comments_closed_default` switch (label + helper per DESIGN.md §12.7 #43).
+ *  - Grid: rows New comment · Held for review · Reported · Sync failed / stale + the three greyed
+ *    COMING LATER rows (`aria-disabled`, disabled toggles at their seeded values), columns EMAIL ·
+ *    DISCORD; toggle `comment.new` × EMAIL OFF → SAVE SETTINGS → toast "Saved." → reload persists →
+ *    restore; the shared sync row writes BOTH kinds (00 S1.5 "one row toggles both").
+ *  - Webhook (00 S1.5.AC3): never pre-filled; Test with nothing stored → the validation line; Test
+ *    with `…/webhooks/123/testtoken` → `✔ Sent a test.` (the :4010 fixture server's POST route,
+ *    ADR-0030 D8; the adapter rewrites discord.com → `DISCORD_API_BASE`); SAVE → placeholder
+ *    `…oken` (last 4) and the raw token is absent from EVERY response body captured from the save
+ *    onwards (`page.on('response')`); Test with nothing typed uses the stored URL; unknown id
+ *    `…/webhooks/0/nope` → `✕ Discord said no: 404`; Remove → SAVE → cleared.
+ *  - Admin emails (00 S1.5.AC4): the add field is empty on a fresh page; add
+ *    `seed-admin@localhost.test` (Enter) → chip; duplicate ignored; bad shape → inline line, no
+ *    POST; SAVE → reload → chip present → remove → SAVE → gone; helper lines present.
+ *  - Moderators (00 S1.5.AC11): `@oddsense` Admin with "That's you" and no Remove; `@seed_mod`
+ *    Mod with Remove; unknown handle → inline "That account doesn't exist." on the field; add
+ *    `seed_user` → a Mod row (`setUserRole` + PRG) → Remove → gone (role `user` again).
+ *  - Ko-fi: `NOT SET` pill + "Arrives with Phase 2."; `Page name` round trip on `kofi_page`.
+ * `mutatesSeed`: `afterAll` restores SEED-1 + SEED-2 through the service client
+ * (`restoreSeedSettings()`), puts `seed_user` back to `user`, and forgets the `discord_test`
+ * rate-limit hits (05 H-1).
+ */
+test.describe('admin settings (T-E2E-37)', () => {
+  const WEBHOOK_OK = 'https://discord.com/api/webhooks/123/testtoken';
+  const WEBHOOK_404 = 'https://discord.com/api/webhooks/0/nope';
+  const TOKEN = 'testtoken';
+  const WEBHOOK_PLACEHOLDER = 'https://discord.com/api/webhooks/…';
+  const ADMIN_EMAIL = 'seed-admin@localhost.test';
+  const TEST_OK = '✔ Sent a test.';
+
+  test.beforeAll(async () => {
+    loadEnvTest();
+  });
+
+  test.afterAll(async () => {
+    const service = loose(asRole('service'));
+    await restoreSeedSettings();
+    await service.from('profiles').update({ role: 'user' }).eq('id', SEED_USERS.seed_user);
+    await service.from('rate_limit_hits').delete().eq('scope', 'discord_test');
+  });
+
+  function service() {
+    return loose(asRole('service'));
+  }
+
+  /** Toast slabs inside the `ToastProvider` region (the island's own status line is a <p>). */
+  function toast(page: Page, text: string) {
+    return page
+      .locator('[role="status"][aria-live="polite"] div[data-state]')
+      .filter({ hasText: text });
+  }
+
+  function saveButton(page: Page) {
+    return page.getByRole('button', { name: 'SAVE SETTINGS', exact: true });
+  }
+
+  /**
+   * SAVE SETTINGS → the server-action POST round trip (the binding wait — a previous save's toast
+   * can still be on screen and a pending SAVE is disabled too, so neither alone proves the write
+   * landed) → the "Saved." toast → SAVE disarms again (the snapshot caught up).
+   */
+  async function saveAndWait(page: Page): Promise<void> {
+    const save = saveButton(page);
+    await expect(save).toBeEnabled();
+    const post = page.waitForResponse(
+      (res) => res.request().method() === 'POST' && res.url().includes('/admin/settings'),
+    );
+    await save.click();
+    await post;
+    await expect(toast(page, 'Saved.')).toBeVisible({ timeout: 15_000 });
+    await expect(save).toBeDisabled();
+  }
+
+  function grid(page: Page) {
+    return page
+      .locator('table')
+      .filter({ has: page.locator('caption', { hasText: 'What it picks up' }) });
+  }
+
+  function notifications(page: Page) {
+    return page.locator('section', {
+      has: page.getByRole('heading', { name: 'NOTIFICATIONS', exact: true }),
+    });
+  }
+
+  /** The island's inline Test result line (`role="status"`, never a toast). */
+  function testLine(page: Page) {
+    return notifications(page).locator('p[role="status"]');
+  }
+
+  async function readSettings() {
+    const row = await service()
+      .from('site_settings')
+      .select(
+        'moderation_mode, admin_notify_emails, discord_webhook_url, kofi_page, comments_closed_default',
+      )
+      .eq('id', 1)
+      .single();
+    expect(row.error).toBeNull();
+    return row.data as {
+      moderation_mode: string;
+      admin_notify_emails: string[];
+      discord_webhook_url: string | null;
+      kofi_page: string | null;
+      comments_closed_default: boolean;
+    };
+  }
+
+  async function readCell(kind: string, channel: string): Promise<boolean> {
+    const row = await service()
+      .from('notification_matrix')
+      .select('enabled')
+      .eq('kind', kind)
+      .eq('channel', channel)
+      .single();
+    expect(row.error).toBeNull();
+    return (row.data as { enabled: boolean }).enabled;
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // T-E2E-37 — moderation radios + comments_closed_default + the grid (toggle, save, persist)
+  // ---------------------------------------------------------------------------------------------
+
+  test('T-E2E-37 moderation radios + consequence lines; grid rows + COMING LATER; comment.new email OFF → SAVE → Saved. → reload persists → restore; sync row writes both kinds', async ({
+    page,
+  }) => {
+    await loginAs(page, 'admin');
+    await page.goto('/admin/settings');
+    await expect(page).toHaveTitle('Settings · Admin');
+    const save = saveButton(page);
+    await expect(save).toBeDisabled(); // nothing dirty yet (02 §2.8)
+
+    // Moderation: two square radios, one filled (SEED-1 `auto`), worded ON/OFF + consequence lines.
+    const hold = toggleFor(page, 'Hold first-time commenters');
+    const auto = toggleFor(page, 'Auto-publish signed-in users');
+    await expect(auto.input).toHaveAttribute('type', 'radio');
+    await expect(auto.input).toBeChecked();
+    await expect(hold.input).not.toBeChecked();
+    await expect(auto.label).toContainText('ON');
+    await expect(hold.label).toContainText('OFF');
+    await expect(
+      page.getByText('Their first comment waits for you. Everything after posts straight away.'),
+    ).toBeVisible();
+    await expect(page.getByText('Everything posts immediately. You clean up after.')).toBeVisible();
+    const closed = toggleFor(page, 'Comments off by default on new projects');
+    await expect(closed.input).not.toBeChecked();
+    await expect(page.getByText('Existing projects keep their own setting.')).toBeVisible();
+
+    // The grid: seven rows in DESIGN.md §12.1 order, EMAIL · DISCORD columns, seeded values.
+    const table = grid(page);
+    await expect(table.locator('thead th')).toHaveText(['Event', 'EMAIL', 'DISCORD']);
+    await expect(table.locator('tbody tr')).toHaveCount(7);
+    await expect(table.locator('tbody tr th')).toContainText([
+      'New comment',
+      'Held for review',
+      'Reported',
+      'Sync failed / stale',
+      'Suggested mention',
+      'New order',
+      'New tip',
+    ]);
+    const later = table.locator('tbody tr[aria-disabled="true"]');
+    await expect(later).toHaveCount(3);
+    await expect(table.getByText('COMING LATER', { exact: true })).toHaveCount(3);
+    const laterInputs = later.locator('input');
+    await expect(laterInputs).toHaveCount(6);
+    for (let i = 0; i < 6; i += 1) await expect(laterInputs.nth(i)).toBeDisabled();
+    const seeded: [string, boolean][] = [
+      ['New comment by email', true],
+      ['New comment by discord', true],
+      ['Held for review by email', true],
+      ['Held for review by discord', true],
+      ['Reported by email', true],
+      ['Reported by discord', true],
+      ['Sync failed / stale by email', true],
+      ['Sync failed / stale by discord', false],
+      ['Suggested mention by email', false],
+      ['Suggested mention by discord', true],
+      ['New order by email', true],
+      ['New order by discord', true],
+      ['New tip by email', false],
+      ['New tip by discord', true],
+    ];
+    for (const [label, on] of seeded) {
+      const { input, label: wrapper } = toggleFor(page, label);
+      if (on) await expect(input, label).toBeChecked();
+      else await expect(input, label).not.toBeChecked();
+      await expect(wrapper, label).toContainText(on ? 'ON' : 'OFF');
+    }
+    await expect(
+      page.getByText(
+        'The allay works for admins only — commenters never get mail. Deliveries arrive from allay@odsens.com.',
+      ),
+    ).toBeVisible();
+
+    // comment.new × EMAIL OFF → SAVE → "Saved." → reload persists (00 S1.5.AC2/AC6).
+    const cell = toggleFor(page, 'New comment by email');
+    await cell.label.click();
+    await expect(cell.input).not.toBeChecked();
+    await expect(cell.label).toContainText('OFF');
+    await saveAndWait(page);
+    expect(await readCell('comment.new', 'email')).toBe(false);
+    expect(await readCell('comment.new', 'discord')).toBe(true); // untouched cell untouched
+    await page.reload();
+    await expect(toggleFor(page, 'New comment by email').input).not.toBeChecked();
+
+    // Restore through the same control.
+    await toggleFor(page, 'New comment by email').label.click();
+    await saveAndWait(page);
+    expect(await readCell('comment.new', 'email')).toBe(true);
+    await page.reload();
+    await expect(toggleFor(page, 'New comment by email').input).toBeChecked();
+
+    // The shared Sync failed / stale row writes BOTH kinds (00 S1.5; `expandSyncRow`).
+    const sync = toggleFor(page, 'Sync failed / stale by discord');
+    await sync.label.click();
+    await expect(sync.input).toBeChecked();
+    await saveAndWait(page);
+    expect(await readCell('sync.failed', 'discord')).toBe(true);
+    expect(await readCell('sync.stale', 'discord')).toBe(true);
+    await toggleFor(page, 'Sync failed / stale by discord').label.click();
+    await saveAndWait(page);
+    expect(await readCell('sync.failed', 'discord')).toBe(false);
+    expect(await readCell('sync.stale', 'discord')).toBe(false);
+
+    // Moderation mode + comments_closed_default round trip (00 S1.5.AC11; DESIGN.md §12.7 #43).
+    await hold.label.click();
+    await expect(hold.input).toBeChecked();
+    await expect(auto.input).not.toBeChecked();
+    await closed.label.click();
+    await expect(closed.input).toBeChecked();
+    await saveAndWait(page);
+    expect(await readSettings()).toMatchObject({
+      moderation_mode: 'hold_first_time',
+      comments_closed_default: true,
+    });
+    await page.reload();
+    await expect(toggleFor(page, 'Hold first-time commenters').input).toBeChecked();
+    await expect(toggleFor(page, 'Comments off by default on new projects').input).toBeChecked();
+    await toggleFor(page, 'Auto-publish signed-in users').label.click();
+    await toggleFor(page, 'Comments off by default on new projects').label.click();
+    await saveAndWait(page);
+    expect(await readSettings()).toMatchObject({
+      moderation_mode: 'auto',
+      comments_closed_default: false,
+    });
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0);
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // T-E2E-37 — Discord webhook: Test against the fixture server, masked after save, never echoed
+  // ---------------------------------------------------------------------------------------------
+
+  test('T-E2E-37 webhook: never pre-filled; Test → ✔ Sent a test.; SAVE → …oken placeholder, token absent from every response body; unknown id → ✕ Discord said no: 404; mistyped URL → plain words; Remove → SAVE', async ({
+    page,
+  }) => {
+    await loginAs(page, 'admin');
+    await page.goto('/admin/settings');
+    const field = page.getByLabel('Discord webhook URL');
+    const line = testLine(page);
+    const test = page.getByRole('button', { name: 'Test', exact: true });
+    await expect(field).toHaveAttribute('type', 'password');
+    await expect(field).toHaveValue('');
+    await expect(field).toHaveAttribute('placeholder', WEBHOOK_PLACEHOLDER);
+    await expect(page.getByText('Masked after save.')).toBeVisible();
+
+    // Nothing typed, nothing stored → the action's validation line, inline (never a toast).
+    await test.click();
+    await expect(line).toHaveText('✕ Add a webhook URL first.', { timeout: 15_000 });
+    await expect(toast(page, 'Discord')).toHaveCount(0);
+
+    // Typed → the fixture server's POST /discord/webhooks/123/<token> → 200 → ✔.
+    await field.fill(WEBHOOK_OK);
+    await test.click();
+    await expect(line).toHaveText(TEST_OK, { timeout: 15_000 });
+
+    // From here every response body is captured: the raw URL must never come back (00 S1.5.AC3).
+    const bodies: string[] = [];
+    page.on('response', (response) => {
+      const type = response.headers()['content-type'] ?? '';
+      if (/image|font|octet-stream|woff/.test(type)) return;
+      response
+        .text()
+        .then((text) => {
+          bodies.push(text);
+        })
+        .catch(() => {
+          /* redirects / aborted bodies carry nothing */
+        });
+    });
+    await saveAndWait(page);
+    await expect(field).toHaveValue('');
+    await expect(field).toHaveAttribute('placeholder', '…oken');
+    expect((await readSettings()).discord_webhook_url).toBe(WEBHOOK_OK);
+    await page.reload();
+    await expect(page.getByLabel('Discord webhook URL')).toHaveAttribute('placeholder', '…oken');
+    await expect(page.getByLabel('Discord webhook URL')).toHaveValue('');
+    await expect(notifications(page).getByRole('button', { name: 'Remove' })).toBeVisible();
+    // The save POST, the `router.refresh()` RSC payload and the reload document are all settled
+    // by the assertions above; give their `text()` promises a beat (no `networkidle` — the built
+    // app keeps a request open, so that state never arrives deterministically).
+    await expect.poll(() => bodies.length).toBeGreaterThan(2);
+    await page.waitForTimeout(500);
+    expect(
+      bodies.some((body) => body.includes(TOKEN)),
+      'the webhook token never appears in a response body',
+    ).toBe(false);
+
+    // Nothing typed now → Test uses the STORED URL (04 §1.3 "input ?? stored").
+    await page.getByRole('button', { name: 'Test', exact: true }).click();
+    await expect(testLine(page)).toHaveText(TEST_OK, { timeout: 15_000 });
+
+    // Unknown webhook id → the fixture server's 404 → the plain reason (ADR-0030 D8).
+    await page.getByLabel('Discord webhook URL').fill(WEBHOOK_404);
+    await page.getByRole('button', { name: 'Test', exact: true }).click();
+    await expect(testLine(page)).toHaveText('✕ Discord said no: 404', { timeout: 15_000 });
+
+    // A URL outside the 04 §1.3 regex fails the action's schema → the line carries the schema's
+    // plain words (first issue, 04 SC-03), never runAction's generic "Check the form." (03 C-30).
+    await page.getByLabel('Discord webhook URL').fill('https://example.com/api/webhooks/1/nope');
+    await page.getByRole('button', { name: 'Test', exact: true }).click();
+    await expect(testLine(page)).toHaveText("✕ That doesn't look like a Discord webhook URL.", {
+      timeout: 15_000,
+    });
+
+    // Remove → sends '' (clear) on SAVE → placeholder back to the bare hint, row NULL.
+    await notifications(page).getByRole('button', { name: 'Remove' }).click();
+    await expect(page.getByLabel('Discord webhook URL')).toHaveAttribute(
+      'placeholder',
+      WEBHOOK_PLACEHOLDER,
+    );
+    await saveAndWait(page);
+    expect((await readSettings()).discord_webhook_url).toBeNull();
+    await page.reload();
+    await expect(page.getByLabel('Discord webhook URL')).toHaveAttribute(
+      'placeholder',
+      WEBHOOK_PLACEHOLDER,
+    );
+    await expect(notifications(page).getByRole('button', { name: 'Remove' })).toHaveCount(0);
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // T-E2E-37 — admin emails as chips: never pre-filled, add / remove, persisted
+  // ---------------------------------------------------------------------------------------------
+
+  test('T-E2E-37 admin emails: field never pre-filled; add chip → SAVE → reload → present → remove → SAVE → gone; duplicate ignored; bad shape inline', async ({
+    page,
+  }) => {
+    await loginAs(page, 'admin');
+    await page.goto('/admin/settings');
+    const add = page.getByLabel('Add an admin email');
+    const chip = page.getByRole('button', { name: `Remove ${ADMIN_EMAIL}` });
+    await expect(add).toHaveValue(''); // the signed-in Google email is never pre-filled (AC4)
+    await expect(page.getByRole('button', { name: /^Remove .+@localhost\.test$/ })).toHaveCount(0); // SEED-1 []
+    await expect(
+      page.getByText('Only what’s typed here. Google emails are never reused silently.'),
+    ).toBeVisible();
+
+    // Enter adds a chip; the field clears; a duplicate is ignored; a bad shape stays inline.
+    await add.fill(ADMIN_EMAIL);
+    await add.press('Enter');
+    await expect(chip).toBeVisible();
+    await expect(add).toHaveValue('');
+    await add.fill(ADMIN_EMAIL.toUpperCase());
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(chip).toHaveCount(1);
+    const posts: string[] = [];
+    page.on('request', (req) => {
+      if (req.method() === 'POST') posts.push(req.url());
+    });
+    await add.fill('nope');
+    await add.press('Enter');
+    await expect(page.getByText('That doesn’t look like an email address.')).toBeVisible();
+    expect(posts, 'the shape check issues no server-action POST').toEqual([]);
+    await add.fill('');
+
+    await saveAndWait(page);
+    expect((await readSettings()).admin_notify_emails).toEqual([ADMIN_EMAIL]);
+    await page.reload();
+    await expect(page.getByRole('button', { name: `Remove ${ADMIN_EMAIL}` })).toBeVisible();
+    await expect(page.getByLabel('Add an admin email')).toHaveValue('');
+
+    // Remove → SAVE → gone.
+    await page.getByRole('button', { name: `Remove ${ADMIN_EMAIL}` }).click();
+    await expect(page.getByRole('button', { name: /^Remove .+@localhost\.test$/ })).toHaveCount(0);
+    await saveAndWait(page);
+    expect((await readSettings()).admin_notify_emails).toEqual([]);
+    await page.reload();
+    await expect(page.getByRole('button', { name: /^Remove .+@localhost\.test$/ })).toHaveCount(0);
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // T-E2E-37 — Moderators table (setUserRole + PRG) and the Ko-fi section
+  // ---------------------------------------------------------------------------------------------
+
+  test('T-E2E-37 moderators: own row "That\'s you" without Remove; unknown handle inline; add seed_user → Mod → Remove → gone; Ko-fi NOT SET + page name round trip', async ({
+    page,
+  }) => {
+    await loginAs(page, 'admin');
+    await page.goto('/admin/settings');
+    const table = page
+      .locator('table')
+      .filter({ has: page.locator('caption', { hasText: 'Moderators' }) });
+    const rows = table.locator('tbody tr');
+    const ownRow = rows.filter({ hasText: '@oddsense' });
+    const modRow = rows.filter({ hasText: '@seed_mod' });
+    await expect(rows.first()).toContainText('@oddsense'); // admins first
+    await expect(ownRow).toContainText('Admin');
+    await expect(ownRow).toContainText("That's you");
+    await expect(ownRow.getByRole('button', { name: 'Remove' })).toHaveCount(0);
+    await expect(modRow).toContainText('Mod');
+    await expect(modRow.getByRole('button', { name: 'Remove' })).toBeVisible();
+    await expect(rows.filter({ hasText: '@seed_user' })).toHaveCount(0);
+
+    // Unknown handle → PRG back with the message on the field (inline, aria-invalid — 03 C-30).
+    const handle = page.getByLabel('Add by handle');
+    await handle.fill('nobody_here_x');
+    await page.getByRole('button', { name: 'Add mod', exact: true }).click();
+    await page.waitForURL(/form=moderators/);
+    const invalid = page.getByLabel('Add by handle');
+    await expect(invalid).toHaveAttribute('aria-invalid', 'true');
+    await expect(
+      page.getByRole('alert').filter({ hasText: "That account doesn't exist." }),
+    ).toBeVisible();
+
+    // Add seed_user (a typed `@` is stripped) → a Mod row appears; the profile row says so.
+    await invalid.fill('@seed_user');
+    await page.getByRole('button', { name: 'Add mod', exact: true }).click();
+    await page.waitForURL((url) => url.pathname === '/admin/settings' && url.search === '');
+    const userRow = rows.filter({ hasText: '@seed_user' });
+    await expect(userRow).toContainText('Mod');
+    expect((await readProfile(SEED_USERS.seed_user))?.role).toBe('moderator');
+
+    // Remove → role user → the row leaves the table.
+    await userRow.getByRole('button', { name: 'Remove' }).click();
+    await expect(rows.filter({ hasText: '@seed_user' })).toHaveCount(0, { timeout: 15_000 });
+    expect((await readProfile(SEED_USERS.seed_user))?.role).toBe('user');
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0);
+
+    // Ko-fi: NOT SET pill + the Phase 2 line; the page-name field round-trips `kofi_page`.
+    await expect(page.getByText('NOT SET', { exact: true })).toBeVisible();
+    await expect(page.getByText('Arrives with Phase 2.')).toBeVisible();
+    const kofi = page.getByLabel('Page name');
+    await expect(kofi).toHaveValue('oddsense'); // SEED-1
+    await kofi.fill('oddsense-e2e');
+    await saveAndWait(page);
+    expect((await readSettings()).kofi_page).toBe('oddsense-e2e');
+    await page.reload();
+    await expect(page.getByLabel('Page name')).toHaveValue('oddsense-e2e');
+    await page.getByLabel('Page name').fill('oddsense');
+    await saveAndWait(page);
+    expect((await readSettings()).kofi_page).toBe('oddsense');
   });
 });

@@ -8,7 +8,7 @@ Policy: `docs/build/05-test-plan.md` §2 (F-1..F-8). Adapters and jobs are teste
 | `modrinth/` `curseforge/` | recorded API JSON per F-5 (`user-projects.json`, `project-*.json`, `versions*.json`, `error-*.json`; `mod.json`, `search.json`, `error-403/404.json`) | S1.2 |
 | `youtube/` | `rss.xml`, `rss-malformed.xml`, `videos-list.json`, `playlist-items.json`, `oembed.json`, `videos-mentions.json`, `channels.json` | S1.6 (mentions S1.8) |
 | `oembed/` | `og-page.html`, `no-og.html`, `tiktok.html` | S1.8 |
-| `discord/` `resend/` | `webhook-ok.json`, `429.json` · `send-ok.json`, `422.json` (+ `__snapshots__/`) | S1.5 |
+| `discord/` `resend/` | `webhook-ok.json` (the message object a `?wait=true` post returns), `429.json` (`retry_after: 250`, ms per 04 §4.6), POST alias `webhooks/123.json` (= `webhook-ok.json` byte for byte) · `send-ok.json` (`{id}`), `422.json` (Resend `validation_error`) (+ `__snapshots__/` for T-ADP-19). Hand-made minimal shapes (04 §4.5/§4.6), not recordings — no `.meta.json`. | S1.5 |
 | `files/` | hand-made binaries ≤ 100 KB (F-4): `png-as.jar` (PNG bytes, `.jar` name — S1.1); `pack.zip`, `bad.exe` | S1.1 / S1.3 |
 | `images/` | hand-made PNG/JPG/WEBP/SVG/GIF ≤ 100 KB per F-4. S1.1: `avatar-600.png` (600×600 RGBA + tEXt metadata), `tiny.jpg` (32×32, below the 64×64 avatar minimum), `exif.jpg` (128×96, EXIF Orientation=6), `tiny.webp` (1×1 lossless), `bad.svg`, `bad.gif` (1×1). Later: `icon-256.png`, `skin-64.png`, … | S1.1 (avatar) / S1.3 |
 | `emails/` | React Email render snapshots (`__snapshots__/`) | S1.5 |
@@ -26,12 +26,16 @@ Checks: `node scripts/check-fixtures.mjs` (in `pnpm lint`) enforces F-3 (no emai
 `supabase/seed.sql` match sha256 of the fixture bytes). Never edit fixture values by hand to make a test pass (F-6).
 
 Serving in e2e: `node scripts/fixture-server.mjs [4010]` (or `startFixtureServer()` from `tests/helpers/fixtureServer.ts`)
-maps `http://127.0.0.1:4010/<source>/<path>` → `tests/fixtures/<source>/<path>`; the test-only `*_API_BASE` names in
-`.env.test` point the adapters there (ADR-0002 #73).
+maps `GET http://127.0.0.1:4010/<source>/<path>` → `tests/fixtures/<source>/<path>`; the test-only `*_API_BASE` names in
+`.env.test` point the adapters there (ADR-0002 #73). POST routes (S1.5, ADR-0030 D8 — the request body is read and
+discarded): `POST /discord/webhooks/<id>/<token>` → `discord/webhooks/<id>.json` (200; unknown id → 404, which the
+Settings Test line shows as `✕ Discord said no: 404`) and `POST /resend/emails` → `resend/send-ok.json` (200); every
+other POST → 405. `scripts/fixture-server.mjs` (dependency-free, CI-5) and the `.ts` helper stay in step.
 
 API-path aliases (S1.2, e2e only): the server maps URL paths verbatim, but the adapters request real API shapes
 (`/user/<user>/projects`, `/project/<id>/version`, `/mods/<id>` — 04 §4), so those paths exist as byte-for-byte
 copies of the canonical F-5 files: `modrinth/user/OddSense/projects` = `user-projects.json`,
 `modrinth/project/<id>/version` = `versions-empty.json` (each of the 18 fixture ids; versions absent upstream are
-kept, ADR-0002 #66, so the seeded versions survive an e2e sync — 05 T-E2E-41), `curseforge/mods/900001` = `mod.json`.
+kept, ADR-0002 #66, so the seeded versions survive an e2e sync — 05 T-E2E-41), `curseforge/mods/900001` = `mod.json`,
+`discord/webhooks/123.json` = `webhook-ok.json` (S1.5 — the POST route above serves it for webhook id `123`, any token).
 The canonical flat files stay the unit/db-test source of truth (H-5 `mockFetch`); never edit either copy alone.

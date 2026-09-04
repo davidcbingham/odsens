@@ -28,6 +28,8 @@ export type ToggleProps = {
   label: string;
   value?: string;
   disabled?: boolean;
+  /** Additive (03 C-03): id of the line that explains the consequence — `aria-describedby` on the input. */
+  describedBy?: string;
 };
 
 const ON_WORD = 'ON';
@@ -42,6 +44,7 @@ export function Toggle({
   label,
   value,
   disabled = false,
+  describedBy,
 }: ToggleProps) {
   return (
     <label className={styles.toggle} data-variant={accent}>
@@ -54,6 +57,7 @@ export function Toggle({
         checked={checked}
         aria-checked={checked}
         aria-label={label}
+        aria-describedby={describedBy}
         disabled={disabled}
         {...(onChange
           ? { onChange: (event) => onChange(event.currentTarget.checked) }

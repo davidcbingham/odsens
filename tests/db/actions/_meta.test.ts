@@ -11,9 +11,11 @@
  * (2) zod validation happens before any DB call: invalid input as `anon` → `validation` with plain
  *     `issues[]` (not `unauthenticated`), and `fetch` is never called.
  * (3) role re-check: the S1.4 `requireRole` actions (`moderateComment`, `banUser`, `renameUserHandle`,
- *     the moderator path of `deleteComment`) called as `user` WITH the admin client mocked to succeed
- *     (the switch flipped to the real client) still answer `forbidden`; accounts.ts has no `requireRole`
- *     (S1.1), and every `requireRole` call site in comments.ts has its SC-24 `logAdmin` twin.
+ *     the moderator path of `deleteComment`) and the S1.5 settings actions (`updateSettings`,
+ *     `testDiscordWebhook`, `setUserRole` — lib/actions/settings.ts, admin-only) called as `user` WITH
+ *     the admin client mocked to succeed (the switch flipped to the real client) still answer
+ *     `forbidden`; accounts.ts has no `requireRole` (S1.1), and every `requireRole` call site in
+ *     comments.ts / settings.ts has its SC-24 `logAdmin` twin.
  * (4) every `error.code` asserted across tests/db/{actions,routes,proxy} is a member of the 04 §7 union.
  */
 import fs from 'node:fs';
@@ -36,6 +38,12 @@ import type {
 } from '@/lib/actions/comments.schema';
 import type { ActionResult } from '@/lib/actions/result';
 import { INTERNAL_MESSAGE, VALIDATION_MESSAGE } from '@/lib/actions/run';
+import * as settings from '@/lib/actions/settings';
+import type {
+  SetUserRoleInput,
+  TestDiscordWebhookInput,
+  UpdateSettingsInput,
+} from '@/lib/actions/settings.schema';
 import { freeHandle, readProfile } from '@/tests/helpers/arrange';
 import { ACTION_ERROR_CODES, expectFail, expectResultShape } from '@/tests/helpers/actionResult';
 import { asRole, SEED_ROLE_IDS } from '@/tests/helpers/asRole';
@@ -78,6 +86,13 @@ const {
   banUser,
   renameUserHandle,
 } = comments;
+
+const { updateSettings, testDiscordWebhook, setUserRole } = settings;
+
+const S15_ACTIONS = ['setUserRole', 'testDiscordWebhook', 'updateSettings'] as const;
+
+/** A well-formed webhook URL — no request ever leaves in this file (auth or the outage stop it first). */
+const WEBHOOK = 'https://discord.com/api/webhooks/123/t_metatoken';
 
 const S14_ACTIONS = [
   'banUser',
@@ -271,6 +286,41 @@ describe('T-ACT-0 (1) S1.4 comment actions return internal on a service outage, 
   });
 });
 
+describe('T-ACT-0 (1) S1.5 settings actions return internal on a service outage, nothing written', () => {
+  it('T-ACT-0 updateSettings: the site_settings write needs the service client → internal, row untouched', async () => {
+    const res = await callAction(updateSettings, { kofi_page: 't_meta' }, { role: 'admin' });
+    expectInternal(res, 'updateSettings');
+    const { data } = await service.from('site_settings').select('kofi_page').eq('id', 1).single();
+    expect(data?.kofi_page).toBe('oddsense');
+  });
+
+  it('T-ACT-0 testDiscordWebhook: the rate limiter needs the service client → internal, no request', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    try {
+      const res = await callAction(testDiscordWebhook, { url: WEBHOOK }, { role: 'admin' });
+      expectInternal(res, 'testDiscordWebhook');
+      const external = fetchSpy.mock.calls.filter(([input]) => {
+        const url = input instanceof Request ? input.url : String(input);
+        return url.includes('/webhooks/');
+      });
+      expect(external).toEqual([]);
+      expect(JSON.stringify(logs.lines)).not.toContain('t_metatoken');
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it('T-ACT-0 setUserRole: the profile lookup needs the service client → internal, role untouched', async () => {
+    const res = await callAction(
+      setUserRole,
+      { handle: 'seed_user', role: 'moderator' },
+      { role: 'admin' },
+    );
+    expectInternal(res, 'setUserRole');
+    expect((await readProfile(SEED_USERS.seed_user))?.role).toBe('user');
+  });
+});
+
 describe('T-ACT-0 (2) zod validation runs before auth and before any DB call', () => {
   const invalid: Array<{
     name: string;
@@ -411,6 +461,54 @@ describe('T-ACT-0 (2) zod validation runs before auth and before any DB call', (
         ),
       path: 'handle',
     },
+    {
+      name: 'updateSettings: moderation_mode outside the enum',
+      call: () =>
+        callAction(
+          updateSettings,
+          { moderation_mode: 'manual' } as unknown as UpdateSettingsInput,
+          { role: 'anon' },
+        ),
+      path: 'moderation_mode',
+    },
+    {
+      name: 'updateSettings: a COMING LATER matrix kind',
+      call: () =>
+        callAction(
+          updateSettings,
+          {
+            matrix: [{ kind: 'tip.new', channel: 'email', enabled: true }],
+          } as unknown as UpdateSettingsInput,
+          { role: 'anon' },
+        ),
+      path: 'matrix.0.kind',
+    },
+    {
+      name: 'testDiscordWebhook: url failing the webhook regex',
+      call: () =>
+        callAction(
+          testDiscordWebhook,
+          { url: 'http://discord.com/api/webhooks/1/a' } as TestDiscordWebhookInput,
+          { role: 'anon' },
+        ),
+      path: 'url',
+    },
+    {
+      name: 'setUserRole: role outside the enum',
+      call: () =>
+        callAction(
+          setUserRole,
+          { handle: 'seed_user', role: 'owner' } as unknown as SetUserRoleInput,
+          { role: 'anon' },
+        ),
+      path: 'role',
+    },
+    {
+      name: 'setUserRole: handle fails H1',
+      call: () =>
+        callAction(setUserRole, { handle: '@seed_user', role: 'moderator' }, { role: 'anon' }),
+      path: 'handle',
+    },
   ];
 
   it.each(invalid)('T-ACT-0 $name → validation, no network call', async ({ call, path: p }) => {
@@ -456,6 +554,17 @@ describe('T-ACT-0 (3) role re-check', () => {
     ]);
   });
 
+  it('T-ACT-0 S1.5 exports exactly the three settings actions; every requireRole call site has its SC-24 logAdmin twin', () => {
+    expect(Object.keys(settings).sort()).toEqual([...S15_ACTIONS]);
+    const source = fs.readFileSync(path.join(REPO_ROOT, 'lib', 'actions', 'settings.ts'), 'utf8');
+    const requireRoleCalls = source.match(/await requireRole\('admin'\)/g) ?? [];
+    // `logAdmin(` may wrap its first argument onto the next line (prettier) — match across whitespace.
+    const auditCalls = [...source.matchAll(/logAdmin\(\s*'(\w+)'/g)].map((m) => m[1] ?? '');
+    expect(requireRoleCalls).toHaveLength(3);
+    expect(source.includes("requireRole('moderator')")).toBe(false);
+    expect(auditCalls.sort()).toEqual([...S15_ACTIONS]);
+  });
+
   describe('T-ACT-0 requireRole actions as `user` with the admin client mocked to SUCCEED → forbidden', () => {
     beforeEach(() => {
       adminMode.mode = 'real';
@@ -497,6 +606,20 @@ describe('T-ACT-0 (3) role re-check', () => {
         call: () =>
           callAction(deleteComment, { comment_id: SEED_COMMENTS.creatorReply }, { role: 'user' }),
       },
+      {
+        name: 'updateSettings',
+        call: () =>
+          callAction(updateSettings, { moderation_mode: 'hold_first_time' }, { role: 'user' }),
+      },
+      {
+        name: 'testDiscordWebhook',
+        call: () => callAction(testDiscordWebhook, { url: WEBHOOK }, { role: 'user' }),
+      },
+      {
+        name: 'setUserRole',
+        call: () =>
+          callAction(setUserRole, { handle: 'seed_user', role: 'moderator' }, { role: 'user' }),
+      },
     ];
 
     it.each(roleChecks)('T-ACT-0 $name → forbidden', async ({ call }) => {
@@ -514,6 +637,13 @@ describe('T-ACT-0 (3) role re-check', () => {
       expect(data?.status).toBe('held');
       expect((await readProfile(SEED_USERS.seed_user2))?.is_banned).toBe(false);
       expect((await readProfile(SEED_USERS.seed_user2))?.handle).toBe('seed_user2');
+      expect((await readProfile(SEED_USERS.seed_user))?.role).toBe('user');
+      const { data: row } = await service
+        .from('site_settings')
+        .select('moderation_mode')
+        .eq('id', 1)
+        .single();
+      expect(row?.moderation_mode).toBe('auto');
     });
   });
 });
