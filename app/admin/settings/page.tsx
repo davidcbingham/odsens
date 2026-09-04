@@ -157,7 +157,7 @@ export default async function AdminSettingsPage({ searchParams }: PageProps) {
           <h2 id={sectionTitleId('MODERATORS')} className={styles['admin-settings-heading']}>
             MODERATORS
           </h2>
-          <Table caption="Moderators" columns={COLUMNS} rows={rows} rowKey="key" />
+          <Table caption="Moderators table" columns={COLUMNS} rows={rows} rowKey="key" />
           {tableError ? (
             <p role="alert" className={styles['admin-settings-error']}>
               {tableError}

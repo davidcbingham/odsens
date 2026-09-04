@@ -30,8 +30,13 @@ export const DELIVER_BATCH = 100;
 /** §4.6: Discord webhook posts per tick (~30 req/min per webhook upstream). */
 export const DISCORD_PER_TICK = 20;
 
-/** Stop claiming new groups after this much wall-clock time (route `maxDuration` is 60 s — 02 §1.4). */
-export const DELIVER_TIME_BUDGET_MS = 40_000;
+/**
+ * Stop before the next send unit once this much of the TICK has elapsed (04 §5.8). The route's
+ * `maxDuration` is 60 s (02 §1.4) and one SC-09 send can take ~47 s (10 s timeout × 3 + backoff),
+ * so budget + worst-case unit must stay under 60 s — otherwise a unit is killed before its N4 mark
+ * and the open run parks the SC-13 lock for 15 min (S1.5 backend gate).
+ */
+export const DELIVER_TIME_BUDGET_MS = 12_000;
 
 /** N4: `status='failed'` when `attempts` reaches this (notifications.md "max 5"). */
 export const MAX_ATTEMPTS = 5;
