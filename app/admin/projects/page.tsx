@@ -35,7 +35,11 @@ import styles from './page.module.css';
  * 1. ALL PROJECTS — `Table` of every project incl. hidden/draft (05 T-E2E-34); columns Project ·
  *    Type (`TypeBadge`) · Status (`StatusPill` draft/hidden/live, fills ADR-0002 #47) ·
  *    Downloads · Featured / Hidden `Toggle`s (first `Toggle` use — 02 §1.3) · Open. Empty copy
- *    verbatim per ADR-0002 #40 / 03 G-05. Each toggle's `onChange` is the module-level
+ *    verbatim per ADR-0002 #40 / 03 G-05. The heading row's end slot carries the
+ *    "New exclusive project" `Button` → `/admin/projects/new` (02 §1.3 `/admin/projects` Components cell — ADR-0030 D20) — a
+ *    navigation link, not a mutation control, so it renders the same for both admin roles; the
+ *    create page itself applies the moderator rendered-disabled rule (03 §2.10).
+ *    Each toggle's `onChange` is the module-level
  *    `curateAndRefresh` server function BOUND to the per-project shape
  *    `{project_id, featured|hidden: !current}` (the Next "additional arguments" `.bind` pattern
  *    — C-19 "no functions except server actions"). The wrapper `redirect`s back to this URL
@@ -216,6 +220,11 @@ export default async function AdminProjectsPage() {
             <PixelLabel informational tone="mute-dim">
               {`${projects.length} TOTAL`}
             </PixelLabel>
+          </span>
+          <span className={styles['admin-projects-heading-actions']}>
+            <Button variant="secondary" size="sm" href="/admin/projects/new">
+              New exclusive project
+            </Button>
           </span>
         </div>
         <Table

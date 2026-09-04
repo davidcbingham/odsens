@@ -293,6 +293,94 @@ export type Database = {
           },
         ]
       }
+      notification_matrix: {
+        Row: {
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at: string
+          enabled: boolean
+          kind: string
+          updated_at: string
+        }
+        Insert: {
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          enabled?: boolean
+          kind: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          enabled?: boolean
+          kind?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notification_recipients: {
+        Row: {
+          address: string | null
+          attempts: number
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at: string
+          error: string | null
+          event_id: string
+          id: string
+          profile_id: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["notification_status"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          attempts?: number
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          error?: string | null
+          event_id: string
+          id?: string
+          profile_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          attempts?: number
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          error?: string | null
+          event_id?: string
+          id?: string
+          profile_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_recipients_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "notification_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_recipients_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_recipients_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_path: string | null
@@ -966,6 +1054,7 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_moderator: { Args: never; Returns: boolean }
       is_reserved_handle: { Args: { p_handle: string }; Returns: boolean }
+      migration_versions: { Args: never; Returns: string[] }
       moderator_thread: {
         Args: { p_target_id: string; p_target_type: string }
         Returns: {
@@ -1005,6 +1094,8 @@ export type Database = {
       comment_target: "project" | "skin" | "art" | "video"
       link_platform: "modrinth" | "curseforge"
       moderation_mode: "auto" | "hold_first_time"
+      notification_channel: "email" | "discord" | "inapp" | "push"
+      notification_status: "pending" | "sent" | "failed" | "skipped"
       project_source: "modrinth" | "odsens"
       project_status: "draft" | "published" | "hidden"
       project_type: "mod" | "datapack" | "resourcepack" | "plugin"
@@ -1145,6 +1236,8 @@ export const Constants = {
       comment_target: ["project", "skin", "art", "video"],
       link_platform: ["modrinth", "curseforge"],
       moderation_mode: ["auto", "hold_first_time"],
+      notification_channel: ["email", "discord", "inapp", "push"],
+      notification_status: ["pending", "sent", "failed", "skipped"],
       project_source: ["modrinth", "odsens"],
       project_status: ["draft", "published", "hidden"],
       project_type: ["mod", "datapack", "resourcepack", "plugin"],

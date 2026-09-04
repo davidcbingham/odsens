@@ -12,6 +12,12 @@
  *
  * T-ACT-70's `triggerSync` clause (open run → D `conflict`) lands with `lib/actions/admin.ts` in the
  * actions pass (T-ACT-42); this file covers the job + cron-route sides of the lock.
+ *
+ * S1.5 (T-ACT-74, 04 J-F, ADR-0030 D1): the last describe proves the `sync.failed` edge through the
+ * shared runner — one event per failure episode, the payload shape, no event while the failure
+ * persists, one again after an ok run, one when no previous run exists, and a lost `emit` logged
+ * (`emit_failed`) rather than thrown. The list call fails with a 400 (not retried, SC-09) so each
+ * failing run is fast. Events are purged in `afterAll`.
  */
 import { NextRequest } from 'next/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -29,9 +35,15 @@ import {
   type ContentSnapshot,
 } from '@/tests/helpers/contentReset';
 import { REPO_ROOT } from '@/tests/helpers/envTest';
-import { cleanupFactories, makeSyncRun } from '@/tests/helpers/factories';
+import { withDbFault } from '@/tests/helpers/dbFault';
+import {
+  cleanupFactories,
+  makeSyncRun,
+  purgeNotificationEvents,
+  trackNotificationEvent,
+} from '@/tests/helpers/factories';
 import { loadFixture } from '@/tests/helpers/fixtures';
-import { spyFetch, spyRevalidateTag, type FixtureMap } from '@/tests/helpers/spies';
+import { spyFetch, spyLog, spyRevalidateTag, type FixtureMap } from '@/tests/helpers/spies';
 
 setupActionMocks();
 
@@ -146,6 +158,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await cleanupFactories();
   await restoreContentTables(snapshot);
+  // S1.5: failed runs emit `sync.failed` through the runner (04 J-F) — purge them (H-1).
+  await purgeNotificationEvents();
 });
 
 describe('syncModrinth (04 §3.1)', () => {
@@ -553,6 +567,130 @@ describe('syncModrinth (04 §3.1)', () => {
       for (const [index, row] of projectsAfter.entries()) {
         expect(row.synced_at).not.toBe(projectsBefore[index]?.synced_at);
       }
+    });
+  });
+  describe('T-ACT-74 sync.failed edge (04 J-F, ADR-0030 D1)', () => {
+    const LIST_FAILS: FixtureMap = { [LIST_URL]: 'status:400' };
+    const NOW = () => new Date().toISOString();
+
+    type FailedEvent = {
+      id: string;
+      actor_id: string | null;
+      subject_type: string;
+      subject_id: string;
+      payload: { source?: string; run_id?: string; error?: string; started_at?: string };
+    };
+
+    async function failedEvents(): Promise<FailedEvent[]> {
+      const { data, error } = await service
+        .from('notification_events')
+        .select('id, actor_id, subject_type, subject_id, payload')
+        .eq('kind', 'sync.failed')
+        .order('created_at', { ascending: true });
+      if (error) throw new Error(error.message);
+      const rows = data as unknown as FailedEvent[];
+      for (const row of rows) trackNotificationEvent(row.id);
+      return rows.filter((row) => row.payload.source === 'modrinth');
+    }
+
+    beforeAll(async () => {
+      await purgeNotificationEvents();
+      // A fresh ok run is the latest row for the source (SEED-12's shape, arranged explicitly).
+      await makeSyncRun({ source: 'modrinth', ok: true, items: 0, finished_at: NOW() });
+    });
+
+    it('T-ACT-74 first failing run after an ok run → exactly one sync.failed with the J-F payload', async () => {
+      spyFetch(LIST_FAILS);
+      const summary = await run();
+      expect(summary.ok).toBe(false);
+      const events = await failedEvents();
+      expect(events).toHaveLength(1);
+      const event = events[0]!;
+      expect(event.actor_id).toBeNull();
+      expect(event.subject_type).toBe('sync_run');
+      expect(event.subject_id).toBe(summary.run_id);
+      expect(event.payload.source).toBe('modrinth');
+      expect(event.payload.run_id).toBe(summary.run_id);
+      expect(typeof event.payload.error).toBe('string');
+      expect(event.payload.error?.length).toBeLessThanOrEqual(300);
+      expect(event.payload.error).not.toMatch(/key=/i);
+      expect(new Date(event.payload.started_at ?? '').toISOString()).toBe(event.payload.started_at);
+    });
+
+    it('T-ACT-74 a second consecutive failing run → no new event', async () => {
+      spyFetch(LIST_FAILS);
+      const summary = await run();
+      expect(summary.ok).toBe(false);
+      expect(await failedEvents()).toHaveLength(1);
+    });
+
+    it('T-ACT-74 failed → ok → failed → emits again', async () => {
+      spyFetch(routes(fullList));
+      const okRun = await run();
+      expect(okRun.ok).toBe(true);
+      expect(await failedEvents()).toHaveLength(1);
+      spyFetch(LIST_FAILS);
+      const failedRun = await run();
+      expect(failedRun.ok).toBe(false);
+      const events = await failedEvents();
+      expect(events).toHaveLength(2);
+      expect(events[1]?.payload.run_id).toBe(failedRun.run_id);
+    });
+
+    it('T-ACT-74 failure with no previous run at all → emits', async () => {
+      await cleanupFactories();
+      // No other modrinth row exists: the content snapshot restores SEED-12 in afterAll.
+      const wipe = await service.from('sync_runs').delete().eq('source', 'modrinth');
+      expect(wipe.error).toBeNull();
+      const before = (await failedEvents()).length;
+      spyFetch(LIST_FAILS);
+      const summary = await run();
+      expect(summary.ok).toBe(false);
+      const events = await failedEvents();
+      expect(events).toHaveLength(before + 1);
+      expect(events.at(-1)?.payload.run_id).toBe(summary.run_id);
+    });
+
+    it('T-ACT-74 a failed previous-run read (J-F) is logged (emit_failed), never thrown, no event', async () => {
+      await makeSyncRun({ source: 'modrinth', ok: true, items: 0, finished_at: NOW() });
+      const before = (await failedEvents()).length;
+      const logs = spyLog();
+      spyFetch(LIST_FAILS);
+      let summary: JobSummary;
+      try {
+        // The 1st sync_runs select is the SC-13 lock check; the 2nd is J-F's previous-run read.
+        summary = await withDbFault({ table: 'sync_runs', op: 'select' }, { nth: 2 }, () => run());
+      } finally {
+        logs.restore();
+      }
+      expect(summary.ok).toBe(false);
+      expect(await failedEvents()).toHaveLength(before);
+      const line = (logs.lines as Array<{ msg?: string; meta?: { error?: string } }>).find(
+        (entry) => entry.msg === 'emit_failed',
+      );
+      expect(line?.meta?.error).toMatch(/sync_runs previous read failed/);
+    });
+
+    it('T-ACT-74 a lost emit is logged (emit_failed) and never fails the run', async () => {
+      await makeSyncRun({ source: 'modrinth', ok: true, items: 0, finished_at: NOW() });
+      const before = (await failedEvents()).length;
+      const logs = spyLog();
+      spyFetch(LIST_FAILS);
+      let summary: JobSummary;
+      try {
+        summary = await withDbFault({ table: 'notification_events', op: 'insert' }, {}, () =>
+          run(),
+        );
+      } finally {
+        logs.restore();
+      }
+      expect(summary.ok).toBe(false);
+      expect(await failedEvents()).toHaveLength(before);
+      const line = (logs.lines as Array<{ job?: string; msg?: string; id?: string }>).find(
+        (entry) => entry.msg === 'emit_failed',
+      );
+      expect(line?.job).toBe('syncModrinth');
+      expect(line?.id).toBe(summary.run_id);
     });
   });
 });

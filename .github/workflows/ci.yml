@@ -73,6 +73,8 @@ jobs:
       - name: Start local Supabase
         run: supabase start
       # CI-3: globalSetup runs `supabase db reset` (H-1) — SKIP_DB_RESET is deliberately NOT set.
+      # Since S1.5 (ADR-0030 D18) this job runs the COMBINED unit + db coverage run: COV-4
+      # (`lib/jobs/**`, `lib/notify/**`) is read across both lanes, COV-2 as before.
       - name: Load .env.test
         shell: bash
         run: |
@@ -80,7 +82,7 @@ jobs:
           for name in $(grep -oE '^[A-Z_][A-Z0-9_]*' .env.test); do
             echo "$name=${!name}" >> "$GITHUB_ENV"
           done
-      - run: pnpm test:db --coverage
+      - run: pnpm test:coverage
       - name: Supabase diagnostics (on failure)
         if: failure()
         shell: bash

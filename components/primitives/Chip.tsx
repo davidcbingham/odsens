@@ -10,7 +10,9 @@ import styles from './Chip.module.css';
  * (O-14, ADR-0002 #54). Render rules (03 C-13):
  * - `unavailable` → `<span aria-disabled="true">`, not clickable, not focusable;
  * - `onRemove` → `<button aria-label="Remove filter <label>">` with a trailing ✕ `Icon`
- *   inside the ≥44px target (03 C-24);
+ *   inside the ≥44px target (03 C-24); `removeLabel` replaces that accessible name for a
+ *   removable chip that is not a filter (additive, 03 C-03 / ADR-0030 D19 — the admin-email
+ *   chips on `/admin/settings` announce "Remove <email>");
  * - `href` → `<a>` via next/link, `aria-current="true"` when selected (never `aria-pressed`
  *   on a link);
  * - `selected` without `href` → radio chip: `role="radio"` + `aria-checked`; the parent
@@ -24,6 +26,8 @@ export type ChipProps = {
   unavailable?: boolean;
   /** `ActiveFilterChips` remove control; client parents only (functions never cross INV-08). */
   onRemove?: () => void;
+  /** The removable chip's `aria-label` (default "Remove filter <label>"; ADR-0030 D19). */
+  removeLabel?: string;
   className?: string;
 };
 
@@ -33,6 +37,7 @@ export function Chip({
   selected,
   unavailable = false,
   onRemove,
+  removeLabel,
   className,
 }: ChipProps) {
   const classes = className ? `${styles.chip} ${className}` : styles.chip;
@@ -51,7 +56,7 @@ export function Chip({
         type="button"
         className={classes}
         onClick={onRemove}
-        aria-label={`Remove filter ${label}`}
+        aria-label={removeLabel ?? `Remove filter ${label}`}
       >
         {label}
         <Icon name="x" size={16} className={styles['chip-remove-icon']} />

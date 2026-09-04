@@ -18,6 +18,8 @@
  * Input schemas live in `./accounts.schema.ts` (a `'use server'` module may export only async
  * functions). The only `revalidateTag` here is `deleteAccount`'s per-target `project:<slug>` for
  * the S1.4 comment cascade (04 §1.1; 02 §5) — the other account actions touch no ISR tag (05 T-ACT-3).
+ * S1.5 (ADR-0030 D4): `deleteAccount` scrubs the caller from `notification_events` payloads
+ * (`lib/notify/emit.ts` `scrubProfileFromEvents`) before `auth.admin.deleteUser` (04 SC-22).
  */
 import { revalidateTag } from 'next/cache';
 import {
@@ -43,6 +45,7 @@ import {
 } from '@/lib/files';
 import { formatDay } from '@/lib/format/date';
 import { log } from '@/lib/log';
+import { scrubProfileFromEvents } from '@/lib/notify/emit';
 import { assertRateLimit } from '@/lib/rate-limit';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createServerClient } from '@/lib/supabase/server';
@@ -367,6 +370,11 @@ export async function deleteAccount(
         id: ctx.id,
       });
     }
+
+    // S1.5 (ADR-0030 D4; 04 SC-22 / §1.1): the kept `notification_events` rows stop naming this
+    // account — every `{profile_id, handle}` payload reference becomes `{null, null}` — right before
+    // the auth user goes (`actor_id` nulls through its FK). A failure here → `internal`, account intact.
+    await scrubProfileFromEvents(user.id);
 
     const admin = createAdminClient();
     const { error } = await admin.auth.admin.deleteUser(user.id);

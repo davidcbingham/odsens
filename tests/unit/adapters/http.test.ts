@@ -1,7 +1,8 @@
 /**
  * tests/unit/adapters/http.test.ts — `lib/adapters/http.ts` `fetchJson` / `AdapterError`
  * (05 T-ADP-1: 04 SC-09 timeout / retry / backoff / `Retry-After` / `X-Ratelimit-Reset` + SC-10
- * User-Agent + secret-free errors; 05 T-ADP-20: nothing under `lib/adapters/` reads `process.env`).
+ * User-Agent + secret-free errors; 05 T-ADP-20: nothing under `lib/adapters/` reads `process.env`;
+ * ADR-0030 D6: `method: 'POST'` + JSON `body`, an empty 2xx body → `null`, `retryOn` narrowing).
  * Pure over `mockFetch` — no sockets (05 H-5); backoff timing via fake timers.
  */
 import { readFileSync, readdirSync } from 'node:fs';
@@ -209,12 +210,123 @@ describe('T-ADP-20 adapters never read process.env (04 SC-25)', () => {
   it('T-ADP-20 grep "process.env" over lib/adapters/ finds nothing', () => {
     const dir = path.join(REPO_ROOT, 'lib', 'adapters');
     const names = readdirSync(dir).filter((name) => name.endsWith('.ts'));
-    expect(names.length).toBeGreaterThanOrEqual(3); // http, modrinth, curseforge
+    expect(names.length).toBeGreaterThanOrEqual(5); // http, modrinth, curseforge, resend, discord
     for (const name of names) {
       const text = readFileSync(path.join(dir, name), 'utf8');
       expect(text, `lib/adapters/${name} must take env by injection (04 SC-25)`).not.toContain(
         'process.env',
       );
     }
+  });
+});
+
+describe('T-ADP-1 fetchJson POST + empty body (ADR-0030 D6)', () => {
+  it('T-ADP-1 method POST sends JSON.stringify(body) with Content-Type: application/json, Accept and the SC-10 UA', async () => {
+    const seen: {
+      method?: string;
+      contentType?: string | null;
+      body?: string;
+      ua?: string | null;
+    } = {};
+    const impl = mockFetch({
+      [URL_LIST]: async (request) => {
+        seen.method = request.method;
+        seen.contentType = request.headers.get('content-type');
+        seen.ua = request.headers.get('user-agent');
+        seen.body = await request.text();
+        return Response.json({ id: 'abc' });
+      },
+    });
+    const data = await fetchJson<{ id: string }>(URL_LIST, {
+      ua: UA,
+      fetch: impl,
+      method: 'POST',
+      body: { hello: 'world', n: 1 },
+      headers: { Authorization: 'Bearer tok123' },
+    });
+    expect(data).toEqual({ id: 'abc' });
+    expect(seen.method).toBe('POST');
+    expect(seen.contentType).toBe('application/json');
+    expect(seen.ua).toBe(UA);
+    expect(seen.body).toBe(JSON.stringify({ hello: 'world', n: 1 }));
+  });
+
+  it('T-ADP-1 GET stays the default: no body, no Content-Type', async () => {
+    const seen: { method?: string; contentType?: string | null; body?: string } = {};
+    const impl = mockFetch({
+      [URL_LIST]: async (request) => {
+        seen.method = request.method;
+        seen.contentType = request.headers.get('content-type');
+        seen.body = await request.text();
+        return Response.json({ ok: true });
+      },
+    });
+    await fetchJson(URL_LIST, { ua: UA, fetch: impl });
+    expect(seen.method).toBe('GET');
+    expect(seen.contentType).toBeNull();
+    expect(seen.body).toBe('');
+  });
+
+  it('T-ADP-1 a 2xx with an empty body (204) resolves to null instead of a parse_error', async () => {
+    const impl = mockFetch({ [URL_LIST]: () => new Response(null, { status: 204 }) });
+    await expect(
+      fetchJson<unknown>(URL_LIST, { ua: UA, fetch: impl, method: 'POST', body: {} }),
+    ).resolves.toBeNull();
+    const blank = mockFetch({ [URL_LIST]: () => new Response('  \n', { status: 200 }) });
+    await expect(fetchJson<unknown>(URL_LIST, { ua: UA, fetch: blank })).resolves.toBeNull();
+  });
+
+  it('T-ADP-1 a failed POST names the method but never echoes the request body', async () => {
+    const impl = mockFetch({
+      [URL_LIST]: () => new Response('{"message":"nope"}', { status: 404 }),
+    });
+    const error = await fetchJson(URL_LIST, {
+      ua: UA,
+      fetch: impl,
+      method: 'POST',
+      body: { secret_body_marker: 'hunter2-body', to: ['seed-admin@localhost.test'] },
+      headers: { Authorization: 'Bearer tok123' },
+    }).then(
+      () => null,
+      (thrown: unknown) => thrown as AdapterError,
+    );
+    expect(error).toBeInstanceOf(AdapterError);
+    expect(error?.message).toBe(`POST ${URL_LIST} → 404`);
+    for (const text of [error?.message ?? '', error?.body ?? '']) {
+      expect(text).not.toContain('hunter2-body');
+      expect(text).not.toContain('secret_body_marker');
+      expect(text).not.toContain('localhost.test');
+      expect(text).not.toContain('tok123');
+    }
+    expect(error?.body).toBe('{"message":"nope"}');
+  });
+
+  it('T-ADP-1 retryOn narrows the retried set: an excluded 429 throws at once, 5xx still backs off', async () => {
+    const fetchSpy = vi.fn(mockFetch({ [URL_LIST]: () => new Response('slow', { status: 429 }) }));
+    await expect(
+      fetchJson(URL_LIST, { ua: UA, fetch: fetchSpy, retryOn: (status) => status >= 500 }),
+    ).rejects.toMatchObject({ status: 429, code: 'http_error' });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    vi.useFakeTimers();
+    const { fetch: impl, times } = timedRoute((attempt) =>
+      attempt === 1 ? new Response('boom', { status: 503 }) : Response.json({ ok: true }),
+    );
+    const promise = fetchJson<{ ok: boolean }>(URL_LIST, {
+      ua: UA,
+      fetch: impl,
+      retryOn: (status) => status >= 500,
+    });
+    await vi.runAllTimersAsync();
+    expect(await promise).toEqual({ ok: true });
+    expect(times).toEqual([0, 1000]);
+  });
+
+  it('T-ADP-1 retryOn can never widen the set to other 4xx (SC-09: only 429/5xx are retryable)', async () => {
+    const fetchSpy = vi.fn(mockFetch({ [URL_LIST]: () => new Response('gone', { status: 404 }) }));
+    await expect(
+      fetchJson(URL_LIST, { ua: UA, fetch: fetchSpy, retryOn: () => true }),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });

@@ -53,6 +53,7 @@ import { NoteCallout } from '@/components/primitives/NoteCallout';
 import { AdminGate } from '@/components/admin/AdminGate';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { SyncStatus } from '@/components/admin/SyncStatus';
+import { NotificationMatrix } from '@/components/admin/NotificationMatrix';
 import {
   adminGateFixtures,
   adminShellFixtures,
@@ -101,6 +102,7 @@ import {
   statTileFixtures,
   statusPillFixtures,
   syncStatusFixtures,
+  notificationMatrixFixtures,
   tableFixtures,
   tipPanelFixtures,
   toggleFixtures,
@@ -660,6 +662,21 @@ export default function ComponentsPreviewPage() {
                 {/* "Sync now" calls the real `triggerSync` — signed out it answers with its
                     inline error (interaction-only pending/error states, the Toggle precedent). */}
                 <SyncStatus {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {notificationMatrixFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="NotificationMatrix" label={label}>
+                {/* SAVE / Test call the real actions — signed out they answer with their inline
+                    error (interaction-only dirty / pending states, the Toggle precedent). The
+                    Moderators slot is the page's server-rendered section on /admin/settings. */}
+                <NotificationMatrix {...props}>
+                  <p className={styles['preview-note']}>
+                    Moderators table — server-rendered on /admin/settings.
+                  </p>
+                </NotificationMatrix>
               </Specimen>
             ))}
           </div>
