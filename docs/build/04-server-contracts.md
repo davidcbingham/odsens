@@ -702,7 +702,7 @@ Rule: `track()` is called only from `components/**` client leaves via `lib/analy
 | `UPLOAD_TOKEN_HOURS` | 2 | §1.4.5 |
 | `MODRINTH_CALL_SPACING_MS` | 100 | §3.1 |
 | `RENDER_TIMEOUT_MS` | 20000 | §3.8 |
-| `DELIVER_TIME_BUDGET_MS` | 40000 | §3.7 (stop before the next send unit once this much of the TICK has elapsed — the owner run's `started_at` under `runNotify`, N2; the route's `maxDuration` is 60 s) |
+| `DELIVER_TIME_BUDGET_MS` | 12000 | §3.7 (stop before the next send unit once this much of the TICK has elapsed — the owner run's `started_at` under `runNotify`, N2; the route's `maxDuration` is 60 s and one SC-09 send can take ~47 s, so the budget plus the worst-case unit stays under it — was 40000, tuned at the S1.5 backend gate) |
 
 The §3.7 N1/N2/N4 and J-S *rules* (`MAX_ATTEMPTS` 5, `DIGEST_THRESHOLD` 5, `backoffMs(attempts)` = 5 min × 2^(attempts−1), `STALE_WINDOW_HOURS` 6, `STALE_SOURCES`) live as named constants in `lib/notify/constants.ts` beside these tunables — code homes, not tunables (ADR-R6 applies).
 

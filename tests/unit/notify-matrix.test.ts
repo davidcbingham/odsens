@@ -303,8 +303,9 @@ describe('lib/notify/constants.ts (04 §5.8 tunables; supplementary — no 05 ID
     expect(FANOUT_BATCH).toBe(500);
     expect(DELIVER_BATCH).toBe(100);
     expect(DISCORD_PER_TICK).toBe(20);
-    expect(DELIVER_TIME_BUDGET_MS).toBe(40_000);
-    expect(DELIVER_TIME_BUDGET_MS).toBeLessThan(60_000); // route maxDuration 60 (02 §1.4)
+    expect(DELIVER_TIME_BUDGET_MS).toBe(12_000);
+    // route maxDuration 60 s (02 §1.4) minus one worst-case SC-09 send (~47 s)
+    expect(DELIVER_TIME_BUDGET_MS + 47_000).toBeLessThan(60_000);
     expect(MAX_ATTEMPTS).toBe(5);
     expect(DIGEST_THRESHOLD).toBe(5);
     expect(STALE_WINDOW_HOURS).toBe(6);
