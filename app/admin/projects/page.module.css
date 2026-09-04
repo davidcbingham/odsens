@@ -34,6 +34,12 @@
   gap: var(--space-12);
 }
 
+/* Heading-row end slot: the "New exclusive project" link sits at the table's top-right corner. */
+.admin-projects-heading-actions {
+  margin-inline-start: auto;
+  align-self: center;
+}
+
 /* Project cell: title over slug, scannable at a glance. */
 .admin-projects-name {
   display: flex;

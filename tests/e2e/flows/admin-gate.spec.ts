@@ -1,8 +1,9 @@
 /**
  * tests/e2e/flows/admin-gate.spec.ts — T-E2E-33: the `/admin` role gate (02 §4, RP-14; ADR-0002
  * C2/C4; 01 INV-31). anon → HTTP 200 `AdminGate`; `user` → the root 404 (same body as T-E2E-14);
- * `mod` → `AdminShell` sidebar without Settings; `admin` → with Settings; `/admin/settings` does not
- * exist until S1.5 → 404 for everyone.
+ * `mod` → `AdminShell` sidebar without Settings and `/admin/settings` → root 404 (02 RP-04 — the one
+ * admin page a moderator 404s on, 00 S1.5.AC1); `admin` → with Settings and `/admin/settings` → 200
+ * titled `Settings · Admin` (the route ships whole in S1.5 — ADR-0002 C2).
  */
 import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
@@ -79,12 +80,21 @@ test.describe('admin gate', () => {
     await expect(page.getByRole('heading', { name: 'SYNC' })).toBeVisible();
     await expect(page.locator('header button[aria-haspopup="menu"]')).toContainText('seed_mod');
 
+    // S1.5: the route exists; the page's own `notFound()` (02 RP-04, 00 S1.5.AC1) renders the root
+    // 404 SHELL for a moderator — no admin nav, no settings content, never a 403 body. It runs
+    // under the admin `loading.tsx` boundaries, so Next 16 streams the shell before `notFound()`
+    // and locks the status at 200 (the ADR-0025 mechanism; tests/e2e/smoke/shells.spec.ts header):
+    // the body is the binding assertion, status ∈ {200, 404} until the upstream fix lands.
     const settings = await page.goto('/admin/settings');
-    expect(settings?.status()).toBe(404);
+    expect([200, 404]).toContain(settings?.status());
     expect((await h1Text(page)).toLowerCase()).toContain("that page doesn't exist");
+    await expect(page.getByText('Probably never did.')).toBeVisible();
+    await expect(page.locator('nav[aria-label="Admin"]')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'NOTIFICATIONS' })).toHaveCount(0);
+    await expect(page.getByText(/not allowed/i)).toHaveCount(0);
   });
 
-  test('T-E2E-33 admin /admin → 200, sidebar with Settings; /admin/settings → 404 until S1.5', async ({
+  test('T-E2E-33 admin /admin → 200, sidebar with Settings; /admin/settings → 200 "Settings · Admin" (S1.5)', async ({
     page,
   }) => {
     await loginAs(page, 'admin');
@@ -96,8 +106,12 @@ test.describe('admin gate', () => {
     );
     await expect(page.locator('header button[aria-haspopup="menu"]')).toContainText('oddsense');
 
-    // ADR-0002 C2: the route itself arrives in S1.5.
+    // S1.5 (ADR-0002 C2): the whole route exists — admin gets the page inside the shell.
     const settings = await page.goto('/admin/settings');
-    expect(settings?.status()).toBe(404);
+    expect(settings?.status()).toBe(200);
+    await expect(page).toHaveTitle('Settings · Admin');
+    expect(await h1Text(page)).toBe('Settings');
+    await expect(page.locator('nav[aria-label="Admin"]')).toHaveCount(1);
+    await expect(page.getByRole('heading', { name: 'NOTIFICATIONS' })).toBeVisible();
   });
 });

@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     { "path": "/api/cron/sync-modrinth", "schedule": "7 * * * *" },
-    { "path": "/api/cron/sync-curseforge", "schedule": "17 * * * *" }
+    { "path": "/api/cron/sync-curseforge", "schedule": "17 * * * *" },
+    { "path": "/api/cron/notify", "schedule": "*/5 * * * *" }
   ]
 }
