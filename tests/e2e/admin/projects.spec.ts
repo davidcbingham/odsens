@@ -611,7 +611,11 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     page,
   }) => {
     await loginAs(page, 'admin');
-    await page.goto('/admin/projects/new');
+    // Entry point per 02 §1.3: the list's heading-row "New exclusive project" link.
+    await page.goto('/admin/projects');
+    await page.getByRole('link', { name: 'New exclusive project', exact: true }).click();
+    await page.waitForURL('**/admin/projects/new');
+    await expect(page.getByRole('heading', { name: 'New project' })).toBeVisible();
 
     await page.getByLabel('Slug').fill(SLUG);
     await page.getByLabel('Title').fill(TITLE);
