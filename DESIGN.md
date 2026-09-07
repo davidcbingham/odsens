@@ -1,5 +1,7 @@
-# odsens.com — Design System (v1.6)
+# odsens.com — Design System (v1.7)
 
+> v1.7 (2026-09-06): §9 (9) Admin — the header strip opens with the odsens mark (28px crown avatar + `ODSENS` wordmark) linking to `/`, left of the ADMIN label; admin previously had no control back to the public site (David, 2026-09-06) — ADR-0033. The pass-2/pass-3 admin frames predate this and show the strip without the mark.
+>
 > v1.6 (2026-09-06): the **crown alone is the site mark** — `assets/brand/avatar/oddsense-avatar-5000.png` and the `public/brand/avatar-{80,112,160}.png` derivatives now hold the crown, not the full OddSense character, which is Oliver's own account picture (Oliver's call: the crown is the website, the character is him) — ADR-0032. §2 and §10 reworded to match; palette tokens unchanged. Open: whether the two "OddSense makes things for Minecraft" intro strips (§6.1 Home, featured hero) keep the character or take the crown — they share the one file, so today they show the crown.
 >
 > v1.5 (2026-08-27): §11.3 #19 Banned page gains the Delete account control — the `/profile` trigger + the §11.2 inline confirm on the slab, shown only once onboarded; Sign out stays in the shell (David's S1.1 merge decision — ADR-0021). No other visual change.
@@ -170,7 +172,7 @@ Minimum hit target 44px everywhere. Focus is a 3px `--gold` ring with 2px offset
 6. **Art** — filter row (all / avatars / thumbnails / icons), then a column-flow masonry where **each piece keeps its own dimensions**: images render at natural aspect ratio (`height: auto`, never cropped, never forced into a square), so wide thumbnails and tall squares pack flush with one 18px gutter. Four columns desktop, two phone, one under 480. Lightbox with title, year and optional download.
 7. **Support** — gold hatched panel with $1 / $3 / $5 / Other (one preselected) and a single send button, so tipping is one or two clicks; Ko-fi handles the payment; "What it pays for" slab in plain copy; reserved dashed slot for the future supporters wall (handles only, no amounts).
 8. **Custom orders** — type selector (mod / plugin / skin / pack / art), handle, "What do you want made" textarea with a helper line, then Minecraft version + **loader** + budget ("no idea is a valid answer"). The loader dropdown (Fabric / NeoForge / Forge / Paper / Spigot) renders **only when the type is mod or plugin** and is hidden for skin, pack and art; it carries a Silkscreen "MOD / PLUGIN ONLY" tag and a helper line. Then a public-posting checkbox, SEND IT, and an honest expectation line ("I reply in a few days. No promises, no invoices yet.").
-9. **Admin** — 220px sidebar (Comments with count, Projects, Skins, Art, Orders, Settings; active item has a gold left bar), moderation queue table, add/edit forms, drag-drop file well. Palette stays, poster type goes: Space Grotesk labels, clarity over flair.
+9. **Admin** — header strip opening with the odsens mark (28px crown avatar + `ODSENS` wordmark, links to `/` — the way back to the public site) then the ADMIN label (links to `/admin`), with the profile menu right (ADR-0033); 220px sidebar (Comments with count, Projects, Skins, Art, Orders, Settings; active item has a gold left bar), moderation queue table, add/edit forms, drag-drop file well. Palette stays, poster type goes: Space Grotesk labels, clarity over flair.
 
 Breakpoints: phone ≤ 599, tablet 600–899 (2-up grids, collapsed nav), desktop ≥ 900, max content 1280.
 

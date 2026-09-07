@@ -80,6 +80,17 @@ test.describe('admin gate', () => {
     await expect(page.getByRole('heading', { name: 'SYNC' })).toBeVisible();
     await expect(page.locator('header button[aria-haspopup="menu"]')).toContainText('seed_mod');
 
+    // ADR-0033: admin had no control back to the public site. The header strip opens with the
+    // odsens mark (crown avatar + wordmark) linking to `/`, left of the ADMIN label.
+    const brand = page.locator('header').first().getByRole('link', { name: 'odsens home' });
+    await expect(brand).toHaveAttribute('href', '/');
+    await expect(brand).toContainText('ODSENS');
+    await expect(brand.locator('img')).toHaveAttribute('src', /avatar-80\.png/);
+    await expect(page.locator('header').first().getByLabel('Admin home')).toHaveAttribute(
+      'href',
+      '/admin',
+    );
+
     // S1.5: the route exists; the page's own `notFound()` (02 RP-04, 00 S1.5.AC1) renders the root
     // 404 SHELL for a moderator — no admin nav, no settings content, never a 403 body. It runs
     // under the admin `loading.tsx` boundaries, so Next 16 streams the shell before `notFound()`
