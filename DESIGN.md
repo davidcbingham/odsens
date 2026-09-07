@@ -1,5 +1,7 @@
-# odsens.com — Design System (v1.5)
+# odsens.com — Design System (v1.6)
 
+> v1.6 (2026-09-06): the **crown alone is the site mark** — `assets/brand/avatar/oddsense-avatar-5000.png` and the `public/brand/avatar-{80,112,160}.png` derivatives now hold the crown, not the full OddSense character, which is Oliver's own account picture (Oliver's call: the crown is the website, the character is him) — ADR-0032. §2 and §10 reworded to match; palette tokens unchanged. Open: whether the two "OddSense makes things for Minecraft" intro strips (§6.1 Home, featured hero) keep the character or take the crown — they share the one file, so today they show the crown.
+>
 > v1.5 (2026-08-27): §11.3 #19 Banned page gains the Delete account control — the `/profile` trigger + the §11.2 inline confirm on the slab, shown only once onboarded; Sign out stays in the shell (David's S1.1 merge decision — ADR-0021). No other visual change.
 >
 > v1.4 (2026-08-21): §11.1 Profile menu items are Your profile (and Admin for moderators/admins) + Sign out — "Change handle" / "Change picture" removed (David, S1.1 preview review; all three opened `/profile`) — ADR-0018. §11.3 #10 Handle onboarding: no Skip button, DONE gated on the handle only — ADR-0017. §11.3 #19 Banned page added (the #18 slab with "YOU'RE BANNED" and one line; the shell's Sign out is the only control) — ADR-0019. No other visual change.
@@ -23,7 +25,7 @@ Direction: **Crate Poster** — blocky poster type on flat colour slabs, hard 2p
 
 ## 1. Colour tokens
 
-Palette is sampled from the OddSense avatar (`assets/brand/avatar/oddsense-avatar-5000.png`): navy-black ground, indigo-violet armour, two crown golds, emerald crown gems, white outline.
+Palette was sampled from the original OddSense character art: navy-black ground, indigo-violet armour, two crown golds, emerald crown gems, white outline. The tokens below are unchanged; since v1.6 the file at `assets/brand/avatar/oddsense-avatar-5000.png` holds the crown mark alone, so the full set can no longer be re-read off it (ADR-0032).
 
 ### Dark (default)
 
@@ -209,7 +211,7 @@ odsens talks like someone who thinks the joke is funnier if you don't point at i
 
 ## 10. Assets
 
-- `assets/brand/avatar/oddsense-avatar-5000.png` — OddSense avatar (5000×5000 PNG). Source of the palette. Used at 40px in nav, 56px in the home intro strip, and full-size in the Art gallery.
+- `assets/brand/avatar/oddsense-avatar-5000.png` — the **odsens site mark**: the crown alone (5000×5000 PNG), with `public/brand/avatar-{80,112,160}.png` as its derivatives. Used at 40px in nav. The full OddSense character — the original of this file and the source of the §2 palette — is **Oliver's personal account picture**, not a repo brand asset (v1.6, ADR-0032). The 56px intro strips on Home and the featured hero still read the same file, so they render the crown until ADR-0032's open item closes.
 - `assets/brand/art/art-*.png` — commissioned PFPs and renders (crowned duck, McTry, MrHams, ESC0M14, Galaxy, JG, two Minecraft renders). Feeding the Art gallery.
 - `assets/brand/skins/skin-*.png` — eight 64×64 skin files (Me, Kitsune, Angel Ducky, Red Suited Ducky, Emo Duck, Basic Squid, Feltur, Brick Block). These are **source textures**, not display images: the site renders them as 3D models. Only the small corner reference thumbs use them flat, at integer scale with `image-rendering: pixelated`.
 - `assets/brand/thumbnails/thumb-*.png` — video thumbnails (every-effect, wither hunt, frog).
