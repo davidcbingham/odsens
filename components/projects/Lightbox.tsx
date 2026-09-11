@@ -180,6 +180,7 @@ export function Lightbox({ images, index, onClose, onIndex, meta, className }: L
               width={image.width}
               height={image.height}
               sizes="100vw"
+              quality={90}
               className={styles['lightbox-img']}
             />
           ) : (
@@ -188,6 +189,7 @@ export function Lightbox({ images, index, onClose, onIndex, meta, className }: L
               alt={image.alt}
               fill
               sizes="100vw"
+              quality={90}
               className={styles['lightbox-img-fill']}
             />
           )}

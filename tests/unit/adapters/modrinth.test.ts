@@ -12,9 +12,12 @@ import {
   MOD_LOADERS,
   PLUGIN_LOADERS,
   createModrinth,
+  iconBase,
+  isResizedIcon,
   mapProject,
   mapProjectType,
   mapVersion,
+  normalizeSyncedSlug,
   type ModrinthProject,
   type ModrinthVersion,
 } from '@/lib/adapters/modrinth';
@@ -371,5 +374,99 @@ describe('T-ADP-6 modrinth rate limiting (04 §4.1 quota)', () => {
     await vi.runAllTimersAsync();
     expect(await promise).toEqual([]);
     expect(times).toEqual([0, 2000]); // reset 2 s > backoff 1 s
+  });
+});
+
+describe('T-ADP-21 synced slugs, gallery originals, icon originals (ADR-0034 D1/D4)', () => {
+  it('T-ADP-21 normalizeSyncedSlug: a trailing dash, upper case or spaces are slugified', () => {
+    expect(
+      normalizeSyncedSlug('essential-dark-pack-armor-fix-', 'Essential Dark Pack Fix', 'x1'),
+    ).toBe('essential-dark-pack-armor-fix');
+    expect(normalizeSyncedSlug('Metal Pipe Mace', 'Metal Pipe Mace', 'x2')).toBe('metal-pipe-mace');
+    expect(normalizeSyncedSlug('duck-crosshair', 'Duck Crosshair', 'x3')).toBe('duck-crosshair');
+  });
+
+  it('T-ADP-21 normalizeSyncedSlug: too short or reserved → the title, then the id', () => {
+    expect(normalizeSyncedSlug('ab', 'Pixel Chameleon', 'AbCd1234')).toBe('pixel-chameleon');
+    expect(normalizeSyncedSlug('projects', 'Projects', 'AbCd1234')).toBe('p-abcd1234');
+  });
+
+  it('T-ADP-21 mapProject: a trailing-dash upstream slug lands normalised; raw_url wins over the _350 thumbnail', () => {
+    const raw = projects[0]!;
+    const row = mapProject({
+      ...raw,
+      slug: 'essential-dark-pack-armor-fix-',
+      gallery: [
+        {
+          url: 'https://cdn.modrinth.com/data/sd000101/images/abc_350.webp',
+          raw_url: 'https://cdn.modrinth.com/data/sd000101/images/abc.png',
+          ordering: 0,
+        },
+        {
+          url: 'https://cdn.modrinth.com/data/sd000101/images/def_350.webp',
+          raw_url: null,
+          ordering: 1,
+        },
+      ],
+    });
+    expect(row.slug).toBe('essential-dark-pack-armor-fix');
+    expect(row.gallery.map((item) => item.url)).toEqual([
+      'https://cdn.modrinth.com/data/sd000101/images/abc.png',
+      'https://cdn.modrinth.com/data/sd000101/images/def_350.webp',
+    ]);
+  });
+
+  it('T-ADP-21 iconBase: a resized icon and its original share a base; other URLs are their own base', () => {
+    expect(iconBase('https://cdn.modrinth.com/data/YmigF2rg/1b88c1_96.webp')).toBe(
+      'https://cdn.modrinth.com/data/YmigF2rg/1b88c1',
+    );
+    expect(iconBase('https://cdn.modrinth.com/data/YmigF2rg/1b88c1.png')).toBe(
+      'https://cdn.modrinth.com/data/YmigF2rg/1b88c1',
+    );
+    expect(iconBase('https://cdn.modrinth.com/data/sd000101/icon.png')).toBe(
+      'https://cdn.modrinth.com/data/sd000101/icon',
+    );
+    expect(iconBase(null)).toBeNull();
+    expect(isResizedIcon('https://cdn.modrinth.com/data/YmigF2rg/1b88c1_96.webp')).toBe(true);
+    expect(isResizedIcon('https://cdn.modrinth.com/data/YmigF2rg/1b88c1.png')).toBe(false);
+    expect(isResizedIcon(null)).toBe(false);
+  });
+
+  it('T-ADP-21 resolveIconUrl: HEAD-probes the original extensions in order and returns the first 200', async () => {
+    const calls: string[] = [];
+    const agents: unknown[] = [];
+    const impl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      calls.push(`${init?.method ?? 'GET'} ${url}`);
+      agents.push((init?.headers as Record<string, string> | undefined)?.['User-Agent']);
+      return new Response(null, { status: url.endsWith('.jpg') ? 200 : 404 });
+    }) as unknown as typeof fetch;
+    const modrinth = createModrinth({ fetch: impl, env: ENV });
+    await expect(
+      modrinth.resolveIconUrl('https://cdn.modrinth.com/data/YmigF2rg/1b88c1_96.webp'),
+    ).resolves.toBe('https://cdn.modrinth.com/data/YmigF2rg/1b88c1.jpg');
+    expect(calls).toEqual([
+      'HEAD https://cdn.modrinth.com/data/YmigF2rg/1b88c1.png',
+      'HEAD https://cdn.modrinth.com/data/YmigF2rg/1b88c1.jpg',
+    ]);
+    expect(agents).toEqual([UA, UA]);
+  });
+
+  it('T-ADP-21 resolveIconUrl: no original found, a network error, or a non-resized URL → unchanged, no API call', async () => {
+    const failingSpy = vi.fn(async () => {
+      throw new Error('offline');
+    });
+    const failing = failingSpy as unknown as typeof fetch;
+    const modrinth = createModrinth({ fetch: failing, env: ENV });
+    await expect(
+      modrinth.resolveIconUrl('https://cdn.modrinth.com/data/YmigF2rg/1b88c1_96.webp'),
+    ).resolves.toBe('https://cdn.modrinth.com/data/YmigF2rg/1b88c1_96.webp');
+    expect(failingSpy).toHaveBeenCalledTimes(5);
+    failingSpy.mockClear();
+    await expect(
+      modrinth.resolveIconUrl('https://cdn.modrinth.com/data/sd000101/icon.png'),
+    ).resolves.toBe('https://cdn.modrinth.com/data/sd000101/icon.png');
+    await expect(modrinth.resolveIconUrl(null)).resolves.toBeNull();
+    expect(failingSpy).not.toHaveBeenCalled();
   });
 });

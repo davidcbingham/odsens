@@ -23,6 +23,8 @@ import 'server-only';
 import { sleep } from '@/lib/adapters/http';
 import {
   createModrinth,
+  iconBase,
+  isResizedIcon,
   mapProject,
   mapVersion,
   type ModrinthVersion,
@@ -347,9 +349,21 @@ export async function syncModrinth(opts: JobOptions): Promise<JobSummary> {
             }
             attempted += 1;
             try {
+              const existing = byExternalId.get(mapped.external_id);
+              // ADR-0034 D4: keep the stored full-size icon while the upstream icon is unchanged
+              // (same base) — unless the stored value is itself still a resized `_96.webp` (rows
+              // synced before this rule), which is upgraded once; otherwise probe for the original.
+              if (
+                existing !== undefined &&
+                iconBase(existing.icon_url) === iconBase(mapped.icon_url) &&
+                !isResizedIcon(existing.icon_url)
+              ) {
+                mapped.icon_url = existing.icon_url;
+              } else {
+                mapped.icon_url = await modrinth.resolveIconUrl(mapped.icon_url);
+              }
               const payload = projectPayload(mapped);
               const syncedAt = new Date().toISOString();
-              const existing = byExternalId.get(mapped.external_id);
               let projectId: string;
               if (existing === undefined) {
                 const inserted = await db

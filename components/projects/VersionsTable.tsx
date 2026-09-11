@@ -2,7 +2,7 @@ import { Markdown } from '@/components/primitives/Markdown';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
 import { TrackedLink } from '@/components/primitives/TrackedLink';
 import { formatFileSize } from '@/lib/format/size';
-import { hasChangelog, sortVersionsForTable } from '@/lib/versions';
+import { formatVersionList, hasChangelog, sortVersionsForTable } from '@/lib/versions';
 import { ChangelogExpander, ChangelogExpanderSummary } from './ChangelogExpander';
 import styles from './VersionsTable.module.css';
 
@@ -84,7 +84,7 @@ export function VersionsTable({
           <ChangelogExpanderSummary groupName={groupName} id={options.rowId} />
         ) : null}
       </td>
-      <td className={styles['versions-minecraft']}>{version.gameVersions.join(', ')}</td>
+      <td className={styles['versions-minecraft']}>{formatVersionList(version.gameVersions)}</td>
       <td className={styles['versions-loader']}>{version.loaders.join(', ')}</td>
       <td className={styles['versions-size']}>{formatFileSize(file.sizeBytes)}</td>
       <td className={styles['versions-download']}>
