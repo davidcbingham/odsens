@@ -645,9 +645,9 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     await page.getByLabel('Title').fill(TITLE);
     await page.getByLabel('Description').fill('An exclusive datapack created by the e2e suite.');
     // Type is the themed listbox (ADR-0035 D1): open the combobox, pick the option.
-    await page.getByLabel('Type').click();
+    await page.getByLabel('Type', { exact: true }).click();
     await page.getByRole('option', { name: 'Datapack' }).click();
-    await expect(page.getByLabel('Type')).toHaveText('Datapack');
+    await expect(page.getByLabel('Type', { exact: true })).toHaveText('Datapack');
     await page.getByRole('group', { name: 'Loaders' }).getByLabel('Datapack').check();
     await page.getByLabel('Game versions').fill('1.21');
 

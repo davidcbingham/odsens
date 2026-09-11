@@ -232,7 +232,7 @@ Everything below is additive. Direction, palette, type and existing components a
 
 **Square toggle.** A 20–22px square, not a switch: off = `--slab-sunk` fill with `--line-strong` border; on = filled (`--emerald` for notification switches, `--indigo-lift` for mode/selection) with a 2px `✔`. The word **ON / OFF** in 11px Silkscreen always sits next to it — state never rides on colour. Radio-style choices (moderation mode, order status) use the same square, one filled.
 
-**Picture upload.** 88–120px square well, 2px border. Empty: `NO PICTURE` in 10px Silkscreen. Uploading: indigo border, percent in Silkscreen 11px, flat 10px progress bar. Error: danger fill/border, `!` glyph, "That didn't upload. Try again?". Done: the image with a 3px white border plus Change / Remove. Crop is square-only: dimmed original, 2px gold crop box, USE THIS / Cancel.
+**Picture upload.** 88–120px square well, 2px border. Empty: `NO PICTURE` in 10px Silkscreen. Uploading: indigo border, percent in Silkscreen 11px, flat 10px progress bar. Error: danger fill/border, `!` glyph, "That didn't upload. Try again?". Done: the image with a 2px white border (v1.8, ADR-0035 D2) plus Change / Remove. Crop is square-only: dimmed original, 2px gold crop box, USE THIS / Cancel.
 
 **Toast.** `--slab` slab, 2px `--line-soft`, **6px `--gold` left bar**, `4px 4px 0` offset, 14–15px Space Grotesk. Bottom-**left**, 24px inset, so it never fights the support button. Auto-dismisses at ~4s; content is three words max: "Comment posted." / "Saved." / "Copied." Errors are not toasts — they stay inline beside the thing that failed.
 

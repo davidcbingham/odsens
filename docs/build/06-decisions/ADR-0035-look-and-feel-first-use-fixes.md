@@ -17,8 +17,8 @@ Kind: design
 
 ## Decision
 1. **`Select` is a themed listbox and a client island (D1).** `components/primitives/Select.tsx` gains `'use client'` and renders a trigger `<button aria-haspopup="listbox" aria-expanded>` in the admin-field/filter recipe (unchanged rest look: `--slab-sunk`, 2 px `--line-soft`, 3 px radius, `▾` glyph) and, open, a `role="listbox"` panel in the profile-menu recipe (`--slab`, 2 px `--line-soft`, `4px 4px 0 --ink-deep`, `--dur-fast` fade-in) with `role="option"` rows (44 px, hover/active `--slab-raised`, selected = `--indigo-lift` text + `✔`). Keyboard: Enter/Space/ArrowDown open; Arrow/Home/End move; type-ahead; Enter selects; Esc closes and refocuses; Tab closes; click outside closes. A hidden `<input type="hidden" name value>` keeps server forms and `FormData.get(name)` working unchanged; `label`/`name`/`options`/`value`/`defaultValue`/`onChange`/`compact`/`disabled` props are unchanged (03 C-03 additive: none). The trigger carries `id="select-<name>"` and `aria-labelledby` the label so `getByLabel('Type')` still resolves. Native `<select>` is gone; `selectOption` in e2e becomes click + option.
-2. **Avatar outline is 2 px everywhere (D2).** `Avatar` drops the `border` prop; the CSS border is `2px solid var(--white)` for every size, the same width as card and button outlines (DESIGN.md §3). Callers that passed `border={2}` lose the prop; the brand-file `unoptimized` comment updates its arithmetic (36 px content box at size 40).
-3. **Route changes fade in (D3).** `app/(public)/template.tsx` and `app/admin/template.tsx` wrap the page in a `div` with a `page-in` animation: opacity 0 → 1 and translateY 3 px → 0 over `--dur-base` (160 ms) ease-out; under `prefers-reduced-motion: reduce` the transform is dropped and only the opacity runs (DESIGN.md §8 "drop transforms, keep colour changes"). `template.tsx` remounts per navigation, which is what replays it; layouts are untouched, so nav/footer never fade. No `experimental.*`, no View Transitions API (ADR-0002 C1).
+2. **Avatar outline is 2 px everywhere (D2).** `Avatar` drops the `border` prop; the CSS border is `2px solid var(--white)` for every size, the same width as card and button outlines (DESIGN.md §3). Callers that passed `border={2}` lose the prop; the brand-file `unoptimized` comment updates its arithmetic (36 px content box at size 40). The `/welcome` picture-upload "Done" preview (`AvatarUpload`, DESIGN.md §11.1) follows the same rule — 2 px.
+3. **Route changes fade in (D3).** `app/(public)/template.tsx` and `app/admin/template.tsx` wrap the page in a `div` with a `page-in` animation: opacity 0 → 1 and translateY 3 px → 0 over `--dur-fast` (150 ms) ease-out; under `prefers-reduced-motion: reduce` the transform is dropped and only the opacity runs (DESIGN.md §8 "drop transforms, keep colour changes"). `template.tsx` remounts per navigation, which is what replays it; layouts are untouched, so nav/footer never fade. No `experimental.*`, no View Transitions API (ADR-0002 C1).
 4. **Loaders are a checkbox grid (D4).** New primitive `CheckGrid` (03 §2.2; `Sh`): a `<fieldset>` with the field label as `<legend>` and one square checkbox per option (the §11.1 square-toggle look: 22 px, `--line-strong`, on = `--indigo-lift` + `✔`), name repeated per box so `formData.getAll(name)` yields the list. Used for Loaders on `/admin/projects/new`, the `/admin/projects/[id]` DETAILS form and the `UploadWell` version form; options = the 04 shared `LOADERS` enum in its order, labels via `loaderLabel` (ADR-0034 D2). The page glue reads `formData.getAll('loaders')` instead of splitting a comma string; the `UploadWell` client state becomes `string[]` (controlled `value`/`onChange`); options = `LOADER_OPTIONS` in `lib/format/loader.ts`. The 04 §1.4 action inputs (`loaders: string[]`) are unchanged. Game versions and categories stay comma text fields.
 5. **`TipPanel` copy (D5, copy only — ADR-R9, recorded here for the trail).** The dry line is "Support OddSense on Ko-fi."; the button stays "Tip a dollar" → `/support`.
 
@@ -28,7 +28,7 @@ Kind: design
 | `appearance: base-select` (customisable select, CSS-only) | Chromium-only today; Safari/Firefox keep the device picker, which is the complaint. |
 | Style the native `<select>` harder | The open picker is OS-drawn; no CSS reaches it. |
 | Keep `border` prop with default 2 | Nothing would pass 3 any more; a dead option in a primitive is drift waiting to happen. |
-| View Transitions API for the fade | Behind `experimental.viewTransition` in Next (ADR-0002 C1 forbids `experimental.*`); `template.tsx` + CSS is enough for a 160 ms fade. |
+| View Transitions API for the fade | Behind `experimental.viewTransition` in Next (ADR-0002 C1 forbids `experimental.*`); `template.tsx` + CSS is enough for a 150 ms fade. |
 | Fade inside `layout.tsx` | Layouts persist across navigations, so the animation would run once; `template.tsx` exists for exactly this. |
 | Multi-select `<select multiple>` for loaders | The device picker again, and a poor phone experience; the square-toggle grid is already the site's multi-choice idiom (notification matrix). |
 
@@ -40,9 +40,10 @@ Kind: design
 ## Docs amended
 | Doc | Section | Change |
 |---|---|---|
-| `docs/build/03-components.md` | §2.2 `Select`, `Avatar`, new `CheckGrid` row; §1.4 client-island list; §2.3 `TipPanel`; Status line | listbox + `C`; 2 px border, no `border` prop; the grid; the plain line (contains ADR-0035) |
+| `docs/build/03-components.md` | §2.2 `Select`, `Avatar`, `AvatarUpload`, new `CheckGrid` row; §1.4 client-island list; §2.3 `TipPanel`; §4 N-02; C-08 note; Status line | listbox + `C`; 2 px border everywhere, no `border` prop; the grid; the plain line (contains ADR-0035) |
+| `docs/build/02-routes-and-pages.md` | §1.3 `/admin/projects/new`, `/admin/projects/[id]` rows; Status line | `CheckGrid` Loaders + themed `Select` (contains ADR-0035) |
 | `docs/build/01-architecture.md` | §1 tree `app/(public)/`, `app/admin/` | `template.tsx` route fade (contains ADR-0035) |
-| `DESIGN.md` | §3 borders; §5 Filter bar, Nav; §8 Motion; changelog v1.8 | 2 px avatar outline; themed listbox; route fade rule (contains ADR-0035) |
+| `DESIGN.md` | §3 borders; §5 Filter bar, Nav; §8 Motion; §11.1 Picture upload; changelog v1.8 | 2 px avatar outline (incl. the upload preview); themed listbox; route fade rule (contains ADR-0035) |
 | `docs/build/05-test-plan.md` | §7.5 T-E2E-2 (listbox leg), T-E2E-35 (combobox + grid steps), T-E2E-50 (new); §8 S1.2/S1.3; Status line | the new assertions (contains ADR-0035) |
 | `docs/build/_registry.md` | Components; Modules | `CheckGrid`; `format/loader.ts` `LOADER_IDS`/`LOADER_OPTIONS` |
 | `docs/build/00-build-plan.md` | §6 Changelog | row for ADR-0035 |
@@ -53,5 +54,5 @@ Kind: design
 | Gate | Now checks |
 |---|---|
 | spec-drift-reviewer | `Select` on the C-16a list; `Avatar` props; `template.tsx` files in 01 §1; `CheckGrid` row; `getAll('loaders')` in 04 §1.4; T-E2E rows for the listbox |
-| design-fidelity-reviewer | listbox panel = profile-menu recipe; 2 px `--white` avatar border at every size; fade 160 ms / reduced-motion opacity-only; `CheckGrid` = square-toggle look; tip line copy |
+| design-fidelity-reviewer | listbox panel = profile-menu recipe; 2 px `--white` avatar border at every size; fade 150 ms / reduced-motion opacity-only; `CheckGrid` = square-toggle look; tip line copy |
 | frontend-reviewer | listbox keyboard + `aria-*`, focus return, axe clean on `/projects` + admin forms; `template.tsx` does not remount providers; no layout shift from the fade |

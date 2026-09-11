@@ -69,7 +69,7 @@
 
 /* Focus ring moves from the hidden input to the square (03 C-25). */
 .check-grid-input:focus-visible + .check-grid-square {
-  outline: 2px solid var(--gold);
+  outline: 3px solid var(--gold);
   outline-offset: 2px;
 }
 

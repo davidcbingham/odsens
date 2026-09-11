@@ -21,7 +21,8 @@ import styles from './Select.module.css';
  * closes. `aria-activedescendant` names the highlighted option, `aria-selected` the chosen one.
  * The trigger is the APG select-only combobox (`role="combobox"` on the button, named by the
  * label alone via `aria-labelledby`; its text is the current value) so `getByLabel(label)` keeps
- * resolving to the control and axe sees a complete combobox.
+ * resolving to the control and axe sees a complete combobox. The list itself is named
+ * `<label> options` so a label lookup never resolves to two nodes (spec-drift, 2026-09-11).
  * The previous native `<select>` was the device picker (Oliver, 2026-09-11).
  *
  * Forms: a hidden `<input name>` carries the value, so server `<form action>`s read
@@ -233,7 +234,7 @@ export function Select({
           ref={listRef}
           id={listId}
           role="listbox"
-          aria-labelledby={labelId}
+          aria-label={`${label} options`}
           aria-activedescendant={open ? optionId(active) : undefined}
           tabIndex={-1}
           className={styles['select-panel']}

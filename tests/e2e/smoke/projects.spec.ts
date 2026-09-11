@@ -100,7 +100,7 @@ test.describe('projects', () => {
     await expect(sort).toHaveText('Downloads');
     await sort.focus();
     await page.keyboard.press('ArrowDown');
-    const listbox = page.getByRole('listbox', { name: 'Sort' });
+    const listbox = page.getByRole('listbox', { name: 'Sort options' });
     await expect(listbox).toBeVisible();
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');

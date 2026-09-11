@@ -102,8 +102,15 @@
   display: none;
 }
 
+/* The panel holds focus while open (aria-activedescendant pattern); the 3px gold ring (C-25)
+   draws on the highlighted row, inset so it stays inside the scrolling panel. */
 .select-panel:focus-visible {
   outline: none;
+}
+
+.select-panel:focus-visible .select-option[data-active] {
+  outline: 3px solid var(--gold);
+  outline-offset: -3px;
 }
 
 .select-option {
