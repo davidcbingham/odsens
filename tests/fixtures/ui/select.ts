@@ -61,7 +61,7 @@ export const selectFixtures: SelectFixture[] = [
     label: 'Select · option disabled',
     props: {
       label: 'Version',
-      name: 'version',
+      name: 'version-disabled-option',
       options: [...versionOptions, { value: '1.19.x', label: '1.19.x', disabled: true }],
       defaultValue: '1.21.x',
     },
@@ -70,7 +70,7 @@ export const selectFixtures: SelectFixture[] = [
     label: 'Select · disabled',
     props: {
       label: 'Sort',
-      name: 'sort',
+      name: 'sort-disabled',
       options: sortOptions,
       defaultValue: 'downloads',
       disabled: true,

@@ -122,7 +122,9 @@ export function Select({
     }
     return from;
   };
-  const edge = (delta: 1 | -1): number => (delta === 1 ? step(options.length - 1, 1) : step(0, -1));
+  // End = the last enabled option (scan back from past-the-end); Home = the first (scan forward
+  // from before-the-start). `step` wraps, so the scan starts outside the range on purpose.
+  const edge = (delta: 1 | -1): number => (delta === 1 ? step(options.length, -1) : step(-1, 1));
 
   const typeAhead = (key: string): number | null => {
     const now = Date.now();
@@ -211,7 +213,7 @@ export function Select({
       <span id={labelId} className={styles['select-label']}>
         {label}
       </span>
-      <input type="hidden" name={name} value={current} />
+      <input type="hidden" name={name} value={current} disabled={disabled} />
       <span className={styles['select-well']}>
         <button
           ref={triggerRef}

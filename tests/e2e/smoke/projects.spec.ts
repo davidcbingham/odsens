@@ -110,6 +110,14 @@ test.describe('projects', () => {
     await expect(sort).toBeFocused();
     await page.keyboard.press('ArrowDown');
     await expect(listbox).toBeVisible();
+    // Home / End move to the first / last option (highlight only — no pick until Enter).
+    await page.keyboard.press('End');
+    await expect(listbox.getByRole('option', { name: 'Title' })).toHaveAttribute('data-active', '');
+    await page.keyboard.press('Home');
+    await expect(listbox.getByRole('option', { name: 'Downloads' })).toHaveAttribute(
+      'data-active',
+      '',
+    );
     await page.keyboard.press('Escape');
     await expect(listbox).toBeHidden();
     await expect(sort).toHaveText('Updated');
