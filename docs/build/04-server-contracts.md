@@ -1,6 +1,6 @@
 # Server Contracts
 Purpose: the checkable contract for every Server Action, route handler, cron job, and external adapter in `_registry.md` §Server contract registry — names, files, auth, input schema, preconditions, effects, return shape, rate limits, idempotency, external calls, logging, and required tests — so gate agents can diff code against it.
-Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0009, ADR-0010, ADR-0012, ADR-0013 (2026-08-20) — amended by ADR-0014 (2026-08-20) — amended by ADR-0015 (2026-08-20) — amended by ADR-0019 (2026-08-21) — amended by ADR-0020 (2026-08-21) — amended by ADR-0021 (2026-08-27) — amended by ADR-0024 (2026-08-27) — amended by ADR-0027 (2026-08-27) — amended by ADR-0028 (2026-09-03) — amended by ADR-0030 (2026-09-03)
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0009, ADR-0010, ADR-0012, ADR-0013 (2026-08-20) — amended by ADR-0014 (2026-08-20) — amended by ADR-0015 (2026-08-20) — amended by ADR-0019 (2026-08-21) — amended by ADR-0020 (2026-08-21) — amended by ADR-0021 (2026-08-27) — amended by ADR-0024 (2026-08-27) — amended by ADR-0027 (2026-08-27) — amended by ADR-0028 (2026-09-03) — amended by ADR-0030 (2026-09-03) — amended by ADR-0031 (2026-09-06)
 
 Decisions applied: `06-decisions/ADR-0002-spec-reconciliation.md` (binding — C1–C22 + OPEN defaults 13–80); every OPEN item below that ADR-0002 settles is marked **DECIDED (ADR-0002 <ref>)**.
 
@@ -45,7 +45,7 @@ Contents: §0 Conventions (SC-01…SC-25) · §1 Server Actions · §2 Route han
 | | `NOTIFY_FROM_EMAIL` — optional, default `allay@odsens.com` — `lib/notify/deliver/email.ts` |
 | | `DISCORD_WEBHOOK_URL` — optional; seed/fallback for `site_settings.discord_webhook_url` (DB value wins) — `notifyFanOut` F2 |
 | | `CRON_SECRET` — **required** — `app/api/cron/*` |
-| | `NEXT_PUBLIC_SITE_URL` — **required** — metadata, emails, redirects, sign-out CSRF; on preview derived as `'https://' + VERCEL_BRANCH_URL` before validation (client: `NEXT_PUBLIC_VERCEL_BRANCH_URL`) and wins over a configured value; production/local use the configured value (ADR-0010) |
+| | `NEXT_PUBLIC_SITE_URL` — **required** — metadata, emails, redirects, and one of the two hosts sign-out's CSRF check accepts (the request's own host is the other — ADR-0031); on preview derived as `'https://' + VERCEL_BRANCH_URL` before validation (client: `NEXT_PUBLIC_VERCEL_BRANCH_URL`) and wins over a configured value; production/local use the configured value (ADR-0010) |
 | | `HASH_SECRET` — **required from S1.1, boot-required** (`z.string().min(32)`: missing or < 32 chars → throws at import — ADR-0012; server-only; `/auth/callback` sets `profiles.email_hash` with it — ADR-0002 A14) — SC-17 (ADR-0002 C13) |
 | | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` — optional, S1.10 (`NEXT_PUBLIC_SENTRY_DSN` is an allowed browser var — ADR-0002 #79) — Sentry init |
 | | `E2E` — test-only flag (`/__test/throw` when `E2E=1`, ADR-0002 #74) |
@@ -464,7 +464,7 @@ Sign-in is client-side: `GoogleSignInButton` (client leaf) calls `supabase.auth.
 | Tests (05) | T-ACT-8; T-ACT-10 (middleware); T-UNIT-44 (`safeNext`); T-E2E-21, T-E2E-46. |
 
 ### 2.2 `/auth/sign-out` (S1.1) — `app/auth/sign-out/route.ts`, `POST` only
-Verify `Origin` (fallback `Referer`) host equals `NEXT_PUBLIC_SITE_URL` host (CSRF) else 403; `supabase.auth.signOut()` → 303 redirect `/`. `GET`/others → 405. Un-onboarded users may call it (02 RP-21). Tests (05): T-ACT-9; T-E2E-32.
+Verify the `Origin` (fallback `Referer`) host equals a host this deployment answers on — `request.nextUrl.host` (the host the request was addressed to; on Vercel the public domain) **or** the `NEXT_PUBLIC_SITE_URL` host — else 403 (CSRF); `supabase.auth.signOut()` → 303 redirect to `/` **on the host the request came in on** (`new URL('/', request.nextUrl)`, never a cross-host hop). Comparing only against the configured host 403'd every real logout while production served `www.odsens.com` and the env named the apex — ADR-0031. `GET`/others → 405. Un-onboarded users may call it (02 RP-21). Tests (05): T-ACT-9; T-E2E-32.
 
 ### 2.3 `/api/download/[fileId]` (S1.3; kind `skin` from S1.7, ADR-0002 C8) — `app/api/download/[fileId]/route.ts`, `GET`, dynamic, nodejs (ADR-0002 C17)
 | Step | Rule |

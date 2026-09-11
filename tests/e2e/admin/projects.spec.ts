@@ -240,6 +240,10 @@ test('T-E2E-34 moderator: list + curate controls present but disabled ("Admin on
 test('T-E2E-34 admin: feature/hide/reorder on the list, notes + CF id on [id] — with revalidated public pages', async ({
   page,
 }) => {
+  // Fourteen navigations with ISR re-checks (`expectAtUrl`): ~28 s on a green CI runner, so the
+  // 30 s FLK-4 default has no headroom and a slower runner times out inside `submitAndWait`
+  // (2026-09-11). Same per-test budget as T-E2E-24 in flows/comments.spec.ts.
+  test.setTimeout(90_000);
   const service = loose(asRole('service'));
   await loginAs(page, 'admin');
 

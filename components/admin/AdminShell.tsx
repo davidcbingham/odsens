@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { FLAGS } from '@/lib/flags';
 import { ProfileMenu } from '@/components/accounts/ProfileMenu';
+import { Avatar } from '@/components/primitives/Avatar';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
 import { AdminNav } from './AdminShell.Nav';
 import styles from './AdminShell.module.css';
@@ -10,8 +11,10 @@ import styles from './AdminShell.module.css';
  * AdminShell — DESIGN.md §6.9 Admin (220px sidebar, gold left bar), §12.2; 03 §2.10 `AdminShell`;
  * 02 RP-14 sidebar order Comments · Projects · Skins · Art · Mentions · Stats · Settings (admin only)
  * · Orders (only when `FLAGS.commissions`). Server shell; `AdminNav` is the client leaf
- * (`usePathname` active). Header strip: "ADMIN" `PixelLabel` + `ProfileMenu` (viewer passed as a prop —
- * the admin layout mounts no `ViewerProvider`). `<main id="main">` for the page — `mainLandmark={false}`
+ * (`usePathname` active). Header strip, left to right: the odsens mark (28px `Avatar` + `ODSENS`
+ * wordmark) linking to `/` — the way back to the public site, which admin otherwise had no control
+ * for (ADR-0033) — then "ADMIN" `PixelLabel` linking to `/admin`, then `ProfileMenu` on the right
+ * (viewer passed as a prop — the admin layout mounts no `ViewerProvider`). `<main id="main">` for the page — `mainLandmark={false}`
  * (additive, 03 C-03; `/dev/components` only) renders that slot as a plain `<div>` so the preview page
  * keeps a single, top-level `main` landmark (T-E2E-48 axe).
  */
@@ -42,11 +45,17 @@ export function AdminShell({ viewer, counts, children, mainLandmark = true }: Ad
     <div className={styles['admin-shell']}>
       <header className={styles['admin-shell-header']}>
         <div className={styles['admin-shell-header-inner']}>
-          <Link href="/admin" className={styles['admin-shell-home']} aria-label="Admin home">
-            <PixelLabel tone="chalk" size={12}>
-              ADMIN
-            </PixelLabel>
-          </Link>
+          <div className={styles['admin-shell-header-left']}>
+            <Link href="/" className={styles['admin-shell-brand']} aria-label="odsens home">
+              <Avatar src="/brand/avatar-80.png" alt="OddSense" size={28} />
+              <span className={styles['admin-shell-wordmark']}>ODSENS</span>
+            </Link>
+            <Link href="/admin" className={styles['admin-shell-home']} aria-label="Admin home">
+              <PixelLabel tone="chalk" size={12}>
+                ADMIN
+              </PixelLabel>
+            </Link>
+          </div>
           <ProfileMenu
             viewer={{
               handle: viewer.handle,
