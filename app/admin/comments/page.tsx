@@ -79,7 +79,7 @@ function commentCell(row: ModerationQueueRow) {
           <>
             {/* decorative: the handle text sits beside it (03 `Avatar`: alt="" when adjacent) */}
             <span aria-hidden="true">
-              <Avatar src={author.avatarUrl} alt={author.handle} size={34} border={2} />
+              <Avatar src={author.avatarUrl} alt={author.handle} size={34} />
             </span>
             <span className={styles['admin-comments-handle']}>{`@${author.handle}`}</span>
           </>

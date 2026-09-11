@@ -1,5 +1,6 @@
-# odsens.com — Design System (v1.7)
+# odsens.com — Design System (v1.8)
 
+> v1.8 (2026-09-11): Oliver's first-use fixes (ADR-0035) — §3 avatar/portrait outline is **2px** white, the card/button outline width (was 3px); §5 Filter bar / Admin field selects are the **themed listbox** (trigger in the field recipe, open panel in the §11.1 profile-menu recipe — no device picker); §8 gains the **route-change fade** (page content only, 150ms opacity + 3px lift, opacity-only under reduced motion); the tip panel line is the plain "Support OddSense on Ko-fi."; Loaders on admin forms are a square-checkbox grid (`CheckGrid`).
 > v1.7 (2026-09-06): §9 (9) Admin — the header strip opens with the odsens mark (28px crown avatar + `ODSENS` wordmark) linking to `/`, left of the ADMIN label; admin previously had no control back to the public site (David, 2026-09-06) — ADR-0033. The pass-2/pass-3 admin frames predate this and show the strip without the mark.
 >
 > v1.6 (2026-09-06): the **crown alone is the site mark** — `assets/brand/avatar/oddsense-avatar-5000.png` and the `public/brand/avatar-{80,112,160}.png` derivatives now hold the crown, not the full OddSense character, which is Oliver's own account picture (Oliver's call: the crown is the website, the character is him) — ADR-0032. §2 and §10 reworded to match; palette tokens unchanged. Open: whether the two "OddSense makes things for Minecraft" intro strips (§6.1 Home, featured hero) keep the character or take the crown — they share the one file, so today they show the crown.
@@ -105,7 +106,7 @@ Three faces, strict jobs: `Bungee`, `Space Grotesk` (400/500/700), `Silkscreen` 
 - Spacing scale, 4px base: 4 · 8 · 12 · 16 · 20 · 24 · 32 · 40 · 48 · 64 · 80.
 - Card padding 20. Grid gap 20 (16–18 on dense grids). Section gap 64–80. Page gutter 24 phone / 40–56 desktop. Max content width 1200–1280.
 - Radius: **0** everywhere by default; **3px** for inputs and version/loader chips only. Nothing is a pill except nothing.
-- Borders are 2px, drawn as `outline` on cards so they never shift layout. **Card and panel outlines use `--line-soft #2C3A4B`** (lifted one step in v1.2 for visibility on dark); `--line` stays for internal dividers, footer strips and thin rules. 3px white border on avatars and portraits.
+- Borders are 2px, drawn as `outline` on cards so they never shift layout. **Card and panel outlines use `--line-soft #2C3A4B`** (lifted one step in v1.2 for visibility on dark); `--line` stays for internal dividers, footer strips and thin rules. 2px white border on avatars and portraits — the same width as every other outline (v1.8, ADR-0035 D2).
 - Depth: flat offset blocks only — `box-shadow: 4px 4px 0 <deep>` (5–6px on hero/large). No blur, no gradient surfaces, no glows.
 - The one texture: 45° diagonal hatch at 8–12% black, only on indigo or gold slabs.
 
@@ -134,7 +135,7 @@ Minimum hit target 44px everywhere. Focus is a 3px `--gold` ring with 2px offset
 
 **Version / loader chip.** 12px 500, 3px radius, 2px `--line-soft`, transparent fill. Selected: `--indigo-lift` fill with ink text. Unavailable: dim text, `--slab-raised` border, not clickable. Max four per card, then `+N`.
 
-**Filter bar.** Slab strip with 2px line, Bungee 12px filter buttons with counts (`MODS 7`), active button = indigo fill. Version and sort are 3px-radius selects on the right. Active filters echo below as removable chips plus a "Clear" ghost link. On phone the type filters scroll horizontally and the selects stack.
+**Filter bar.** Slab strip with 2px line, Bungee 12px filter buttons with counts (`MODS 7`), active button = indigo fill. Version and sort are 3px-radius selects on the right — the themed listbox, never the device picker: the trigger keeps the field recipe and the open panel takes the §11.1 profile-menu slab (v1.8, ADR-0035 D1). Active filters echo below as removable chips plus a "Clear" ghost link. On phone the type filters scroll horizontally and the selects stack.
 
 **Project card.** Slab, 2px line, icon 64px (56 on tight grids, 52 phone) in an ink well with its own 2px border, Bungee title, one-line description in mute, up to two chips, then a footer strip (`--slab-foot`, 2px top border) holding the type badge left and the download count right in Silkscreen emerald. Hover: `--slab-raised` fill, `--indigo-lift` outline, `6px 6px 0 --indigo-deep`, translate -3px/-3px. Whole card is one link; the badge is not separately clickable.
 
@@ -150,7 +151,7 @@ Minimum hit target 44px everywhere. Focus is a 3px `--gold` ring with 2px offset
 
 **Floating support button.** Gold fill, `♥ SUPPORT` in Bungee 13px, `4px 4px 0 --gold-deep`, bottom-right, 24px inset. Hides on scroll-down, returns on scroll-up. On phones it becomes a 52px gold square with the heart only.
 
-**Nav.** Sticky top bar, 68px desktop / 56px phone, `--slab` with 2px bottom line. Avatar (40px, white border) + `ODSENS` wordmark, then links in Space Grotesk (v1.3 order: Projects · Videos · Skins · Art · Seen on · Commissions — the wordmark is the Home link, there is no Home item); active link is white 700 with a 3px gold underline (inset shadow). Right side: search (projects page), Sign in / signed-in handle, gold support button. Under 900px links collapse into a 44px square menu button.
+**Nav.** Sticky top bar, 68px desktop / 56px phone, `--slab` with 2px bottom line. Avatar (40px, 2px white border — v1.8, ADR-0035 D2) + `ODSENS` wordmark, then links in Space Grotesk (v1.3 order: Projects · Videos · Skins · Art · Seen on · Commissions — the wordmark is the Home link, there is no Home item); active link is white 700 with a 3px gold underline (inset shadow). Right side: search (projects page), Sign in / signed-in handle, gold support button. Under 900px links collapse into a 44px square menu button.
 
 **Notification bell — cut from v1.** No user inbox in the first release: replies and approvals are found by revisiting the thread, and the admin side gets email instead (see §11.3 Settings). The v1.1 spec is kept in git history; if it returns it uses `--alert` for the count badge.
 
@@ -200,7 +201,7 @@ odsens talks like someone who thinks the joke is funnier if you don't point at i
 
 ## 8. Motion
 
-120–180ms, ease-out, 2–4px moves. Cards lift, shadows deepen, chips snap. One idle animation per page maximum. Nothing loops in the corner of your eye. Respect `prefers-reduced-motion`: drop transforms, keep colour changes.
+120–180ms, ease-out, 2–4px moves. Cards lift, shadows deepen, chips snap. One idle animation per page maximum. Nothing loops in the corner of your eye. Respect `prefers-reduced-motion`: drop transforms, keep colour changes. **Route change (v1.8, ADR-0035 D3):** the page content (never the nav/footer chrome) eases in — opacity 0→1 with a 3px lift over `--dur-fast`; under reduced motion the lift is dropped and only the opacity runs.
 
 ## 9. Accessibility checklist
 
@@ -231,7 +232,7 @@ Everything below is additive. Direction, palette, type and existing components a
 
 **Square toggle.** A 20–22px square, not a switch: off = `--slab-sunk` fill with `--line-strong` border; on = filled (`--emerald` for notification switches, `--indigo-lift` for mode/selection) with a 2px `✔`. The word **ON / OFF** in 11px Silkscreen always sits next to it — state never rides on colour. Radio-style choices (moderation mode, order status) use the same square, one filled.
 
-**Picture upload.** 88–120px square well, 2px border. Empty: `NO PICTURE` in 10px Silkscreen. Uploading: indigo border, percent in Silkscreen 11px, flat 10px progress bar. Error: danger fill/border, `!` glyph, "That didn't upload. Try again?". Done: the image with a 3px white border plus Change / Remove. Crop is square-only: dimmed original, 2px gold crop box, USE THIS / Cancel.
+**Picture upload.** 88–120px square well, 2px border. Empty: `NO PICTURE` in 10px Silkscreen. Uploading: indigo border, percent in Silkscreen 11px, flat 10px progress bar. Error: danger fill/border, `!` glyph, "That didn't upload. Try again?". Done: the image with a 2px white border (v1.8, ADR-0035 D2) plus Change / Remove. Crop is square-only: dimmed original, 2px gold crop box, USE THIS / Cancel.
 
 **Toast.** `--slab` slab, 2px `--line-soft`, **6px `--gold` left bar**, `4px 4px 0` offset, 14–15px Space Grotesk. Bottom-**left**, 24px inset, so it never fights the support button. Auto-dismisses at ~4s; content is three words max: "Comment posted." / "Saved." / "Copied." Errors are not toasts — they stay inline beside the thing that failed.
 

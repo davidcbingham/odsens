@@ -1,6 +1,6 @@
 /**
  * tests/fixtures/ui/avatar.ts — `Avatar` states for `/dev/components` (03 §2.2 `Avatar`; ADR-0002 #48).
- * Every size with a picture and with the initial fallback; question fallback; dim; 2px border.
+ * Every size with a picture and with the initial fallback; question fallback; dim; every size 2px border (ADR-0035 D2).
  * Pictures are the brand avatar (public/brand): 80px source under 88, 160px source at 88/104.
  */
 import type { AvatarProps } from '@/components/primitives/Avatar';
@@ -34,15 +34,15 @@ export const avatarFixtures: AvatarFixture[] = [
     props: { src: null, alt: 'Anonymous', size: 28, fallback: 'question', dim: true },
   },
   {
-    label: 'Avatar · 40 border-2',
-    props: { src: '/brand/avatar-80.png', alt: 'OddSense', size: 40, border: 2 },
+    label: 'Avatar · 40 comment',
+    props: { src: '/brand/avatar-80.png', alt: 'OddSense', size: 40 },
   },
   {
-    label: 'Avatar · 34 border-2',
-    props: { src: '/brand/avatar-80.png', alt: 'OddSense', size: 34, border: 2 },
+    label: 'Avatar · 34 reply',
+    props: { src: '/brand/avatar-80.png', alt: 'OddSense', size: 34 },
   },
   {
     label: 'Avatar · 40 initial border-2',
-    props: { src: null, alt: 'oddling', size: 40, border: 2 },
+    props: { src: null, alt: 'oddling', size: 40 },
   },
 ];
