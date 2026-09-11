@@ -2,12 +2,14 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Breadcrumb } from '@/components/primitives/Breadcrumb';
 import { Button } from '@/components/primitives/Button';
+import { CheckGrid } from '@/components/primitives/CheckGrid';
 import { Field } from '@/components/primitives/Field';
 import { Select, type SelectOption } from '@/components/primitives/Select';
 import { createExclusiveProject } from '@/lib/actions/projects';
 import type { CreateExclusiveProjectInput } from '@/lib/actions/projects.schema';
 import type { ActionError } from '@/lib/actions/result';
 import { getViewer } from '@/lib/auth';
+import { LOADER_OPTIONS } from '@/lib/format/loader';
 import styles from './page.module.css';
 
 /**
@@ -85,6 +87,14 @@ function orOmit(value: FormDataEntryValue | null): string | undefined {
 }
 
 /** Comma field → list: split on `,`, trimmed, empties dropped; `undefined` when nothing is left. */
+/** `CheckGrid` boxes → the checked values (ADR-0035 D4); none checked → `undefined` like `orList`. */
+function checkedList(values: FormDataEntryValue[]): string[] | undefined {
+  const items = values.filter(
+    (value): value is string => typeof value === 'string' && value !== '',
+  );
+  return items.length > 0 ? items : undefined;
+}
+
 function orList(value: FormDataEntryValue | null): string[] | undefined {
   const items = (typeof value === 'string' ? value : '')
     .split(',')
@@ -137,7 +147,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
     'use server';
     const body_md = orOmit(formData.get('body_md'));
     const categories = orList(formData.get('categories'));
-    const loaders = orList(formData.get('loaders'));
+    const loaders = checkedList(formData.getAll('loaders'));
     const game_versions = orList(formData.get('game_versions'));
     const license = orOmit(formData.get('license'));
     const source_url = orOmit(formData.get('source_url'));
@@ -243,10 +253,11 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
           error={fieldError('categories')}
           disabled={!canCurate}
         />
-        <Field
+        <CheckGrid
           label="Loaders"
           name="loaders"
-          helper="Comma-separated: fabric, forge, neoforge, quilt, paper, spigot, bukkit, purpur, folia, velocity, bungeecord, waterfall, sponge, datapack, minecraft."
+          options={LOADER_OPTIONS}
+          helper="Tick every loader this works on."
           error={fieldError('loaders')}
           disabled={!canCurate}
         />

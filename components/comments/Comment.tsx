@@ -249,7 +249,6 @@ export function Comment({
           src={author.avatarUrl}
           alt={author.avatarUrl ? '' : author.handle}
           size={depth === 1 ? 34 : 40}
-          border={2}
         />
         <div className={styles['comment-body']}>
           <div className={styles['comment-head']}>

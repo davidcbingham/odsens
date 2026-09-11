@@ -27,6 +27,30 @@ export function loaderLabel(id: string): string {
   return key.charAt(0).toUpperCase() + key.slice(1);
 }
 
+/** The 04 §1.4 shared `LOADERS` ids in their order — the `CheckGrid` options for the admin forms (ADR-0035 D4). */
+export const LOADER_IDS = [
+  'fabric',
+  'forge',
+  'neoforge',
+  'quilt',
+  'paper',
+  'spigot',
+  'bukkit',
+  'purpur',
+  'folia',
+  'velocity',
+  'bungeecord',
+  'waterfall',
+  'sponge',
+  'datapack',
+  'minecraft',
+] as const;
+
+export const LOADER_OPTIONS: readonly { value: string; label: string }[] = LOADER_IDS.map((id) => ({
+  value: id,
+  label: loaderLabel(id),
+}));
+
 /** `loaderLabel` over a list, order kept. */
 export function loaderLabels(ids: readonly string[]): string[] {
   return ids.map(loaderLabel);

@@ -35,14 +35,14 @@ export const avatarFixtures: AvatarFixture[] = [
   },
   {
     label: 'Avatar · 40 border-2',
-    props: { src: '/brand/avatar-80.png', alt: 'OddSense', size: 40, border: 2 },
+    props: { src: '/brand/avatar-80.png', alt: 'OddSense', size: 40 },
   },
   {
     label: 'Avatar · 34 border-2',
-    props: { src: '/brand/avatar-80.png', alt: 'OddSense', size: 34, border: 2 },
+    props: { src: '/brand/avatar-80.png', alt: 'OddSense', size: 34 },
   },
   {
     label: 'Avatar · 40 initial border-2',
-    props: { src: null, alt: 'oddling', size: 40, border: 2 },
+    props: { src: null, alt: 'oddling', size: 40 },
   },
 ];

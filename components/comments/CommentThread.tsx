@@ -532,7 +532,7 @@ export function CommentThread({
           <SignInPrompt next={`/projects/${target.slug}#comments`} />
         ) : shell === 'banned' && viewer !== null ? (
           <div className={styles['thread-banned']}>
-            <Avatar src={viewer.avatarUrl} alt={viewer.handle ?? ''} size={40} border={2} dim />
+            <Avatar src={viewer.avatarUrl} alt={viewer.handle ?? ''} size={40} dim />
             <p className={styles['thread-banned-line']}>{BANNED_LINE}</p>
           </div>
         ) : viewer !== null ? (

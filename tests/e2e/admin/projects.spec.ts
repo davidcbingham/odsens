@@ -581,7 +581,8 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     const versions = sections(page).versions;
     await versions.getByLabel('Version number').fill('1.0.0');
     await versions.getByLabel('Game versions').fill('1.21');
-    await versions.getByLabel('Loaders').fill('datapack');
+    // Loaders are a CheckGrid of square boxes (ADR-0035 D4), scoped to the file well's group.
+    await versions.getByRole('group', { name: 'Loaders' }).getByLabel('Datapack').check();
   }
 
   /** Clicks `name` and waits for its server-action POST round trip (PRG — same-URL redirect). */
@@ -643,8 +644,11 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     await page.getByLabel('Slug').fill(SLUG);
     await page.getByLabel('Title').fill(TITLE);
     await page.getByLabel('Description').fill('An exclusive datapack created by the e2e suite.');
-    await page.getByLabel('Type').selectOption('datapack');
-    await page.getByLabel('Loaders').fill('datapack');
+    // Type is the themed listbox (ADR-0035 D1): open the combobox, pick the option.
+    await page.getByLabel('Type').click();
+    await page.getByRole('option', { name: 'Datapack' }).click();
+    await expect(page.getByLabel('Type')).toHaveText('Datapack');
+    await page.getByRole('group', { name: 'Loaders' }).getByLabel('Datapack').check();
     await page.getByLabel('Game versions').fill('1.21');
 
     await page.getByRole('button', { name: 'Create draft', exact: true }).click();
@@ -824,8 +828,15 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
 
     // /admin/projects/new: the whole form renders disabled; the submit sits under the title wrap.
     await page.goto('/admin/projects/new');
-    for (const label of ['Slug', 'Title', 'Description', 'Type', 'Loaders', 'Game versions']) {
+    for (const label of ['Slug', 'Title', 'Description', 'Type', 'Game versions']) {
       await expect(page.getByLabel(label, { exact: true })).toBeDisabled();
+    }
+    // Loaders CheckGrid (ADR-0035 D4): the fieldset is disabled, so every box is.
+    for (const box of await page
+      .getByRole('group', { name: 'Loaders' })
+      .getByRole('checkbox')
+      .all()) {
+      await expect(box).toBeDisabled();
     }
     const create = page.getByRole('button', { name: 'Create draft', exact: true });
     await expect(create).toBeDisabled();
@@ -845,8 +856,14 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     await expect(page.locator(`input[aria-label="Comments on ${TITLE}"]`)).toBeDisabled();
 
     // DETAILS: fields + Save disabled (scoped — 'Game versions'/'Loaders' repeat in the file well).
-    for (const label of ['Slug', 'Title', 'Description', 'Loaders', 'Game versions']) {
+    for (const label of ['Slug', 'Title', 'Description', 'Game versions']) {
       await expect(details.getByLabel(label, { exact: true })).toBeDisabled();
+    }
+    for (const box of await details
+      .getByRole('group', { name: 'Loaders' })
+      .getByRole('checkbox')
+      .all()) {
+      await expect(box).toBeDisabled();
     }
     const save = details.getByRole('button', { name: 'Save', exact: true });
     await expect(save).toBeDisabled();
@@ -862,8 +879,14 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     }
 
     // ProjectFileWell version fields ride the same flag.
-    for (const label of ['Version number', 'Game versions', 'Loaders', 'Changelog']) {
+    for (const label of ['Version number', 'Game versions', 'Changelog']) {
       await expect(versions.getByLabel(label, { exact: true })).toBeDisabled();
+    }
+    for (const box of await versions
+      .getByRole('group', { name: 'Loaders' })
+      .getByRole('checkbox')
+      .all()) {
+      await expect(box).toBeDisabled();
     }
     await expect(toggleFor(page, 'Primary file').input).toBeDisabled();
   });

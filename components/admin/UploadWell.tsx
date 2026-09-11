@@ -10,7 +10,9 @@ import {
 } from 'react';
 import { Button } from '@/components/primitives/Button';
 import { Field } from '@/components/primitives/Field';
+import { CheckGrid } from '@/components/primitives/CheckGrid';
 import { Select } from '@/components/primitives/Select';
+import { LOADER_OPTIONS } from '@/lib/format/loader';
 import { Toggle } from '@/components/primitives/Toggle';
 import type { ActionResult } from '@/lib/actions/result';
 import { formatFileSize } from '@/lib/format/size';
@@ -468,9 +470,6 @@ function inputChange(
   return (event) => setter(event.currentTarget.value);
 }
 
-const LOADERS_HELPER =
-  'fabric, forge, neoforge, quilt, paper, spigot, bukkit, purpur, folia, velocity, bungeecord, waterfall, sponge, datapack, minecraft';
-
 const CHANNEL_OPTIONS = [
   { value: 'release', label: 'Release' },
   { value: 'beta', label: 'Beta' },
@@ -486,7 +485,7 @@ export function ProjectFileWell({
   const [versionNumber, setVersionNumber] = useState('');
   const [versionName, setVersionName] = useState('');
   const [gameVersions, setGameVersions] = useState('');
-  const [loaders, setLoaders] = useState('');
+  const [loaders, setLoaders] = useState<string[]>([]);
   const [versionType, setVersionType] = useState<'release' | 'beta' | 'alpha'>('release');
   const [changelog, setChangelog] = useState('');
   const [primaryChecked, setPrimaryChecked] = useState(false);
@@ -496,9 +495,7 @@ export function ProjectFileWell({
     : styles['project-file-well'];
 
   const ready =
-    versionNumber.trim() !== '' &&
-    splitCsv(gameVersions).length > 0 &&
-    splitCsv(loaders).length > 0;
+    versionNumber.trim() !== '' && splitCsv(gameVersions).length > 0 && loaders.length > 0;
 
   // Injects the version payload at `commit`; `begin` passes through untouched (04 §1.4).
   const wrappedAction = (input: Record<string, unknown>): Promise<ActionResult<unknown>> => {
@@ -510,7 +507,7 @@ export function ProjectFileWell({
         ...(versionName.trim() !== '' ? { name: versionName } : {}),
         ...(changelog.trim() !== '' ? { changelog_md: changelog } : {}),
         game_versions: splitCsv(gameVersions),
-        loaders: splitCsv(loaders),
+        loaders,
         version_type: versionType,
       },
       primary: primaryChecked,
@@ -542,12 +539,14 @@ export function ProjectFileWell({
           disabled={disabled}
           inputProps={{ value: gameVersions, onChange: inputChange(setGameVersions) }}
         />
-        <Field
+        <CheckGrid
           label="Loaders"
           name="version_loaders"
-          helper={LOADERS_HELPER}
+          options={LOADER_OPTIONS}
+          value={loaders}
+          onChange={setLoaders}
+          helper="Tick every loader this file works on."
           disabled={disabled}
-          inputProps={{ value: loaders, onChange: inputChange(setLoaders) }}
         />
         <Select
           label="Channel"
