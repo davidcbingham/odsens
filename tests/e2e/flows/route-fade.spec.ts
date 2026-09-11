@@ -30,7 +30,7 @@ test.describe('route fade + avatar outline (T-E2E-50)', () => {
     await expect(page).toHaveURL(/\/projects$/);
     const wrapper = page.locator('main > div').first();
     const animation = await wrapper.evaluate((el) => getComputedStyle(el).animationName);
-    expect(animation).toBe('page-in');
+    expect(animation).toMatch(/page-in$/); // CSS-module keyframes are hashed: `<file>__<hash>__page-in`
     // Same nav node → the chrome did not remount.
     expect(await nav.evaluate((el) => (el as HTMLElement).dataset.marker)).toBe('t-e2e-50');
   });
@@ -46,7 +46,7 @@ test.describe('route fade + avatar outline (T-E2E-50)', () => {
       const cs = getComputedStyle(el);
       return { animationName: cs.animationName, transform: cs.transform };
     });
-    expect(style.animationName).toBe('page-in-still');
+    expect(style.animationName).toMatch(/page-in-still$/);
     expect(style.transform).toBe('none');
     await context.close();
   });
