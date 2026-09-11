@@ -582,7 +582,11 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     await versions.getByLabel('Version number').fill('1.0.0');
     await versions.getByLabel('Game versions').fill('1.21');
     // Loaders are a CheckGrid of square boxes (ADR-0035 D4), scoped to the file well's group.
-    await versions.getByRole('group', { name: 'Loaders' }).getByLabel('Datapack').check();
+    // The native box is visually hidden (the square is the visible part): click its label, like
+    // `toggleFor` does, then assert the input.
+    const loaders = versions.getByRole('group', { name: 'Loaders' });
+    await loaders.getByText('Datapack', { exact: true }).click();
+    await expect(loaders.getByLabel('Datapack')).toBeChecked();
   }
 
   /** Clicks `name` and waits for its server-action POST round trip (PRG — same-URL redirect). */
@@ -648,7 +652,9 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     await page.getByLabel('Type', { exact: true }).click();
     await page.getByRole('option', { name: 'Datapack' }).click();
     await expect(page.getByLabel('Type', { exact: true })).toHaveText('Datapack');
-    await page.getByRole('group', { name: 'Loaders' }).getByLabel('Datapack').check();
+    const loaderGrid = page.getByRole('group', { name: 'Loaders' });
+    await loaderGrid.getByText('Datapack', { exact: true }).click(); // label click — the box is visually hidden
+    await expect(loaderGrid.getByLabel('Datapack')).toBeChecked();
     await page.getByLabel('Game versions').fill('1.21');
 
     await page.getByRole('button', { name: 'Create draft', exact: true }).click();
