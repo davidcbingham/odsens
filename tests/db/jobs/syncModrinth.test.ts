@@ -477,7 +477,14 @@ describe('syncModrinth (04 §3.1)', () => {
 
     // Every other fixture row carries a plain `.png` icon: the three runs made no other CDN call.
     expect(cdnCalls([...spy1.calls, ...spy2.calls, ...spy3.calls])).toHaveLength(2);
-  });
+
+    // Self-contained: put the fixture icon back (a plain `.png` is never probed) so later cases
+    // do not depend on this one's leftovers.
+    spyFetch(routes(fullList));
+    const reset = await run();
+    expect(reset.ok).toBe(true);
+    expect((await projectBySlug('duck-crosshair')).icon_url).toBe(`${cdn}/icon.png`);
+  }, 60_000);
 
   describe('T-ACT-70 job lock (04 SC-13)', () => {
     it('T-ACT-70 an open run 5 min old → route 200 {ok:true, skipped:running}, no second row; job skips too', async () => {
