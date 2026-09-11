@@ -1,7 +1,7 @@
 # ADR-0036 — Build order after first use: S1.5a and S1.5b before Videos
 
 ## Status
-Proposed
+Accepted (2026-09-11 — build-order merge, PR #15)
 
 ## Date
 2026-09-11
@@ -44,7 +44,7 @@ Kind: deferral
 | `docs/build/03-components.md` | §2.1 `FloatingSupportButton`, §2.3 `TipPanel`, §2.9 `AmountPicker`/`KofiPanelSlot`/`Leaderboard` Slice cells; Status line | S1.5b (contains ADR-0036) |
 | `docs/build/04-server-contracts.md` | §5.7 heading; Status line | S1.5b (contains ADR-0036) |
 | `docs/build/_registry.md` | ID conventions (inserted slice form); Slices table | S1.5a, S1.5b rows (contains ADR-0036) |
-| `docs/build/02-routes-and-pages.md` | §1.1 `/`, `/projects/[slug]`, `/support` slice cells; §2.1/§2.3 `TipPanel` notes; §6 `/support` loading row; §8 slice → routes; Status line | S1.5a, S1.5b rows; S1.9 narrowed (contains ADR-0036) |
+| `docs/build/02-routes-and-pages.md` | §1.1 `/`, `/projects/[slug]`, `/support` slice cells; §2.1/§2.3 `TipPanel` notes; §6 `/support` loading row; §7 SM-31 applicability; §8 slice → routes; Status line | S1.5a, S1.5b rows; S1.9 narrowed (contains ADR-0036) |
 | `docs/build/05-test-plan.md` | §8 slice rows; Status line | S1.5a, S1.5b rows; S1.9 row narrowed — T-E2E-40 stays (contains ADR-0036) |
 | `docs/build/START-BUILD.md` | Current position | replaces the stale "S0" line (contains ADR-0036) |
 | `docs/build/06-decisions/README.md` | §7 Index | new ADR-0036 row |
