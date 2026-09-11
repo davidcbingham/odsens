@@ -66,3 +66,22 @@ export function sourceColor(source: DownloadSource): string {
 export function sourceWord(source: DownloadSource): string {
   return SOURCE_WORDS[source];
 }
+
+/**
+ * Canonical Modrinth project page for a listing id (ADR-0037 D6/D10). Built from the Modrinth
+ * id — never from our slug, which `normalizeSyncedSlug` may have changed (ADR-0034 D1); Modrinth
+ * resolves ids and slugs on the same type-neutral `/project/` path (04 §5.2 remaps types, so a
+ * typed path could be wrong).
+ */
+export function modrinthListingUrl(id: string): string {
+  return `https://modrinth.com/project/${encodeURIComponent(id)}`;
+}
+
+/**
+ * Match key for the `/admin/projects` "Looks like the same project" note (ADR-0037 D8; 00
+ * S1.5a.AC7): lower-case alphanumerics only, so `Metal Pipe Mace`, `metal-pipe-mace` and
+ * `metal_pipe_mace` all key to `metalpipemace`. Empty input → `''` (never matches).
+ */
+export function projectMatchKey(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
