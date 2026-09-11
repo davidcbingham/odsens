@@ -1,7 +1,7 @@
 # ADR-0033 — The admin header carries the odsens mark as the way back to the public site
 
 ## Status
-Proposed
+Accepted (2026-09-11 — S1.5 merge, v0.6)
 
 ## Date
 2026-09-06

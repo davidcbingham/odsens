@@ -1,7 +1,7 @@
 # ADR-0031 — Sign-out's CSRF check compares `Origin` against the request's own host
 
 ## Status
-Proposed
+Accepted (2026-09-11 — S1.5 merge, v0.6)
 
 ## Date
 2026-09-06

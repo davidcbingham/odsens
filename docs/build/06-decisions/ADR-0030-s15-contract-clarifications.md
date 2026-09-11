@@ -1,7 +1,7 @@
 # ADR-0030 — S1.5 contract clarifications (notify orchestration, shared job runner, `sync.stale` subject, event payload retention, settings-page composition, adapters over `fetchJson`, digest template, fixture-server POST)
 
 ## Status
-Proposed
+Accepted (2026-09-11 — S1.5 merge, v0.6)
 
 ## Date
 2026-09-03

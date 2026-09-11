@@ -1,7 +1,7 @@
 # ADR-0029 — Builds wait for the database schema (`scripts/wait-for-schema.mjs`)
 
 ## Status
-Proposed
+Accepted (2026-09-11 — S1.5 merge, v0.6)
 
 ## Date
 2026-09-03

@@ -1,7 +1,7 @@
 # ADR-0032 — The crown alone is the site mark; the full character is Oliver's account picture
 
 ## Status
-Proposed
+Accepted (2026-09-11 — S1.5 merge, v0.6)
 
 ## Date
 2026-09-06
