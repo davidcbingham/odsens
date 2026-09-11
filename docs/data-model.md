@@ -46,7 +46,7 @@ Handle availability is checked via RPC **`check_handle(p_handle text) returns te
 | id | uuid PK | |
 | source | enum `modrinth|odsens` | |
 | external_id | text null | Modrinth project id; unique with source |
-| slug | citext unique | Modrinth slug or Oliver's for exclusives |
+| slug | citext unique | Modrinth slug normalised by `normalizeSyncedSlug` (slugified; may differ from Modrinth's when theirs fails the shared slug rule — ADR-0034 D1) or Oliver's for exclusives |
 | project_type | enum `mod|datapack|resourcepack|plugin` | mapped from Modrinth `project_type` + loaders (Modrinth calls datapacks "mod" w/ loader `datapack`, plugins "mod" w/ `paper|spigot|bukkit…`) |
 | title, description | text | short description |
 | body_md | text | markdown |

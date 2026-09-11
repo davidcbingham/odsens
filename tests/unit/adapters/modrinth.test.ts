@@ -13,6 +13,7 @@ import {
   PLUGIN_LOADERS,
   createModrinth,
   iconBase,
+  isResizedIcon,
   mapProject,
   mapProjectType,
   mapVersion,
@@ -426,13 +427,18 @@ describe('T-ADP-21 synced slugs, gallery originals, icon originals (ADR-0034 D1/
       'https://cdn.modrinth.com/data/sd000101/icon',
     );
     expect(iconBase(null)).toBeNull();
+    expect(isResizedIcon('https://cdn.modrinth.com/data/YmigF2rg/1b88c1_96.webp')).toBe(true);
+    expect(isResizedIcon('https://cdn.modrinth.com/data/YmigF2rg/1b88c1.png')).toBe(false);
+    expect(isResizedIcon(null)).toBe(false);
   });
 
   it('T-ADP-21 resolveIconUrl: HEAD-probes the original extensions in order and returns the first 200', async () => {
     const calls: string[] = [];
+    const agents: unknown[] = [];
     const impl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
       calls.push(`${init?.method ?? 'GET'} ${url}`);
+      agents.push((init?.headers as Record<string, string> | undefined)?.['User-Agent']);
       return new Response(null, { status: url.endsWith('.jpg') ? 200 : 404 });
     }) as unknown as typeof fetch;
     const modrinth = createModrinth({ fetch: impl, env: ENV });
@@ -443,6 +449,7 @@ describe('T-ADP-21 synced slugs, gallery originals, icon originals (ADR-0034 D1/
       'HEAD https://cdn.modrinth.com/data/YmigF2rg/1b88c1.png',
       'HEAD https://cdn.modrinth.com/data/YmigF2rg/1b88c1.jpg',
     ]);
+    expect(agents).toEqual([UA, UA]);
   });
 
   it('T-ADP-21 resolveIconUrl: no original found, a network error, or a non-resized URL → unchanged, no API call', async () => {

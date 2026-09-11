@@ -221,6 +221,11 @@ const RESIZED_ICON_RE = /^(https:\/\/cdn\.modrinth\.com\/data\/[^/]+\/[0-9a-f]+)
 /** Original extensions Modrinth keeps next to the resized `_96.webp` — probed in this order. */
 const ICON_ORIGINAL_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'] as const;
 
+/** True for Modrinth's pre-resized icon URL shape (`…/<hash>_96.webp`) — the value to upgrade, never to keep. */
+export function isResizedIcon(url: string | null): boolean {
+  return url !== null && RESIZED_ICON_RE.test(url);
+}
+
 /** `…/<hash>_96.webp` and `…/<hash>.png` share a base → the same upstream icon (no re-probe). */
 export function iconBase(url: string | null): string | null {
   if (url === null) return null;
@@ -333,10 +338,10 @@ export function createModrinth({
 
   /**
    * The full-size icon behind a resized `…_96.webp` icon URL (ADR-0034 D4; 05 T-ADP-21): HEAD
-   * probes `<base>.png|.jpg|.jpeg|.webp|.gif` (10 s each, no retries — the CDN, not the API) and
+   * probes `<base>.png|.jpg|.jpeg|.webp|.gif` (5 s each, no retries — the CDN, not the API) and
    * returns the first 200; anything else, or a URL that is not a resized icon, returns the input
-   * unchanged. Callers probe only when the icon changed (`iconBase`), so this is ~5 requests per
-   * new icon, not per run.
+   * unchanged. Callers probe only when the icon is new/changed or the stored value is still a
+   * resized icon (`iconBase` / `isResizedIcon`), so this is ≤ 5 requests per icon once, not per run.
    */
   async function resolveIconUrl(iconUrl: string | null): Promise<string | null> {
     if (iconUrl === null) return null;
@@ -349,7 +354,7 @@ export function createModrinth({
         const response = await fetchFn(candidate, {
           method: 'HEAD',
           headers: { 'User-Agent': ua },
-          signal: AbortSignal.timeout(10_000),
+          signal: AbortSignal.timeout(5_000),
         });
         if (response.ok) return candidate;
       } catch {
