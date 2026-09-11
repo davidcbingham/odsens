@@ -338,7 +338,9 @@ Per-slice applicability: SM-01, 04, 10–14, 16, 20–30, 32 from S1.1 (SM-02/03
 | S1.6 | `/videos`, `/` latest videos, `/admin` videos hide/unhide list, `/api/cron/sync-youtube` |
 | S1.7 | `/skins`, `/art`, `/admin/skins`, `/admin/art`, `/api/download/[fileId]` kind `skin` |
 | S1.8 | `/seen-on`, `/admin/mentions`, SEEN ON row, IN THE WILD strip, `/api/cron/refresh-mentions`, footer line 2 |
-| S1.9 | `/support` (reads `site_settings_public.kofi_page`), `/admin/stats`, `/api/cron/stats-snapshot`, `FloatingSupportButton`, `TipPanel` |
+| S1.5a | `/admin/projects/[id]` "Modrinth listing" field + uploads on synced rows; `/admin/projects` match note; `/projects/[slug]` GET IT primary from hosted files; `/api/download/[fileId]` for any `source` (inserted — ADR-0036) |
+| S1.5b | `/support` (reads `site_settings_public.kofi_page`), `FloatingSupportButton`, `TipPanel` (moved from S1.9 — ADR-0036) |
+| S1.9 | `/admin/stats`, `/api/cron/stats-snapshot` (`/support` + `FloatingSupportButton` + `TipPanel` moved to S1.5b — ADR-0036) |
 | S1.10 | Sentry on `error.tsx`, Analytics + Speed Insights components in `app/(public)/layout.tsx` (no `/api/og` — ADR-0002 #22) |
 
 ---
