@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   SNAPSHOT_GROUP,
+  formatVersionList,
   groupGameVersions,
   hasChangelog,
   isSnapshotVersion,
@@ -122,5 +123,28 @@ describe('T-UNIT-30 versionsTable sort (lib/versions.ts)', () => {
     const snapshot = JSON.parse(JSON.stringify(input)) as unknown;
     sortVersionsForTable(input);
     expect(input).toEqual(snapshot);
+  });
+});
+
+describe('T-UNIT-48 formatVersionList (ADR-0034 D3)', () => {
+  it('T-UNIT-48 collapses neighbouring minors into one range, oldest → newest', () => {
+    expect(
+      formatVersionList(['1.21.11', '1.21.1', '1.20.4', '1.19', '1.18.2', '1.17.1', '1.17']),
+    ).toBe('1.17 – 1.21.11');
+  });
+
+  it('T-UNIT-48 breaks the run where a whole minor series is missing', () => {
+    expect(formatVersionList(['1.16.5', '1.18', '1.18.2', '1.19.4'])).toBe('1.16.5, 1.18 – 1.19.4');
+    expect(formatVersionList(['1.21.4', '1.19.2'])).toBe('1.19.2, 1.21.4');
+  });
+
+  it('T-UNIT-48 a single version stays a single version; snapshots follow verbatim', () => {
+    expect(formatVersionList(['1.21.4'])).toBe('1.21.4');
+    expect(formatVersionList(['24w10a', '1.21', '1.21-pre1'])).toBe('1.21, 24w10a, 1.21-pre1');
+  });
+
+  it('T-UNIT-48 dedupes, trims, and returns "" for nothing', () => {
+    expect(formatVersionList([' 1.21 ', '1.21', ''])).toBe('1.21');
+    expect(formatVersionList([])).toBe('');
   });
 });

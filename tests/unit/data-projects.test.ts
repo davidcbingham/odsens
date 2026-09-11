@@ -102,13 +102,13 @@ describe('isNewProject (ADR-0002 #41: published_at < 30 days)', () => {
 });
 
 describe('projectChips (02 §2.1/§2.3 "versions/loaders"; 03 V-01 groups)', () => {
-  it('version groups (newest first) then loaders, verbatim', () => {
-    expect(projectChips(['1.21.1'], ['fabric'])).toEqual(['1.21.x', 'fabric']);
-    expect(projectChips(['1.20.1', '1.21', '1.21.4'], ['fabric', 'quilt'])).toEqual([
+  it('version groups (newest first) then loaders as display names (ADR-0034 D2)', () => {
+    expect(projectChips(['1.21.1'], ['fabric'])).toEqual(['1.21.x', 'Fabric']);
+    expect(projectChips(['1.20.1', '1.21', '1.21.4'], ['fabric', 'neoforge'])).toEqual([
       '1.21.x',
       '1.20.x',
-      'fabric',
-      'quilt',
+      'Fabric',
+      'NeoForge',
     ]);
   });
 

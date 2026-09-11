@@ -69,6 +69,63 @@ export function matchesVersionGroup(gameVersions: readonly string[], group: stri
   });
 }
 
+// ---- Minecraft-version display (ADR-0034 D3; 05 T-UNIT-48) --------------------------------
+
+type Release = { raw: string; major: number; minor: number; patch: number };
+
+const RELEASE_PARTS_RE = /^(\d+)\.(\d+)(?:\.(\d+))?$/;
+
+function parseRelease(raw: string): Release | null {
+  const match = RELEASE_PARTS_RE.exec(raw);
+  if (match === null) return null;
+  return { raw, major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3] ?? 0) };
+}
+
+/** Same major and the minor is equal or the very next one — the run continues. */
+function continues(prev: Release, next: Release): boolean {
+  return next.major === prev.major && next.minor - prev.minor <= 1;
+}
+
+/**
+ * Compact form of a version list for the VERSIONS & FILES Minecraft column and similar
+ * read-only spots: releases sorted oldest→newest, then every run of neighbouring minors
+ * collapses to `first – last` (`1.17 – 1.21.11`); a run breaks only where a whole minor
+ * series is skipped (`1.16.5, 1.18 – 1.19.4`). Snapshots follow verbatim, in their given
+ * order. Empty input → `''`. The full list stays available to the filter (`matchesVersionGroup`).
+ */
+export function formatVersionList(gameVersions: readonly string[]): string {
+  const releases: Release[] = [];
+  const snapshots: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of gameVersions) {
+    const version = raw.trim();
+    if (version === '' || seen.has(version)) continue;
+    seen.add(version);
+    const release = parseRelease(version);
+    if (release === null) snapshots.push(version);
+    else releases.push(release);
+  }
+  releases.sort((a, b) => a.major - b.major || a.minor - b.minor || a.patch - b.patch);
+  const parts: string[] = [];
+  let runStart: Release | null = null;
+  let runEnd: Release | null = null;
+  const flush = () => {
+    if (runStart === null || runEnd === null) return;
+    parts.push(runStart === runEnd ? runStart.raw : `${runStart.raw} – ${runEnd.raw}`);
+  };
+  for (const release of releases) {
+    if (runEnd !== null && continues(runEnd, release)) {
+      runEnd = release;
+      continue;
+    }
+    flush();
+    runStart = release;
+    runEnd = release;
+  }
+  flush();
+  return [...parts, ...snapshots].join(', ');
+}
+
 // ---- VERSIONS & FILES ordering — 05 T-UNIT-30 ("versionsTable sort", registered here) ----
 
 export type SortableFile = { primary: boolean };

@@ -73,6 +73,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   images: {
+    // 75 = Next's default; 90 for the big image slots (detail icon, hero, gallery, lightbox) — the
+    // synced sources are now the full-size originals (ADR-0034 D4), so a higher quality shows.
+    qualities: [75, 90],
     remotePatterns: [
       {
         protocol: supabaseProtocol,

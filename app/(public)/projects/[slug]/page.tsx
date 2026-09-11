@@ -226,6 +226,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                   alt={`${detail.title} icon`}
                   width={104}
                   height={104}
+                  quality={90}
                   className={styles['detail-icon-img']}
                 />
               ) : null}

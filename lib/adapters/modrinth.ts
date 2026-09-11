@@ -18,6 +18,7 @@ import 'server-only';
 import { z } from 'zod';
 import { fetchJson, sleep } from '@/lib/adapters/http';
 import type { Env } from '@/lib/env';
+import { SLUG_RE, isReservedSlug, slugify } from '@/lib/validation/slug';
 
 /** 04 §4.1 base URL — unit tests assert the real host (05 T-ADP-3); e2e overrides to :4010. */
 export const MODRINTH_API = 'https://api.modrinth.com/v2';
@@ -58,6 +59,8 @@ export type ModrinthEnv = Partial<Pick<Env, 'MODRINTH_USER_AGENT' | 'MODRINTH_AP
 
 export type ModrinthGalleryItem = {
   url: string;
+  /** The un-resized original (`.png`/`.jpg`); `url` is Modrinth's `_350` thumbnail. Stored when present (ADR-0034 D4). */
+  raw_url?: string | null;
   featured?: boolean;
   title?: string | null;
   description?: string | null;
@@ -198,6 +201,35 @@ export function mapProjectType(
   return null; // P5 — modpack, shader, other
 }
 
+/**
+ * Modrinth slugs may carry what our slug rule refuses — a trailing dash
+ * (`essential-dark-pack-armor-fix-`), upper case, a reserved word — and such a row could never be
+ * opened (`/projects/[slug]` refuses anything outside `SLUG_RE`, so the page 404'd). The synced
+ * slug is `slugify`d; when that still fails the rule (too short, reserved) the title is slugified
+ * instead, and as a last resort the Modrinth id is used (`p-<id>`). ADR-0034 D1; 05 T-ADP-21.
+ */
+export function normalizeSyncedSlug(slug: string, title: string, externalId: string): string {
+  for (const candidate of [slugify(slug), slugify(title)]) {
+    if (SLUG_RE.test(candidate) && !isReservedSlug(candidate)) return candidate;
+  }
+  return `p-${slugify(externalId)}`;
+}
+
+/** Modrinth icon URLs come pre-resized: `…/data/<id>/<hash>_96.webp`. Captures the base for the original probe. */
+const RESIZED_ICON_RE = /^(https:\/\/cdn\.modrinth\.com\/data\/[^/]+\/[0-9a-f]+)_\d+\.webp$/;
+
+/** Original extensions Modrinth keeps next to the resized `_96.webp` — probed in this order. */
+const ICON_ORIGINAL_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'] as const;
+
+/** `…/<hash>_96.webp` and `…/<hash>.png` share a base → the same upstream icon (no re-probe). */
+export function iconBase(url: string | null): string | null {
+  if (url === null) return null;
+  const resized = RESIZED_ICON_RE.exec(url)?.[1];
+  if (resized !== undefined) return resized;
+  const original = /^(.*)\.(?:png|jpe?g|webp|gif)$/i.exec(url)?.[1];
+  return original ?? url;
+}
+
 /** 04 §3.1 step 2 / 05 T-ADP-4 field mapping. Gallery sorted by `ordering` then `created`. */
 export function mapProject(raw: ModrinthProject): ProjectRow {
   const gallery = [...(raw.gallery ?? [])]
@@ -206,7 +238,7 @@ export function mapProject(raw: ModrinthProject): ProjectRow {
         (a.ordering ?? 0) - (b.ordering ?? 0) || (a.created ?? '').localeCompare(b.created ?? ''),
     )
     .map((item) => ({
-      url: item.url,
+      url: nullIfEmpty(item.raw_url) ?? item.url, // original over the `_350` thumbnail (ADR-0034 D4)
       title: nullIfEmpty(item.title),
       description: nullIfEmpty(item.description),
       ordering: item.ordering ?? 0,
@@ -214,7 +246,7 @@ export function mapProject(raw: ModrinthProject): ProjectRow {
     }));
   return {
     external_id: raw.id,
-    slug: raw.slug,
+    slug: normalizeSyncedSlug(raw.slug, raw.title, raw.id),
     project_type: mapProjectType(raw.project_type, raw.loaders ?? []),
     title: raw.title,
     description: raw.description,
@@ -299,6 +331,34 @@ export function createModrinth({
     return fetchJson<T>(url, { ua, fetch: fetchImpl, onResponse: trackQuota });
   }
 
+  /**
+   * The full-size icon behind a resized `…_96.webp` icon URL (ADR-0034 D4; 05 T-ADP-21): HEAD
+   * probes `<base>.png|.jpg|.jpeg|.webp|.gif` (10 s each, no retries — the CDN, not the API) and
+   * returns the first 200; anything else, or a URL that is not a resized icon, returns the input
+   * unchanged. Callers probe only when the icon changed (`iconBase`), so this is ~5 requests per
+   * new icon, not per run.
+   */
+  async function resolveIconUrl(iconUrl: string | null): Promise<string | null> {
+    if (iconUrl === null) return null;
+    const base = RESIZED_ICON_RE.exec(iconUrl)?.[1];
+    if (base === undefined) return iconUrl;
+    const fetchFn = fetchImpl ?? fetch;
+    for (const extension of ICON_ORIGINAL_EXTENSIONS) {
+      const candidate = `${base}${extension}`;
+      try {
+        const response = await fetchFn(candidate, {
+          method: 'HEAD',
+          headers: { 'User-Agent': ua },
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (response.ok) return candidate;
+      } catch {
+        // unreachable candidate — try the next extension
+      }
+    }
+    return iconUrl;
+  }
+
   return {
     /** 04 §4.1: `GET /user/{user}/projects` — full Project objects (gallery, body, license included). */
     listUserProjects(user: string): Promise<ModrinthProject[]> {
@@ -311,6 +371,7 @@ export function createModrinth({
     mapProject,
     mapVersion,
     mapProjectType,
+    resolveIconUrl,
   };
 }
 
