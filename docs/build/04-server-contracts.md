@@ -1,6 +1,6 @@
 # Server Contracts
 Purpose: the checkable contract for every Server Action, route handler, cron job, and external adapter in `_registry.md` §Server contract registry — names, files, auth, input schema, preconditions, effects, return shape, rate limits, idempotency, external calls, logging, and required tests — so gate agents can diff code against it.
-Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0009, ADR-0010, ADR-0012, ADR-0013 (2026-08-20) — amended by ADR-0014 (2026-08-20) — amended by ADR-0015 (2026-08-20) — amended by ADR-0019 (2026-08-21) — amended by ADR-0020 (2026-08-21) — amended by ADR-0021 (2026-08-27) — amended by ADR-0024 (2026-08-27) — amended by ADR-0027 (2026-08-27) — amended by ADR-0028 (2026-09-03) — amended by ADR-0030 (2026-09-03) — amended by ADR-0031 (2026-09-06) — amended by ADR-0034 (2026-09-11)
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0009, ADR-0010, ADR-0012, ADR-0013 (2026-08-20) — amended by ADR-0014 (2026-08-20) — amended by ADR-0015 (2026-08-20) — amended by ADR-0019 (2026-08-21) — amended by ADR-0020 (2026-08-21) — amended by ADR-0021 (2026-08-27) — amended by ADR-0024 (2026-08-27) — amended by ADR-0027 (2026-08-27) — amended by ADR-0028 (2026-09-03) — amended by ADR-0030 (2026-09-03) — amended by ADR-0031 (2026-09-06) — amended by ADR-0034 (2026-09-11) — amended by ADR-0036 (2026-09-11)
 
 Decisions applied: `06-decisions/ADR-0002-spec-reconciliation.md` (binding — C1–C22 + OPEN defaults 13–80); every OPEN item below that ADR-0002 settles is marked **DECIDED (ADR-0002 <ref>)**.
 
@@ -682,7 +682,7 @@ TikTok/Twitch/Reddit have their own oEmbed endpoints; **not used in v1** (spec: 
 | (rejected) `external_out` | not a v1 event — the union is exactly the four names above | — |
 Rule: `track()` is called only from `components/**` client leaves via `lib/analytics.ts` `trackEvent(name, props)` (typed union of the four names); the value sets above **are** the runtime allowlist (`TrackProps` in `lib/analytics.ts`; 03 `TrackedLink` mirrors this table verbatim — this doc owns it, ADR-0002 C12/C16; 03 v0.3.1 already matches); test 05 T-UNIT-38 (event names/keys) — 05 T-E2E-49 must observe `from:'floating'` (see §12).
 
-### 5.7 Ko-fi handoff (`/support`, S1.9; DECIDED — ADR-0002 C19, #50)
+### 5.7 Ko-fi handoff (`/support`, S1.5b — was S1.9, ADR-0036; DECIDED — ADR-0002 C19, #50)
 | Item | Rule |
 |---|---|
 | Page name | **`site_settings.kofi_page`** read through the view `site_settings_public` (`lib/data/settings.ts`); `/support` is ISR and carries tag `settings`. Env `KOFI_PAGE` seeds the row only (SC-16). |

@@ -1,6 +1,6 @@
 # Build Plan
 Slice-by-slice contract for building odsens.com v1 (S0–S1.10) with Phase 2 stubs: scope, acceptance criteria, tests, gates, demo, and the global rules every PR follows.
-Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0006 (2026-08-17) — amended by ADR-0009, ADR-0010, ADR-0011, ADR-0012 (2026-08-20) — amended by ADR-0014 (2026-08-20) — amended by ADR-0015, ADR-0016 (2026-08-20) — amended by ADR-0018 (2026-08-21) — amended by ADR-0017 (2026-08-21) — amended by ADR-0019 (2026-08-21) — amended by ADR-0020 (2026-08-21) — amended by ADR-0021 (2026-08-27) — amended by ADR-0022 (2026-08-27) — amended by ADR-0023 (2026-08-27) — amended by ADR-0024, ADR-0025 (2026-08-27) — amended by ADR-0026 (2026-08-27) — amended by ADR-0027 (2026-08-27) — amended by ADR-0028 (2026-09-03) — amended by ADR-0029, ADR-0030 (2026-09-03)
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0006 (2026-08-17) — amended by ADR-0009, ADR-0010, ADR-0011, ADR-0012 (2026-08-20) — amended by ADR-0014 (2026-08-20) — amended by ADR-0015, ADR-0016 (2026-08-20) — amended by ADR-0018 (2026-08-21) — amended by ADR-0017 (2026-08-21) — amended by ADR-0019 (2026-08-21) — amended by ADR-0020 (2026-08-21) — amended by ADR-0021 (2026-08-27) — amended by ADR-0022 (2026-08-27) — amended by ADR-0023 (2026-08-27) — amended by ADR-0024, ADR-0025 (2026-08-27) — amended by ADR-0026 (2026-08-27) — amended by ADR-0027 (2026-08-27) — amended by ADR-0028 (2026-09-03) — amended by ADR-0029, ADR-0030 (2026-09-03) — amended by ADR-0036 (2026-09-11)
 Binding decisions: `06-decisions/ADR-0001-engineering-spec-baseline.md` (baseline) · `06-decisions/ADR-0002-spec-reconciliation.md` (contradictions C1–C22 + OPEN defaults 13–80 + Amendment A A1–A18 — every slice below is aligned to it).
 
 Sources this doc is derived from (it re-decides nothing): `docs/build/_registry.md` (IDs — used verbatim), `docs/spec.md`, `docs/questions.md`, `docs/data-model.md`, `docs/notifications.md`, `docs/framework-decision.md`, `docs/analytics-options.md`, `DESIGN.md` v1.3, `docs/skill-handoffs.md`, `.claude/skills/*/SKILL.md`, `.claude/agents/*.md`, `docs/dev-tooling.md`, `.env.example`, `supabase/config.toml`.
@@ -94,6 +94,8 @@ docs/spec.md revision log · docs/questions.md · DESIGN.md changelog (if any)
 | S1.3 | `v0.4` |
 | S1.4 | `v0.5` |
 | S1.5 | `v0.6` |
+| S1.5a | `v0.6.1` (inserted — ADR-0036) |
+| S1.5b | `v0.6.2` (inserted — ADR-0036) |
 | S1.6 | `v0.7` |
 | S1.7 | `v0.8` |
 | S1.8 | `v0.9` |
@@ -135,10 +137,12 @@ Tags are annotated (`git tag -a v0.n -m "S1.x <name>"`) on the merge commit on `
 | S1.3 | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | S1.4 | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | S1.5 | ✔ | ✔ (emails + settings) | ✔ | ✔ | ✔ | ✔ | ✔ |
+| S1.5a (ADR-0036) | ✔ | ✔ | ✔ | ✔ (uploads on synced rows, link URLs) | ✔ | ✔ (fold RPC) | ✔ |
+| S1.5b (ADR-0036) | ✔ | ✔ | ✔ | ✔ (Ko-fi iframe) | ✔ | ✔ | ✔ |
 | S1.6 | ✔ | ✔ | ✔ | ✔ (embeds) | ✔ | ✔ | ✔ |
 | S1.7 | ✔ | ✔ | ✔ | ✔ (uploads) | ✔ | ✔ | ✔ |
 | S1.8 | ✔ | ✔ | ✔ | ✔ (admin, fetch) | ✔ | ✔ | ✔ |
-| S1.9 | ✔ | ✔ | ✔ | ✔ (Ko-fi iframe, admin) | ✔ | ✔ | ✔ |
+| S1.9 | ✔ | ✔ | ✔ | ✔ (admin — Ko-fi iframe moved to S1.5b, ADR-0036) | ✔ | ✔ | ✔ |
 | S1.10 | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ (production URL) |
 
 Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/frontend/security/supabase gates conditionally): all seven gates run on every v1 slice regardless of files touched — a gate with nothing in scope returns PASS with "nothing in scope"; the parenthetical notes the specific focus. All gates are spawned in one background batch (`build-phase` step 4); `deploy-checker` runs after the preview deploy.
@@ -471,6 +475,92 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 
 ---
 
+### S1.5a — Cross-posted projects
+
+*(Inserted 2026-09-11 by ADR-0036 after Oliver's first use — "one project, many homes". Tag `v0.6.1`.)*
+
+**Goal:** Oliver posts a project on odsens.com the moment it is ready and submits the same project to Modrinth (and CurseForge) in parallel; when a platform approves it, the site treats the listing as the same project — one URL, one thread, hosted files as the primary download, platform counts alongside — and a project that started on a platform can gain odsens-hosted files too.
+
+**Depends on:** S1.2 (sync, `project_links`), S1.3 (uploads, `/api/download/[fileId]`, `ExclusiveBadge`), S1.5 (shared job runner, `sync.failed`).
+
+**Scope IN**
+- **Linking.** `project_links` gains its `modrinth` rows (the enum already has the value; PK `(project_id, platform)` unchanged): a "Modrinth listing" field in the `/admin/projects/[id]` editor beside the CurseForge one (paste a Modrinth URL, slug or id → `adapters/modrinth` resolves the project → upsert the link with `url`, `downloads`); a "Remove" control. Action `linkProjectListing` / `unlinkProjectListing` (admin only; names pinned by the slice ADR — the CurseForge field's action is generalised or kept as the `curseforge` case).
+- **Sync adoption.** `syncModrinth` step 2: a Modrinth project whose id is linked from a `projects` row never inserts a second row; it updates the link (`downloads`, `url`, `synced_at`) and the canonical row's `downloads_modrinth`, then syncs its versions **into** the linked project keyed by `project_versions.external_id` (ADR-0026): a hosted version with the same `version_number` and `external_id IS NULL` adopts the Modrinth version id and keeps its hosted files `primary`; a Modrinth file whose sha512 equals a hosted file's is not added; other Modrinth files are added as CDN-url rows (`storage_path NULL`). The same rule for the CurseForge job when the key exists (counts only in v1 — CurseForge files stay on CurseForge).
+- **Fold on link.** Linking a listing that the sync already imported as its own `projects` row folds that row into the canonical one: `project_versions`, `project_links`, `comments` (and their likes/reports), `project_downloads` re-parented; `project_overrides` merged (canonical wins); the duplicate row removed — the one exception to J-D "never delete synced rows", recorded here and in the slice ADR; the old slug 301s to the canonical one via a `project_redirects` row or the sync's slug-change revalidation (slice ADR decides).
+- **Suggested matches.** `/admin/projects` marks a synced row whose normalised slug or title equals an odsens-sourced row's with "Looks like the same project as <title> — link it" (opens the editor with the field prefilled). No automatic linking.
+- **Uploads for every project.** `uploadProjectMedia` / `uploadProjectFile` / `publishProject` accept `source='modrinth'` rows (04 §1.4 "modrinth rows → forbidden" is lifted **by the S1.5a slice ADR**, which also amends 01 INV-24 / 04 J-D for the fold, 02 §2.3 + 03 `GetItPanel` / `ExclusiveBadge` for the primary rule and badge, and records ADR-0002 #42's CDN rule as the fallback; the two-phase flow, buckets and limits unchanged); the exclusive editor's upload well renders on synced projects; `lib/files.ts resolveDownloadable` serves hosted files regardless of `source` (ADR-0027 D5 `Downloadable` generalisation lands here).
+- **Download panel.** `GetItPanel` primary = the newest published release's hosted primary file (`/api/download/[fileId]`, counted) when one exists, else the Modrinth CDN file (today's rule); rows "Also on Modrinth ↗ <count>" / "Also on CurseForge ↗ <count>" from `project_links` **or** `source`; the combined-count line unchanged. `VersionsTable` shows every version once; each file's Download goes wherever that file lives. `FeaturedHero` / `ProjectCard` download targets follow the same primary rule.
+- **Badge.** `ExclusiveBadge` ("★ ONLY ON ODSENS") renders only when `source='odsens'` **and** the project has no `project_links` row; a linked project shows no badge (David, 2026-09-11 — no "First on odsens" tag). `projects_public` (or a helper) exposes `is_exclusive` so cards, hero and detail agree.
+- **Data model.** `docs/data-model.md` §2: `project_links` `modrinth` rows documented; `project_files` may carry `storage_path` on any source; the fold rules; a `project_redirects` table only if the slice ADR picks that option.
+
+**Scope OUT**
+- Automatic mirroring of platform files onto odsens storage (Oliver uploads to both himself). Comments on anything but projects (ADR-0002 C21). CurseForge file sync (counts only). Leaderboards, stats (S1.9).
+
+**Spec traceability:** `docs/spec.md` §3 (Modrinth/CurseForge), §5 Projects, §6 exclusive projects; `docs/platform-audit.md` Modrinth/CurseForge; `docs/data-model.md` §2 `project_links`, §6 downloads; `DESIGN.md` §5 Exclusive badge, §6.3 GET IT, §11.3 admin editor; `docs/questions.md` 2026-09-11 "Cross-posting decision".
+
+**Engineering docs implemented:** 02 §1.3 (`/admin/projects/[id]` listing field, `/admin/projects` match note), §2.3 rail; 03 §2.3 `GetItPanel` (rows from links or source), `ExclusiveBadge` rule, §2.10 editor field; 04 §1.4 (uploads for every source, link actions), §3.1 step 2 adoption + fold, §3.2 counts on links, §2.3 download route for any source; 05 §8 row S1.5a (IDs assigned at Session A, H-13).
+
+**Acceptance criteria**
+1. S1.5a.AC1 — In the editor, pasting a Modrinth URL for an odsens-sourced project creates the `modrinth` link (URL, count shown); the next sync writes no new `projects` row for that listing and its versions appear on the canonical project's page, each once.
+2. S1.5a.AC2 — A hosted version `1.0.0` and Modrinth version `1.0.0` merge into one row: hosted file primary, Modrinth file listed once (a sha512 match is not duplicated).
+3. S1.5a.AC3 — Linking a listing the sync had already imported folds the duplicate: versions, comments and links move, the duplicate row is gone, the old URL resolves to the canonical page.
+4. S1.5a.AC4 — A Modrinth-first project accepts an icon/file upload; after publish its GET IT primary is the hosted file (302 through `/api/download/[fileId]`, counted in `downloads_direct`); Modrinth remains an "Also on" row.
+5. S1.5a.AC5 — `ExclusiveBadge` shows on an unlinked odsens project and disappears the moment a link exists (cards, hero, detail agree); unlinking brings it back.
+6. S1.5a.AC6 — Combined count = direct + Modrinth + CurseForge link counts; the explanatory line unchanged.
+7. S1.5a.AC7 — `/admin/projects` shows the "Looks like the same project" note for a slug/title match and nothing links automatically.
+8. S1.5a.AC8 — Moderators see the listing field and upload controls disabled, never hidden (03 §2.10); the actions refuse them (`forbidden`).
+9. S1.5a.AC9 — RLS/tests: link rows readable through `projects_public` joins only where the project is visible; the fold runs in one transaction (RPC) and is idempotent on retry; T-ACT cases for adoption / merge / fold / no-duplicate; axe on the editor at 1280 + 390.
+
+**Tests required:** assigned in 05 §8 row S1.5a at Session A (append-only, H-13): RLS for `project_links` writes, T-ACT for `linkProjectListing` / fold RPC / sync adoption / uploads on synced rows, T-ADP for the Modrinth project resolver, T-UNIT for the primary-file rule and `is_exclusive`, T-E2E for the editor field + fold + GET IT primary + badge.
+
+**Gates required:** all seven; `supabase-reviewer` focus: fold RPC atomicity + RLS on re-parented rows; `backend-reviewer` focus: adoption idempotency, J-D exception; `security-reviewer` focus: uploads on synced rows, link URL validation.
+
+**Demo script**
+1. Create a draft on odsens, upload icon + file, publish → ONLY ON ODSENS.
+2. Paste the Modrinth URL → link appears, badge disappears; trigger the sync → versions merge, no duplicate.
+3. Open a Modrinth-first project → upload a file → publish → DOWNLOAD serves it from odsens; "Also on Modrinth" row.
+
+**Risks / unknowns:** version pairing when Oliver names versions differently on each platform (falls back to two rows — documented); fold + comments (re-parent keeps ids; `comment_target_visible` unchanged); the J-D exception must stay narrow (only a synced duplicate of a linked listing).
+
+---
+
+### S1.5b — Support page
+
+*(Inserted 2026-09-11 by ADR-0036 — the public Support half of S1.9, pulled ahead of Videos. Tag `v0.6.2`.)*
+
+**Goal:** Ko-fi live on the site — the public `/support` page and the site-wide floating support button — now that `site_settings.kofi_page` is set (S1.5); stats stay in S1.9.
+
+**Depends on:** S1.1 (`site_settings`), S1.5 (`/admin/settings` Ko-fi page name).
+
+**Scope IN** (moved verbatim from S1.9 — see that section for the original text)
+- Public `/support` (§6.7 + §11.4 + 02 §2.7; ISR 600 with tag `settings`, reads `site_settings_public` — ADR-0002 C19; replaces the S0 placeholder): gold hatched `AmountPicker` ($1 / $3 / $5 / Other, $3 preselected) + single CONTINUE ON KO-FI button that mounts the `KofiPanelSlot` iframe in place (712/620 px — ADR-0002 #50; no new tab), plus an "on Ko-fi ↗" ghost link; the iframe renders for `site_settings.kofi_page`; `kofi_page` empty → picker + button disabled with "Tips open soon."; leaderboard block in its empty state (§12.4).
+- `FloatingSupportButton` (mounted in `app/(public)/layout.tsx`; gold, ♥ SUPPORT, hides on scroll-down, returns on scroll-up; 52 px square on phones) on every public route except `/support`; not on `/welcome` or under `/admin/*` (02 RP-15).
+- `tip_click {amount?, from}` custom event via `TrackedLink` (04 §5.6; `TipPanel` swaps its plain `Button` for `TrackedLink event="tip_click"` here — 03 §2.3).
+- CSP `frame-src` for the Ko-fi origin on `/support` only (01 §20).
+
+**Scope OUT**
+- Everything Stats (S1.9): `stats_daily`, `snapshotStats`, `/admin/stats`, `sign_in` event. No Ko-fi webhook / supporters (S2.1).
+
+**Spec traceability / Engineering docs implemented:** as listed under S1.9 for `/support`, `FloatingSupportButton`, `TipPanel`, 04 §5.6 `tip_click`, §5.7 (Ko-fi), 01 §20; 02 §8 row S1.5b; 05 §8 row S1.5b.
+
+**Acceptance criteria** (renumbered from S1.9 — text unchanged)
+1. S1.5b.AC1 — = S1.9.AC4 (`/support` picker, iframe mount, empty `kofi_page` state, `revalidateTag('settings')` after a Settings edit — T-E2E-11).
+2. S1.5b.AC2 — = S1.9.AC5 (leaderboard empty state).
+3. S1.5b.AC3 — = S1.9.AC6 (`FloatingSupportButton` behaviour).
+4. S1.5b.AC4 — = S1.9.AC7 (`TipPanel` links; Home compact panel always rendered).
+5. S1.5b.AC5 — = S1.9.AC11 (T-E2E-49 as rewritten).
+6. S1.5b.AC6 — `tip_click` fires with `{amount?, from}` only (the S1.9.AC8 clause for this event); axe zero serious/critical on `/support` at 1280 + 390 (the S1.9.AC10 clause for this route).
+
+**Tests required:** T-E2E-11, 49 (moved from S1.9; T-E2E-40 is the `/admin/stats` test and stays in S1.9); the `tip_click` custom-events smoke; T-UNIT-38's `tip_click` case (the allowlist test itself stays in S1.9's row).
+
+**Gates required:** all seven; `security-reviewer` focus: Ko-fi iframe CSP; `frontend-reviewer` focus: floating button scroll listener perf.
+
+**Demo script:** `/support` → pick $3 → CONTINUE ON KO-FI → panel opens (stop before paying); scroll a project page down/up → floating button hides/returns.
+
+**Risks / unknowns:** Ko-fi preset-amount behaviour unverified (`docs/design-review.md` #13 — verify once the page is live; ADR-0002 #50).
+
+---
+
 ### S1.6 — Videos
 
 **Goal:** the YouTube channel on the site — hourly sync, `/videos` with click-to-load facades, Up next, Shorts row, and Latest videos on Home.
@@ -617,50 +707,50 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 
 ---
 
-### S1.9 — Stats + Support
+### S1.9 — Stats *(was "Stats + Support" — the Support half moved to S1.5b, ADR-0036)*
 
-**Goal:** daily stats snapshots with an admin Stats page, and the Support page (Ko-fi wrapper) + site-wide floating support button + Vercel custom events.
+**Goal:** daily stats snapshots with an admin Stats page and the `sign_in` custom event. *(The Support page, `FloatingSupportButton`, `tip_click` and the Ko-fi CSP entry moved to **S1.5b** — ADR-0036, 2026-09-11; their original text stays below, marked, so the S1.5b section can cite it.)*
 
 **Depends on:** S1.2, S1.4.
 
 **Scope IN**
 - Table `stats_daily` (PK `(day, metric, source, entity_type, entity_id)`; site rows use the 04 §3.5 sentinel `entity_id`); job `snapshotStats` daily 03:00 UTC per 04 §3.5 (metrics `downloads` per source per project + site totals, `direct_downloads_day` per project for day − 1 (04 §3.5 (e)), `views`/`subs` youtube, `comments`/`comments_held`, `likes`, `users` = **aggregate count only** — ADR-0002 #68, `reach` from mentions, `mentions`, `tips/kofi` = 0 in v1; aggregates `project_downloads`, purges rows >90 days (`purge_project_downloads`) and `rate_limit_hits` (`purge_rate_limit_hits`), deletes orphan upload objects >24 h (U1 — moved here from S1.3.AC11, ADR-0002 #80); date-idempotent `on conflict do update`; `sync.failed` via the S1.5 runner on failure); route `/api/cron/stats-snapshot` (04 §6 `0 3 * * *`, `maxDuration` 300) in `vercel.json`.
 - Admin `/admin/stats` (§11.3 #16): four `StatTile`s (downloads 7 days, downloads all time, comments with held count, tips 30 days — shows `0` in v1 per 04 §3.5 (f)), `FlatBarChart` last 30 days stacked by source with fixed colours (Modrinth `--emerald`, CurseForge `--orange`, direct `--indigo-lift`) + swatch **and** word, phone 15 bars (two days each) with the label saying so, honest line "Modrinth and CurseForge report their own counts. Direct downloads are the ones we serve."; a tile whose window has no snapshot yet shows `0` with the context text "No data yet." (ADR-0002 #29; 00-O-18 DECIDED).
-- Public `/support` (§6.7 + §11.4 + 02 §2.7; ISR 600 with tag `settings`, reads `site_settings_public` — ADR-0002 C19; replaces the S0 placeholder): gold hatched `AmountPicker` ($1 / $3 / $5 / Other, $3 preselected) + single CONTINUE ON KO-FI button that **mounts the `KofiPanelSlot` iframe in place** (712/620 px — ADR-0002 #50; no new tab), plus an "on Ko-fi ↗" ghost link that opens the page; the iframe renders for **`site_settings.kofi_page`** (DB is the source of truth; env `KOFI_PAGE` seeds the S1.1 row only — ADR-0002 C19; 00-O-19 DECIDED); `kofi_page` empty → picker + button disabled with the mute line "Tips open soon.", slot hidden; "What it pays for" slab; `Leaderboard` block in **empty state** ("NOBODY YET / Be first." + how-to line) — no data source yet. `TipPanel` on project detail (placeholder since S1.2) gets its final §7-voice copy linking `/support`; Home compact `TipPanel` beside Latest videos / Find me is **built here** (02 §2.1 item 4; static `S` component per 03, always rendered from S1.9 — the `kofi_page`-empty behaviour applies to `/support` only, 04 §5.7).
-- `FloatingSupportButton` (mounted in `app/(public)/layout.tsx`; gold, ♥ SUPPORT, hides on scroll-down, returns on scroll-up; 52 px square on phones) on every public route **except `/support`**; not on `/welcome` or under `/admin/*` (02 RP-15); e2e T-E2E-49 (ADR-0002 #80).
-- Vercel Analytics custom events complete the set (`lib/analytics.ts` `trackEvent` allowlist via 03 `TrackedLink`, live since S1.2 — ADR-0002 A10; C12 — only these four in v1): wired here `tip_click {amount?, from}` (payload per 04 §5.6 / ADR-0002 A16; nav Support button is a plain link, no event) and `sign_in {from}` (`GoogleSignInButton` predates `TrackedLink`); already live `download {project, source, from}` (S1.2) and `video_play {youtube_id, kind}` (S1.6) (names per 01 INV-59, payloads per 04 §5.6); dashboard toggle happens in S1.10.
+- *(moved to S1.5b — ADR-0036)* Public `/support` (§6.7 + §11.4 + 02 §2.7; ISR 600 with tag `settings`, reads `site_settings_public` — ADR-0002 C19; replaces the S0 placeholder): gold hatched `AmountPicker` ($1 / $3 / $5 / Other, $3 preselected) + single CONTINUE ON KO-FI button that **mounts the `KofiPanelSlot` iframe in place** (712/620 px — ADR-0002 #50; no new tab), plus an "on Ko-fi ↗" ghost link that opens the page; the iframe renders for **`site_settings.kofi_page`** (DB is the source of truth; env `KOFI_PAGE` seeds the S1.1 row only — ADR-0002 C19; 00-O-19 DECIDED); `kofi_page` empty → picker + button disabled with the mute line "Tips open soon.", slot hidden; "What it pays for" slab; `Leaderboard` block in **empty state** ("NOBODY YET / Be first." + how-to line) — no data source yet. `TipPanel` on project detail (placeholder since S1.2) gets its final §7-voice copy linking `/support`; Home compact `TipPanel` beside Latest videos / Find me is **built here** (02 §2.1 item 4; static `S` component per 03, always rendered from S1.9 — the `kofi_page`-empty behaviour applies to `/support` only, 04 §5.7).
+- *(moved to S1.5b — ADR-0036)* `FloatingSupportButton` (mounted in `app/(public)/layout.tsx`; gold, ♥ SUPPORT, hides on scroll-down, returns on scroll-up; 52 px square on phones) on every public route **except `/support`**; not on `/welcome` or under `/admin/*` (02 RP-15); e2e T-E2E-49 (ADR-0002 #80).
+- Vercel Analytics custom events complete the set (`lib/analytics.ts` `trackEvent` allowlist via 03 `TrackedLink`, live since S1.2 — ADR-0002 A10; C12 — only these four in v1): wired here *(`tip_click` moved to S1.5b — ADR-0036)* `tip_click {amount?, from}` (payload per 04 §5.6 / ADR-0002 A16; nav Support button is a plain link, no event) and `sign_in {from}` (`GoogleSignInButton` predates `TrackedLink`); already live `download {project, source, from}` (S1.2) and `video_play {youtube_id, kind}` (S1.6) (names per 01 INV-59, payloads per 04 §5.6); dashboard toggle happens in S1.10.
 
 **Scope OUT**
 - No Ko-fi webhook, `kofi_events`, `supporters`, live leaderboard (S2.1). No Web Analytics dashboard enablement / Speed Insights component (S1.10). No Sentry (S1.10). No stats CLI skill (S1.10 writes `stats`).
 
-**Spec traceability:** `docs/spec.md` §4 goal 5 (Support), §7 Analytics; `docs/analytics-options.md` (#3, #4, #5); `docs/data-model.md` §2.9, §5 "Stats snapshot", §2.8 (P2 refs); `docs/platform-audit.md` Ko-fi; Q12, Q33; `DESIGN.md` §5 (Floating support button), §6.7, §11.1 (Stat tile, Flat bar chart), §11.3 #16, §11.4, §12.4 (leaderboard incl. empty state).
+**Spec traceability:** *(Support items → S1.5b — ADR-0036)* `docs/spec.md` §4 goal 5 (Support), §7 Analytics; `docs/analytics-options.md` (#3, #4, #5); `docs/data-model.md` §2.9, §5 "Stats snapshot", §2.8 (P2 refs); `docs/platform-audit.md` Ko-fi; Q12, Q33; `DESIGN.md` §5 (Floating support button), §6.7, §11.1 (Stat tile, Flat bar chart), §11.3 #16, §11.4, §12.4 (leaderboard incl. empty state).
 
-**Engineering docs implemented:** 01 §13 (INV-59 analytics), §20 (Ko-fi frame-src); 02 §1.1 (`/support`), §1.3 (`/admin/stats`), §1.4 (`/api/cron/stats-snapshot`), §2.1 item 4 (compact `TipPanel`), §2.7, RP-15, §8 row S1.9; 03 §2.1 (`FloatingSupportButton`), §2.2 (`StatTile`, `FlatBarChart`, `TrackedLink`), §2.3 (`TipPanel`), §2.9 (Support); 04 §3.5, §5.6 (analytics payloads), §5.7 (Ko-fi), §6 row stats; 05 §8 row S1.9.
+**Engineering docs implemented:** *(the `/support`, `FloatingSupportButton`, `TipPanel`, 04 §5.7 Ko-fi and 01 §20 frame-src items below moved to S1.5b — ADR-0036)* 01 §13 (INV-59 analytics), §20 (Ko-fi frame-src); 02 §1.1 (`/support`), §1.3 (`/admin/stats`), §1.4 (`/api/cron/stats-snapshot`), §2.1 item 4 (compact `TipPanel`), §2.7, RP-15, §8 row S1.9; 03 §2.1 (`FloatingSupportButton`), §2.2 (`StatTile`, `FlatBarChart`, `TrackedLink`), §2.3 (`TipPanel`), §2.9 (Support); 04 §3.5, §5.6 (analytics payloads), §5.7 (Ko-fi), §6 row stats; 05 §8 row S1.9.
 
 **Acceptance criteria**
 1. S1.9.AC1 — Authorized `/api/cron/stats-snapshot` writes one row per (metric, source, entity) for today; running twice yields the same rows (upsert); `project_downloads` older than 90 days are purged (T-ACT-55 with seeded old rows); an uncommitted upload object older than 24 h is removed and a committed one kept (U1 — T-ACT-75); `users` metric is a single aggregate count (ADR-0002 #68); 401 without secret.
 2. S1.9.AC2 — `/admin/stats` (role ≥ moderator) shows four tiles with numbers derived from `stats_daily` deltas (tips tile = `0`); the chart stacks three fixed source colours with swatch + word legend; phone shows 15 bars and says so.
 3. S1.9.AC3 — Chart is hand-rolled SVG (no chart library in `package.json`), 0 radius, no gradients, Silkscreen 11 px axis labels.
-4. S1.9.AC4 — `/support`: picker preselects $3, CONTINUE ON KO-FI mounts the `KofiPanelSlot` iframe in place for `site_settings.kofi_page` (from `site_settings_public`) (amount not passed in v1 — 04 §5.7, ADR-0002 #50) — no new tab (ADR-0002 C19); the "on Ko-fi ↗" ghost link opens the page; the Ko-fi iframe loads only on `/support` (CSP frame-src) and only after the click; with `kofi_page` empty the picker/button are disabled and the mute line "Tips open soon." shows; editing `kofi_page` in Settings updates `/support` after `revalidateTag('settings')` (T-E2E-11).
-5. S1.9.AC5 — Leaderboard block renders the empty state "NOBODY YET / Be first." + the how-to line from §12.4; no amounts, no rows.
-6. S1.9.AC6 — `FloatingSupportButton` on every public page except `/support`; absent on `/welcome` and under `/admin/*` (02 RP-15); hides on scroll-down, returns on scroll-up; phone = 52 px gold square with heart; links to `/support`; 44 px+ target; `prefers-reduced-motion` drops the transform.
-7. S1.9.AC7 — `TipPanel` on project detail and the Home compact panel (new here) link to `/support` (copy from §7 voice, no begging); the Home panel is always rendered (02 §2.1 item 4).
-8. S1.9.AC8 — Custom events fire (`track` calls observed with `@vercel/analytics` stubbed): `download {project, source, from}` on a download button, `tip_click {amount?, from}` on the picker button, `video_play {youtube_id, kind}` on a facade click, `sign_in {from}` on Sign in; payload keys exactly as ADR-0002 C12 / 04 §5.6; nothing else is accepted by `trackEvent`; no PII in payloads (T-UNIT-38 + custom-events smoke inside T-E2E-16/31/6/49).
+4. S1.9.AC4 *(moved to S1.5b.AC1 — ADR-0036)* — `/support`: picker preselects $3, CONTINUE ON KO-FI mounts the `KofiPanelSlot` iframe in place for `site_settings.kofi_page` (from `site_settings_public`) (amount not passed in v1 — 04 §5.7, ADR-0002 #50) — no new tab (ADR-0002 C19); the "on Ko-fi ↗" ghost link opens the page; the Ko-fi iframe loads only on `/support` (CSP frame-src) and only after the click; with `kofi_page` empty the picker/button are disabled and the mute line "Tips open soon." shows; editing `kofi_page` in Settings updates `/support` after `revalidateTag('settings')` (T-E2E-11).
+5. S1.9.AC5 *(moved to S1.5b.AC2 — ADR-0036)* — Leaderboard block renders the empty state "NOBODY YET / Be first." + the how-to line from §12.4; no amounts, no rows.
+6. S1.9.AC6 *(moved to S1.5b.AC3 — ADR-0036)* — `FloatingSupportButton` on every public page except `/support`; absent on `/welcome` and under `/admin/*` (02 RP-15); hides on scroll-down, returns on scroll-up; phone = 52 px gold square with heart; links to `/support`; 44 px+ target; `prefers-reduced-motion` drops the transform.
+7. S1.9.AC7 *(moved to S1.5b.AC4 — ADR-0036)* — `TipPanel` on project detail and the Home compact panel (new here) link to `/support` (copy from §7 voice, no begging); the Home panel is always rendered (02 §2.1 item 4).
+8. S1.9.AC8 *(the `tip_click` clause moved to S1.5b.AC6 — ADR-0036)* — Custom events fire (`track` calls observed with `@vercel/analytics` stubbed): `download {project, source, from}` on a download button, `tip_click {amount?, from}` on the picker button, `video_play {youtube_id, kind}` on a facade click, `sign_in {from}` on Sign in; payload keys exactly as ADR-0002 C12 / 04 §5.6; nothing else is accepted by `trackEvent`; no PII in payloads (T-UNIT-38 + custom-events smoke inside T-E2E-16/31/6/49).
 9. S1.9.AC9 — RLS: `stats_daily` admin-read, service-role write.
-10. S1.9.AC10 — axe zero serious/critical on `/support`, `/admin/stats` at 1280 + 390; chart has a text alternative (table or `aria-label` summary).
-11. S1.9.AC11 — `FloatingSupportButton` e2e (T-E2E-49 — 05's current text must be rewritten to this behaviour, DESIGN.md §5 / 03 `FloatingSupportButton` / 04 §5.6 `from:'floating'`; see §7 Review notes): present on `/` and a project detail, absent on `/support`, `/welcome`, `/admin/*`; hides on scroll-down and returns on scroll-up; 52 px square at 390; `TipPanel` on detail and the Home compact panel link to `/support` (always rendered; only `/support` reacts to an empty `kofi_page`, 04 §5.7).
+10. S1.9.AC10 *(the `/support` clause moved to S1.5b.AC6 — ADR-0036)* — axe zero serious/critical on `/support`, `/admin/stats` at 1280 + 390; chart has a text alternative (table or `aria-label` summary).
+11. S1.9.AC11 *(moved to S1.5b.AC5 — ADR-0036)* — `FloatingSupportButton` e2e (T-E2E-49 — 05's current text must be rewritten to this behaviour, DESIGN.md §5 / 03 `FloatingSupportButton` / 04 §5.6 `from:'floating'`; see §7 Review notes): present on `/` and a project detail, absent on `/support`, `/welcome`, `/admin/*`; hides on scroll-down and returns on scroll-up; 52 px square at 390; `TipPanel` on detail and the Home compact panel link to `/support` (always rendered; only `/support` reacts to an empty `kofi_page`, 04 §5.7).
 
-**Tests required:** 05 §8 row S1.9 — T-RLS-107..110; T-ACT-33 (stats route), 55 (snapshot idempotency/purge), 75 (orphan cleanup); T-UNIT-38 (`trackEvent` allowlist), 42 (`lib/stats.ts` bucketing); T-E2E-11, 40, 49 (`FloatingSupportButton`/`TipPanel`); custom-events smoke inside T-E2E-16/31/6/49 (`window.va` stub sees `sign_in`, `download`, `tip_click`, `video_play`); seed SEED-12.
+**Tests required:** 05 §8 row S1.9 — T-RLS-107..110; T-ACT-33 (stats route), 55 (snapshot idempotency/purge), 75 (orphan cleanup); T-UNIT-38 (`trackEvent` allowlist), 42 (`lib/stats.ts` bucketing); T-E2E-40 *(T-E2E-11 and 49 moved to S1.5b — ADR-0036)*; custom-events smoke inside T-E2E-16/31/6 (`window.va` stub sees `sign_in`, `download`, `video_play`; `tip_click` is S1.5b's); seed SEED-12.
 
-**Gates required:** all seven; `security-reviewer` focus: Ko-fi iframe CSP, admin route; `frontend-reviewer` focus: floating button scroll listener perf, chart a11y.
+**Gates required:** all seven; `security-reviewer` focus: admin route *(Ko-fi iframe CSP → S1.5b, ADR-0036)*; `frontend-reviewer` focus: chart a11y *(floating button → S1.5b)*.
 
 **Demo script**
 1. Hit `/api/cron/stats-snapshot` twice → `/admin/stats` shows tiles + chart.
 2. Resize to 390 → 15 bars + label.
-3. `/support` → pick $3 → CONTINUE ON KO-FI → overlay opens (stop before paying).
-4. Scroll a project page down/up → floating button hides/returns.
+3. *(moved to S1.5b — ADR-0036)* `/support` → pick $3 → CONTINUE ON KO-FI → overlay opens (stop before paying).
+4. *(moved to S1.5b — ADR-0036)* Scroll a project page down/up → floating button hides/returns.
 
-**Risks / unknowns:** Ko-fi account/page not yet created (setup to-do; `KOFI_PAGE=oddsense` unconfirmed) — build against a test page name and record; Ko-fi preset-amount behaviour unverified (`docs/design-review.md` #13; verify the amount param once the account exists — ADR-0002 #50); first days of `stats_daily` have no deltas (tiles show `0` + "No data yet.", ADR-0002 #29).
+**Risks / unknowns:** *(Ko-fi items moved to S1.5b — ADR-0036; the page name `odsens` is set since 2026-09-11)* Ko-fi account/page not yet created (setup to-do; `KOFI_PAGE=oddsense` unconfirmed) — build against a test page name and record; Ko-fi preset-amount behaviour unverified (`docs/design-review.md` #13; verify the amount param once the account exists — ADR-0002 #50); first days of `stats_daily` have no deltas (tiles show `0` + "No data yet.", ADR-0002 #29).
 
 ---
 
@@ -746,6 +836,7 @@ Rules for Phase 2: each stub becomes a full slice section in this doc (same fiel
 | `/api/cron/refresh-mentions` | S1.8 | `37 * * * *` (hourly, offset) |
 | `/api/cron/stats-snapshot` | S1.9 | `0 3 * * *` (daily 03:00 UTC) |
 | `/api/cron/notify` | S1.5 | `*/5 * * * *` (every 5 min) |
+| — | S1.5a, S1.5b | none (ADR-0036) |
 
 Rule: a cron route ships in the same slice as its job; `vercel.json` never lists a route that does not exist (`deploy-checker` checks 200/401 behaviour). `maxDuration` 300 for sync/stats/refresh routes, 60 for `notify` (ADR-0002 C15); 401 body `{ok:false,error:{code:'unauthorized',message}}` (ADR-0002 C14).
 
@@ -759,6 +850,8 @@ Rule: a cron route ships in the same slice as its job; `vercel.json` never lists
 | S1.3 | `project_downloads`, RPCs `record_download`, `purge_project_downloads`; buckets `project-files` (private), `project-media` (public-read); `config.toml` `file_size_limit = "100MiB"` |
 | S1.4 | `comments` (+ view `comments_public`, trigger `comments_set_status()`, helper `can_comment()`), `comment_likes`, `comment_reports`, `notification_events` |
 | S1.5 | `notification_recipients` (+ unique index), `notification_matrix` (seeded) |
+| S1.5a | none new unless the slice ADR adds `project_redirects`; `project_links` `modrinth` rows in use; a fold RPC (ADR-0036) |
+| S1.5b | none (ADR-0036) |
 | S1.6 | `videos` |
 | S1.7 | `skins`, `art`, RPC `record_skin_download`; buckets `skins`, `art` |
 | S1.8 | `mentions` |
@@ -773,10 +866,11 @@ Rule: every table gets RLS + policies in the migration that creates it (`supabas
 |---|---|---|
 | S0 | all five present (`/projects`, `/videos`, `/skins`, `/art`, `/seen-on`) + gold Support button (`/support`); each is a placeholder page (title + "Not yet. Soon.") until its slice ships (ADR-0002 C20; 00-O-8 DECIDED) | Privacy, How comments work (404 until S1.1) |
 | S1.2 | Projects | Projects |
+| S1.5b | Support (gold button → real `/support`; moved from S1.9 — ADR-0036) | Support |
 | S1.6 | Videos | — |
 | S1.7 | Skins, Art | — |
 | S1.8 | Seen on | Seen on |
-| S1.9 | Support (gold button → real `/support`) | Support |
+| S1.9 | — (Support moved to S1.5b — ADR-0036) | — |
 | S2.2 | Commissions | Custom orders |
 
 ---
@@ -845,6 +939,7 @@ IDs are `00-O-n` (cite as "00 §5 00-O-n"). Rows marked DECIDED were settled by 
 | 2026-09-03 | v1.0 | ADR-0030 | ADR-0030 — S1.5 contract clarifications: D1 shared job runner `lib/jobs/runner.ts` (lock/insert/finalize + J-F edge emission; the S1.2 jobs moved onto it); D2 `runNotify` (`lib/jobs/notify.ts`) owns the notify pair's one `sync_runs` row; D3 `sync.stale` subject = `sync_source` / `syncSourceSubjectId(source)`, never-run sources never stale, `mentions` off until S1.8; D4 `deleteAccount` scrubs `{profile_id, handle}` references in `notification_events.payload` (rows kept); D5 `NotificationMatrix` owns the whole Settings form (additive props + `children` Moderators table), row actions via ADR-0024 glue; D6 adapters over `fetchJson` (POST support; no `resend` SDK); D7 `emails/templates/Digest.tsx`; D8 fixture server accepts POST for the discord/resend routes; D9 Discord `retry_after` as ms; D10 matrix seeded by its migration; D11 every-role RPC revokes + four FK indexes; D12 `maskSecret` in `lib/format/secret.ts`; D13 no `Reply-To` until inbound forwarding exists.; D14–D20 (build-pass letter + gate round 1: 01 §1 tree/INV-78, 02 §1.3 entry button, 05 T-E2E-35, 04 §5.8 `DELIVER_TIME_BUDGET_MS` 12000) |
 | 2026-09-11 | v1.0 | ADR-0035 | Fix pass 2 after Oliver's first use (no slice): `Select` is the themed listbox (client island), avatar outline 2 px everywhere (no `border` prop), `template.tsx` route fade in `(public)` + `admin`, `CheckGrid` loaders on the admin forms, tip line "Support OddSense on Ko-fi." — DESIGN.md v1.8 |
 | 2026-09-11 | v1.0 | ADR-0034 | Fix pass after Oliver's first hands-on use (no slice): synced slugs normalised at the boundary (`essential-dark-pack-armor-fix-` 404'd), loader display names (`Fabric`), versions-table Minecraft ranges (`1.17 – 1.21.11`), full-size Modrinth icons/gallery + `images.qualities` 90 on the big slots |
+| 2026-09-11 | v1.0 | ADR-0036 | Build order after Oliver's first use: inserted **S1.5a Cross-posted projects** (`v0.6.1`) and **S1.5b Support page** (`v0.6.2`, the public half of S1.9) between S1.5 and S1.6; S1.9 narrowed to Stats + `sign_in`; §1.4/§1.7/§4.1/§4.2/§4.3 rows; 02/03 slice cells; `START-BUILD.md` current position |
 
 ---
 
