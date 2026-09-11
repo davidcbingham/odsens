@@ -41,7 +41,7 @@ export const selectFixtures: SelectFixture[] = [
     label: 'Select · compact version',
     props: {
       label: 'Version',
-      name: 'version',
+      name: 'version-compact',
       options: versionOptions,
       defaultValue: '1.21.x',
       compact: true,
@@ -51,7 +51,7 @@ export const selectFixtures: SelectFixture[] = [
     label: 'Select · compact sort',
     props: {
       label: 'Sort',
-      name: 'sort',
+      name: 'sort-compact',
       options: sortOptions,
       defaultValue: 'downloads',
       compact: true,

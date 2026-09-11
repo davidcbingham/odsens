@@ -1,7 +1,7 @@
 # ADR-0035 — Look-and-feel fixes from Oliver's first use: themed `Select`, 2 px avatar outline, page fade, loader checkbox grid
 
 ## Status
-Proposed
+Accepted (2026-09-11 — fix pass 2 merge, PR #14)
 
 ## Date
 2026-09-11
