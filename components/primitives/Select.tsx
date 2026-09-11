@@ -207,7 +207,7 @@ export function Select({
     <div
       ref={rootRef}
       className={styles.select}
-      data-state={open ? 'open' : 'closed'}
+      data-open={open ? 'true' : 'false'} // not `data-state`: the upload well's state attribute lives in the same section
       {...(compact ? { 'data-compact': '' } : {})}
     >
       <span id={labelId} className={styles['select-label']}>

@@ -146,7 +146,7 @@
 }
 
 /* Focus ring lives on the trigger; the open trigger reads as focused (03 C-25). */
-.select[data-state='open'] .select-input {
+.select[data-open='true'] .select-input {
   border-color: var(--indigo-lift);
 }
 
