@@ -12,7 +12,9 @@ import { Button } from '@/components/primitives/Button';
 import { Field } from '@/components/primitives/Field';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
 import { sectionTitleId } from '@/components/primitives/SectionTitle';
+import { CheckGrid } from '@/components/primitives/CheckGrid';
 import { Select } from '@/components/primitives/Select';
+import { LOADER_OPTIONS } from '@/lib/format/loader';
 import { StatusPill } from '@/components/primitives/StatusPill';
 import { Toggle } from '@/components/primitives/Toggle';
 import { TypeBadge } from '@/components/primitives/TypeBadge';
@@ -101,6 +103,11 @@ function orNull(value: FormDataEntryValue | null): string | null {
 function orUndefined(value: FormDataEntryValue | null): string | undefined {
   const text = typeof value === 'string' ? value.trim() : '';
   return text === '' ? undefined : text;
+}
+
+/** `CheckGrid` boxes → the checked values (ADR-0035 D4). */
+function checkedList(values: FormDataEntryValue[]): string[] {
+  return values.filter((value): value is string => typeof value === 'string' && value !== '');
 }
 
 /** Comma-separated field → trimmed non-empty items (the stored `text[]` shape, 04 §1.4). */
@@ -246,7 +253,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       body_md: orUndefined(formData.get('body_md')),
       project_type: projectTypeValue(formData.get('project_type')),
       categories: commaList(formData.get('categories')),
-      loaders: commaList(formData.get('loaders')),
+      loaders: checkedList(formData.getAll('loaders')), // CheckGrid boxes (ADR-0035 D4)
       game_versions: commaList(formData.get('game_versions')),
       license: orNull(formData.get('license')),
       source_url: orNull(formData.get('source_url')),
@@ -455,11 +462,12 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
               error={fieldError('details', 'categories')}
               disabled={!canCurate}
             />
-            <Field
+            <CheckGrid
               label="Loaders"
               name="loaders"
-              defaultValue={project.loaders.join(', ')}
-              helper="Comma separated. fabric, forge, paper and friends."
+              options={LOADER_OPTIONS}
+              defaultValue={project.loaders}
+              helper="Tick every loader this works on."
               error={fieldError('details', 'loaders')}
               disabled={!canCurate}
             />

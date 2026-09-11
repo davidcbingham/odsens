@@ -120,6 +120,7 @@ export function FeaturedHero({ project, screenshot }: FeaturedHeroProps) {
               alt={screenshot.alt}
               fill
               sizes="(max-width: 899px) 100vw, 440px"
+              quality={90}
             />
           ) : null}
         </div>

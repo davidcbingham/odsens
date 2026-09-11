@@ -77,6 +77,7 @@ export function Gallery({ images, className }: GalleryProps) {
           alt={image.alt}
           fill
           sizes="(max-width: 899px) 100vw, 60vw"
+          quality={90}
           className={styles['gallery-img']}
         />
       </button>

@@ -138,7 +138,7 @@ export function Composer({
     >
       {/* decorative: "Posting as @handle" names the author below (03 `Avatar`: alt="" when adjacent) */}
       <span aria-hidden="true">
-        <Avatar src={viewer.avatarUrl} alt={handle} size={40} border={2} />
+        <Avatar src={viewer.avatarUrl} alt={handle} size={40} />
       </span>
       <div className={styles['composer-column']}>
         {replyToHandle ? (

@@ -94,6 +94,34 @@ test.describe('projects', () => {
     await clearFilters.click();
     await expect(grid.locator(CARDS)).toHaveCount(3);
 
+    // Themed listbox (ADR-0035 D1): Sort is a combobox; keyboard opens, moves, picks; Esc closes.
+    const sort = page.getByLabel('Sort', { exact: true });
+    await expect(sort).toHaveRole('combobox');
+    await expect(sort).toHaveText('Downloads');
+    await sort.focus();
+    await page.keyboard.press('ArrowDown');
+    const listbox = page.getByRole('listbox', { name: 'Sort options' });
+    await expect(listbox).toBeVisible();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/projects\?sort=updated$/);
+    await expect(sort).toHaveText('Updated');
+    await expect(listbox).toBeHidden();
+    await expect(sort).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(listbox).toBeVisible();
+    // Home / End move to the first / last option (highlight only — no pick until Enter).
+    await page.keyboard.press('End');
+    await expect(listbox.getByRole('option', { name: 'Title' })).toHaveAttribute('data-active', '');
+    await page.keyboard.press('Home');
+    await expect(listbox.getByRole('option', { name: 'Downloads' })).toHaveAttribute(
+      'data-active',
+      '',
+    );
+    await page.keyboard.press('Escape');
+    await expect(listbox).toBeHidden();
+    await expect(sort).toHaveText('Updated');
+
     await expectNoSeriousA11y(page);
     await shoot(page, 'projects');
   });

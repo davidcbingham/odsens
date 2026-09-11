@@ -1,0 +1,91 @@
+/* CheckGrid — ADR-0035 D4. Square-toggle boxes (DESIGN.md §11.1: 22px, --line-strong; on =
+   --indigo-lift + ✔) under an admin-field label; a wrapping grid, 44px rows. */
+.check-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.check-grid-legend {
+  padding: 0;
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+.check-grid-boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0 var(--space-16);
+}
+
+.check-grid-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.check-grid:disabled .check-grid-item {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.check-grid-square {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--size-toggle);
+  height: var(--size-toggle);
+  background: var(--slab-sunk);
+  border: 2px solid var(--line-strong);
+  transition:
+    background-color var(--dur-fast) ease-out,
+    border-color var(--dur-fast) ease-out;
+}
+
+.check-grid[data-invalid] .check-grid-square {
+  border-color: var(--danger-field);
+}
+
+.check-grid-input:checked + .check-grid-square {
+  background: var(--indigo-lift);
+  border-color: var(--indigo-lift);
+}
+
+.check-grid-check {
+  color: var(--ink);
+  opacity: 0;
+}
+
+.check-grid-input:checked + .check-grid-square .check-grid-check {
+  opacity: 1;
+}
+
+/* Focus ring moves from the hidden input to the square (03 C-25). */
+.check-grid-input:focus-visible + .check-grid-square {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.check-grid-word {
+  font-size: var(--text-ui);
+  color: var(--chalk);
+}
+
+.check-grid-helper {
+  margin: 0;
+  font-size: var(--text-label-sm);
+  color: var(--mute-dim);
+}
+
+.check-grid-error {
+  margin: 0;
+  font-size: var(--text-label-sm);
+  color: var(--danger);
+}

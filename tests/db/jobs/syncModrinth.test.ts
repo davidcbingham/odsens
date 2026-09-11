@@ -428,6 +428,64 @@ describe('syncModrinth (04 §3.1)', () => {
     }
   });
 
+  it('T-ACT-78 icon upgrade: a stored resized icon is probed once, an original is never re-probed, a changed icon probes again (ADR-0034 D4)', async () => {
+    const DUCK_ID = 'sd000108';
+    const cdn = `https://cdn.modrinth.com/data/${DUCK_ID}`;
+    const resized = (hash: string) => `${cdn}/${hash}_96.webp`;
+    const original = (hash: string) => `${cdn}/${hash}.png`;
+    const ok = () => (): Response => new Response(null, { status: 200 });
+    const listWithIcon = (hash: string): ModrinthProject[] =>
+      fullList.map((project) =>
+        project.id === DUCK_ID ? { ...project, icon_url: resized(hash) } : project,
+      );
+    const cdnCalls = (calls: readonly string[]) =>
+      calls.filter((url) => url.startsWith('https://cdn.modrinth.com/'));
+
+    // Arrange: a row synced before the rule still holds Modrinth's resized icon.
+    const duck = await projectBySlug('duck-crosshair');
+    const pre = await service
+      .from('projects')
+      .update({ icon_url: resized('aaa111') })
+      .eq('id', duck.id as string);
+    if (pre.error) throw new Error(pre.error.message);
+
+    // Run 1 — same upstream hash, stored value still resized → probed once, `.png` answers first.
+    const spy1 = spyFetch(routes(listWithIcon('aaa111'), { [original('aaa111')]: ok() }));
+    const tags1 = spyRevalidateTag();
+    const first = await run();
+    expect(first.ok).toBe(true);
+    expect((await projectBySlug('duck-crosshair')).icon_url).toBe(original('aaa111'));
+    expect(cdnCalls(spy1.calls)).toEqual([original('aaa111')]);
+    expect(tags1.calls).toContain('project:duck-crosshair');
+
+    // Run 2 — unchanged upstream, stored original → no HEAD, only synced_at/updated_at move.
+    const before = await projectBySlug('duck-crosshair');
+    const spy2 = spyFetch(routes(listWithIcon('aaa111'), { [original('aaa111')]: ok() }));
+    const second = await run();
+    expect(second.ok).toBe(true);
+    const after = await projectBySlug('duck-crosshair');
+    expect(cdnCalls(spy2.calls)).toEqual([]);
+    expect(after.icon_url).toBe(original('aaa111'));
+    expect(stable(after)).toEqual(stable(before));
+
+    // Run 3 — upstream icon changed (new hash) → probed again, new original stored.
+    const spy3 = spyFetch(routes(listWithIcon('bbb222'), { [original('bbb222')]: ok() }));
+    const third = await run();
+    expect(third.ok).toBe(true);
+    expect((await projectBySlug('duck-crosshair')).icon_url).toBe(original('bbb222'));
+    expect(cdnCalls(spy3.calls)).toEqual([original('bbb222')]);
+
+    // Every other fixture row carries a plain `.png` icon: the three runs made no other CDN call.
+    expect(cdnCalls([...spy1.calls, ...spy2.calls, ...spy3.calls])).toHaveLength(2);
+
+    // Self-contained: put the fixture icon back (a plain `.png` is never probed) so later cases
+    // do not depend on this one's leftovers.
+    spyFetch(routes(fullList));
+    const reset = await run();
+    expect(reset.ok).toBe(true);
+    expect((await projectBySlug('duck-crosshair')).icon_url).toBe(`${cdn}/icon.png`);
+  }, 60_000);
+
   describe('T-ACT-70 job lock (04 SC-13)', () => {
     it('T-ACT-70 an open run 5 min old → route 200 {ok:true, skipped:running}, no second row; job skips too', async () => {
       await makeSyncRun({

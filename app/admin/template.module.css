@@ -1,0 +1,31 @@
+/* Route-change fade — ADR-0035 D3; DESIGN.md §8 (120–180ms, ease-out, 2–4px moves; reduced
+   motion drops the transform and keeps the opacity change). */
+.page-in {
+  animation: page-in var(--dur-fast) ease-out both;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-in {
+    animation-name: page-in-still;
+  }
+
+  @keyframes page-in-still {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

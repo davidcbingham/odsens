@@ -1,18 +1,15 @@
-/* Avatar — DESIGN.md §3 (3px white border), §5 Nav/Comment bubble; ADR-0002 #48 default square. */
+/* Avatar — DESIGN.md §3 (2px white border — the card/button outline width, ADR-0035 D2), §5 Nav/Comment
+   bubble; ADR-0002 #48 default square. */
 .avatar {
   display: inline-grid;
   place-items: center;
   flex: none;
   box-sizing: border-box;
   overflow: hidden;
-  border: 3px solid var(--white);
+  border: 2px solid var(--white);
   border-radius: 0;
   background: var(--slab-sunk);
   container-type: inline-size;
-}
-
-.avatar[data-border='2'] {
-  border-width: 2px;
 }
 
 /* sizes (visual box incl. border) */

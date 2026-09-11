@@ -9,8 +9,9 @@ import styles from './TipPanel.module.css';
  * S1.2 renders the placeholder slab pointing at `/support` (00 S1.2: "`TipPanel` **placeholder
  * slab pointing at `/support`** until S1.9"); S1.9 lands the final §7-voice copy and swaps the
  * link to `TrackedLink event="tip_click"` `{ from: 'tip-panel' }` — only `download` is wired in
- * S1.2 (ADR-0002 A10), so this is a plain `Button` link for now. Dry line borrowed from the
- * pass-3 tip-panel mockup (provisional until S1.9). `compact` = the Home variant (§6 #1),
+ * S1.2 (ADR-0002 A10), so this is a plain `Button` link for now. The line is the plain
+ * "Support OddSense on Ko-fi." — the pass-3 slogan came out at Oliver's request (2026-09-11,
+ * ADR-0035 D5; provisional until S1.9's final copy). `compact` = the Home variant (§6 #1),
  * `data-compact` flag (03 C-14).
  */
 export type TipPanelProps = {
@@ -22,7 +23,7 @@ export function TipPanel({ compact = false, className }: TipPanelProps) {
   const classes = className ? `${styles['tip-panel']} ${className}` : styles['tip-panel'];
   return (
     <aside aria-label="Support" className={classes} {...(compact ? { 'data-compact': '' } : {})}>
-      <p className={styles['tip-panel-line']}>Keeps the mods free and the pipe loud.</p>
+      <p className={styles['tip-panel-line']}>Support OddSense on Ko-fi.</p>
       <Button variant="gold-ink" href="/support">
         Tip a dollar
       </Button>

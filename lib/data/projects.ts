@@ -35,6 +35,7 @@ import { env } from '@/lib/env';
 import { createAnonClient } from '@/lib/supabase/anon';
 import type { Database } from '@/lib/supabase/types';
 import { SLUG_RE } from '@/lib/validation/slug';
+import { loaderLabel, loaderLabels } from '@/lib/format/loader';
 import { groupGameVersions, primaryFirst } from '@/lib/versions';
 
 export type { ProjectListItem };
@@ -112,9 +113,10 @@ export function resolveMediaUrl(value: string): string {
 /**
  * Chip source data for cards / hero / detail header ("version chips", "Chips (versions/
  * loaders)" — 02 §2.1/§2.3; DESIGN.md §5): 03 V-01 version-group labels (newest first, via
- * `groupGameVersions`) followed by the loaders verbatim. The platform-noise loaders
- * `minecraft`/`datapack` are dropped — they repeat what the `TypeBadge` already says. The
- * components cap the list themselves (2 on cards, 4 elsewhere — ADR-0002 #54).
+ * `groupGameVersions`) followed by the loaders as display names (`loaderLabel`, ADR-0034 D2 —
+ * `fabric` → `Fabric`). The platform-noise loaders `minecraft`/`datapack` are dropped — they
+ * repeat what the `TypeBadge` already says. The components cap the list themselves (2 on cards,
+ * 4 elsewhere — ADR-0002 #54).
  */
 const NOISE_LOADERS: ReadonlySet<string> = new Set(['minecraft', 'datapack']);
 
@@ -124,7 +126,9 @@ export function projectChips(
 ): string[] {
   const chips = groupGameVersions(gameVersions).map((group) => group.label);
   for (const loader of loaders) {
-    if (!NOISE_LOADERS.has(loader) && !chips.includes(loader)) chips.push(loader);
+    if (NOISE_LOADERS.has(loader)) continue;
+    const label = loaderLabel(loader);
+    if (!chips.includes(label)) chips.push(label);
   }
   return chips;
 }
@@ -324,7 +328,7 @@ function toVersion(source: ProjectSource, slug: string, raw: RawVersion): Projec
     versionNumber: raw.version_number,
     ...(raw.name !== null ? { name: raw.name } : {}),
     gameVersions: raw.game_versions,
-    loaders: raw.loaders,
+    loaders: loaderLabels(raw.loaders), // display names (ADR-0034 D2)
     datePublished: raw.date_published,
     changelogMd: raw.changelog_md,
     files,
@@ -510,7 +514,7 @@ async function fetchProjectDetail(slug: string): Promise<ProjectDetail | null> {
             sizeBytes: primary.size_bytes,
             sha512: primary.sha512,
             gameVersions,
-            loaders,
+            loaders: loaderLabels(loaders), // display names (ADR-0034 D2)
             href: fileHref(row.source, row.slug, primary),
           }
         : null,
