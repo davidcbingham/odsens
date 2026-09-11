@@ -73,3 +73,5 @@ export { versionsTableFixtures, type VersionsTableFixture } from './versionsTabl
 // ---- S1.2 Admin ----
 export { reorderableListFixtures, type ReorderableListFixture } from './reorderableList';
 export { syncStatusFixtures, type SyncStatusFixture } from './syncStatus';
+// ---- S1.5 Admin ----
+export { notificationMatrixFixtures, type NotificationMatrixFixture } from './notificationMatrix';

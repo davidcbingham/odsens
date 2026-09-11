@@ -14,6 +14,12 @@
  * ADR-0021 (David's S1.1 merge decision): banned accounts may delete themselves — the banned cell is
  * A (onboarded) via `requireOnboarded({allowBanned:true})`; a banned account with a NULL handle still
  * gets `onboarding_required` (removal under a ban before onboarding stays an admin act, ADR-0019).
+ *
+ * S1.5 (ADR-0030 D4; 04 SC-22): `notification_events` rows by or about the user survive with every
+ * `{profile_id, handle}` payload reference to them scrubbed to `{null, null}` before `deleteUser`
+ * (`actor_id` nulls through the FK); unrelated references are untouched; a failing scrub read →
+ * internal with the account intact (the scrub runs after the comment cascade, so that cascade and
+ * its tag stand — a retry completes the delete).
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { deleteAccount } from '@/lib/actions/accounts';
@@ -32,6 +38,7 @@ import { expectInternal, withDbFault, type DbCallTarget } from '@/tests/helpers/
 import {
   cleanupFactories,
   makeComment,
+  makeNotificationEvent,
   makeUser,
   purgeNotificationEvents,
   restoreSeedCommentCounts,
@@ -286,7 +293,7 @@ describe('T-ACT-65 deleteAccount cascade faults', () => {
     logs.restore();
   });
 
-  it.each<{ name: string; target: DbCallTarget; commentDeleted: boolean }>([
+  it.each<{ name: string; target: DbCallTarget; commentDeleted: boolean; tags?: string[] }>([
     {
       name: 'the comments read',
       target: { table: 'comments', op: 'select' },
@@ -312,9 +319,18 @@ describe('T-ACT-65 deleteAccount cascade faults', () => {
       target: { table: 'projects', op: 'select' },
       commentDeleted: true,
     },
+    {
+      // The scrub runs after the comment cascade (right before `deleteUser`, ADR-0030 D4), so the
+      // cascade and its one `project:<slug>` tag have already been applied when it fails; a retry
+      // finishes the job with the account still there.
+      name: 'the notification_events scrub read (ADR-0030 D4)',
+      target: { table: 'notification_events', op: 'select' },
+      commentDeleted: true,
+      tags: ['project:pixel-chameleon'],
+    },
   ])(
-    'T-ACT-65 $name fails → internal + one log.error line; auth user + profile survive, no revalidate',
-    async ({ target, commentDeleted }) => {
+    'T-ACT-65 $name fails → internal + one log.error line; auth user + profile survive; only the steps before it (and their tags) are applied',
+    async ({ target, commentDeleted, tags: expectedTags = [] }) => {
       const me = await makeUser({ comment_count: 1 });
       const commentId = await makeComment({ author_id: me });
       const cascadeTags = spyRevalidateTag();
@@ -330,7 +346,100 @@ describe('T-ACT-65 deleteAccount cascade faults', () => {
         .eq('id', commentId)
         .single();
       expect(data?.status).toBe(commentDeleted ? 'deleted' : 'published');
-      expect(cascadeTags.calls).toEqual([]);
+      expect(cascadeTags.calls).toEqual(expectedTags);
     },
   );
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-65 — S1.5 event payload scrub (ADR-0030 D4; 04 SC-22 / §1.1 Effects; data-model §2.6)
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-65 deleteAccount scrubs notification_events (S1.5)', () => {
+  it('T-ACT-65 events by or about the user survive; every {profile_id, handle} reference to them reads {null, null}; unrelated references untouched', async () => {
+    const service = asRole('service');
+    const me = await makeUser();
+    const myHandle = (await readProfile(me))?.handle;
+    expect(myHandle).toMatch(/^t_/);
+
+    const mine = await makeNotificationEvent({
+      kind: 'comment.new',
+      actor_id: me,
+      payload: {
+        comment_id: SEED_COMMENTS.published,
+        target_type: 'project',
+        target_id: SEED_PROJECTS.pixelChameleon,
+        target_title: 'Pixel Chameleon',
+        target_slug: 'pixel-chameleon',
+        excerpt: 't_ hello there',
+        author: { profile_id: me, handle: myHandle ?? null },
+        first_time: false,
+      },
+    });
+    const replyToMe = await makeNotificationEvent({
+      kind: 'comment.reply',
+      actor_id: SEED_USERS.seed_user,
+      payload: {
+        comment_id: SEED_COMMENTS.creatorReply,
+        parent_id: SEED_COMMENTS.published,
+        root_id: SEED_COMMENTS.published,
+        excerpt: 't_ a reply',
+        author: { profile_id: SEED_USERS.seed_user, handle: 'seed_user' },
+        parent_author: { profile_id: me, handle: myHandle ?? null },
+      },
+    });
+    const unrelatedPayload = {
+      comment_id: SEED_COMMENTS.published,
+      excerpt: 't_ unrelated',
+      author: { profile_id: SEED_USERS.seed_user, handle: 'seed_user' },
+    };
+    const unrelated = await makeNotificationEvent({
+      kind: 'comment.new',
+      actor_id: SEED_USERS.seed_user,
+      payload: unrelatedPayload,
+    });
+
+    expectOk(await callActionAs(deleteAccount, { confirm: true }, { profileId: me }));
+    expect(await authUserExists(me)).toBe(false);
+
+    const { data: rows, error } = await service
+      .from('notification_events')
+      .select('id, kind, actor_id, payload')
+      .in('id', [mine, replyToMe, unrelated]);
+    expect(error).toBeNull();
+    const byId = new Map((rows ?? []).map((row) => [row.id, row]));
+    expect(byId.size).toBe(3);
+
+    const own = byId.get(mine);
+    expect(own?.kind).toBe('comment.new');
+    expect(own?.actor_id).toBeNull();
+    expect(own?.payload).toEqual({
+      comment_id: SEED_COMMENTS.published,
+      target_type: 'project',
+      target_id: SEED_PROJECTS.pixelChameleon,
+      target_title: 'Pixel Chameleon',
+      target_slug: 'pixel-chameleon',
+      excerpt: 't_ hello there',
+      author: { profile_id: null, handle: null },
+      first_time: false,
+    });
+
+    const reply = byId.get(replyToMe);
+    expect(reply?.actor_id).toBe(SEED_USERS.seed_user);
+    expect(reply?.payload).toEqual({
+      comment_id: SEED_COMMENTS.creatorReply,
+      parent_id: SEED_COMMENTS.published,
+      root_id: SEED_COMMENTS.published,
+      excerpt: 't_ a reply',
+      author: { profile_id: SEED_USERS.seed_user, handle: 'seed_user' },
+      parent_author: { profile_id: null, handle: null },
+    });
+
+    const other = byId.get(unrelated);
+    expect(other?.actor_id).toBe(SEED_USERS.seed_user);
+    expect(other?.payload).toEqual(unrelatedPayload);
+
+    // The deleted account's id and handle are gone from every kept row.
+    expect(JSON.stringify(rows)).not.toContain(me);
+    expect(JSON.stringify(rows)).not.toContain(myHandle);
+  });
 });

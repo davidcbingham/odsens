@@ -1,4 +1,5 @@
 allowBuilds:
+  esbuild: true # react-email dev CLI dependency; on the 01 INV-81 allowlist below
   unrs-resolver: false
 # pnpm settings (pnpm ≥10 reads these here, not from package.json#pnpm) — 01 INV-81 allowlist
 onlyBuiltDependencies:

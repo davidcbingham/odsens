@@ -1,0 +1,39 @@
+/* /admin/settings skeleton — admin table shell (DESIGN.md §5 Admin table geometry, §11.1
+   skeleton depths). Same recipe as app/admin/loading.module.css, plus two toggle-row lines
+   for the Moderation block so the swap does not jump. */
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.loading-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.loading-table {
+  display: flex;
+  flex-direction: column;
+  background: var(--slab);
+  border: 2px solid var(--line-soft);
+}
+
+.loading-table-head {
+  padding: var(--space-12) var(--space-16);
+  background: var(--slab-sunk);
+  border-bottom: 2px solid var(--line);
+}
+
+.loading-table-row {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 2px solid var(--table-divider);
+}
+
+.loading-table-row:last-child {
+  border-bottom: 0;
+}

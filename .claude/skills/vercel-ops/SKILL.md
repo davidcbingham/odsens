@@ -6,7 +6,7 @@ description: Vercel specialist for odsens.com — project config, environment va
 # vercel-ops
 
 ## Facts
-Project: **odsens** (team `studiobing`, id `prj_fTdiX6oYxyQ8CnAmzSzKnCb74MkU`; linked via `.vercel/`) · Framework: Next.js App Router · Node 24.x · Deployment Protection: Standard — guards `*.vercel.app` URLs + previews only; production is public on www.odsens.com (domain attached, live since the S1.1 merge 2026-08-21) · Domain: odsens.com (registrar Squarespace, DNS → Vercel: A `76.76.21.21` / CNAME `cname.vercel-dns.com`, verify in dashboard) · Env var names: see `.env.example`.
+Project: **odsens** (team `studiobing`, id `prj_fTdiX6oYxyQ8CnAmzSzKnCb74MkU`; linked via `.vercel/`) · Framework: Next.js App Router · Node 24.x · Deployment Protection: Standard — guards `*.vercel.app` URLs + previews only; production is public on odsens.com (apex is the primary domain; `www.odsens.com` 308 → apex since 2026-09-06; domain attached, live since the S1.1 merge 2026-08-21) · Domain: odsens.com (registrar Squarespace, DNS → Vercel: A `76.76.21.21` / CNAME `cname.vercel-dns.com`, verify in dashboard) · Env var names: see `.env.example`.
 
 ## Environments
 - **Preview**: every branch push; uses the persistent **`staging` Supabase branch** (git branch `staging`, ADR-0010) — the Preview environment carries staging's `NEXT_PUBLIC_SUPABASE_URL` + the new key names `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` (set once by David via the REST API below; accepted by `lib/env.ts` as aliases for `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`); no branch-scoped Supabase vars (the S0 `feat/S0-scaffold` placeholders are removed); `NEXT_PUBLIC_SITE_URL` is **derived** in code from `VERCEL_BRANCH_URL` (needs "Enable access to System Environment Variables" on) — never set it per branch (ADR-0010). `deploy-checker` fetches protected previews with the `x-vercel-protection-bypass` header (`VERCEL_AUTOMATION_BYPASS_SECRET`, tooling-only).
@@ -33,7 +33,7 @@ Build green · preview smoke: home, projects, a project detail, sign-in round-tr
 `vercel rollback` (or promote a previous deployment in the dashboard) → confirm with the human → open a fix branch. Never hotfix on `main` directly.
 
 ## Troubleshooting map
-Build fails → read the exact error, check Node version (22), env var missing at build · 500 in prod only → env var missing in Production scope · Sign-in loop → redirect URLs / Site URL mismatch · Cron not running → vercel.json path typo or missing `CRON_SECRET` · Stale pages → revalidate tag not called.
+Build fails on `wait-for-schema: … not ready` → the Supabase integration has not applied the branch's migrations yet (ADR-0029): check `supabase migration list --linked` (production) or the staging branch, then `vercel redeploy <url>`; a relation missing forever means a migration never applied · Build fails → read the exact error, check Node version (24), env var missing at build · 500 in prod only → env var missing in Production scope · Sign-in loop → redirect URLs / Site URL mismatch · Cron not running → vercel.json path typo or missing `CRON_SECRET` · Stale pages → revalidate tag not called.
 
 ## Boundaries & hand-offs (see `docs/skill-handoffs.md`)
 - **Owns:** project config, env per environment, cron, ISR strategy, domain, rollback, deploy troubleshooting. **Does not own:** app code, DB, merging feature PRs (that's `ship`).

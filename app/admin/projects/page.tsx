@@ -36,10 +36,9 @@ import styles from './page.module.css';
  *    Type (`TypeBadge`) · Status (`StatusPill` draft/hidden/live, fills ADR-0002 #47) ·
  *    Downloads · Featured / Hidden `Toggle`s (first `Toggle` use — 02 §1.3) · Open. Empty copy
  *    verbatim per ADR-0002 #40 / 03 G-05. The heading row's end slot carries the
- *    "New exclusive project" `Button` → `/admin/projects/new` — the entry point 02 §1.3 names in
- *    the `/admin/projects/new` row ("Projects → \"New exclusive project\""); a navigation link,
- *    not a mutation control, so it renders the same for both admin roles (the create page itself
- *    applies the 03 §2.10 moderator rendered-disabled rule).
+ *    "New exclusive project" `Button` → `/admin/projects/new` (02 §1.3 `/admin/projects` Components cell — ADR-0030 D20) — a
+ *    navigation link, not a mutation control, so it renders the same for both admin roles; the
+ *    create page itself applies the moderator rendered-disabled rule (03 §2.10).
  *    Each toggle's `onChange` is the module-level
  *    `curateAndRefresh` server function BOUND to the per-project shape
  *    `{project_id, featured|hidden: !current}` (the Next "additional arguments" `.bind` pattern

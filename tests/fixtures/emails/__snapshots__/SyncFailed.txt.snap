@@ -1,0 +1,17 @@
+FAILED
+
+
+MODRINTH SYNC
+
+The allay came back empty-handed. It'll keep trying.
+
+Cause: 429 rate limit on /v2/project/metal-pipe-mace
+
+The site keeps showing the last good numbers. Nothing is on fire.
+
+Last run 3 Sep 2026, 14:10.
+
+See sync status http://localhost:3000/admin
+
+The allay emails you because sync mail is on. Manage in Settings. http://localhost:3000/admin/settings
+— the allay. It'll keep trying. This usually fixes itself.

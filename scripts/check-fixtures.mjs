@@ -35,8 +35,12 @@ const TEXT_EXT = new Set([
   '.eml',
 ]);
 const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+/** Retina asset names (`wordmark@2x.png`, 03 E-07 / ADR-0030 D15) look like addresses to EMAIL_RE — never an address. */
+const RETINA_ASSET_RE = /^[A-Z0-9._%+-]+@[23]x\.(png|jpe?g|webp|gif|svg)$/i;
 const ALLOWED_EMAIL = (addr) =>
-  addr.toLowerCase() === 'allay@odsens.com' || addr.toLowerCase().endsWith('@localhost.test');
+  RETINA_ASSET_RE.test(addr) ||
+  addr.toLowerCase() === 'allay@odsens.com' ||
+  addr.toLowerCase().endsWith('@localhost.test');
 
 const errors = [];
 

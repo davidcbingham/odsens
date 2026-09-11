@@ -5,7 +5,9 @@
  *
  * S1.1: `makeUser` + `cleanupFactories`. S1.2: `makeProject` / `makeVersion` / `makeFile` /
  * `makeSyncRun` (05 §8 row S1.2). S1.4: `makeComment` (+ `restoreSeedCommentCounts`, `trackComment`,
- * `purgeNotificationEvents`). Later content factories (`makeMention`…) stay stubs until their slice.
+ * `purgeNotificationEvents`). S1.5: `makeNotificationEvent` / `makeRecipient` (+ `trackNotificationEvent`,
+ * `trackRecipient`, `purgeNotificationRecipients`; `purgeNotificationEvents` now empties the recipients
+ * queue first). Later content factories (`makeMention`…) stay stubs until their slice.
  *
  *   const id = await makeUser({ role: 'moderator' });          // handle `t_<8 hex>`, not banned
  *   const newbie = await makeUser({ handle: null });           // onboarding incomplete
@@ -17,6 +19,8 @@
  *   const versionId = await makeVersion({ project_id: draft });             // parents are explicit
  *   const fileId = await makeFile({ version_id: versionId });
  *   const runId = await makeSyncRun({ source: 'modrinth' });
+ *   const eventId = await makeNotificationEvent({ kind: 'comment.held' }); // subject = SEED-9 …0201
+ *   const rowId = await makeRecipient({ event_id: eventId, channel: 'discord', status: 'skipped', address: null });
  */
 import { randomUUID } from 'node:crypto';
 import {
@@ -27,7 +31,7 @@ import {
   registerUserEmail,
   SEED_PASSWORD,
 } from './asRole';
-import { SEED_PROJECTS, SEED_USERS } from './seedIds';
+import { SEED_COMMENTS, SEED_PROJECTS, SEED_USERS } from './seedIds';
 import { forgetSessionCookies } from './sessionCookies';
 import { listObjects, removeObjects } from './storage';
 
@@ -75,6 +79,50 @@ export type UserOverrides = FactoryOverrides & {
   avatar_path?: string | null;
   banned_reason?: string | null;
   email_hash?: string | null;
+};
+/** S1.5 — the permanent event catalog (`notification_events_kind_catalog`, docs/notifications.md). */
+export type NotificationKind =
+  | 'comment.new'
+  | 'comment.held'
+  | 'comment.reported'
+  | 'comment.reply'
+  | 'comment.approved'
+  | 'sync.failed'
+  | 'sync.stale'
+  | 'mention.suggested'
+  | 'order.new'
+  | 'tip.new'
+  | 'workroom.post'
+  | 'workroom.file'
+  | 'workroom.comment';
+export type NotificationEventOverrides = FactoryOverrides & {
+  /** Default `comment.new`. */
+  kind?: NotificationKind;
+  /** Default: `seed_user` (…0003); `null` for a job-emitted event (`sync.*`). */
+  actor_id?: string | null;
+  /** Default `comment` / SEED-9 `…0201` (the published seed comment). */
+  subject_type?: string;
+  subject_id?: string;
+  /** Default: the 04 SC-22 shape `{comment_id, author: {profile_id, handle}}` — never an email. */
+  payload?: Json;
+  created_at?: string;
+};
+export type RecipientOverrides = FactoryOverrides & {
+  /** Required — create the parent with `makeNotificationEvent` first. */
+  event_id?: string;
+  /** Default `email`. */
+  channel?: 'email' | 'discord' | 'inapp' | 'push';
+  /**
+   * Default: a `t_<8 hex>@localhost.test` address for `email`, a `https://discord.com/api/webhooks/…`
+   * URL for `discord` (F-3: no other addresses in tests); pass `null` for a `skipped` row.
+   */
+  address?: string | null;
+  status?: 'pending' | 'sent' | 'failed' | 'skipped';
+  attempts?: number;
+  profile_id?: string | null;
+  error?: string | null;
+  sent_at?: string | null;
+  created_at?: string;
 };
 
 type Factory<O extends FactoryOverrides = FactoryOverrides> = (overrides?: O) => Promise<string>;
@@ -264,17 +312,100 @@ export function trackComment(id: string): void {
   createdComments.push(id);
 }
 
+// ---- S1.5 notification factories -------------------------------------------------------------
+// `notification_events` rows are the 04 SC-22 shape `emit()` writes; `notification_recipients` rows
+// are what `notifyFanOut` creates (04 §3.6 F2). Both are service-only writers (05 T-RLS-91/95), so
+// the factories go through `service` like every other; recipients are removed before their events
+// in `cleanupFactories` (the FK cascades anyway — explicit so the order reads).
+
+const createdNotificationEvents: string[] = [];
+const createdRecipients: string[] = [];
+
+export const makeNotificationEvent: Factory<NotificationEventOverrides> = async (
+  overrides = {},
+) => {
+  const id = typeof overrides.id === 'string' ? overrides.id : randomUUID();
+  const row: Record<string, Json> = {
+    id,
+    kind: 'comment.new',
+    actor_id: SEED_USERS.seed_user,
+    subject_type: 'comment',
+    subject_id: SEED_COMMENTS.published,
+    payload: {
+      comment_id: SEED_COMMENTS.published,
+      author: { profile_id: SEED_USERS.seed_user, handle: 'seed_user' },
+    },
+    ...defined(overrides),
+  };
+  return insertContentRow(
+    'makeNotificationEvent',
+    'notification_events',
+    row,
+    createdNotificationEvents,
+    id,
+  );
+};
+
+export const makeRecipient: Factory<RecipientOverrides> = async (overrides = {}) => {
+  if (typeof overrides.event_id !== 'string') {
+    throw new Error(
+      'makeRecipient: pass event_id (create the parent with makeNotificationEvent first)',
+    );
+  }
+  const id = typeof overrides.id === 'string' ? overrides.id : randomUUID();
+  const tag = shortTag(id);
+  const channel = overrides.channel ?? 'email';
+  const row: Record<string, Json> = {
+    id,
+    channel,
+    address:
+      channel === 'discord'
+        ? `https://discord.com/api/webhooks/123/t_${tag}`
+        : `t_${tag}@localhost.test`,
+    status: 'pending',
+    attempts: 0,
+    ...defined(overrides),
+  };
+  return insertContentRow('makeRecipient', 'notification_recipients', row, createdRecipients, id);
+};
+
+/** S1.5: adopts an event row created outside the factories (an `emit()` in an action or job test). */
+export function trackNotificationEvent(id: string): void {
+  createdNotificationEvents.push(id);
+}
+
+/** S1.5: adopts a recipient row created outside the factories (a `notifyFanOut` run). */
+export function trackRecipient(id: string): void {
+  createdRecipients.push(id);
+}
+
+/**
+ * S1.5: empties `notification_recipients` (SEED-12: the seed keeps it at 0 rows). Service-only
+ * writer (05 T-RLS-95). Forgets every tracked recipient id (the rows are gone).
+ */
+export async function purgeNotificationRecipients(): Promise<void> {
+  const { error } = await loose(asRole('service'))
+    .from('notification_recipients')
+    .delete()
+    .not('id', 'is', null);
+  if (error) throw new Error(`purgeNotificationRecipients: ${error.message}`);
+  createdRecipients.splice(0, createdRecipients.length);
+}
+
 /**
  * S1.4: empties `notification_events` (SEED-12: the seed keeps it at 0 rows). Action tests call it in
  * `afterAll` so the events they caused (`comment.new` …) never reach the next file. Service-only
- * table (05 T-RLS-91).
+ * table (05 T-RLS-91). S1.5: the recipients queue is emptied first (its rows cascade with the
+ * events anyway — explicit so the order reads).
  */
 export async function purgeNotificationEvents(): Promise<void> {
+  await purgeNotificationRecipients();
   const { error } = await loose(asRole('service'))
     .from('notification_events')
     .delete()
     .not('id', 'is', null);
   if (error) throw new Error(`purgeNotificationEvents: ${error.message}`);
+  createdNotificationEvents.splice(0, createdNotificationEvents.length);
 }
 
 /** SEED-3 `comment_count` values (05 §3) — restored after factory comments touched them. */
@@ -312,8 +443,9 @@ export const makeSyncRun: Factory<SyncRunOverrides> = async (overrides = {}) => 
 
 /**
  * Removes every row created by the factories in the current test file: content rows child-first
- * (files → versions → projects → sync_runs; links/overrides a test hung on a factory project fall to
- * its FK cascade), then avatar objects under `avatars/<id>/`, then the auth user (profiles cascade).
+ * (recipients → events → comments → files → versions → projects → sync_runs; links/overrides a test
+ * hung on a factory project fall to its FK cascade), then avatar objects under `avatars/<id>/`, then
+ * the auth user (profiles cascade).
  * Safe to call when a test already deleted a row — 0 affected rows is a no-op, user "not found" is
  * ignored.
  */
@@ -321,6 +453,8 @@ export const cleanupFactories: () => Promise<void> = async () => {
   const service = asRole('service');
   const touchedComments = createdComments.length > 0;
   const contentTables: [table: string, ids: string[]][] = [
+    ['notification_recipients', createdRecipients],
+    ['notification_events', createdNotificationEvents],
     ['comments', createdComments],
     ['project_files', createdFiles],
     ['project_versions', createdVersions],

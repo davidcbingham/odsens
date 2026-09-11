@@ -17,7 +17,12 @@ export type SyncSource =
 
 /** 04 §3 common signature — the options every `lib/jobs/*` job takes. */
 export type JobOptions = {
-  /** An existing `sync_runs` row to finalize instead of inserting one (the §2.4 notify pair shares one row). */
+  /**
+   * An existing `sync_runs` row the CALLER owns (the §2.4 notify pair under `runNotify` — ADR-0030 D2):
+   * when given, the callee runs no SC-13 lock check, inserts nothing, does not finalize and emits no
+   * J-F `sync.failed`; the owner (`runNotify`) finalizes and emits for the combined outcome. Absent =
+   * the job owns its row (the cron routes, `triggerSync`, tests).
+   */
   runId?: string;
   trigger: 'cron' | 'manual';
   /** Only meaningful for `syncYoutube` (walk the uploads playlist) — S1.2 jobs ignore it. */

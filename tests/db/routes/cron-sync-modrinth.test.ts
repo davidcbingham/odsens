@@ -21,6 +21,7 @@ import {
   type ContentSnapshot,
 } from '@/tests/helpers/contentReset';
 import { loadFixture } from '@/tests/helpers/fixtures';
+import { purgeNotificationEvents } from '@/tests/helpers/factories';
 import { spyFetch, spyLog } from '@/tests/helpers/spies';
 
 /**
@@ -79,6 +80,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await restoreContentTables(snapshot);
+  // S1.5: the failed-run rows now emit `sync.failed` through the runner (04 J-F) — purge them (H-1).
+  await purgeNotificationEvents();
 });
 
 describe('T-ACT-33 /api/cron/sync-modrinth', () => {

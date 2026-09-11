@@ -4,13 +4,22 @@
  * SELECT granted to every role; column set is exactly comments_closed_default, kofi_page,
  * owner_profile_id, moderation_mode. Seed values per SEED-1 (`moderation_mode = 'auto'` — the
  * earlier 'hold_first_time' in the T-RLS-132 cell was a typo, 05 §12 note 2026-08-20).
- * Read-only: nothing here writes the seed row.
+ * The first describe is read-only. S1.5 (05 §8 row S1.5 "132 (re-run after `updateSettings`)"): the
+ * last describe writes the row through `updateSettings` (admin session) and re-asserts the view —
+ * every role sees the new public values, the secret columns stay hidden — then restores SEED-1 +
+ * SEED-2 (`restoreSeedSettings`, H-1 `mutatesSeed`).
  */
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
+import { updateSettings } from '@/lib/actions/settings';
+import { expectOk } from '@/tests/helpers/actionResult';
 import { asRole, type TestRole } from '@/tests/helpers/asRole';
+import { callAction, setupActionMocks } from '@/tests/helpers/callAction';
+import { restoreSeedSettings } from '@/tests/helpers/contentReset';
 import { sql } from '@/tests/helpers/db';
 import { expectPolicy } from '@/tests/helpers/expectPolicy';
 import { SEED_USERS } from '@/tests/helpers/seedIds';
+
+setupActionMocks();
 
 const ALL_ROLES = [
   'anon',
@@ -96,4 +105,57 @@ describe('T-RLS-132 site_settings_public', () => {
       expect(data).toEqual([{ kofi_page: 'oddsense' }]);
     },
   );
+});
+
+// ---------------------------------------------------------------------------------------------
+// S1.5 re-run — T-RLS-132 after an `updateSettings` write (04 §1.3; 02 RP-23; 05 §8 row S1.5)
+// ---------------------------------------------------------------------------------------------
+describe('T-RLS-132 after updateSettings (S1.5)', () => {
+  const WEBHOOK = 'https://discord.com/api/webhooks/123/t_rls132token';
+  const EMAIL = 'seed-admin@localhost.test';
+
+  afterAll(async () => {
+    await restoreSeedSettings();
+  });
+
+  it('T-RLS-132 every role sees the new public values through the view; the secrets never do', async () => {
+    expectOk(
+      await callAction(
+        updateSettings,
+        {
+          moderation_mode: 'hold_first_time',
+          comments_closed_default: true,
+          kofi_page: 't_rls132',
+          discord_webhook_url: WEBHOOK,
+          admin_notify_emails: [EMAIL],
+          announcement_md: 't_rls132 hidden',
+        },
+        { role: 'admin' },
+      ),
+    );
+
+    for (const role of ALL_ROLES) {
+      const { data, error } = await asRole(role).from('site_settings_public').select('*');
+      expect(error).toBeNull();
+      expect(data).toHaveLength(1);
+      expect(Object.keys(data?.[0] ?? {}).sort()).toEqual([...PUBLIC_COLUMNS].sort());
+      expect(data?.[0]).toEqual({
+        comments_closed_default: true,
+        kofi_page: 't_rls132',
+        owner_profile_id: SEED_USERS.oddsense,
+        moderation_mode: 'hold_first_time',
+      });
+      const text = JSON.stringify(data);
+      expect(text).not.toContain('t_rls132token');
+      expect(text).not.toContain(EMAIL);
+      expect(text).not.toContain('t_rls132 hidden');
+    }
+
+    for (const column of ['discord_webhook_url', 'admin_notify_emails', 'announcement_md']) {
+      const { error } = await asRole('admin')
+        .from('site_settings_public')
+        .select(column as 'kofi_page');
+      expect(error, `${column} must not be selectable`).not.toBeNull();
+    }
+  });
 });

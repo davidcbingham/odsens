@@ -4,7 +4,7 @@
 -- (scheme 00000000-0000-4000-8000-0000000<gg><nn>) mirrored by tests/helpers/seedIds.ts.
 -- Each SEED block arrives with the slice that creates its table:
 --   SEED-1  site_settings (1 row)                         — S1.1 (below)
---   SEED-2  notification_matrix (16 rows)                 — arrives in S1.5
+--   SEED-2  notification_matrix (16 rows)                 — S1.5 (below)
 --   SEED-3  auth.users (6) + profiles                     — S1.1 (below)
 --   SEED-4  projects (3)                                  — S1.2 (below)
 --   SEED-5  project_versions (4) + project_files (5)      — S1.2 (below)
@@ -124,6 +124,35 @@ on conflict (id) do update
       comments_closed_default = excluded.comments_closed_default,
       announcement_md         = excluded.announcement_md,
       owner_profile_id        = excluded.owner_profile_id;
+
+-- =============================================================================================
+-- SEED-2 — notification_matrix (16 rows) = the default matrix in docs/notifications.md, 8 kinds ×
+-- (email, discord). Migration 20260903120000_notification_matrix.sql seeds the same 16 rows with
+-- `do nothing` (production / staging never run this file — ADR-0030 D10); this block re-asserts the
+-- documented values on every local reset with `do update`, so a test that flipped a switch and
+-- failed before its afterAll cannot leak into the next run. `lib/notify/matrix.ts` `matrixDefaults`
+-- is the TypeScript twin — 05 T-UNIT-27 parses this block, the migration and the module and asserts
+-- all three agree: keep one tuple per line, `(kind, channel, enabled)`.
+-- =============================================================================================
+insert into public.notification_matrix (kind, channel, enabled) values
+  ('comment.new',       'email',   true),
+  ('comment.new',       'discord', true),
+  ('comment.held',      'email',   true),
+  ('comment.held',      'discord', true),
+  ('comment.reported',  'email',   true),
+  ('comment.reported',  'discord', true),
+  ('sync.failed',       'email',   true),
+  ('sync.failed',       'discord', false),
+  ('sync.stale',        'email',   true),
+  ('sync.stale',        'discord', false),
+  ('mention.suggested', 'email',   false),
+  ('mention.suggested', 'discord', true),
+  ('order.new',         'email',   true),
+  ('order.new',         'discord', true),
+  ('tip.new',           'email',   false),
+  ('tip.new',           'discord', true)
+on conflict (kind, channel) do update
+  set enabled = excluded.enabled;
 
 -- =============================================================================================
 -- SEED-4 — projects (3) per 05 §3. Two Modrinth-synced rows (external_id values are the ids the

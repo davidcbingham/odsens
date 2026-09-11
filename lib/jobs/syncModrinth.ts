@@ -1,25 +1,25 @@
 /**
- * lib/jobs/syncModrinth.ts — hourly Modrinth sync (04 §3.1 steps 1–5 verbatim; §3 pipeline;
- * SC-11/SC-13 via lib/jobs/runs.ts; J-P/J-I/J-D; 01 INV-24/INV-72; ADR-0002 #66/#77/A8;
- * 05 T-ACT-45..51, T-ACT-70).
+ * lib/jobs/syncModrinth.ts — hourly Modrinth sync (04 §3.1 steps 1–5 verbatim; §3 pipeline through
+ * `lib/jobs/runner.ts` `runJob` — SC-11/SC-13, SC-07 tags, J-F edge emission (ADR-0030 D1);
+ * J-P/J-I/J-D; 01 INV-24/INV-71/INV-72; ADR-0002 #66/#77; 05 T-ACT-45..51, T-ACT-70, T-ACT-74).
  *
- * Pipeline: lock (SC-13) → insert `sync_runs` → work → finalize (SC-11, try/finally) → revalidate
- * tags → return `JobSummary`. Idempotency keys: `projects (source='modrinth', external_id)`,
+ * Pipeline (the runner): lock (SC-13) → insert `sync_runs` → work → finalize (SC-11, try/finally)
+ * → revalidate tags → J-F → return `JobSummary`. Idempotency keys: `projects (source='modrinth', external_id)`,
  * `project_versions.external_id` (a DB unique since ADR-0026 — duplicate upstream `version_number`s
  * are legal and become their own rows), `project_files (version_id, filename)` — the files pair is
  * matched in code only. J-I: every write is preceded by a column
  * compare, so a run with unchanged upstream data touches nothing but `synced_at` (and the
  * `set_updated_at` trigger's `updated_at`). Versions/files absent upstream are kept (ADR-0002 #66);
  * projects absent from the list go `status='hidden'`, never removed (step 4, skipped when the list
- * call failed). `project_overrides` is never touched (step 2). No notification events in S1.2 —
- * failures go to `log.error` + `sync_runs.error` only (ADR-0002 A8).
+ * call failed). `project_overrides` is never touched (step 2). From S1.5 a failed run (`ok=false`)
+ * emits `sync.failed` per J-F through the runner — edge-triggered, never twice for one failure
+ * episode (05 T-ACT-74); `sync_runs.error` + `log.error` as before.
  *
  * Revalidate (04 §3.1): `projects`; `project:<slug>` for every upserted/hidden slug — none on a
  * no-change run (05 T-ACT-51). A slug whose versions/files changed revalidates too (the detail page
  * renders them).
  */
 import 'server-only';
-import { revalidateTag } from 'next/cache';
 import { sleep } from '@/lib/adapters/http';
 import {
   createModrinth,
@@ -32,10 +32,8 @@ import {
 } from '@/lib/adapters/modrinth';
 import { env } from '@/lib/env';
 import { MODRINTH_CALL_SPACING_MS } from '@/lib/jobs/constants';
-import { findOpenRun, finalizeRun, insertRun } from '@/lib/jobs/runs';
+import { runJob, type JobDb } from '@/lib/jobs/runner';
 import type { JobOptions, JobSummary } from '@/lib/jobs/types';
-import { log } from '@/lib/log';
-import { createAdminClient } from '@/lib/supabase/admin';
 import type { Database } from '@/lib/supabase/types';
 
 const JOB = 'syncModrinth';
@@ -190,7 +188,7 @@ function filePayload(file: VersionFileRow) {
   };
 }
 
-type Db = ReturnType<typeof createAdminClient>;
+type Db = JobDb;
 
 /**
  * Step 3: upsert versions on `external_id` ONLY (the DB unique since ADR-0026 — Modrinth allows
@@ -289,213 +287,171 @@ async function upsertFiles(db: Db, versionId: string, files: VersionFileRow[]): 
   return changed;
 }
 
-/** 04 §3.1 — hourly Modrinth sync. `opts.full` is a youtube-only flag and is ignored here. */
+/**
+ * 04 §3.1 — hourly Modrinth sync. `opts.full` is a youtube-only flag and is ignored here.
+ * Lock, `sync_runs` row, revalidation, logging and J-F come from `runJob` (ADR-0030 D1).
+ */
 export async function syncModrinth(opts: JobOptions): Promise<JobSummary> {
-  const started = Date.now();
-  const db = createAdminClient();
+  return runJob({
+    source: SOURCE,
+    job: JOB,
+    opts,
+    work: async ({ db }) => {
+      let ok = true;
+      let errorText: string | null = null;
+      let upserted = 0;
+      let hidden = 0;
+      let skipped = 0;
+      let versions = 0;
+      let files = 0;
+      const errors: string[] = [];
+      const changedSlugs = new Set<string>();
 
-  // SC-13 — an open run younger than JOB_LOCK_MINUTES holds the lock: no work, no new row.
-  const openRun = await findOpenRun(db, SOURCE);
-  if (openRun !== null) {
-    log.info({
-      job: JOB,
-      id: openRun,
-      msg: 'skipped',
-      meta: { reason: 'running', trigger: opts.trigger },
-    });
-    return {
-      ok: true,
-      source: SOURCE,
-      run_id: openRun,
-      items: 0,
-      ms: Date.now() - started,
-      skipped: 'running',
-    };
-  }
+      try {
+        const modrinth = createModrinth({ env });
 
-  const runId = opts.runId ?? (await insertRun(db, SOURCE));
-
-  let ok = true;
-  let errorText: string | null = null;
-  let upserted = 0;
-  let hidden = 0;
-  let skipped = 0;
-  let versions = 0;
-  let files = 0;
-  const errors: string[] = [];
-  const changedSlugs = new Set<string>();
-
-  try {
-    const modrinth = createModrinth({ env });
-
-    // Step 1 — one list call returns full Project objects (gallery, body, license included).
-    let list: Awaited<ReturnType<typeof modrinth.listUserProjects>> | null = null;
-    try {
-      list = await modrinth.listUserProjects(env.MODRINTH_USER);
-    } catch (error) {
-      // J-P: a failed list call fails the run; steps 2–5 (including hiding) are skipped.
-      ok = false;
-      errorText = `list: ${message(error)}`;
-      pushError(errors, errorText);
-    }
-
-    if (list !== null) {
-      const existingRead = await db.from('projects').select(PROJECT_COLUMNS).eq('source', SOURCE);
-      if (existingRead.error)
-        throw new Error(`projects read failed: ${existingRead.error.message}`);
-      const existingRows: ExistingProject[] = existingRead.data;
-      const byExternalId = new Map<string, ExistingProject>();
-      for (const row of existingRows) {
-        if (row.external_id !== null) byExternalId.set(row.external_id, row);
-      }
-
-      let attempted = 0;
-      let failedItems = 0;
-      for (const raw of list) {
-        // Step 2 — only the two publicly-listable Modrinth statuses are imported.
-        if (raw.status !== 'approved' && raw.status !== 'archived') continue;
-        const mapped = mapProject(raw);
-        if (mapped.project_type === null) {
-          // Step 5 / §5.2 P5 — modpack/shader/other: not imported, counted, not an error.
-          skipped += 1;
-          continue;
-        }
-        attempted += 1;
+        // Step 1 — one list call returns full Project objects (gallery, body, license included).
+        let list: Awaited<ReturnType<typeof modrinth.listUserProjects>> | null = null;
         try {
-          const payload = projectPayload(mapped);
-          const syncedAt = new Date().toISOString();
-          const existing = byExternalId.get(mapped.external_id);
-          let projectId: string;
-          if (existing === undefined) {
-            const inserted = await db
-              .from('projects')
-              .insert({
-                source: SOURCE,
-                external_id: mapped.external_id,
-                ...payload,
-                synced_at: syncedAt,
-              })
-              .select('id')
-              .single();
-            if (inserted.error)
-              throw new Error(`projects insert failed: ${inserted.error.message}`);
-            projectId = inserted.data.id;
-            upserted += 1;
-            changedSlugs.add(payload.slug);
-          } else {
-            projectId = existing.id;
-            if (same(projectFingerprint(existing), payload)) {
-              // J-I — unchanged upstream data: only `synced_at` moves.
-              const touched = await db
-                .from('projects')
-                .update({ synced_at: syncedAt })
-                .eq('id', projectId);
-              if (touched.error) throw new Error(`projects touch failed: ${touched.error.message}`);
-            } else {
-              const updated = await db
-                .from('projects')
-                .update({ ...payload, synced_at: syncedAt })
-                .eq('id', projectId);
-              if (updated.error)
-                throw new Error(`projects update failed: ${updated.error.message}`);
-              upserted += 1;
-              changedSlugs.add(payload.slug);
-              // A renamed slug invalidates the old detail page too.
-              if (existing.slug !== payload.slug) changedSlugs.add(existing.slug);
+          list = await modrinth.listUserProjects(env.MODRINTH_USER);
+        } catch (error) {
+          // J-P: a failed list call fails the run; steps 2–5 (including hiding) are skipped.
+          ok = false;
+          errorText = `list: ${message(error)}`;
+          pushError(errors, errorText);
+        }
+
+        if (list !== null) {
+          const existingRead = await db
+            .from('projects')
+            .select(PROJECT_COLUMNS)
+            .eq('source', SOURCE);
+          if (existingRead.error)
+            throw new Error(`projects read failed: ${existingRead.error.message}`);
+          const existingRows: ExistingProject[] = existingRead.data;
+          const byExternalId = new Map<string, ExistingProject>();
+          for (const row of existingRows) {
+            if (row.external_id !== null) byExternalId.set(row.external_id, row);
+          }
+
+          let attempted = 0;
+          let failedItems = 0;
+          for (const raw of list) {
+            // Step 2 — only the two publicly-listable Modrinth statuses are imported.
+            if (raw.status !== 'approved' && raw.status !== 'archived') continue;
+            const mapped = mapProject(raw);
+            if (mapped.project_type === null) {
+              // Step 5 / §5.2 P5 — modpack/shader/other: not imported, counted, not an error.
+              skipped += 1;
+              continue;
+            }
+            attempted += 1;
+            try {
+              const payload = projectPayload(mapped);
+              const syncedAt = new Date().toISOString();
+              const existing = byExternalId.get(mapped.external_id);
+              let projectId: string;
+              if (existing === undefined) {
+                const inserted = await db
+                  .from('projects')
+                  .insert({
+                    source: SOURCE,
+                    external_id: mapped.external_id,
+                    ...payload,
+                    synced_at: syncedAt,
+                  })
+                  .select('id')
+                  .single();
+                if (inserted.error)
+                  throw new Error(`projects insert failed: ${inserted.error.message}`);
+                projectId = inserted.data.id;
+                upserted += 1;
+                changedSlugs.add(payload.slug);
+              } else {
+                projectId = existing.id;
+                if (same(projectFingerprint(existing), payload)) {
+                  // J-I — unchanged upstream data: only `synced_at` moves.
+                  const touched = await db
+                    .from('projects')
+                    .update({ synced_at: syncedAt })
+                    .eq('id', projectId);
+                  if (touched.error)
+                    throw new Error(`projects touch failed: ${touched.error.message}`);
+                } else {
+                  const updated = await db
+                    .from('projects')
+                    .update({ ...payload, synced_at: syncedAt })
+                    .eq('id', projectId);
+                  if (updated.error)
+                    throw new Error(`projects update failed: ${updated.error.message}`);
+                  upserted += 1;
+                  changedSlugs.add(payload.slug);
+                  // A renamed slug invalidates the old detail page too.
+                  if (existing.slug !== payload.slug) changedSlugs.add(existing.slug);
+                }
+              }
+
+              // Step 3 — sequential version calls with 100 ms spacing (04 §5.8).
+              await sleep(MODRINTH_CALL_SPACING_MS);
+              const rawVersions = await modrinth.listVersions(raw.id);
+              const counts = await upsertVersions(db, projectId, rawVersions);
+              versions += counts.versions;
+              files += counts.files;
+              if (counts.versions > 0 || counts.files > 0) changedSlugs.add(payload.slug);
+            } catch (error) {
+              // J-P: a per-item error keeps old data and is counted, never rethrown.
+              failedItems += 1;
+              pushError(errors, `${raw.slug}: ${message(error)}`);
             }
           }
 
-          // Step 3 — sequential version calls with 100 ms spacing (04 §5.8).
-          await sleep(MODRINTH_CALL_SPACING_MS);
-          const rawVersions = await modrinth.listVersions(raw.id);
-          const counts = await upsertVersions(db, projectId, rawVersions);
-          versions += counts.versions;
-          files += counts.files;
-          if (counts.versions > 0 || counts.files > 0) changedSlugs.add(payload.slug);
-        } catch (error) {
-          // J-P: a per-item error keeps old data and is counted, never rethrown.
-          failedItems += 1;
-          pushError(errors, `${raw.slug}: ${message(error)}`);
-        }
-      }
+          // Step 4 — rows absent from the list go hidden (never removed, J-D). Already-hidden rows
+          // stay untouched so a rerun changes nothing (T-ACT-49/T-ACT-51).
+          const listedIds = new Set(list.map((project) => project.id));
+          for (const row of existingRows) {
+            if (
+              row.external_id === null ||
+              listedIds.has(row.external_id) ||
+              row.status === 'hidden'
+            ) {
+              continue;
+            }
+            const hid = await db.from('projects').update({ status: 'hidden' }).eq('id', row.id);
+            if (hid.error) throw new Error(`projects hide failed: ${hid.error.message}`);
+            hidden += 1;
+            changedSlugs.add(row.slug);
+          }
 
-      // Step 4 — rows absent from the list go hidden (never removed, J-D). Already-hidden rows
-      // stay untouched so a rerun changes nothing (T-ACT-49/T-ACT-51).
-      const listedIds = new Set(list.map((project) => project.id));
-      for (const row of existingRows) {
-        if (row.external_id === null || listedIds.has(row.external_id) || row.status === 'hidden') {
-          continue;
+          // J-P: the run fails only when the list call failed or > 50 % of items failed.
+          if (failedItems > attempted / 2) {
+            ok = false;
+            errorText = `${String(failedItems)}/${String(attempted)} items failed: ${errors.join('; ')}`;
+          }
         }
-        const hid = await db.from('projects').update({ status: 'hidden' }).eq('id', row.id);
-        if (hid.error) throw new Error(`projects hide failed: ${hid.error.message}`);
-        hidden += 1;
-        changedSlugs.add(row.slug);
-      }
-
-      // J-P: the run fails only when the list call failed or > 50 % of items failed.
-      if (failedItems > attempted / 2) {
+      } catch (error) {
         ok = false;
-        errorText = `${String(failedItems)}/${String(attempted)} items failed: ${errors.join('; ')}`;
+        errorText = message(error);
+        pushError(errors, errorText);
       }
-    }
-  } catch (error) {
-    ok = false;
-    errorText = message(error);
-    pushError(errors, errorText);
-  } finally {
-    // SC-11 — exactly one row per invocation, finalized on every path including thrown errors.
-    await finalizeRun(db, runId, {
-      ok,
-      items: upserted,
-      error: ok ? null : (errorText ?? 'failed'),
-    });
-  }
 
-  // 04 §3.1 revalidate — after the run row is finalized; nothing on a no-change run. The tags are
-  // the SC-07 set; the 'max' profile is Next 16.3's required second argument (on-demand expiry of
-  // long-lived tagged entries — outside a Server Action `updateTag` is unavailable).
-  if (changedSlugs.size > 0) {
-    revalidateTag('projects', 'max');
-    for (const slug of changedSlugs) revalidateTag(`project:${slug}`, 'max');
-  }
+      // 04 §3.1 revalidate (through the runner, after the row is final) — `projects` once +
+      // `project:<slug>` per upserted/hidden slug; nothing on a no-change run.
+      const tags =
+        changedSlugs.size > 0
+          ? ['projects', ...[...changedSlugs].map((slug) => `project:${slug}`)]
+          : [];
 
-  if (ok) {
-    log.info({
-      job: JOB,
-      id: runId,
-      msg: 'done',
-      meta: {
-        trigger: opts.trigger,
+      return {
+        ok,
         items: upserted,
-        hidden,
+        error: ok ? null : (errorText ?? 'failed'),
         skipped,
-        versions,
-        files,
-        errors: errors.length,
-      },
-    });
-  } else {
-    // ADR-0002 A8 — S1.2 jobs log failures only; `sync.failed` emission starts in S1.5.
-    log.error({
-      job: JOB,
-      id: runId,
-      msg: 'failed',
-      meta: { trigger: opts.trigger, error: errorText ?? 'failed', errors: errors.length },
-    });
-  }
-
-  const summary: JobSummary = {
-    ok,
-    source: SOURCE,
-    run_id: runId,
-    items: upserted,
-    ms: Date.now() - started,
-    hidden,
-    skipped,
-    versions,
-    files,
-    errors,
-  };
-  if (!ok) summary.error = errorText ?? 'failed';
-  return summary;
+        extra: { hidden, versions, files, errors },
+        tags,
+        logMeta: ok
+          ? { hidden, skipped, versions, files, errors: errors.length }
+          : { errors: errors.length },
+      };
+    },
+  });
 }

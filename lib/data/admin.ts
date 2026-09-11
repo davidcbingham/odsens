@@ -4,9 +4,11 @@
  * held-comments count is S1.4, the videos list S1.6 — the row's Slice cell); `/admin/projects` =
  * `projects` (all statuses) + `project_overrides` + `project_links` + `sync_runs`
  * (modrinth/curseforge); `/admin/projects/[id]` = the same, by id, plus the S1.3 exclusive-editor
- * columns and `project_versions` + `project_files` (`listAdminProjectVersions`); 01 INV-12 "reads
- * go through `lib/data/<area>.ts`"; registry Modules `data/<area>.ts` — `admin` added 2026-08-27,
- * registry add-first rule).
+ * columns and `project_versions` + `project_files` (`listAdminProjectVersions`); `/admin/settings`
+ * (S1.5) = `site_settings` row 1 (webhook masked, never raw — 04 §1.3 / 01 INV-43) +
+ * `notification_matrix` (`getAdminSettings`) and `public_profiles where role <> 'user'`
+ * (`listModerators`, 01 INV-45); 01 INV-12 "reads go through `lib/data/<area>.ts`"; registry Modules
+ * `data/<area>.ts` — `admin` added 2026-08-27, registry add-first rule).
  *
  * The admin read seam is the REQUEST-COOKIE server client (`lib/supabase/server.ts`) under the
  * S1.2 RLS policies (ADR-0022 `project_is_visible() or is_admin()` arms) — admin routes are
@@ -24,6 +26,16 @@ import 'server-only';
 import { cache } from 'react';
 import { avatarUrlFor, type CommentAuthor } from '@/lib/data/comments';
 import { combinedDownloads } from '@/lib/format/downloads';
+import { maskSecret } from '@/lib/format/secret';
+import {
+  COMING_LATER_KINDS,
+  DELIVERY_CHANNELS,
+  MATRIX_KINDS,
+  isDeliveryChannel,
+  isMatrixKind,
+  type ComingLaterKind,
+} from '@/lib/notify/constants';
+import { matrixDefaults, type MatrixEntry } from '@/lib/notify/matrix';
 import { createServerClient } from '@/lib/supabase/server';
 import type { Database, Json } from '@/lib/supabase/types';
 import { sortVersionsForTable } from '@/lib/versions';
@@ -535,4 +547,136 @@ export async function listModerationQueue(limit = 100): Promise<ModerationQueueR
         group(a) - group(b) || (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0),
     )
     .slice(0, limit);
+}
+
+// ---- /admin/settings (S1.5; 02 §2.8; 03 §2.10 `NotificationMatrix`; ADR-0030 D5) -------------
+
+export type ModerationMode = Database['public']['Enums']['moderation_mode'];
+
+/**
+ * What `/admin/settings` renders (02 §2.8 Data: `site_settings` row + `notification_matrix`). The
+ * webhook URL never leaves the server — `webhookMasked` is `maskSecret(url)` (`…<last 4>`) or
+ * `null` when unset, exactly the 03 §2.10 `webhookMasked` prop; `webhookSet` is the boolean twin.
+ */
+export type AdminSettings = {
+  moderationMode: ModerationMode;
+  /** Explicit admin addresses (`admin_notify_emails`) — rendered as chips, never from Google (00 S1.5.AC4). */
+  adminNotifyEmails: string[];
+  kofiPage: string | null;
+  commentsClosedDefault: boolean;
+  announcementMd: string | null;
+  webhookSet: boolean;
+  webhookMasked: string | null;
+  /** The 16 `(kind, channel)` cells in `matrixDefaults` order (missing cells fall back to the defaults). */
+  matrix: MatrixEntry[];
+  /** The greyed COMING LATER rows (03 §2.10 `comingLater` prop). */
+  comingLater: ComingLaterKind[];
+};
+
+const MATRIX_ORDER = new Map(
+  MATRIX_KINDS.flatMap((kind) =>
+    DELIVERY_CHANNELS.map((channel, index) => [
+      `${kind} ${channel}`,
+      MATRIX_KINDS.indexOf(kind) * DELIVERY_CHANNELS.length + index,
+    ]),
+  ),
+);
+
+/**
+ * `notification_matrix` rows → the 16 grid cells in `matrixDefaults` order (kind-major, email then
+ * discord). Rows outside the eight matrix kinds or the two v1 channels (Phase 2 `inapp`/`push`,
+ * log-only kinds) are dropped; a missing cell reads its documented default so the grid never
+ * renders a hole. Pure — exported for `updateSettings`' return value and tests.
+ */
+export function sortMatrixEntries(
+  rows: readonly { kind: string; channel: string; enabled: boolean }[],
+): MatrixEntry[] {
+  const byKey = new Map<string, MatrixEntry>();
+  for (const row of rows) {
+    if (!isMatrixKind(row.kind) || !isDeliveryChannel(row.channel)) continue;
+    byKey.set(`${row.kind} ${row.channel}`, {
+      kind: row.kind,
+      channel: row.channel,
+      enabled: row.enabled,
+    });
+  }
+  return matrixDefaults
+    .map((entry) => byKey.get(`${entry.kind} ${entry.channel}`) ?? { ...entry })
+    .sort(
+      (a, b) =>
+        (MATRIX_ORDER.get(`${a.kind} ${a.channel}`) ?? 0) -
+        (MATRIX_ORDER.get(`${b.kind} ${b.channel}`) ?? 0),
+    );
+}
+
+/**
+ * The `/admin/settings` read on the request-cookie client — `site_settings` select is admin-only
+ * RLS (05 T-RLS-12), so this is called only after the page's RP-04 admin check (a moderator
+ * session would see no row and this throws — the page 404s moderators first, 02 §2.8). The raw
+ * `discord_webhook_url` is read here to mask it and is NEVER returned (04 §1.3; 01 INV-43).
+ */
+export async function getAdminSettings(): Promise<AdminSettings> {
+  const db = await createServerClient();
+  const [settings, matrix] = await Promise.all([
+    db
+      .from('site_settings')
+      .select(
+        'moderation_mode, admin_notify_emails, discord_webhook_url, kofi_page, comments_closed_default, announcement_md',
+      )
+      .eq('id', 1)
+      .maybeSingle(),
+    db.from('notification_matrix').select('kind, channel, enabled'),
+  ]);
+  if (settings.error) throw new Error(`admin settings read failed: ${settings.error.code}`);
+  if (matrix.error) throw new Error(`admin matrix read failed: ${matrix.error.code}`);
+  if (settings.data === null) throw new Error('admin settings read failed: no row');
+
+  const url = settings.data.discord_webhook_url;
+  return {
+    moderationMode: settings.data.moderation_mode,
+    adminNotifyEmails: settings.data.admin_notify_emails,
+    kofiPage: settings.data.kofi_page,
+    commentsClosedDefault: settings.data.comments_closed_default,
+    announcementMd: settings.data.announcement_md,
+    webhookSet: url !== null && url !== '',
+    webhookMasked: url !== null && url !== '' ? maskSecret(url) : null,
+    matrix: sortMatrixEntries(matrix.data),
+    comingLater: [...COMING_LATER_KINDS],
+  };
+}
+
+export type ModeratorRow = {
+  id: string;
+  handle: string;
+  role: 'moderator' | 'admin';
+};
+
+const MODERATOR_RANK: Record<ModeratorRow['role'], number> = { admin: 2, moderator: 1 };
+
+/**
+ * The Moderators table (02 §2.8 §3): `public_profiles where role <> 'user'` — the only cross-user
+ * read (01 INV-45; `id, handle, role`). Admins first, then moderators, handle A→Z (case-insensitive)
+ * — sorted here because PostgREST orders enum columns by declaration order. A staff row without a
+ * handle (onboarding incomplete) is skipped: `setUserRole` addresses people by handle.
+ */
+export async function listModerators(): Promise<ModeratorRow[]> {
+  const db = await createServerClient();
+  const { data, error } = await db
+    .from('public_profiles')
+    .select('id, handle, role')
+    .neq('role', 'user');
+  if (error) throw new Error(`admin moderators read failed: ${error.code}`);
+
+  const rows: ModeratorRow[] = [];
+  for (const row of data) {
+    if (row.id === null || row.handle === null || row.role === null || row.role === 'user')
+      continue;
+    rows.push({ id: row.id, handle: row.handle, role: row.role });
+  }
+  return rows.sort(
+    (a, b) =>
+      MODERATOR_RANK[b.role] - MODERATOR_RANK[a.role] ||
+      a.handle.toLowerCase().localeCompare(b.handle.toLowerCase()) ||
+      a.handle.localeCompare(b.handle),
+  );
 }

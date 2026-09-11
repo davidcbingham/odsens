@@ -23,6 +23,33 @@
   padding: 0 var(--space-24);
 }
 
+/* Left group: the odsens mark (back to the public site) then the ADMIN label. Grouping them keeps
+   `justify-content: space-between` on the inner strip a two-way split — brand+section vs the
+   ProfileMenu — instead of spreading three children across the bar (ADR-0033). */
+.admin-shell-header-left {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+/* Mirrors `Nav.nav-home` (03 N-02): avatar + wordmark, one link, 44px target (03 C-24). */
+.admin-shell-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 44px;
+  color: var(--white);
+  text-decoration: none;
+}
+
+.admin-shell-wordmark {
+  font-family: var(--font-display);
+  font-size: var(--text-wordmark);
+  line-height: 1;
+  color: var(--white);
+}
+
 .admin-shell-home {
   display: inline-flex;
   align-items: center;

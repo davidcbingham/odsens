@@ -1,0 +1,5 @@
+{
+  "statusCode": 422,
+  "message": "The `to` field must be a valid email address.",
+  "name": "validation_error"
+}

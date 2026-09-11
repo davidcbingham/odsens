@@ -27,6 +27,17 @@ function post(headers: Record<string, string>): NextRequest {
   return new NextRequest(URL_, { method: 'POST', headers });
 }
 
+/**
+ * A request addressed to a host that is NOT `NEXT_PUBLIC_SITE_URL` — the production shape behind
+ * ADR-0031. `post()` cannot express it: it builds the URL from SITE, so the request host and the
+ * configured host always agree, which is exactly why T-ACT-9 could not catch the live bug.
+ */
+const OTHER_HOST_ORIGIN = 'https://www.odsens.com';
+
+function postToOtherHost(headers: Record<string, string>): NextRequest {
+  return new NextRequest(`${OTHER_HOST_ORIGIN}/auth/sign-out`, { method: 'POST', headers });
+}
+
 function sessionCookies(): { name: string; value: string }[] {
   return lastActionCookies()
     .getAll()
@@ -94,6 +105,33 @@ describe('T-ACT-9 /auth/sign-out', () => {
     // `new URL(origin).host` comparison: a different port is a different host
     const res = await callRoute(POST, post({ origin: 'http://localhost:4010' }), { role: 'user' });
     await expectForbidden(res);
+  });
+
+  it('T-ACT-9 Origin = the request own host but ≠ NEXT_PUBLIC_SITE_URL → 303 on that host (ADR-0031)', async () => {
+    // The production bug: Vercel served `www.odsens.com` while `NEXT_PUBLIC_SITE_URL` was the apex,
+    // so every real logout POST carried an Origin the old env-only comparison rejected — 403
+    // `{"code":"forbidden","message":"Nope."}` rendered as a white page. The guard now accepts the
+    // host the request was actually addressed to, and the 303 goes back to that same host.
+    expect(new URL(OTHER_HOST_ORIGIN).host).not.toBe(new URL(SITE).host);
+    const id = await makeUser();
+    const res = await callRoute(POST, postToOtherHost({ origin: OTHER_HOST_ORIGIN }), {
+      profileId: id,
+    });
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe(`${OTHER_HOST_ORIGIN}/`);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(sessionCookies()).toEqual([]);
+  });
+
+  it('T-ACT-9 a foreign Origin is still 403 on a request to a non-configured host (ADR-0031)', async () => {
+    // Widening to the request host must not admit a foreign origin on that same request.
+    const before = (await seedSessionCookies('user')).length;
+    expect(before).toBeGreaterThan(0);
+    const res = await callRoute(POST, postToOtherHost({ origin: 'https://evil.example' }), {
+      role: 'user',
+    });
+    await expectForbidden(res);
+    expect(sessionCookies()).toHaveLength(before);
   });
 
   it('T-ACT-9 nohandle (un-onboarded) may sign out → 303', async () => {

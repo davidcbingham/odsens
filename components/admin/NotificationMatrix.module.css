@@ -1,0 +1,344 @@
+/* NotificationMatrix — DESIGN.md §12.1 Notification matrix (grid, panel titles, chips, masked
+   field, helper), §11.1 Square toggle / Admin field, §6 #9 admin headers (Space Grotesk 700
+   chalk, clarity over flair), §11.3 #15 Settings (Moderation · Moderators · Ko-fi · SAVE);
+   03 §2.10 (`--slab --line-soft --emerald --slab-sunk --line-strong --mute-dim --font-pixel`).
+   Tokens only (03 C-08). Phone (≤599px, the AdminShell breakpoint): grid rows stack, both
+   toggles inline under EMAIL / DISCORD micro-labels. Every control ≥ 44px (03 C-24). */
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-40);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* Admin section header — DESIGN.md §6 #9 "poster type goes": Space Grotesk 700, chalk. */
+.heading {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-body);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.lead {
+  margin: 0;
+  max-width: var(--measure-body);
+  color: var(--mute);
+  font-size: var(--text-small);
+  line-height: 1.5;
+}
+
+/* ---- Moderation: square radio / switch + its words -------------------------------------- */
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+}
+
+.choice-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-12); /* aligns the label with the 44px toggle row's centre */
+}
+
+.choice-label {
+  color: var(--chalk);
+  font-size: var(--text-ui);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.choice-line {
+  color: var(--mute-dim);
+  font-size: var(--text-label);
+  line-height: 1.5;
+}
+
+/* ---- Notifications panels ("Where the allay delivers" / "What it picks up") ----------------- */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-20);
+  background: var(--slab);
+  border: 2px solid var(--line-soft);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-ui);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* The pending allay render, integer-scaled at 28px (DESIGN.md §12.1 "The allay"). */
+.allay {
+  width: 28px;
+  height: 28px;
+  image-rendering: pixelated;
+}
+
+.webhook-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+}
+
+.webhook-field {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Test / Remove sit level with the input (label 13px + 8px gap above the well). */
+.webhook-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding-top: var(--space-24);
+}
+
+/* The inline ✔ / ✕ result line — never a toast (03 C-30). Always mounted so the
+   `role="status"` region announces its text when it arrives. */
+.test-line {
+  margin: 0;
+  min-height: 1.5em;
+  color: var(--chalk);
+  font-size: var(--text-label);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.test-line[data-tone='ok'] {
+  color: var(--emerald-soft);
+}
+
+.test-line[data-tone='no'] {
+  color: var(--danger);
+}
+
+.emails {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.emails-label {
+  color: var(--chalk);
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+
+.email-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.email-add {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+}
+
+.email-add-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.email-add > :last-child {
+  margin-top: var(--space-24); /* level with the input, under the field label */
+}
+
+/* ---- The grid (DESIGN.md §12.1): rows = events, columns = EMAIL · DISCORD ------------------- */
+.grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.grid-head {
+  padding: var(--space-8) var(--space-12);
+  border-bottom: 2px solid var(--line);
+  text-align: start;
+}
+
+.grid-row + .grid-row .grid-label,
+.grid-row + .grid-row .grid-cell {
+  border-top: 2px solid var(--table-divider);
+}
+
+.grid-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 44px;
+  padding: var(--space-8) var(--space-12);
+  color: var(--chalk);
+  font-size: var(--text-ui);
+  font-weight: 500;
+  text-align: start;
+}
+
+/* `display: flex` on a <th> drops it out of the table's cell layout in a grid row; keep it a
+   cell on desktop and lay its words out inline instead. */
+@media (min-width: 600px) {
+  .grid-label {
+    display: table-cell;
+    vertical-align: middle;
+  }
+
+  .grid-event {
+    margin-inline-end: var(--space-8);
+  }
+}
+
+.grid-cell {
+  padding: var(--space-8) var(--space-12);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Phone-only column words beside each toggle (desktop has the <th> row). */
+.grid-micro {
+  display: none;
+}
+
+/* COMING LATER rows (DESIGN.md §12.1 "greyed 45%-opacity"): the words and the phone-only
+   EMAIL / DISCORD micro-labels dim here; the disabled `Toggle` dims itself (03 §2.2), so the
+   row is never set as a whole (nothing double-dims). */
+.grid-row[data-coming-later] .grid-label,
+.grid-row[data-coming-later] .grid-micro {
+  opacity: 0.45;
+}
+
+.helper {
+  margin: 0;
+  color: var(--mute-dim);
+  font-size: var(--text-label-sm);
+  line-height: 1.5;
+}
+
+/* ---- Ko-fi ------------------------------------------------------------------------------- */
+.kofi-field {
+  max-width: 480px;
+}
+
+.kofi-webhook {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.kofi-webhook-label {
+  color: var(--chalk);
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+
+.kofi-webhook-line {
+  color: var(--mute);
+  font-size: var(--text-label);
+}
+
+/* ---- SAVE strip ---------------------------------------------------------------------------- */
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-16);
+  padding-top: var(--space-24);
+  border-top: 2px solid var(--line-soft);
+}
+
+.footer-line {
+  margin: 0;
+  color: var(--mute);
+  font-size: var(--text-label);
+}
+
+.footer-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+
+/* ---- Phone: rows stack, toggles inline under micro-labels (DESIGN.md §12.1) ---------------- */
+@media (max-width: 599px) {
+  .webhook-row,
+  .email-add {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .webhook-actions,
+  .email-add > :last-child {
+    padding-top: 0;
+    margin-top: 0;
+  }
+
+  .grid,
+  .grid tbody {
+    display: block;
+  }
+
+  .grid thead {
+    display: none;
+  }
+
+  .grid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 var(--space-16);
+    padding: var(--space-8) 0;
+  }
+
+  .grid-row + .grid-row {
+    border-top: 2px solid var(--table-divider);
+  }
+
+  .grid-row + .grid-row .grid-label,
+  .grid-row + .grid-row .grid-cell {
+    border-top: 0;
+  }
+
+  .grid-label {
+    grid-column: 1 / -1;
+    min-height: 0;
+    padding: var(--space-4) 0;
+  }
+
+  .grid-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding: 0;
+  }
+
+  .grid-micro {
+    display: inline-block;
+  }
+}

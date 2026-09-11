@@ -5,6 +5,9 @@
  * Cell order: anon | user | banned | mod | admin | svc.
  *
  * `mutatesSeed` (H-1): admin/service cells write the SEED-1 row; `afterAll` restores it via psql.
+ * S1.5 (05 §8 row S1.5 "12..14 (settings update)"): the last describe re-runs T-RLS-12 / T-RLS-14 after
+ * an `updateSettings` write through the action (admin session) — the new values are readable by
+ * admin + service only and still unwritable by every other role.
  *
  * The singleton itself (ADR-0015 addendum, 2026-08-20): production and the persistent `staging` branch
  * never run seed.sql, so the row is created by migration 20260820120500_site_settings_default_row.sql
@@ -15,14 +18,22 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { updateSettings } from '@/lib/actions/settings';
+import { expectOk } from '@/tests/helpers/actionResult';
 import { asRole, type TestRole } from '@/tests/helpers/asRole';
+import { callAction, setupActionMocks } from '@/tests/helpers/callAction';
 import { sql } from '@/tests/helpers/db';
 import { REPO_ROOT } from '@/tests/helpers/envTest';
 import { expectPolicy } from '@/tests/helpers/expectPolicy';
 import { SEED_USERS } from '@/tests/helpers/seedIds';
 
+setupActionMocks();
+
 const NON_ADMIN = ['user', 'banned', 'mod'] as const satisfies readonly TestRole[];
 const service = asRole('service');
+
+/** A webhook-shaped secret for the S1.5 re-run (never a real one; token tagged `t_`). */
+const WEBHOOK = 'https://discord.com/api/webhooks/123/t_rls14token';
 
 const DEFAULT_ROW_MIGRATION = path.join(
   REPO_ROOT,
@@ -257,5 +268,60 @@ describe('T-RLS-15 site_settings delete', () => {
     expect(await seedRow()).toBeNull();
     restoreSeedRow();
     expect((await seedRow())?.kofi_page).toBe('oddsense');
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// S1.5 re-run — T-RLS-12 / T-RLS-14 after an `updateSettings` write (04 §1.3; 05 §8 row S1.5)
+// ---------------------------------------------------------------------------------------------
+describe('T-RLS-12 / T-RLS-14 after updateSettings (S1.5)', () => {
+  it('T-RLS-14 the admin session writes through updateSettings; T-RLS-12 admin + service read the new values, every other role is still denied', async () => {
+    expectOk(
+      await callAction(
+        updateSettings,
+        {
+          moderation_mode: 'hold_first_time',
+          announcement_md: 't_rls14 action',
+          discord_webhook_url: WEBHOOK,
+          admin_notify_emails: ['seed-admin@localhost.test'],
+          comments_closed_default: true,
+        },
+        { role: 'admin' },
+      ),
+    );
+
+    for (const role of ['anon', ...NON_ADMIN] as const) {
+      await expectPolicy({
+        table: 'site_settings',
+        op: 'select',
+        role,
+        allowed: false,
+        filter: { id: 1 },
+      });
+      await expectPolicy({
+        table: 'site_settings',
+        op: 'update',
+        role,
+        allowed: false,
+        filter: { id: 1 },
+        patch: { announcement_md: 't_rls14 denied' },
+      });
+    }
+
+    for (const role of ['admin', 'service'] as const) {
+      const { data, error } = await asRole(role).from('site_settings').select('*').eq('id', 1);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(1);
+      expect(data?.[0]?.moderation_mode).toBe('hold_first_time');
+      expect(data?.[0]?.announcement_md).toBe('t_rls14 action');
+      expect(data?.[0]?.discord_webhook_url).toBe(WEBHOOK);
+      expect(data?.[0]?.admin_notify_emails).toEqual(['seed-admin@localhost.test']);
+      expect(data?.[0]?.comments_closed_default).toBe(true);
+    }
+    expect(sql('select count(*) from public.site_settings')).toEqual([['1']]);
+
+    restoreSeedRow();
+    expect((await seedRow())?.moderation_mode).toBe('auto');
+    expect((await seedRow())?.discord_webhook_url).toBeNull();
   });
 });

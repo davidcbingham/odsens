@@ -1,7 +1,7 @@
 /**
  * tests/db/rls/_rpc-grants.test.ts — T-RLS-129 (docs/build/05-test-plan.md §7.1): execute grants on
  * the RPCs, asserted in the catalog (`has_function_privilege`) AND behaviourally through PostgREST.
- *   check_handle(text)                              anon D · authenticated A
+ *   check_handle(text)                              anon D · authenticated A · service D (S1.5)
  *   rate_limit_ok(text,text,integer,interval)       anon/authenticated D · service A
  *   purge_rate_limit_hits(integer)                  anon/authenticated D · service A
  *   is_reserved_handle(text)                        anon/authenticated/service A — pure, immutable,
@@ -15,6 +15,12 @@
  *   moderator_thread(text,uuid)                     anon D · authenticated A (raises 42501 unless
  *                                                   `is_moderator()`) · service_role NOT granted —
  *                                                   the mods-only client read (S1.4, T-RLS-134)
+ *   migration_versions()                            anon/authenticated D · service A — the applied
+ *                                                   version list `scripts/wait-for-schema.mjs` polls
+ *                                                   before `next build` (S1.5, ADR-0029 D3)
+ * S1.5 (ADR-0030 D11, migration 20260903120200): `check_handle` is ALSO denied to `service_role` and
+ * `can_comment`'s set is re-stated with an every-role revoke, so the cells above hold on Supabase
+ * images whose default ACL grants EXECUTE on new functions to every API role (the PR #8 CI lesson).
  * Not yet in the schema (asserted absent so this file is revisited when it lands):
  *   record_skin_download → S1.7.
  * Every table-reading RPC is `security definer` with `search_path = public` (01 INV-49); `is_reserved_handle`
@@ -24,9 +30,12 @@
  * to true through `service` and is restored in `afterAll`; its factory projects fall to
  * `cleanupFactories`.
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { asRole, asUser } from '@/tests/helpers/asRole';
 import { sql } from '@/tests/helpers/db';
+import { REPO_ROOT } from '@/tests/helpers/envTest';
 import {
   cleanupFactories,
   makeFile,
@@ -46,6 +55,7 @@ const FUNCTIONS = {
   can_comment: 'public.can_comment(text,uuid)',
   comment_target_visible: 'public.comment_target_visible(text,uuid)',
   moderator_thread: 'public.moderator_thread(text,uuid)',
+  migration_versions: 'public.migration_versions()',
 } as const;
 
 function canExecute(role: 'anon' | 'authenticated' | 'service_role', fn: string): boolean {
@@ -66,9 +76,10 @@ function publicCanExecute(name: string): boolean {
 }
 
 describe('T-RLS-129 RPC grants (catalog)', () => {
-  it('T-RLS-129 check_handle: anon denied, authenticated allowed, never PUBLIC', () => {
+  it('T-RLS-129 check_handle: anon denied, authenticated allowed, service_role denied (ADR-0030 D11), never PUBLIC', () => {
     expect(canExecute('anon', FUNCTIONS.check_handle)).toBe(false);
     expect(canExecute('authenticated', FUNCTIONS.check_handle)).toBe(true);
+    expect(canExecute('service_role', FUNCTIONS.check_handle)).toBe(false);
     expect(publicCanExecute('check_handle')).toBe(false);
   });
 
@@ -545,5 +556,61 @@ describe('T-RLS-134 moderator_thread (behaviour)', () => {
       .single();
     expect(error).toBeNull();
     expect(data).toEqual({ id: SEED_COMMENTS.held, status: 'held', body: null, author_id: null });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-RLS-129 migration_versions() — S1.5, ADR-0029 D3 (migration 20260903120400). The build's schema
+// wait reads it with the service key; every other role is refused; it is never PUBLIC.
+// ---------------------------------------------------------------------------------------------
+describe('T-RLS-129 migration_versions() (ADR-0029 D3)', () => {
+  /** The version set the checkout carries = the filename prefixes under supabase/migrations/. */
+  function checkoutVersions(): string[] {
+    return fs
+      .readdirSync(path.join(REPO_ROOT, 'supabase', 'migrations'))
+      .filter((name) => name.endsWith('.sql'))
+      .map((name) => name.slice(0, name.indexOf('_')))
+      .sort();
+  }
+
+  it('T-RLS-129 migration_versions: anon/authenticated denied, service_role allowed, never PUBLIC', () => {
+    expect(canExecute('anon', FUNCTIONS.migration_versions)).toBe(false);
+    expect(canExecute('authenticated', FUNCTIONS.migration_versions)).toBe(false);
+    expect(canExecute('service_role', FUNCTIONS.migration_versions)).toBe(true);
+    expect(publicCanExecute('migration_versions')).toBe(false);
+  });
+
+  it('T-RLS-129 migration_versions is a stable security-definer SQL function with search_path = public', () => {
+    const rows = sql(
+      "select p.prosecdef, p.provolatile, l.lanname, coalesce(array_to_string(p.proconfig, ','), ''), pg_get_function_result(p.oid) from pg_proc p join pg_namespace n on n.oid = p.pronamespace join pg_language l on l.oid = p.prolang where n.nspname = 'public' and p.proname = 'migration_versions'",
+    );
+    expect(rows).toEqual([['t', 's', 'sql', 'search_path=public', 'SETOF text']]);
+  });
+
+  it('T-RLS-129 service reads the applied version list = the checkout’s migration files (POST and GET)', async () => {
+    const expected = checkoutVersions();
+    expect(expected).toContain('20260903120400');
+    const post = await asRole('service').rpc('migration_versions');
+    expect(post.error).toBeNull();
+    expect(post.data).toEqual(expected);
+    // `stable` → PostgREST also serves it over GET (the wait script may use either).
+    const get = await asRole('service').rpc('migration_versions', undefined, { get: true });
+    expect(get.error).toBeNull();
+    expect(get.data).toEqual(expected);
+  });
+
+  it.each(['anon', 'user', 'mod', 'admin'] as const)(
+    'T-RLS-129 %s cannot call migration_versions (42501)',
+    async (role) => {
+      const { data, error } = await asRole(role).rpc('migration_versions');
+      expect(error?.code).toBe('42501');
+      expect(data).toBeNull();
+    },
+  );
+
+  it('T-RLS-129 service_role cannot call check_handle (ADR-0030 D11 — the server never does)', async () => {
+    const { data, error } = await asRole('service').rpc('check_handle', { p_handle: 'seed_user' });
+    expect(error?.code).toBe('42501');
+    expect(data).toBeNull();
   });
 });

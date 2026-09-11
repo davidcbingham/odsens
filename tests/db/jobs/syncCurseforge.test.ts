@@ -11,6 +11,12 @@
  *
  * T-ACT-71's youtube/mentions clauses land with those jobs (S1.6/S1.8); S1.2 scope is
  * "curseforge no-key" (05 §8 row S1.2).
+ *
+ * S1.5 (T-ACT-74, 04 J-F, ADR-0030 D1): the last describe proves the `sync.failed` edge through the
+ * shared runner for this job too — one event per failure episode (both links 404 → > 50 % → ok=false),
+ * none while it persists, one again after an ok run, and never for the `not_configured` run. The DB
+ * read/write arms (`project_links` / `projects` read → the run fails; a per-link update → J-P) are
+ * reproduced with `withDbFault` (05 T-ACT-0 (1) precedent; COV-4).
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { env } from '@/lib/env';
@@ -23,8 +29,15 @@ import {
   snapshotContentTables,
   type ContentSnapshot,
 } from '@/tests/helpers/contentReset';
-import { cleanupFactories, makeProject } from '@/tests/helpers/factories';
+import {
+  cleanupFactories,
+  makeProject,
+  makeSyncRun,
+  purgeNotificationEvents,
+  trackNotificationEvent,
+} from '@/tests/helpers/factories';
 import { SEED_PROJECTS } from '@/tests/helpers/seedIds';
+import { withDbFault } from '@/tests/helpers/dbFault';
 import { spyFetch, spyRevalidateTag } from '@/tests/helpers/spies';
 
 setupActionMocks();
@@ -141,6 +154,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await restoreContentTables(snapshot);
   await cleanupFactories();
+  // S1.5: failed runs emit `sync.failed` through the runner (04 J-F) — purge them (H-1).
+  await purgeNotificationEvents();
 });
 
 describe('syncCurseforge (04 §3.2)', () => {
@@ -293,5 +308,138 @@ describe('syncCurseforge (04 §3.2)', () => {
     } finally {
       env.CURSEFORGE_API_KEY = saved;
     }
+  });
+  describe('T-ACT-52 DB-error arms (J-P: a list read fails the run, a per-link write is one item)', () => {
+    const BOTH_OK = { [CHAMELEON_URL]: 'curseforge/mod.json', [SECOND_URL]: secondMod };
+
+    it('T-ACT-52 a failed project_links read → ok=false, error names the read, no adapter call', async () => {
+      const fetchSpy = spyFetch(BOTH_OK);
+      const summary = await withDbFault({ table: 'project_links', op: 'select' }, {}, () => run());
+      expect(summary.ok).toBe(false);
+      expect(summary.error).toMatch(/project_links read failed/);
+      expect(fetchSpy.calls).toEqual([]);
+      const { data } = await service
+        .from('sync_runs')
+        .select('ok, error')
+        .eq('id', summary.run_id)
+        .single();
+      expect(data?.ok).toBe(false);
+      expect(data?.error).toMatch(/project_links read failed/);
+    });
+
+    it('T-ACT-52 a failed projects (slug) read → ok=false before any adapter call', async () => {
+      const fetchSpy = spyFetch(BOTH_OK);
+      const summary = await withDbFault({ table: 'projects', op: 'select' }, {}, () => run());
+      expect(summary.ok).toBe(false);
+      expect(summary.error).toMatch(/projects read failed/);
+      expect(fetchSpy.calls).toEqual([]);
+    });
+
+    it('T-ACT-52 a failed project_links update on one link is J-P: counted, the other link still updates', async () => {
+      await perturbLinks();
+      spyFetch(BOTH_OK);
+      const summary = await withDbFault({ table: 'project_links', op: 'update' }, {}, () => run());
+      expect(summary.ok).toBe(true); // 1 of 2 items failed — not more than half
+      expect(summary.items).toBe(1);
+      expect(summary.errors).toHaveLength(1);
+      expect((summary.errors as string[])[0]).toMatch(/project_links update failed/);
+      const downloads = [
+        (await linkRow(SEED_PROJECTS.pixelChameleon)).downloads,
+        (await linkRow(secondProjectId)).downloads,
+      ];
+      expect(downloads).toContain(5); // the failed link keeps its old (perturbed) numbers
+      expect(downloads.filter((count) => count !== 5)).toHaveLength(1); // the other one updated
+    });
+
+    it('T-ACT-52 a failed projects.downloads_curseforge update on one link is J-P likewise', async () => {
+      await perturbLinks();
+      spyFetch(BOTH_OK);
+      const summary = await withDbFault({ table: 'projects', op: 'update' }, {}, () => run());
+      expect(summary.ok).toBe(true);
+      expect(summary.items).toBe(1);
+      expect((summary.errors as string[])[0]).toMatch(/projects update failed/);
+      const counts = [
+        await cfDownloads(SEED_PROJECTS.pixelChameleon),
+        await cfDownloads(secondProjectId),
+      ];
+      expect(counts).toContain(5); // one project kept the perturbed count (its write failed)
+      expect(counts.filter((count) => count !== 5)).toHaveLength(1); // the other one updated
+    });
+  });
+
+  describe('T-ACT-74 sync.failed edge (04 J-F, ADR-0030 D1)', () => {
+    const BOTH_FAIL = {
+      [CHAMELEON_URL]: 'curseforge/error-404.json',
+      [SECOND_URL]: 'curseforge/error-404.json',
+    };
+    const BOTH_OK = { [CHAMELEON_URL]: 'curseforge/mod.json', [SECOND_URL]: secondMod };
+
+    async function failedEvents(): Promise<{ id: string; run_id: string | undefined }[]> {
+      const { data, error } = await service
+        .from('notification_events')
+        .select('id, payload')
+        .eq('kind', 'sync.failed')
+        .order('created_at', { ascending: true });
+      if (error) throw new Error(error.message);
+      const rows = data as unknown as {
+        id: string;
+        payload: { source?: string; run_id?: string };
+      }[];
+      for (const row of rows) trackNotificationEvent(row.id);
+      return rows
+        .filter((row) => row.payload.source === 'curseforge')
+        .map((row) => ({ id: row.id, run_id: row.payload.run_id }));
+    }
+
+    beforeAll(async () => {
+      await purgeNotificationEvents();
+      await makeSyncRun({
+        source: 'curseforge',
+        ok: true,
+        items: 0,
+        finished_at: new Date().toISOString(),
+      });
+    });
+
+    it('T-ACT-74 first failing run after an ok run → exactly one sync.failed for curseforge', async () => {
+      spyFetch(BOTH_FAIL);
+      const summary = await run();
+      expect(summary.ok).toBe(false);
+      const events = await failedEvents();
+      expect(events).toHaveLength(1);
+      expect(events[0]?.run_id).toBe(summary.run_id);
+    });
+
+    it('T-ACT-74 a second consecutive failing run → no new event', async () => {
+      spyFetch(BOTH_FAIL);
+      expect((await run()).ok).toBe(false);
+      expect(await failedEvents()).toHaveLength(1);
+    });
+
+    it('T-ACT-74 failed → ok → failed → emits again', async () => {
+      spyFetch(BOTH_OK);
+      expect((await run()).ok).toBe(true);
+      expect(await failedEvents()).toHaveLength(1);
+      spyFetch(BOTH_FAIL);
+      const failedRun = await run();
+      expect(failedRun.ok).toBe(false);
+      const events = await failedEvents();
+      expect(events).toHaveLength(2);
+      expect(events[1]?.run_id).toBe(failedRun.run_id);
+    });
+
+    it("T-ACT-74 the not_configured run never emits (it is ok:true, error 'not configured')", async () => {
+      const saved = env.CURSEFORGE_API_KEY;
+      const before = (await failedEvents()).length;
+      spyFetch({});
+      try {
+        env.CURSEFORGE_API_KEY = undefined;
+        const summary = await run();
+        expect(summary.skipped).toBe('not_configured');
+      } finally {
+        env.CURSEFORGE_API_KEY = saved;
+      }
+      expect(await failedEvents()).toHaveLength(before);
+    });
   });
 });
