@@ -20,9 +20,9 @@ Canonical tree (from `_registry.md` "Repo layout", refined by 02/04/05; a gate t
 
 ```
 app/layout.tsx                         html/body/fonts/tokens only (ADR-0002 C5); app/error.tsx app/global-error.tsx app/not-found.tsx app/robots.ts app/sitemap.ts
-app/(public)/                          layout.tsx (Nav/Footer/FloatingSupportButton/ViewerProvider) + page.tsx + loading.tsx + every public route incl. profile/ (02 RP-11); placeholder pages for nav targets from S0 (ADR-0002 C20)
+app/(public)/                          layout.tsx (Nav/Footer/FloatingSupportButton/ViewerProvider) + template.tsx (route fade — ADR-0035 D3) + page.tsx + loading.tsx + every public route incl. profile/ (02 RP-11); placeholder pages for nav targets from S0 (ADR-0002 C20)
 app/(onboarding)/                      layout.tsx (minimal shell) + welcome/ + banned/ (ADR-0019)
-app/admin/                             layout.tsx (AdminShell + gate) + admin routes; app/admin/settings/ exists only from S1.5 (ADR-0002 C2)
+app/admin/                             layout.tsx (AdminShell + gate) + template.tsx (route fade — ADR-0035 D3) + admin routes; app/admin/settings/ exists only from S1.5 (ADR-0002 C2)
 app/api/                               download/[fileId]/ cron/*/ webhooks/ (P2)   — no /api/og in v1 (ADR-0002 #22)
 app/auth/                              callback/route.ts sign-out/route.ts   — no sign-in route (ADR-0002 C3)
 app/dev/components/                    dev-only component preview (ADR-0002 #44); app/__test/throw/ only when E2E=1 (ADR-0002 #74) (on disk `app/%5F%5Ftest/throw/` — folders starting with `_` are Next private folders, so the segment is URL-encoded; the route is still `/__test/throw`)

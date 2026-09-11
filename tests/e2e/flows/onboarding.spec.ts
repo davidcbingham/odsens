@@ -171,12 +171,12 @@ test.describe('onboarding', () => {
     await expect(upload).toHaveAttribute('data-state', 'done');
     const picture = upload.locator('img[alt="Your picture"]');
     await expect(picture).toBeVisible();
-    // DESIGN.md §11.1: the thumbnail sits in a 3px `--white` border.
+    // DESIGN.md §11.1 (v1.8, ADR-0035 D2): the thumbnail sits in a 2px `--white` border.
     const border = await picture.evaluate((img) => {
       const cs = getComputedStyle(img.parentElement as HTMLElement);
       return { color: cs.borderTopColor, width: cs.borderTopWidth };
     });
-    expect(border).toEqual({ color: 'rgb(255, 255, 255)', width: '3px' });
+    expect(border).toEqual({ color: 'rgb(255, 255, 255)', width: '2px' });
     await expect(upload.getByRole('button', { name: 'Change' })).toBeVisible();
     await expect(upload.getByRole('button', { name: 'Remove' })).toBeVisible();
 

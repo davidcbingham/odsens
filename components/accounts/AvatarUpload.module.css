@@ -36,9 +36,9 @@
   line-height: 1.3;
 }
 
-/* done: the picture with a 3px white border (the well's own border goes white) */
+/* done: the picture with a 2px white border (ADR-0035 D2; the well's own border goes white) */
 .avatar-upload[data-state='done'] .avatar-upload-well {
-  border: 3px solid var(--white);
+  border: 2px solid var(--white);
 }
 
 .avatar-upload-picture {

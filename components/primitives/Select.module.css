@@ -1,5 +1,6 @@
-/* Select — DESIGN.md §5 Filter bar selects + §5 Admin field; 03 §2.2 `Select`. Native select,
-   appearance stripped, custom ▾ glyph (aria-hidden) drawn by `Icon`. */
+/* Select — DESIGN.md §5 Filter bar selects + §5 Admin field; 03 §2.2 `Select`. Themed listbox
+   (ADR-0035 D1): a trigger in the admin-field recipe, custom ▾ glyph (aria-hidden) drawn by `Icon`,
+   and an open panel in the profile-menu recipe (DESIGN.md §11.1). */
 .select {
   display: flex;
   flex-direction: column;
@@ -39,7 +40,10 @@
   max-width: 100%;
   min-height: 44px;
   padding: var(--space-8) var(--space-32) var(--space-8) var(--space-12);
-  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
   background: var(--slab-sunk);
   border: 2px solid var(--line-soft);
   border-radius: var(--radius-input);
@@ -67,4 +71,98 @@
   transform: translateY(-50%);
   pointer-events: none;
   color: var(--mute);
+}
+
+/* ---- Open panel (ADR-0035 D1): profile-menu recipe — slab, 2px --line-soft, hard 4px shadow,
+   --dur-fast fade. */
+.select-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select-panel {
+  position: absolute;
+  top: calc(100% + var(--space-4));
+  left: 0;
+  z-index: var(--z-nav);
+  min-width: 100%;
+  max-height: 320px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--slab);
+  border: 2px solid var(--line-soft);
+  box-shadow: 4px 4px 0 var(--ink-deep);
+  animation: select-in var(--dur-fast) ease-out;
+}
+
+.select-panel[hidden] {
+  display: none;
+}
+
+/* The panel holds focus while open (aria-activedescendant pattern); the 3px gold ring (C-25)
+   draws on the highlighted row, inset so it stays inside the scrolling panel. */
+.select-panel:focus-visible {
+  outline: none;
+}
+
+.select-panel:focus-visible .select-option[data-active] {
+  outline: 3px solid var(--gold);
+  outline-offset: -3px;
+}
+
+.select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  min-height: 44px;
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--chalk);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.select-option[data-active] {
+  background: var(--slab-raised);
+}
+
+.select-option[aria-selected='true'] {
+  color: var(--indigo-lift);
+}
+
+.select-option[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.select-option-check {
+  flex: none;
+  color: var(--indigo-lift);
+}
+
+/* Focus ring lives on the trigger; the open trigger reads as focused (03 C-25). */
+.select[data-open='true'] .select-input {
+  border-color: var(--indigo-lift);
+}
+
+@keyframes select-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .select-panel {
+    animation: none;
+  }
 }

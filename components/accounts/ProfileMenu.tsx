@@ -144,7 +144,7 @@ export function ProfileMenu({ viewer: viewerProp, className }: ProfileMenuProps)
         {/* decorative: the handle text sits beside it (03 `Avatar` a11y: alt="" when adjacent) — the
             handle still feeds the initial glyph, so the wrapper hides it instead */}
         <span aria-hidden="true" className={styles['profile-menu-avatar']}>
-          <Avatar src={viewer.avatarUrl} alt={viewer.handle} size={28} border={2} />
+          <Avatar src={viewer.avatarUrl} alt={viewer.handle} size={28} />
         </span>
         <span className={styles['profile-menu-handle']}>{viewer.handle}</span>
         <span className={styles['profile-menu-caret']} aria-hidden="true">
@@ -164,7 +164,7 @@ export function ProfileMenu({ viewer: viewerProp, className }: ProfileMenuProps)
           <>
             <div className={styles['profile-menu-header']}>
               <span aria-hidden="true" className={styles['profile-menu-avatar']}>
-                <Avatar src={viewer.avatarUrl} alt={viewer.handle} size={40} border={2} />
+                <Avatar src={viewer.avatarUrl} alt={viewer.handle} size={40} />
               </span>
               <div className={styles['profile-menu-header-text']}>
                 <span className={styles['profile-menu-header-handle']}>{viewer.handle}</span>
