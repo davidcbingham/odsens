@@ -534,7 +534,7 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 
 **Scope IN** (moved verbatim from S1.9 — see that section for the original text)
 - Public `/support` (§6.7 + §11.4 + 02 §2.7; ISR 600 with tag `settings`, reads `site_settings_public` — ADR-0002 C19; replaces the S0 placeholder): gold hatched `AmountPicker` ($1 / $3 / $5 / Other, $3 preselected) + single CONTINUE ON KO-FI button that mounts the `KofiPanelSlot` iframe in place (712/620 px — ADR-0002 #50; no new tab), plus an "on Ko-fi ↗" ghost link; the iframe renders for `site_settings.kofi_page`; `kofi_page` empty → picker + button disabled with "Tips open soon."; leaderboard block in its empty state (§12.4).
-- *(moved to S1.5b — ADR-0036)* `FloatingSupportButton` (mounted in `app/(public)/layout.tsx`; gold, ♥ SUPPORT, hides on scroll-down, returns on scroll-up; 52 px square on phones) on every public route except `/support`; not on `/welcome` or under `/admin/*` (02 RP-15).
+- `FloatingSupportButton` (mounted in `app/(public)/layout.tsx`; gold, ♥ SUPPORT, hides on scroll-down, returns on scroll-up; 52 px square on phones) on every public route except `/support`; not on `/welcome` or under `/admin/*` (02 RP-15).
 - `tip_click {amount?, from}` custom event via `TrackedLink` (04 §5.6; `TipPanel` swaps its plain `Button` for `TrackedLink event="tip_click"` here — 03 §2.3).
 - CSP `frame-src` for the Ko-fi origin on `/support` only (01 §20).
 
