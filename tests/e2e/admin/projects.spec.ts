@@ -38,6 +38,13 @@
  *    after); the `cross-posted projects` describe right after T-E2E-41 holds T-E2E-51 (the
  *    editor field on the seed exclusive), T-E2E-52 (the fold on test-created rows) and T-E2E-53
  *    (uploads on a Modrinth-first test row). Never folds a seed row.
+ *  - S1.5c (same file, same reason — ADR-0039 D6 / ADR-0040): the editor renders ONE section at
+ *    a time under `?section=`, so T-E2E-34/35/42/51/52/53/54 name the section they open
+ *    (`general` · `description` · `gallery` · `versions` · `listings` · `publish`); the
+ *    `editor v2` describe after T-E2E-54 holds T-E2E-55 (sections + the unsaved guard, both
+ *    branches), T-E2E-56 (the Markdown editor: toolbar, shortcuts, Preview parity with the
+ *    public page, stored value plain Markdown) and T-E2E-57 (phone chip row + toolbar wrap,
+ *    axe at 1280 + 390 on every section as admin and moderator, screenshots per section).
  *
  * Seed truths: SEED-4..6 (3 published projects; overrides featured 1 = pixel-chameleon,
  * 2 = seed-exclusive-pack; CF link 900001 on pixel-chameleon), SEED-12 (one ok run per source),
@@ -180,7 +187,8 @@ test('T-E2E-42 admin routes: axe zero serious/critical + 1280 screenshots (/admi
   await expectNoSeriousA11y(page);
   await shoot(page, 'admin-projects');
 
-  await page.goto(`/admin/projects/${PIXEL}`);
+  // S1.5c (ADR-0039 D2): the editor opens on `?section=general`; every section is shot in T-E2E-57.
+  await page.goto(`/admin/projects/${PIXEL}?section=general`);
   await expect(page.getByRole('heading', { name: 'OVERRIDES' })).toBeVisible();
   await expectNoSeriousA11y(page);
   await shoot(page, 'admin-project-detail');
@@ -268,10 +276,21 @@ test('T-E2E-34 moderator: list + curate controls present but disabled ("Admin on
 
   // `[id]` curate view: fields, comments toggle, Save and the LISTINGS Link disabled the same way.
   // On a synced row the Modrinth field is read-only and has no buttons (ADR-0037 D8) — present,
-  // disabled for a moderator like every other field, never hidden.
-  await page.goto(`/admin/projects/${MACE}`);
+  // disabled for a moderator like every other field, never hidden. S1.5c (ADR-0039 D2): the
+  // editor renders one section at a time — the overrides + comments toggle + Save on
+  // `?section=general`, the Notes editor on `?section=description`, the fields on
+  // `?section=listings`.
+  await page.goto(`/admin/projects/${MACE}?section=general`);
   await expect(page.getByLabel('Title override')).toBeDisabled();
-  await expect(page.getByLabel('Notes')).toBeDisabled();
+  await expect(toggleFor(page, 'Comments on Metal Pipe Mace').input).toBeDisabled();
+  const generalSave = page.getByRole('button', { name: 'Save', exact: true });
+  await expect(generalSave).toBeDisabled();
+  expect(await generalSave.evaluate((el) => el.closest('[title="Admin only"]') !== null)).toBe(
+    true,
+  );
+  await page.goto(`/admin/projects/${MACE}?section=description`);
+  await expect(page.getByLabel('Notes', { exact: true })).toBeDisabled();
+  await page.goto(`/admin/projects/${MACE}?section=listings`);
   await expect(page.getByLabel('CurseForge id or URL')).toBeDisabled();
   const homeListing = page.getByLabel('Modrinth listing (URL, slug or id)');
   await expect(homeListing).toBeDisabled();
@@ -280,12 +299,9 @@ test('T-E2E-34 moderator: list + curate controls present but disabled ("Admin on
   await expect(
     page.getByText("Synced from Modrinth — this is the project's home listing."),
   ).toBeVisible();
-  await expect(toggleFor(page, 'Comments on Metal Pipe Mace').input).toBeDisabled();
-  for (const name of ['Save', 'Link']) {
-    const button = page.getByRole('button', { name, exact: true });
-    await expect(button).toBeDisabled();
-    expect(await button.evaluate((el) => el.closest('[title="Admin only"]') !== null)).toBe(true);
-  }
+  const link = page.getByRole('button', { name: 'Link', exact: true });
+  await expect(link).toBeDisabled();
+  expect(await link.evaluate((el) => el.closest('[title="Admin only"]') !== null)).toBe(true);
   await expect(page.getByRole('button', { name: 'Remove', exact: true })).toHaveCount(0);
 });
 
@@ -401,18 +417,21 @@ test('T-E2E-34 admin: feature/hide/reorder on the list, notes + CF id on [id] �
   });
 
   // -- Notes on [id] → appended under About as a NoteCallout (02 §2.3 #3) ---------------------
+  // S1.5c: the Notes live on `?section=description` as the `MarkdownEditor` (its textarea is the
+  // labelled control); the PRG lands back on the same section (00 S1.5c.AC1).
   const NOTE = 'Bonk appreciation note.';
-  await page.goto(`/admin/projects/${MACE}`);
-  await page.getByLabel('Notes').fill(NOTE);
+  await page.goto(`/admin/projects/${MACE}?section=description`);
+  await page.getByLabel('Notes', { exact: true }).fill(NOTE);
   await submitAndWait(page, 'Save');
-  await expect(page.getByLabel('Notes')).toHaveValue(NOTE); // PRG re-render shows stored value
+  await expect(page).toHaveURL(/section=description/);
+  await expect(page.getByLabel('Notes', { exact: true })).toHaveValue(NOTE); // PRG re-render shows stored value
   await expectAtUrl(page, '/projects/metal-pipe-mace', async () => {
     await expect(page.getByText(NOTE)).toBeVisible({ timeout: 1_000 });
   });
 
   // Revert: empty notes → null (the [id] form's orNull) — the note leaves the page.
-  await page.goto(`/admin/projects/${MACE}`);
-  await page.getByLabel('Notes').fill('');
+  await page.goto(`/admin/projects/${MACE}?section=description`);
+  await page.getByLabel('Notes', { exact: true }).fill('');
   await submitAndWait(page, 'Save');
   await expectAtUrl(page, '/projects/metal-pipe-mace', async () => {
     await expect(page.getByText(NOTE)).toHaveCount(0, { timeout: 1_000 });
@@ -425,7 +444,7 @@ test('T-E2E-34 admin: feature/hide/reorder on the list, notes + CF id on [id] �
   // allows one project per listing — so the seed row is parked via the service client for this
   // leg and put back after (byte-level: `restoreContentTables` in afterAll is the safety net).
   await freeSeedCurseforgeListing(service);
-  await page.goto(`/admin/projects/${MACE}`);
+  await page.goto(`/admin/projects/${MACE}?section=listings`);
   await expect(page.getByText('Empty removes the link')).toHaveCount(0);
   await expect(page.getByText('Digits or the project URL.')).toBeVisible();
   await page.getByLabel('CurseForge id or URL').fill('900001');
@@ -471,7 +490,7 @@ test('T-E2E-34 admin: feature/hide/reorder on the list, notes + CF id on [id] �
   await restoreSeedCurseforgeListing(service);
   // The service write revalidates nothing: one no-op `curateProject` save repairs the ISR
   // entries that carry the `projects` tag (the T-E2E-41 precedent).
-  await page.goto(`/admin/projects/${PIXEL}`);
+  await page.goto(`/admin/projects/${PIXEL}?section=general`);
   await submitAndWait(page, 'Save');
 });
 
@@ -538,7 +557,7 @@ test('T-E2E-41 Sync now (Modrinth): lock → "Already running."; real run → ne
   // save (its `revalidateTag('projects')` covers every S1.2 cache entry — home, list, details,
   // sitemap all carry the `projects` tag).
   await restoreContentTables(snapshot);
-  await page.goto(`/admin/projects/${PIXEL}`);
+  await page.goto(`/admin/projects/${PIXEL}?section=general`);
   await submitAndWait(page, 'Save');
   await expectAtUrl(page, '/projects', async () => {
     await expect(page.locator('article')).toHaveCount(3, { timeout: 1_000 });
@@ -620,7 +639,7 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
     const page = await context.newPage();
     try {
       await loginAs(page, 'admin');
-      await page.goto(`/admin/projects/${PIXEL}`);
+      await page.goto(`/admin/projects/${PIXEL}?section=general`);
       await submitAndWait(page, 'Save');
       await expectAtUrl(page, '/projects', async () => {
         await expect(page.locator('article')).toHaveCount(3, { timeout: 1_000 });
@@ -714,7 +733,10 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
     await loginAs(page, 'admin');
 
     // -- Pristine editor first: axe at 1280 and 390 (00 S1.5a.AC9's admin half) ---------------
-    await page.goto(`/admin/projects/${EXCL}`);
+    // S1.5c (ADR-0039 D2): the LISTINGS section is `?section=listings`; every editor navigation
+    // in this describe names it (the PRG lands back on the same section — 00 S1.5c.AC1).
+    const LISTINGS = `/admin/projects/${EXCL}?section=listings`;
+    await page.goto(LISTINGS);
     await expect(page.getByRole('heading', { name: 'LISTINGS' })).toBeVisible();
     const modrinthForm = listingForm(page, LISTING_FIELD);
     const curseforgeForm = listingForm(page, CF_FIELD);
@@ -726,7 +748,7 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
     await expectNoSeriousA11y(page);
     await shoot(page, 'admin-project-listings');
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`/admin/projects/${EXCL}`);
+    await page.goto(LISTINGS);
     await expect(page.getByRole('heading', { name: 'LISTINGS' })).toBeVisible();
     await expectNoSeriousA11y(page);
     await shoot(page, 'admin-project-listings');
@@ -750,7 +772,8 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
     const twinRow = page.locator('tbody tr', { hasText: listing.slug });
     await expect(twinRow.getByText(`Looks like the same project as ${EXCL_TITLE}`)).toBeVisible();
     await twinRow.getByRole('link', { name: 'Link it', exact: true }).click();
-    await page.waitForURL(`**/admin/projects/${EXCL}?listing=${LISTING_ID}`);
+    // The ghost link names the section that renders the field (ADR-0040 D8).
+    await page.waitForURL(`**/admin/projects/${EXCL}?section=listings&listing=${LISTING_ID}`);
     await expect(page.getByLabel(LISTING_FIELD, { exact: true })).toHaveValue(LISTING_ID);
     expect(await linkRow(EXCL, 'modrinth'), 'nothing links automatically').toBeNull();
     // The twin leaves BEFORE the real link so the seed exclusive is never a fold target.
@@ -762,7 +785,7 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
       .getByLabel(LISTING_FIELD, { exact: true })
       .fill(`https://modrinth.com/datapack/${LISTING_ID}`);
     await submitIn(page, modrinthForm, 'Link');
-    await expect(page).toHaveURL(`/admin/projects/${EXCL}`); // PRG, no ?form= error
+    await expect(page).toHaveURL(LISTINGS); // PRG on the same section, no ?form= error
     const modrinthLinked = linkedRow(page, LISTING_FIELD);
     await expect(modrinthLinked.locator(`a[href="${LISTING_URL}"]`)).toHaveText(LISTING_URL);
     await expect(modrinthLinked.getByText(`${compact(listing.downloads)} downloads`)).toBeVisible();
@@ -808,10 +831,10 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
 
     // -- CurseForge too: "Also on CurseForge 120" + combined = direct + modrinth + curseforge --
     await freeSeedCurseforgeListing(db);
-    await page.goto(`/admin/projects/${EXCL}`);
+    await page.goto(LISTINGS);
     await page.getByLabel(CF_FIELD, { exact: true }).fill('900001');
     await submitIn(page, curseforgeForm, 'Link');
-    await expect(page).toHaveURL(`/admin/projects/${EXCL}`);
+    await expect(page).toHaveURL(LISTINGS);
     const curseforgeLinked = linkedRow(page, CF_FIELD);
     await expect(curseforgeLinked.locator(`a[href="${CF_URL}"]`)).toBeVisible();
     await expect(curseforgeLinked.getByText('120 downloads', { exact: true })).toBeVisible();
@@ -835,7 +858,7 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
         timeout: 500,
       });
     });
-    await page.goto(`/admin/projects/${EXCL}`);
+    await page.goto(LISTINGS);
     await submitIn(page, curseforgeLinked, 'Remove');
     expect(await linkRow(EXCL, 'curseforge')).toBeNull();
     expect((await downloads(EXCL)).downloads_curseforge).toBe(0);
@@ -873,9 +896,9 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
     await restoreContentTables(linkedSnapshot);
 
     // -- Remove → link gone, count zeroed, badge back on detail + card (00 S1.5a.AC5) ----------
-    await page.goto(`/admin/projects/${EXCL}`);
+    await page.goto(LISTINGS);
     await submitIn(page, linkedRow(page, LISTING_FIELD), 'Remove');
-    await expect(page).toHaveURL(`/admin/projects/${EXCL}`);
+    await expect(page).toHaveURL(LISTINGS);
     await expect(page.getByRole('button', { name: 'Remove', exact: true })).toHaveCount(0);
     expect(await linkRow(EXCL, 'modrinth')).toBeNull();
     expect((await downloads(EXCL)).downloads_modrinth).toBe(0);
@@ -903,7 +926,7 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
   }) => {
     await logout(page);
     await loginAs(page, 'mod');
-    await page.goto(`/admin/projects/${EXCL}`);
+    await page.goto(`/admin/projects/${EXCL}?section=listings`);
     await expect(page.getByRole('heading', { name: 'LISTINGS' })).toBeVisible();
     // The fields follow the buttons' recipe (ADR-0037 D8): `disabled` + `title="Admin only"`.
     for (const label of [LISTING_FIELD, CF_FIELD]) {
@@ -919,14 +942,6 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
         true,
       );
     }
-    // Wells (icon, gallery, file): inert but present — the T-E2E-35 assertion shape.
-    const wells = page.locator('[data-state][aria-disabled="true"][title="Admin only"]');
-    await expect(wells).toHaveCount(3);
-    const fileInputs = page.locator('input[type="file"]');
-    await expect(fileInputs).toHaveCount(3);
-    for (let i = 0; i < 3; i += 1) {
-      await expect(fileInputs.nth(i)).toBeDisabled();
-    }
     // Clicking a disabled Link issues no action call and no forbidden alert (02 §1.3).
     const posts: string[] = [];
     page.on('request', (req) => {
@@ -936,6 +951,21 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
     await page.waitForTimeout(500);
     expect(posts).toEqual([]);
     await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0);
+    // Wells: inert but present — the T-E2E-35 assertion shape. S1.5c (ADR-0039 D2): the icon +
+    // gallery wells live on `?section=gallery`, the file well on `?section=versions`.
+    const wells = page.locator('[data-state][aria-disabled="true"][title="Admin only"]');
+    const fileInputs = page.locator('input[type="file"]');
+    for (const [section, count] of [
+      ['gallery', 2],
+      ['versions', 1],
+    ] as const) {
+      await page.goto(`/admin/projects/${EXCL}?section=${section}`);
+      await expect(wells).toHaveCount(count);
+      await expect(fileInputs).toHaveCount(count);
+      for (let i = 0; i < count; i += 1) {
+        await expect(fileInputs.nth(i)).toBeDisabled();
+      }
+    }
     await logout(page);
   });
 
@@ -1005,12 +1035,13 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
     });
 
     await loginAs(page, 'admin');
-    await page.goto(`/admin/projects/${canonId}`);
+    await page.goto(`/admin/projects/${canonId}?section=listings`);
     await page.getByLabel(LISTING_FIELD, { exact: true }).fill(LISTING_ID);
     await submitIn(page, listingForm(page, LISTING_FIELD), 'Link');
-    await expect(page).toHaveURL(`/admin/projects/${canonId}`);
+    await expect(page).toHaveURL(`/admin/projects/${canonId}?section=listings`);
     await expect(linkedRow(page, LISTING_FIELD).locator(`a[href="${LISTING_URL}"]`)).toBeVisible();
-    // The editor's VERSIONS & FILES list now shows the moved versions and their CDN files.
+    // The editor's VERSIONS & FILES section now shows the moved versions and their CDN files.
+    await page.goto(`/admin/projects/${canonId}?section=versions`);
     await expect(page.getByText('v1.0.0', { exact: true })).toBeVisible();
     await expect(page.getByText('v1.1.0', { exact: true })).toBeVisible();
     await expect(page.getByText('e2e-cross-post-1.0.0.zip')).toBeVisible();
@@ -1123,7 +1154,10 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
 
     try {
       await loginAs(page, 'admin');
-      await page.goto(`/admin/projects/${projectId}`);
+      // S1.5c (ADR-0039 D2): OVERRIDES on `?section=general`, the listing field on
+      // `?section=listings`, the icon well on `?section=gallery`, the file well on
+      // `?section=versions`; a synced row lists no Publish section at all.
+      await page.goto(`/admin/projects/${projectId}?section=general`);
       const of = (name: string) =>
         page.locator('section', { has: page.getByRole('heading', { name, exact: true }) });
       const icon = of('ICON');
@@ -1131,8 +1165,12 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
       // The synced branch keeps its curate panel and shows no publish controls (ADR-0037 D5c).
       await expect(page.getByRole('heading', { name: 'OVERRIDES' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Publish', exact: true })).toHaveCount(0);
+      await expect(
+        page.locator('nav[aria-label="Sections"]').getByRole('link', { name: 'Publish' }),
+      ).toHaveCount(0);
       // A synced row IS its listing (ADR-0037 D8): the Modrinth field is read-only with the home
       // helper and no Link / Remove of its own; the CurseForge field keeps its Link button.
+      await page.goto(`/admin/projects/${projectId}?section=listings`);
       const homeListing = page.getByLabel(LISTING_FIELD, { exact: true });
       await expect(homeListing).toHaveValue(LISTING_URL);
       await expect(homeListing).toHaveAttribute('readonly', '');
@@ -1144,6 +1182,7 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
       await expect(page.getByRole('button', { name: 'Remove', exact: true })).toHaveCount(0);
 
       // Icon upload (two-phase — the T-E2E-35 pattern; `done` is the contract).
+      await page.goto(`/admin/projects/${projectId}?section=gallery`);
       const iconWell = icon.locator('[data-state]');
       await iconWell
         .locator('input[type="file"]')
@@ -1155,6 +1194,7 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
 
       // File upload onto the SYNCED 1.0.0 (same number = a hosted file on that release — ADR-0037
       // D5(b); the form's version metadata is ignored, the row follows Modrinth), primary.
+      await page.goto(`/admin/projects/${projectId}?section=versions`);
       await versions.getByLabel('Version number').fill('1.0.0');
       await versions.getByLabel('Game versions').fill('1.21');
       const loaders = versions.getByRole('group', { name: 'Loaders' });
@@ -1325,7 +1365,7 @@ test.describe('editor feedback + gallery curation (T-E2E-54)', () => {
   }) => {
     test.setTimeout(90_000);
     await loginAs(page, 'admin');
-    await page.goto(`/admin/projects/${PIXEL}`);
+    await page.goto(`/admin/projects/${PIXEL}?section=gallery`);
 
     // The GALLERY rows: a thumbnail, a Name field and a Hide button each (thumbnails are pictures).
     const rows = page.getByTestId('admin-gallery-row');
@@ -1350,7 +1390,7 @@ test.describe('editor feedback + gallery curation (T-E2E-54)', () => {
 
     // Enter in a Name field means "Save names" — never the first row's Hide/Delete (the hidden
     // default submit button; frontend gate, ADR-0038 D3): both rows survive, the name lands.
-    await page.goto(`/admin/projects/${PIXEL}`);
+    await page.goto(`/admin/projects/${PIXEL}?section=gallery`);
     await page.getByLabel('Name').nth(1).fill('Bonk!!');
     const enterPost = page.waitForResponse(
       (res) => res.request().method() === 'POST' && res.url().includes('/admin/projects/'),
@@ -1364,7 +1404,7 @@ test.describe('editor feedback + gallery curation (T-E2E-54)', () => {
     await submitAndWait(page, 'Save names');
 
     // Hide the featured "In hand" → the row says so, the public gallery shows one image.
-    await page.goto(`/admin/projects/${PIXEL}`);
+    await page.goto(`/admin/projects/${PIXEL}?section=gallery`);
     await rows.first().getByRole('button', { name: 'Hide', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Saved.');
     await expect(rows.first().getByText('From Modrinth — hidden on odsens')).toBeVisible();
@@ -1374,7 +1414,7 @@ test.describe('editor feedback + gallery curation (T-E2E-54)', () => {
     });
 
     // Show brings it back.
-    await page.goto(`/admin/projects/${PIXEL}`);
+    await page.goto(`/admin/projects/${PIXEL}?section=gallery`);
     await rows.first().getByRole('button', { name: 'Show', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Saved.');
     await expectAtUrl(page, '/projects/pixel-chameleon', async () => {
@@ -1384,11 +1424,787 @@ test.describe('editor feedback + gallery curation (T-E2E-54)', () => {
     // Moderator: the Name fields and row buttons are disabled, never hidden (03 §2.10).
     await logout(page);
     await loginAs(page, 'mod');
-    await page.goto(`/admin/projects/${PIXEL}`);
+    await page.goto(`/admin/projects/${PIXEL}?section=gallery`);
     await expect(rows).toHaveCount(2);
     await expect(rows.first().getByLabel('Name')).toBeDisabled();
     await expect(rows.first().getByRole('button', { name: 'Hide', exact: true })).toBeDisabled();
     await expectNoSeriousA11y(page);
+  });
+});
+
+/**
+ * S1.5c — editor v2 (ADR-0039 D2–D5; ADR-0040 D3/D5/D6/D7; 00 S1.5c.AC1–AC7). Lives in THIS file
+ * for the T-E2E-35 reason (the `admin` project is serial only within a file). Every write here
+ * lands on the seed exclusive `…0103` and is put back THROUGH the same form (so the public ISR
+ * entry revalidates); `afterAll` restores `projects.body_md` via the service client as the safety
+ * net (05 H-1 — `restoreContentTables` at the top of the file is the byte-level one).
+ *
+ *  - T-E2E-55: sections + the unsaved guard, both branches — the sidebar lists six sections on
+ *    the exclusive and five (no Publish) on the synced `…0102`; only the active section's
+ *    headings are in the DOM; `?section=gallery` survives a reload; `?section=nope` renders
+ *    General without touching the URL; Save lands on `?section=general&saved=saved` (captured
+ *    from `history.replaceState` — `SavedToast` strips `saved` at once) then the "Saved." toast;
+ *    picking another Type in the themed `Select` (no other edit) sets `data-dirty="true"` and
+ *    picking the seed value back clears it (ADR-0040 D9); typing sets `data-dirty="true"` + the
+ *    sr "Unsaved changes" on the active link and the `beforeunload` handler cancels a dispatched
+ *    event; a section click opens the `Dialog`
+ *    (Stay focused, Enter on Stay submits nothing, Esc keeps the edit, Leave anyway navigates and
+ *    clears the dirty state); the admin shell's Projects link is guarded too (ADR-0040 D3); a
+ *    Ctrl/Cmd-click passes through; a submit clears the dot; the Preview switch and the file
+ *    well's fields never set it; a validation error keeps the section.
+ *  - T-E2E-56: the Markdown editor on the exclusive's Body — the 13 toolbar buttons in order with
+ *    one roving tab stop (←/→ Home/End); a toolbar-only edit (selected word + Bold, nothing
+ *    typed) sets `data-dirty="true"` and Ctrl+B toggling it off reads clean (ADR-0040 D9), while
+ *    Ctrl+Shift+B leaves the value alone; caret + selection insertions for Bold / Ctrl+I / H2 /
+ *    Bullet list / Link / YouTube, Ctrl+B parity (toggle off); Preview ON hides the textarea
+ *    (still attached — it posts), disables the toolbar and renders the same sanitised tree the
+ *    public page shows (a raw `<script>` yields no element, a disallowed-host image renders as a
+ *    link, "Nothing to preview yet." when empty); Preview parity = the pane's markdown root
+ *    `innerHTML` equals the public About root's after whitespace normalisation; the stored
+ *    `projects.body_md` is the typed Markdown; an emptied Body saves as '' (ADR-0040 D7);
+ *    restored by typing the seed body back and saving.
+ *  - T-E2E-57: at 390 the section nav is a one-row chip strip that scrolls (`scrollWidth >
+ *    clientWidth`, no page overflow) and the toolbar wraps inside the well; at 1280 the nav is
+ *    the 220px sidebar column; `expectNoSeriousA11y` at 1280 AND 390 on every section of both
+ *    rows as admin (with `admin-project-<section>` / `admin-project-synced-<section>` screenshots
+ *    and the open dialog once per width) and again as moderator, whose textarea, toolbar and Save
+ *    are disabled "Admin only" while the Preview switch still flips and the section links still
+ *    navigate (ADR-0040 D5; 00 S1.5c.AC6).
+ */
+test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)', () => {
+  const EXCL = SEED_PROJECTS.seedExclusivePack;
+  const EXCL_SLUG = 'seed-exclusive-pack';
+  const SECTION_LABELS = ['General', 'Description', 'Gallery', 'Versions', 'Listings', 'Publish'];
+  const EXCL_SECTIONS = ['general', 'description', 'gallery', 'versions', 'listings', 'publish'];
+  const SYNCED_SECTIONS = EXCL_SECTIONS.slice(0, 5);
+  /** The section headings each branch renders — only the active section's are in the DOM. */
+  const HEADINGS: Record<'odsens' | 'modrinth', Record<string, string[]>> = {
+    odsens: {
+      general: ['DETAILS'],
+      description: ['DESCRIPTION'],
+      gallery: ['ICON', 'GALLERY'],
+      versions: ['VERSIONS & FILES'],
+      listings: ['LISTINGS'],
+      publish: ['PUBLISH'],
+    },
+    modrinth: {
+      general: ['OVERRIDES'],
+      description: ['NOTES'],
+      gallery: ['ICON', 'GALLERY'],
+      versions: ['VERSIONS & FILES'],
+      listings: ['LISTINGS'],
+    },
+  };
+  const TOOLBAR_LABELS = [
+    'Heading 1',
+    'Heading 2',
+    'Heading 3',
+    'Bold',
+    'Italic',
+    'Strikethrough',
+    'Code',
+    'Bullet list',
+    'Numbered list',
+    'Quote',
+    'Link',
+    'Image',
+    'YouTube',
+  ];
+  const DIALOG_BODY = "You changed something here and didn't save.";
+  /** A Title edit the action trims away — the form is dirty, the stored row stays the seed. */
+  const TITLE_EDIT = 'Seed Exclusive Pack ';
+
+  let seedBody = '';
+
+  test.beforeAll(async () => {
+    loadEnvTest();
+    const row = await loose(asRole('service'))
+      .from('projects')
+      .select('body_md')
+      .eq('id', EXCL)
+      .single();
+    expect(row.error).toBeNull();
+    seedBody = (row.data as { body_md: string }).body_md;
+    expect(seedBody).toContain('## About the pack');
+  });
+
+  test.afterAll(async () => {
+    const { error } = await loose(asRole('service'))
+      .from('projects')
+      .update({ body_md: seedBody })
+      .eq('id', EXCL);
+    if (error) throw new Error(`restore body_md failed: ${error.message}`);
+  });
+
+  function editor(id: string, section?: string): string {
+    return `/admin/projects/${id}${section === undefined ? '' : `?section=${section}`}`;
+  }
+
+  function sectionNav(page: Page) {
+    return page.locator('nav[aria-label="Sections"]');
+  }
+
+  /**
+   * `goto` + wait for the section nav to be VISIBLE: the admin route streams under its
+   * `loading.tsx` shell, so right after `load` the page can still sit inside React's hidden
+   * streaming segment (`<div hidden id="S:0">`) — a locator resolves there with no box.
+   */
+  async function open(page: Page, url: string): Promise<void> {
+    await page.goto(url);
+    await expect(sectionNav(page)).toBeVisible();
+  }
+
+  function activeLink(page: Page) {
+    return sectionNav(page).locator('a[aria-current="page"]');
+  }
+
+  function dirtyRoot(page: Page) {
+    return page.locator('[data-dirty="true"]');
+  }
+
+  function leaveDialog(page: Page) {
+    return page.getByRole('dialog', { name: 'Unsaved changes' });
+  }
+
+  function bodyField(page: Page) {
+    return page.locator('#field-body_md');
+  }
+
+  function toolbar(page: Page) {
+    return page.getByRole('toolbar', { name: 'Formatting' });
+  }
+
+  /** `true` when the island's `beforeunload` listener cancelled a dispatched event (dirty). */
+  function beforeUnloadPrevented(page: Page): Promise<boolean> {
+    return page.evaluate(
+      () => !window.dispatchEvent(new Event('beforeunload', { cancelable: true })),
+    );
+  }
+
+  /**
+   * Playwright auto-DISMISSES native dialogs, and dismissing a `beforeunload` prompt cancels the
+   * navigation — so a `page.goto` away from a dirty section would hang. Accept them instead.
+   */
+  function acceptNativeDialogs(page: Page): void {
+    page.on('dialog', (dialog) => {
+      void dialog.accept().catch(() => undefined);
+    });
+  }
+
+  /** Only the active section's headings are rendered; every other section's are absent. */
+  async function expectOnlySection(
+    page: Page,
+    branch: 'odsens' | 'modrinth',
+    active: string,
+  ): Promise<void> {
+    for (const [section, names] of Object.entries(HEADINGS[branch])) {
+      for (const name of names) {
+        await expect(page.getByRole('heading', { name, exact: true })).toHaveCount(
+          section === active ? 1 : 0,
+        );
+      }
+    }
+  }
+
+  async function selectIn(page: Page, start: number, end: number): Promise<void> {
+    await bodyField(page).evaluate(
+      (el, range) => {
+        const textarea = el as HTMLTextAreaElement;
+        textarea.focus();
+        textarea.setSelectionRange(range[0], range[1]);
+      },
+      [start, end] as const,
+    );
+  }
+
+  async function selectionOf(page: Page): Promise<[number, number]> {
+    return bodyField(page).evaluate((el) => {
+      const textarea = el as HTMLTextAreaElement;
+      return [textarea.selectionStart, textarea.selectionEnd] as [number, number];
+    });
+  }
+
+  async function selectedText(page: Page): Promise<string> {
+    const [start, end] = await selectionOf(page);
+    return (await bodyField(page).inputValue()).slice(start, end);
+  }
+
+  /** CRLF → LF (see the stored-value assertion in T-E2E-56); the loose client types the column as unknown. */
+  function unixLines(text: unknown): string {
+    return String(text ?? '').replace(/\r\n/g, '\n');
+  }
+
+  /**
+   * The two renders differ only in what React's server renderer adds around text: whitespace
+   * between tags and the `<!-- -->` separator it emits between adjacent text nodes (the public
+   * About root is server-rendered HTML; the Preview pane is client-rendered). Both are stripped;
+   * every element, attribute and text is compared verbatim.
+   */
+  function normaliseHtml(html: string): string {
+    return html
+      .replace(/<!--.*?-->/g, '')
+      .replace(/>\s+</g, '><')
+      .trim();
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // T-E2E-55 — sections + the unsaved guard (00 S1.5c.AC1/AC2/AC3/AC7)
+  // ---------------------------------------------------------------------------------------------
+
+  test('T-E2E-55 sections + unsaved guard: 6 / 5 sections, one section rendered, deep link + unknown, Save keeps the section, Type pick + dirty dot + beforeunload, dialog Stay / Esc / Enter / Leave anyway, shell nav guarded, Ctrl-click passes, submit / Preview / file well, validation error keeps the section', async ({
+    page,
+    context,
+  }) => {
+    test.setTimeout(150_000);
+    acceptNativeDialogs(page);
+    await loginAs(page, 'admin');
+    const nav = sectionNav(page);
+    const dialog = leaveDialog(page);
+    const stay = dialog.getByRole('button', { name: 'Stay', exact: true });
+    const leave = dialog.getByRole('button', { name: 'Leave anyway', exact: true });
+    const title = page.getByLabel('Title', { exact: true });
+
+    // -- The exclusive lists all six sections; no `?section=` renders General, URL untouched ---
+    await open(page, editor(EXCL));
+    await expect(nav.getByRole('link')).toHaveText(SECTION_LABELS);
+    await expect(activeLink(page)).toHaveText('General');
+    await expect(page).toHaveURL(editor(EXCL));
+    await expectOnlySection(page, 'odsens', 'general');
+    await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(1);
+    await expect(toggleFor(page, 'Comments on Seed Exclusive Pack').input).toBeVisible();
+
+    // -- The synced row lists five (no Publish) and renders OVERRIDES on General (AC7) ---------
+    await open(page, editor(PIXEL, 'general'));
+    await expect(nav.getByRole('link')).toHaveText(SECTION_LABELS.slice(0, 5));
+    await expect(nav.getByRole('link', { name: 'Publish' })).toHaveCount(0);
+    await expectOnlySection(page, 'modrinth', 'general');
+
+    // -- `?section=gallery` deep link survives a reload (AC1) ---------------------------------
+    await open(page, editor(EXCL, 'gallery'));
+    await expect(activeLink(page)).toHaveText('Gallery');
+    await expectOnlySection(page, 'odsens', 'gallery');
+    await page.reload();
+    await expect(sectionNav(page)).toBeVisible();
+    await expect(page).toHaveURL(editor(EXCL, 'gallery'));
+    await expect(activeLink(page)).toHaveText('Gallery');
+    await expectOnlySection(page, 'odsens', 'gallery');
+
+    // -- Unknown `?section=nope` → General rendered, no redirect ------------------------------
+    await open(page, editor(EXCL, 'nope'));
+    await expect(activeLink(page)).toHaveText('General');
+    await expectOnlySection(page, 'odsens', 'general');
+    await expect(page).toHaveURL(editor(EXCL, 'nope'));
+
+    // -- Clean: no dot, no `data-dirty`, `beforeunload` passes ---------------------------------
+    await open(page, editor(EXCL, 'general'));
+    await expect(dirtyRoot(page)).toHaveCount(0);
+    await expect(activeLink(page)).not.toContainText('Unsaved changes');
+    expect(await beforeUnloadPrevented(page)).toBe(false);
+
+    // -- A Type pick alone marks the section unsaved (AC2 — the themed `Select` writes a hidden
+    // input and announces the pick as a native `change`, ADR-0040 D9); the seed value back → clean
+    const type = page.getByLabel('Type', { exact: true });
+    await expect(type).toHaveText('Datapack'); // the seed exclusive's project_type
+    await type.click();
+    await page.getByRole('option', { name: 'Mod', exact: true }).click();
+    await expect(type).toHaveText('Mod');
+    await expect(dirtyRoot(page)).toHaveCount(1);
+    await expect(activeLink(page)).toContainText('Unsaved changes');
+    await type.click();
+    await page.getByRole('option', { name: 'Datapack', exact: true }).click();
+    await expect(type).toHaveText('Datapack');
+    await expect(dirtyRoot(page)).toHaveCount(0);
+    await expect(activeLink(page)).not.toContainText('Unsaved changes');
+
+    // -- Typing marks the section unsaved (AC2) + the `beforeunload` handler cancels (AC3) -----
+    await title.fill(TITLE_EDIT);
+    await expect(dirtyRoot(page)).toHaveCount(1);
+    await expect(activeLink(page)).toContainText('Unsaved changes');
+    expect(await beforeUnloadPrevented(page)).toBe(true);
+
+    // -- A section click opens the dialog: name, body, buttons in order, Stay focused ----------
+    await nav.getByRole('link', { name: 'Gallery' }).click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(DIALOG_BODY);
+    await expect(dialog.getByRole('button')).toHaveText(['Leave anyway', 'Stay']);
+    await expect(stay).toBeFocused();
+    await stay.click();
+    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(editor(EXCL, 'general'));
+    await expect(title).toHaveValue(TITLE_EDIT);
+    await expect(dirtyRoot(page)).toHaveCount(1);
+
+    // Esc keeps the edit.
+    await nav.getByRole('link', { name: 'Gallery' }).click();
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(editor(EXCL, 'general'));
+    await expect(title).toHaveValue(TITLE_EDIT);
+
+    // Enter on the focused Stay closes the dialog and submits nothing (the buttons are
+    // `type="button"` outside the editor's forms).
+    const posts: string[] = [];
+    page.on('request', (req) => {
+      if (req.method() === 'POST') posts.push(req.url());
+    });
+    await nav.getByRole('link', { name: 'Gallery' }).click();
+    await expect(stay).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(dialog).toBeHidden();
+    await page.waitForTimeout(400);
+    expect(posts, 'Enter on Stay posts nothing').toEqual([]);
+    await expect(page).toHaveURL(editor(EXCL, 'general'));
+    await expect(title).toHaveValue(TITLE_EDIT);
+
+    // Leave anyway → the other section, clean again; the next click needs no dialog.
+    await nav.getByRole('link', { name: 'Gallery' }).click();
+    await leave.click();
+    await expect(page).toHaveURL(editor(EXCL, 'gallery'));
+    await expectOnlySection(page, 'odsens', 'gallery');
+    await expect(dirtyRoot(page)).toHaveCount(0);
+    expect(await beforeUnloadPrevented(page)).toBe(false);
+    await nav.getByRole('link', { name: 'Versions' }).click();
+    await expect(page).toHaveURL(editor(EXCL, 'versions'));
+    await expect(dialog).toBeHidden();
+    await expectOnlySection(page, 'odsens', 'versions');
+
+    // -- The admin shell's own Projects link is guarded too (ADR-0040 D3) ---------------------
+    await open(page, editor(EXCL, 'general'));
+    await title.fill(TITLE_EDIT);
+    await expect(dirtyRoot(page)).toHaveCount(1);
+    await page.locator('nav[aria-label="Admin"] a[href="/admin/projects"]').click();
+    await expect(dialog).toBeVisible();
+    await stay.click();
+    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(editor(EXCL, 'general'));
+    await expect(title).toHaveValue(TITLE_EDIT);
+
+    // -- A Ctrl/Cmd-click passes through: a new tab (or a plain navigation), never the dialog --
+    const popup = context.waitForEvent('page', { timeout: 3_000 }).catch(() => null);
+    await nav.getByRole('link', { name: 'Gallery' }).click({ modifiers: ['ControlOrMeta'] });
+    const opened = await popup;
+    await expect(dialog).toBeHidden();
+    if (opened !== null) await opened.close();
+
+    // -- Submitting a form clears the dot; the PRG lands on `?section=general&saved=saved`, the
+    // toast says Saved. and `saved` is stripped (AC1/AC2; ADR-0038 D1) -----------------------
+    await open(page, editor(EXCL, 'general'));
+    await title.fill(TITLE_EDIT);
+    await expect(dirtyRoot(page)).toHaveCount(1);
+    // `SavedToast` strips `saved` through `history.replaceState` at mount: record the URL as it
+    // stood at every replaceState call, so the landing URL is captured before it is rewritten.
+    await page.evaluate(() => {
+      const landed: string[] = [];
+      const original = window.history.replaceState.bind(window.history);
+      window.history.replaceState = (...args) => {
+        landed.push(window.location.href);
+        original(...args);
+      };
+      (window as unknown as { __landed: string[] }).__landed = landed;
+    });
+    const savePost = page.waitForResponse(
+      (res) => res.request().method() === 'POST' && res.url().includes('/admin/projects/'),
+    );
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(dirtyRoot(page)).toHaveCount(0);
+    await savePost;
+    await expect(page.getByRole('status')).toContainText('Saved.');
+    await expect(page).toHaveURL(editor(EXCL, 'general'));
+    const landed = await page.evaluate(
+      () => (window as unknown as { __landed?: string[] }).__landed ?? [],
+    );
+    expect(
+      landed.some((url) => url.includes(`${editor(EXCL, 'general')}&saved=saved`)),
+      `the PRG landed on ?section=general&saved=saved (saw: ${landed.join(' | ')})`,
+    ).toBe(true);
+    await expect(title).toHaveValue('Seed Exclusive Pack'); // trimmed by the action — seed value
+    await expect(activeLink(page)).not.toContainText('Unsaved changes');
+    expect(await beforeUnloadPrevented(page)).toBe(false);
+
+    // -- Flipping Preview never sets the dot (a view control, not an edit) ---------------------
+    await open(page, editor(EXCL, 'description'));
+    const preview = toggleFor(page, 'Preview');
+    await preview.label.click({ force: true });
+    await expect(preview.input).toBeChecked();
+    await expect(page.getByTestId('markdown-preview')).toBeVisible();
+    await expect(dirtyRoot(page)).toHaveCount(0);
+    await preview.label.click({ force: true });
+    await expect(preview.input).not.toBeChecked();
+    await expect(dirtyRoot(page)).toHaveCount(0);
+
+    // -- The file well's version fields never set it (uploads never count as unsaved — AC2) ---
+    await open(page, editor(EXCL, 'versions'));
+    await page.getByLabel('Version number', { exact: true }).fill('9.9.9');
+    await page.getByLabel('Game versions', { exact: true }).fill('1.21');
+    await page.waitForTimeout(300);
+    await expect(dirtyRoot(page)).toHaveCount(0);
+    expect(await beforeUnloadPrevented(page)).toBe(false);
+
+    // -- A validation error keeps the section: the PRG carries `?section=general&form=details…`
+    // and the message lands inline on the field (03 C-30) --------------------------------------
+    await open(page, editor(EXCL, 'general'));
+    await page.getByLabel('Source link', { exact: true }).fill('http://example.com/source');
+    await submitAndWait(page, 'Save');
+    await expect(page).toHaveURL(/\?section=general&form=details&/);
+    await expect(page).toHaveURL(/field=source_url/);
+    await expect(activeLink(page)).toHaveText('General');
+    await expectOnlySection(page, 'odsens', 'general');
+    await expect(page.getByLabel('Source link', { exact: true })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    // The message rides the field's own `role="alert"` line (03 §2.2 Field a11y; the words are
+    // the action's — `runAction` reports a schema failure as its generic line + the field).
+    const sourceError = page.locator('#field-source_url-error');
+    await expect(sourceError).toHaveAttribute('role', 'alert');
+    await expect(sourceError).not.toBeEmpty();
+    await expect(sourceError).toBeVisible();
+    await expect(dirtyRoot(page)).toHaveCount(0);
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // T-E2E-56 — the Markdown editor on the exclusive's Body (00 S1.5c.AC4)
+  // ---------------------------------------------------------------------------------------------
+
+  test('T-E2E-56 Markdown editor: 13 toolbar buttons + roving tabindex; a toolbar-only edit sets the dot, Ctrl+B back clears it, Ctrl+Shift+B passes; caret / selection insertions (Bold, Ctrl+I, Ctrl+B toggle, H2, bullet list, Link, YouTube); Preview hides the textarea, disables the toolbar, renders sanitised (no script, disallowed image → link, empty copy); Preview = public About; stored body is plain Markdown; emptied Body clears', async ({
+    page,
+  }) => {
+    test.setTimeout(150_000);
+    acceptNativeDialogs(page);
+    const db = loose(asRole('service'));
+    await loginAs(page, 'admin');
+    await open(page, editor(EXCL, 'description'));
+    const textarea = bodyField(page);
+    const bar = toolbar(page);
+    const buttons = bar.getByRole('button');
+    const button = (name: string) => bar.getByRole('button', { name, exact: true });
+    await expect(textarea).toHaveValue(seedBody);
+
+    // -- The toolbar: 13 buttons in order, titles with the shortcuts, ONE tab stop --------------
+    await expect(buttons).toHaveCount(13);
+    expect(
+      await buttons.evaluateAll((els) => els.map((el) => el.getAttribute('aria-label'))),
+    ).toEqual(TOOLBAR_LABELS);
+    await expect(bar.locator('button[tabindex="0"]')).toHaveCount(1);
+    await expect(button('Bold')).toHaveAttribute('title', 'Bold (Ctrl+B)');
+    await expect(button('Italic')).toHaveAttribute('title', 'Italic (Ctrl+I)');
+    await expect(button('Heading 1')).toHaveAttribute('title', 'Heading 1');
+
+    // Roving tabindex (APG toolbar): ←/→ move between buttons, Home/End jump; still one tab stop.
+    await button('Heading 1').focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(button('Heading 2')).toBeFocused();
+    await expect(button('Heading 2')).toHaveAttribute('tabindex', '0');
+    await expect(bar.locator('button[tabindex="0"]')).toHaveCount(1);
+    await page.keyboard.press('ArrowLeft');
+    await expect(button('Heading 1')).toBeFocused();
+    await page.keyboard.press('End');
+    await expect(button('YouTube')).toBeFocused();
+    await page.keyboard.press('ArrowRight'); // wraps
+    await expect(button('Heading 1')).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(button('Heading 1')).toBeFocused();
+
+    // -- A toolbar-only edit marks the section unsaved (AC2 — React commits the value, so the
+    // editor dispatches a native `input`, ADR-0040 D9); Ctrl/Cmd+B toggling it back off reads
+    // clean again; a Shift chord is the browser's and leaves the value untouched -------------
+    await expect(dirtyRoot(page)).toHaveCount(0);
+    await selectIn(page, 3, 8); // `## About the pack` → "About"
+    expect(await selectedText(page)).toBe('About');
+    await button('Bold').click();
+    await expect(textarea).toHaveValue(`## **About**${seedBody.slice(8)}`);
+    await expect(dirtyRoot(page)).toHaveCount(1);
+    await page.keyboard.press('ControlOrMeta+b');
+    await expect(textarea).toHaveValue(seedBody);
+    await expect(dirtyRoot(page)).toHaveCount(0);
+    await page.keyboard.press('ControlOrMeta+Shift+b');
+    await page.keyboard.press('ControlOrMeta+Shift+i');
+    await expect(textarea).toHaveValue(seedBody);
+    await expect(dirtyRoot(page)).toHaveCount(0);
+
+    // -- Caret + Bold → `****` with the caret between; focus returns to the textarea ------------
+    // (`setSelectionRange` — `press('End')` only ends the LINE.)
+    await textarea.fill('hello world');
+    await selectIn(page, 11, 11);
+    await button('Bold').click();
+    await expect(textarea).toHaveValue('hello world****');
+    expect(await selectionOf(page)).toEqual([13, 13]);
+    await expect(textarea).toBeFocused();
+
+    // Ctrl/Cmd+I at the caret → `__` with the caret between (browser default prevented).
+    await textarea.fill('hello world');
+    await selectIn(page, 11, 11);
+    await page.keyboard.press('ControlOrMeta+i');
+    await expect(textarea).toHaveValue('hello world__');
+    expect(await selectionOf(page)).toEqual([12, 12]);
+
+    // A selected word → Bold wraps it, the inner text stays selected; Ctrl/Cmd+B toggles it off.
+    await textarea.fill('hello world');
+    await selectIn(page, 0, 5);
+    await button('Bold').click();
+    await expect(textarea).toHaveValue('**hello** world');
+    expect(await selectedText(page)).toBe('hello');
+    await page.keyboard.press('ControlOrMeta+b');
+    await expect(textarea).toHaveValue('hello world');
+    expect(await selectedText(page)).toBe('hello');
+
+    // H2 on a line (caret anywhere in it) → the `## ` prefix; the other line untouched.
+    await textarea.fill('Title line\nbody');
+    await selectIn(page, 3, 3);
+    await button('Heading 2').click();
+    await expect(textarea).toHaveValue('## Title line\nbody');
+
+    // Bullet list on a two-line selection → both lines prefixed.
+    await textarea.fill('one\ntwo');
+    await selectIn(page, 0, 7);
+    await button('Bullet list').click();
+    await expect(textarea).toHaveValue('- one\n- two');
+
+    // Link with a selection → `[sel](url)` with `url` selected.
+    await textarea.fill('odsens');
+    await selectIn(page, 0, 6);
+    await button('Link').click();
+    await expect(textarea).toHaveValue('[odsens](url)');
+    expect(await selectedText(page)).toBe('url');
+
+    // YouTube on a non-empty line → a newline + the watch URL with VIDEO_ID selected.
+    await textarea.fill('watch this');
+    await selectIn(page, 10, 10);
+    await button('YouTube').click();
+    await expect(textarea).toHaveValue('watch this\nhttps://www.youtube.com/watch?v=VIDEO_ID');
+    expect(await selectedText(page)).toBe('VIDEO_ID');
+
+    // -- Preview: the textarea is `hidden` (still attached — it posts), the toolbar disabled, the
+    // pane renders the sanitised tree with the public Markdown look ---------------------------
+    const SAMPLE = [
+      '## Parity heading',
+      '',
+      'Some **bold** text with a [link](https://example.com/page).',
+      '',
+      '- alpha',
+      '- beta',
+      '- gamma',
+      '',
+      '> NOTE: A note line.',
+      '',
+      '<script>alert(1)</script>',
+      '',
+      '![pic](https://example.com/pic.png)',
+    ].join('\n');
+    await textarea.fill(SAMPLE);
+    const preview = toggleFor(page, 'Preview');
+    await preview.label.click({ force: true });
+    await expect(preview.input).toBeChecked();
+    await expect(textarea).toBeAttached();
+    await expect(textarea).toBeHidden();
+    await expect(textarea).toHaveAttribute('hidden', '');
+    for (let i = 0; i < 13; i += 1) await expect(buttons.nth(i)).toBeDisabled();
+    const pane = page.getByTestId('markdown-preview');
+    await expect(pane.getByText('PREVIEW', { exact: true })).toBeVisible();
+    const previewRoot = pane.locator('[data-variant="about"]');
+    await expect(previewRoot.locator('h2')).toHaveText('Parity heading');
+    await expect(previewRoot.locator('li')).toHaveCount(3);
+    await expect(previewRoot.locator('strong')).toHaveText('bold');
+    await expect(previewRoot.locator('script')).toHaveCount(0); // raw HTML skipped (INV-65)
+    await expect(previewRoot).not.toContainText('<script>');
+    await expect(previewRoot.locator('img')).toHaveCount(0); // example.com is not an INV-54 host
+    await expect(previewRoot.locator('a[href="https://example.com/pic.png"]')).toContainText('pic');
+    await expect(previewRoot.locator('a[href="https://example.com/page"]')).toHaveAttribute(
+      'target',
+      '_blank',
+    );
+    await expect(previewRoot.locator('aside[aria-label="Note"]')).toContainText('A note line.');
+    const previewHtml = await previewRoot.innerHTML();
+
+    // Preview OFF → the pane unmounts and the textarea is back; an empty body previews the line.
+    await preview.label.click({ force: true });
+    await expect(preview.input).not.toBeChecked();
+    await expect(pane).toHaveCount(0);
+    await expect(textarea).toBeVisible();
+    await expect(buttons.first()).toBeEnabled();
+    await textarea.fill('');
+    await preview.label.click({ force: true });
+    await expect(pane.getByText('Nothing to preview yet.')).toBeVisible();
+    await expect(pane.locator('[data-variant="about"]')).toHaveCount(0);
+    await preview.label.click({ force: true });
+
+    // -- Save → the PRG keeps the section; the stored value is the plain Markdown typed ---------
+    await textarea.fill(SAMPLE);
+    await submitAndWait(page, 'Save');
+    await expect(page).toHaveURL(editor(EXCL, 'description'));
+    await expect(page.getByRole('status')).toContainText('Saved.');
+    await expect(textarea).toHaveValue(SAMPLE);
+    const stored = await db.from('projects').select('body_md').eq('id', EXCL).single();
+    expect(stored.error).toBeNull();
+    // Plain Markdown, no HTML — compared with LF line endings: the browser's multipart/form-data
+    // encoding of a `<textarea>` posts CRLF (the HTML form-submission rule, not the editor —
+    // every textarea a server action receives arrives this way; the textarea API value shows LF
+    // again and remark treats both endings alike).
+    expect(unixLines(stored.data?.body_md)).toBe(SAMPLE);
+    expect(stored.data?.body_md).not.toContain('<h2');
+
+    // -- Preview parity: the public About root renders the same tree (same renderer, same
+    // sanitize schema, same CSS module — 00 S1.5c.AC4) ---------------------------------------
+    const about = page.locator('section[aria-labelledby="about-title"] [data-variant="about"]');
+    let publicHtml = '';
+    await expectAtUrl(page, `/projects/${EXCL_SLUG}`, async () => {
+      await expect(about.locator('h2')).toHaveText('Parity heading', { timeout: 1_000 });
+      publicHtml = await about.innerHTML();
+    });
+    expect(normaliseHtml(publicHtml)).toBe(normaliseHtml(previewHtml));
+
+    // -- An emptied Body saves as '' (ADR-0040 D7 — never a silent no-op) --------------------
+    await open(page, editor(EXCL, 'description'));
+    await textarea.fill('');
+    await submitAndWait(page, 'Save');
+    await expect(page.getByRole('status')).toContainText('Saved.');
+    await expect(textarea).toHaveValue('');
+    const emptied = await db.from('projects').select('body_md').eq('id', EXCL).single();
+    expect(emptied.data?.body_md).toBe('');
+
+    // -- Restore THROUGH the form (revalidates the public entry); afterAll is the safety net ---
+    await textarea.fill(seedBody);
+    await submitAndWait(page, 'Save');
+    await expect(textarea).toHaveValue(seedBody);
+    const restored = await db.from('projects').select('body_md').eq('id', EXCL).single();
+    expect(unixLines(restored.data?.body_md)).toBe(seedBody);
+    await expectAtUrl(page, `/projects/${EXCL_SLUG}`, async () => {
+      await expect(about.locator('h2').first()).toHaveText('About the pack', { timeout: 1_000 });
+    });
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // T-E2E-57 — phone chip row + toolbar wrap, axe + screenshots as admin (00 S1.5c.AC5)
+  // ---------------------------------------------------------------------------------------------
+
+  test('T-E2E-57 admin: at 390 the chip row scrolls and the toolbar wraps without page overflow; at 1280 the 220px sidebar; axe zero serious/critical at 1280 + 390 on every section of both rows + the open dialog; screenshots per section', async ({
+    page,
+  }) => {
+    test.setTimeout(300_000);
+    acceptNativeDialogs(page);
+    await loginAs(page, 'admin');
+    const nav = sectionNav(page);
+
+    // -- 390: one-row chip strip that scrolls; the toolbar wraps; nothing overflows the page ---
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page, editor(EXCL, 'description'));
+    await expect(activeLink(page)).toHaveText('Description');
+    await expect(activeLink(page)).toHaveAttribute('aria-current', 'page');
+    const chips = await nav.evaluate((el) => ({
+      scrollWidth: el.scrollWidth,
+      clientWidth: el.clientWidth,
+      rows: new Set(Array.from(el.querySelectorAll('a')).map((a) => a.offsetTop)).size,
+      pageWidth: document.documentElement.scrollWidth,
+    }));
+    expect(chips.scrollWidth, 'the chip row scrolls').toBeGreaterThan(chips.clientWidth);
+    expect(chips.rows, 'the chips never wrap').toBe(1);
+    expect(chips.pageWidth, 'no horizontal page overflow').toBeLessThanOrEqual(390);
+    const bar = toolbar(page);
+    const buttons = bar.getByRole('button');
+    await expect(buttons).toHaveCount(13);
+    for (let i = 0; i < 13; i += 1) await expect(buttons.nth(i)).toBeVisible();
+    const strip = await bar.evaluate((el) => ({
+      scrollWidth: el.scrollWidth,
+      clientWidth: el.clientWidth,
+      rows: new Set(Array.from(el.querySelectorAll('button')).map((b) => b.offsetTop)).size,
+    }));
+    expect(strip.scrollWidth, 'the toolbar never scrolls').toBeLessThanOrEqual(strip.clientWidth);
+    expect(strip.rows, 'the toolbar wraps').toBeGreaterThan(1);
+
+    // -- 1280: the 220px sidebar column beside the section ----------------------------------
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await open(page, editor(EXCL, 'description'));
+    const sidebar = await nav.boundingBox();
+    expect(Math.round(sidebar?.width ?? 0)).toBe(220);
+
+    // -- axe + screenshots: every section of both rows at both widths, the dialog once each ---
+    for (const width of [1280, 390] as const) {
+      await page.setViewportSize({ width, height: width === 1280 ? 800 : 844 });
+      for (const [id, sections, prefix, branch] of [
+        [EXCL, EXCL_SECTIONS, 'admin-project', 'odsens'],
+        [PIXEL, SYNCED_SECTIONS, 'admin-project-synced', 'modrinth'],
+      ] as const) {
+        for (const section of sections) {
+          await open(page, editor(id, section));
+          await expect(activeLink(page)).toHaveAttribute('href', editor(id, section));
+          await expectOnlySection(page, branch, section);
+          await expectNoSeriousA11y(page);
+          await shoot(page, `${prefix}-${section}`);
+        }
+      }
+      await open(page, editor(EXCL, 'general'));
+      await page.getByLabel('Title', { exact: true }).fill(TITLE_EDIT);
+      await nav.getByRole('link', { name: 'Gallery' }).click();
+      await expect(leaveDialog(page)).toBeVisible();
+      await expectNoSeriousA11y(page);
+      await shoot(page, 'admin-project-dialog');
+      await leaveDialog(page).getByRole('button', { name: 'Stay', exact: true }).click();
+      await expect(leaveDialog(page)).toBeHidden();
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // T-E2E-57 — moderator: every section navigable, axe at both widths, the editor disabled
+  // ---------------------------------------------------------------------------------------------
+
+  test('T-E2E-57 moderator: axe zero serious/critical at 1280 + 390 on every section of both rows; the Body textarea, every toolbar button and Save disabled "Admin only" while the Preview switch still flips and the section links still navigate', async ({
+    page,
+  }) => {
+    test.setTimeout(240_000);
+    await loginAs(page, 'mod');
+    const nav = sectionNav(page);
+
+    for (const width of [1280, 390] as const) {
+      await page.setViewportSize({ width, height: width === 1280 ? 800 : 844 });
+      for (const [id, sections, branch] of [
+        [EXCL, EXCL_SECTIONS, 'odsens'],
+        [PIXEL, SYNCED_SECTIONS, 'modrinth'],
+      ] as const) {
+        for (const section of sections) {
+          await open(page, editor(id, section));
+          await expect(activeLink(page)).toHaveAttribute('href', editor(id, section));
+          await expectOnlySection(page, branch, section);
+          await expectNoSeriousA11y(page);
+        }
+      }
+    }
+
+    // The Description section: disabled controls, never hidden (03 §2.10; ADR-0040 D5).
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await open(page, editor(EXCL, 'description'));
+    const textarea = bodyField(page);
+    await expect(textarea).toBeDisabled();
+    await expect(textarea).toHaveAttribute('title', ADMIN_ONLY);
+    await expect(textarea).toHaveValue(seedBody);
+    const buttons = toolbar(page).getByRole('button');
+    await expect(buttons).toHaveCount(13);
+    for (let i = 0; i < 13; i += 1) {
+      await expect(buttons.nth(i)).toBeDisabled();
+      await expect(buttons.nth(i)).toHaveAttribute('title', ADMIN_ONLY);
+    }
+    const save = page.getByRole('button', { name: 'Save', exact: true });
+    await expect(save).toBeDisabled();
+    expect(await save.evaluate((el) => el.closest('[title="Admin only"]') !== null)).toBe(true);
+    const preview = toggleFor(page, 'Preview');
+    await expect(preview.input).toBeEnabled();
+    await preview.label.click({ force: true });
+    await expect(preview.input).toBeChecked();
+    const pane = page.getByTestId('markdown-preview');
+    await expect(pane.locator('[data-variant="about"] h2')).toHaveText('About the pack');
+    await preview.label.click({ force: true });
+    await expect(preview.input).not.toBeChecked();
+    await expect(pane).toHaveCount(0);
+    // Nothing posts from a moderator's page; the section links still navigate (S1.5c.AC6).
+    const posts: string[] = [];
+    page.on('request', (req) => {
+      if (req.method() === 'POST') posts.push(req.url());
+    });
+    await nav.getByRole('link', { name: 'Gallery' }).click();
+    await expect(page).toHaveURL(editor(EXCL, 'gallery'));
+    await expectOnlySection(page, 'odsens', 'gallery');
+    expect(posts).toEqual([]);
+    await logout(page);
   });
 });
 
@@ -1549,6 +2365,8 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
 
     await expect(page.getByRole('heading', { name: TITLE })).toBeVisible();
     await expect(page.getByText('DRAFT', { exact: true })).toBeVisible();
+    // S1.5c (ADR-0039 D2): the landing renders General; the state sentence is the PUBLISH section.
+    await page.goto(`/admin/projects/${id}?section=publish`);
     await expect(page.getByText('This project is a draft. Nobody sees it.')).toBeVisible();
   });
 
@@ -1560,7 +2378,9 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     page,
   }) => {
     await loginAs(page, 'admin');
-    await page.goto(`/admin/projects/${projectId()}`);
+    // S1.5c (ADR-0039 D2): the icon well is on `?section=gallery`, the file well on
+    // `?section=versions`.
+    await page.goto(`/admin/projects/${projectId()}?section=gallery`);
     const { icon, versions } = sections(page);
     const iconWell = icon.locator('[data-state]');
     const fileWell = versions.locator('[data-state]');
@@ -1570,7 +2390,6 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     await expect(iconWell.getByText('Drop a file here')).toBeVisible();
     await expect(iconWell.getByText('or pick one')).toBeVisible();
     await expect(iconWell.getByText('png · jpg · webp · 5 MB per image')).toBeVisible();
-    await expect(fileWell.getByText('.jar .zip .mrpack · 100 MB max')).toBeVisible();
 
     // Dragover: a dispatched dragenter with a real DataTransfer flips the copy to "Let go." (an
     // empty DataTransfer exposes no filename during dragover — the well omits it silently).
@@ -1584,6 +2403,8 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     await expect(iconWell.getByText('Drop a file here')).toBeVisible();
 
     // The file well is gated on the version fields (ProjectFileWell — 04 §1.4 contract).
+    await page.goto(`/admin/projects/${projectId()}?section=versions`);
+    await expect(fileWell.getByText('.jar .zip .mrpack · 100 MB max')).toBeVisible();
     await expect(versions.getByText('Fill the version fields first.')).toBeVisible();
     await fillVersionFields(page);
     await expect(versions.getByText('Fill the version fields first.')).toHaveCount(0);
@@ -1627,16 +2448,21 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     page,
   }) => {
     await loginAs(page, 'admin');
-    await page.goto(`/admin/projects/${projectId()}`);
+    // S1.5c (ADR-0039 D2): Publish on `?section=publish` (the PRG lands back there, error and
+    // all), the icon well on `?section=gallery`, the file well on `?section=versions`.
+    const PUBLISH = `/admin/projects/${projectId()}?section=publish`;
+    await page.goto(PUBLISH);
     const { publish, icon, versions } = sections(page);
 
     // Publish before anything is uploaded: precondition_failed lists BOTH gaps (ADR-0002 #65).
     await submitAndWait(page, 'Publish');
+    await expect(page).toHaveURL(/section=publish&form=publish/);
     await expect(publish.getByRole('alert')).toHaveText(PRECONDITION_MESSAGE);
 
     // Icon upload (two-phase begin → signed PUT → commit against local Storage — 04 §1.4.5). The
     // transient `uploading` percent/progressbar is not raced here (see file header): `done` is the
     // contract — ✔ + name + size — then router.refresh() shows the committed icon server-side.
+    await page.goto(`/admin/projects/${projectId()}?section=gallery`);
     const iconWell = icon.locator('[data-state]');
     await iconWell
       .locator('input[type="file"]')
@@ -1649,6 +2475,7 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
 
     // File upload: version fields gate the well (client state — a fresh page, so refill), primary
     // checked; commit upserts version 1.0.0 + the file row (ADR-0026 partial unique).
+    await page.goto(`/admin/projects/${projectId()}?section=versions`);
     await fillVersionFields(page);
     await toggleFor(page, 'Primary file').label.click({ force: true });
     await expect(toggleFor(page, 'Primary file').input).toBeChecked();
@@ -1661,6 +2488,7 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     await expect(versions.getByText('PRIMARY', { exact: true })).toBeVisible();
 
     // Publish for real → LIVE pill + the live sentence.
+    await page.goto(PUBLISH);
     await submitAndWait(page, 'Publish');
     await expect(page.getByText('LIVE', { exact: true })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(`Live on /projects/${SLUG}.`)).toBeVisible();
@@ -1732,19 +2560,23 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     expect(await create.evaluate((el) => el.closest('[title="Admin only"]') !== null)).toBe(true);
 
     // The exclusive editor (readable: the project is LIVE — a draft would 404 for mod, T-RLS-18).
-    await page.goto(`/admin/projects/${projectId()}`);
+    // S1.5c (ADR-0039 D2 / 00 S1.5c.AC6): the moderator visits each section it asserts — the
+    // section links are never disabled.
+    await page.goto(`/admin/projects/${projectId()}?section=publish`);
     const { details, versions } = sections(page);
     await expect(page.getByRole('heading', { name: TITLE })).toBeVisible();
 
-    // PUBLISH: Hide + Back to draft disabled under the title wrap; comments Toggle disabled.
+    // PUBLISH: Hide + Back to draft disabled under the title wrap.
     for (const name of ['Hide', 'Back to draft']) {
       const button = page.getByRole('button', { name, exact: true });
       await expect(button).toBeDisabled();
       expect(await button.evaluate((el) => el.closest('[title="Admin only"]') !== null)).toBe(true);
     }
-    await expect(page.locator(`input[aria-label="Comments on ${TITLE}"]`)).toBeDisabled();
 
-    // DETAILS: fields + Save disabled (scoped — 'Game versions'/'Loaders' repeat in the file well).
+    // GENERAL: the comments Toggle disabled; DETAILS fields + Save disabled (scoped — 'Game
+    // versions'/'Loaders' repeat in the file well).
+    await page.goto(`/admin/projects/${projectId()}?section=general`);
+    await expect(page.locator(`input[aria-label="Comments on ${TITLE}"]`)).toBeDisabled();
     for (const label of ['Slug', 'Title', 'Description', 'Game versions']) {
       await expect(details.getByLabel(label, { exact: true })).toBeDisabled();
     }
@@ -1758,13 +2590,20 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     await expect(save).toBeDisabled();
     expect(await save.evaluate((el) => el.closest('[title="Admin only"]') !== null)).toBe(true);
 
-    // Wells (icon, gallery, file): inert but present — aria-disabled + title, inputs disabled.
+    // Wells (icon + gallery on GALLERY, file on VERSIONS): inert but present — aria-disabled +
+    // title, inputs disabled.
     const wells = page.locator('[data-state][aria-disabled="true"][title="Admin only"]');
-    await expect(wells).toHaveCount(3);
     const fileInputs = page.locator('input[type="file"]');
-    await expect(fileInputs).toHaveCount(3);
-    for (let i = 0; i < 3; i += 1) {
-      await expect(fileInputs.nth(i)).toBeDisabled();
+    for (const [section, count] of [
+      ['gallery', 2],
+      ['versions', 1],
+    ] as const) {
+      await page.goto(`/admin/projects/${projectId()}?section=${section}`);
+      await expect(wells).toHaveCount(count);
+      await expect(fileInputs).toHaveCount(count);
+      for (let i = 0; i < count; i += 1) {
+        await expect(fileInputs.nth(i)).toBeDisabled();
+      }
     }
 
     // ProjectFileWell version fields ride the same flag.
@@ -1788,7 +2627,7 @@ test.describe('exclusive lifecycle (T-E2E-35)', () => {
     page,
   }) => {
     await loginAs(page, 'admin');
-    await page.goto(`/admin/projects/${projectId()}`);
+    await page.goto(`/admin/projects/${projectId()}?section=publish`);
 
     await submitAndWait(page, 'Back to draft');
     await expect(page.getByText('DRAFT', { exact: true })).toBeVisible({ timeout: 10_000 });

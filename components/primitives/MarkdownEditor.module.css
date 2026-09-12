@@ -1,0 +1,197 @@
+/* MarkdownEditor — DESIGN.md v1.10 §11.3 #20 (Markdown toolbar + Preview pane), §5 Admin field;
+   03 §2.10 `MarkdownEditor`; ADR-0039 D4/D5. Mirrors `Field.module.css`: the well carries the
+   border, the focus border colour and the gold ring (03 C-25); 3px radius on the well only. */
+.mde {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.mde-label {
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+.mde-well {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--slab-sunk);
+  border: 2px solid var(--line-soft);
+  border-radius: var(--radius-input);
+  transition: border-color var(--dur-fast) ease-out;
+}
+
+.mde-well:focus-within {
+  border-color: var(--indigo-lift);
+}
+
+/* The textarea's own ring is suppressed below; the well carries the same 3px gold ring (03 C-25). */
+.mde-well:has(.mde-textarea:focus-visible) {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.mde-well:has(.mde-textarea[aria-invalid='true']) {
+  border-color: var(--danger-field);
+}
+
+/* ---- toolbar strip: `--slab-sunk`, 2px `--line` bottom border, wraps at phone width ---- */
+.mde-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-8);
+  padding: var(--space-4) var(--space-8);
+  background: var(--slab-sunk);
+  border-bottom: 2px solid var(--line);
+}
+
+/* The toolbar wraps at phone width. Each group after the first hangs its 2px `--line` separator
+   in the gap to its LEFT (below); the box is grown by `--space-8` (the 3px ring + 2px offset, 03
+   C-25, stays unclipped) and `overflow: clip`ped, so a separator that would lead a wrapped row
+   falls outside the box and is never drawn — the rule only ever sits between two groups on one
+   row (DESIGN v1.10 §11.3 #20 "between each of the four groups"). Net layout unchanged. */
+.mde-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-18);
+  min-width: 0;
+  margin: calc(-1 * var(--space-8));
+  padding: var(--space-8);
+  overflow: clip;
+}
+
+.mde-group {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* 2px `--line` divider centred in the 18px gap before every group but the first: a flex item
+   pulled left by half the gap + 1px and pushed back by the same amount (4px margin + 4px gap), so
+   the group's own box is unchanged and the rule paints in the gap. */
+.mde-group + .mde-group::before {
+  content: '';
+  flex: none;
+  width: 2px;
+  height: 20px;
+  margin: 0 var(--space-4) 0 calc(-1 * (var(--space-18) + 2px) / 2);
+  background: var(--line);
+}
+
+/* 36px square ghost button: transparent, hover `--slab-raised`, radius 0 */
+.mde-button {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--chalk);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) ease-out;
+}
+
+.mde-button:hover:not(:disabled) {
+  background: var(--slab-raised);
+}
+
+.mde-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* text glyphs (H1 H2 H3 B I S </>) in the body face, 700 */
+.mde-glyph {
+  font-family: var(--font-body);
+  font-size: var(--text-label);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+/* the word "Preview" + the square Toggle, right-aligned in the strip */
+.mde-preview-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-inline-start: auto;
+}
+
+.mde-preview-word {
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--mute);
+}
+
+/* ---- textarea: the `Field` textarea recipe, no border (the well has it) ---- */
+.mde-textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 88px;
+  padding: var(--space-12);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-ui);
+  line-height: 1.5;
+  color: var(--chalk);
+  resize: vertical;
+}
+
+.mde-textarea:focus-visible {
+  outline: none; /* replaced by the identical ring on .mde-well:has(:focus-visible) above */
+}
+
+.mde-textarea:disabled {
+  opacity: 0.45;
+}
+
+/* ---- Preview pane: the public `Markdown` look under a Silkscreen PREVIEW eyebrow ---- */
+.mde-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+  padding: var(--space-12);
+}
+
+.mde-preview-empty {
+  margin: 0;
+  font-size: var(--text-ui);
+  line-height: 1.5;
+  color: var(--mute);
+}
+
+/* ---- helper / error foot: `Field` recipe ---- */
+.mde-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.mde-helper {
+  margin: 0;
+  font-size: var(--text-label-sm);
+  line-height: 1.5;
+  color: var(--mute-dim);
+}
+
+.mde-error {
+  margin: 0;
+  font-size: var(--text-label-sm);
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--danger);
+}

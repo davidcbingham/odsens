@@ -8,8 +8,10 @@ import {
   type ProjectFileWellProps,
   type UploadWellProps,
 } from '@/components/admin/UploadWell';
+import { EditorSections } from '@/components/admin/EditorSections';
 import { Button } from '@/components/primitives/Button';
 import { Field } from '@/components/primitives/Field';
+import { MarkdownEditor } from '@/components/primitives/MarkdownEditor';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
 import { sectionTitleId } from '@/components/primitives/SectionTitle';
 import { CheckGrid } from '@/components/primitives/CheckGrid';
@@ -51,8 +53,9 @@ import styles from './page.module.css';
  * publish controls (`publishProject`, ADR-0002 #65 preconditions / #38 no draft previews), the
  * real-columns details form (`updateExclusiveProject` — slug draft-only), LISTINGS, icon +
  * gallery uploads (`uploadProjectMedia`) and versions & files (`uploadProjectFile`,
- * `ProjectFileWell` — ADR-0026 partial unique). Server Component (03 C-16); the upload wells are
- * the page's only client islands (03 C-16a `UploadWell`, C-17 exception 4 — the signed-URL PUT).
+ * `ProjectFileWell` — ADR-0026 partial unique). Server Component (03 C-16); the client islands are
+ * the upload wells (03 C-16a `UploadWell`, C-17 exception 4 — the signed-URL PUT) and, since
+ * S1.5c, `EditorSections` + `MarkdownEditor` (below).
  *
  * S1.5a (ADR-0037 D5/D8; 00 S1.5a.AC1/AC4/AC8): the LISTINGS section holds the "Modrinth
  * listing (URL, slug or id)" `Field` beside "CurseForge id or URL" — both on ONE recipe: a Link
@@ -85,7 +88,22 @@ import styles from './page.module.css';
  * Moderators (ADR-0002 C7; 03 §2.10 rule): every field, toggle, button and upload well renders
  * DISABLED (`disabled` + `title="Admin only"` on the control's wrapper + the `Button`
  * `aria-describedby` explainer — the `SyncStatus` precedent), never hidden; the actions refuse
- * them server-side regardless (01 INV-18).
+ * them server-side regardless (01 INV-18). The section links are never disabled (S1.5c.AC6).
+ *
+ * S1.5c — editor v2 (ADR-0039 D2/D3/D4; ADR-0040 D3/D6; 00 S1.5c.AC1–AC7): ONE section renders
+ * at a time, chosen by `?section=` (`SECTIONS`; unknown or not on this row → `general`, no
+ * redirect). `general` = the DETAILS form without the body (odsens) / the OVERRIDES form without
+ * the notes (synced) + the comments toggle; `description` = the DESCRIPTION heading with the
+ * `MarkdownEditor` on `body_md` → `saveBody` (odsens) or the NOTES heading with the editor on
+ * `notes_md` → `saveNotes` (synced); `gallery` = ICON + GALLERY; `versions` = VERSIONS & FILES;
+ * `listings` = LISTINGS (+ the `?listing=` prefill, which also picks this section when the URL
+ * names none); `publish` = PUBLISH (odsens only). The active section is the `children` of the
+ * `EditorSections` island (`key={section}` — a section change remounts it with fresh snapshots),
+ * which draws the sidebar / chip row, the unsaved dot and the leave `Dialog`. EVERY redirect
+ * keeps `?section=` (`sectionBase` → `saved` = `&saved=saved`, `withError` appends `&form=…`,
+ * the gallery Delete → `&saved=removed`) so a save lands on the same section with the toast.
+ * The page stays a Server Component; the forms stay `<form action>` server functions;
+ * `/admin/projects/new` is untouched.
  */
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -167,14 +185,41 @@ const LINK_FIELD: Record<LinkPlatform, string> = {
 /** The `?listing=` prefill is a suggestion only: capped to the field's `maxLength`. */
 const LISTING_REF_MAX = 300;
 
+/** `base` may already carry a query (`sectionBase` — S1.5c keeps `?section=` on every redirect). */
 function withError(base: string, form: FormName, error: ActionError): string {
   const query = new URLSearchParams({ form, error: error.message });
   if (error.field) query.set('field', error.field);
-  return `${base}?${query.toString()}`;
+  return `${base}${base.includes('?') ? '&' : '?'}${query.toString()}`;
 }
 
 function queryValue(value: string | string[] | undefined): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+/**
+ * S1.5c (ADR-0039 D2): the editor's sections, in sidebar order. A synced (`modrinth`) row has
+ * the first five; an `odsens` row all six (`publish`). `?section=<id>` picks one; anything else
+ * renders `general`.
+ */
+const SECTIONS = ['general', 'description', 'gallery', 'versions', 'listings', 'publish'] as const;
+type SectionId = (typeof SECTIONS)[number];
+const SECTION_LABELS: Record<SectionId, string> = {
+  general: 'General',
+  description: 'Description',
+  gallery: 'Gallery',
+  versions: 'Versions',
+  listings: 'Listings',
+  publish: 'Publish',
+};
+
+function parseSection(
+  value: string | string[] | undefined,
+  available: readonly SectionId[],
+): SectionId | null {
+  const text = queryValue(value);
+  return text !== null && (available as readonly string[]).includes(text)
+    ? (text as SectionId)
+    : null;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -255,8 +300,25 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   const versions = await listAdminProjectVersions(id);
 
   const base = `/admin/projects/${id}`;
-  // ADR-0038 D1: every successful save lands back here with `?saved=` and `SavedToast` says so.
-  const saved = `${base}?saved=saved`;
+  // `?listing=<modrinth id>` from the list page's match note (ADR-0037 D8) — odsens rows only.
+  const listingPrefill = exclusive ? queryValue(query.listing)?.slice(0, LISTING_REF_MAX) : null;
+  // S1.5c (ADR-0039 D2): the sections this row has, and the one showing. A prefill with no
+  // `?section=` opens LISTINGS (the match-note link predates sections); otherwise `general`.
+  const sections: readonly SectionId[] = exclusive
+    ? SECTIONS
+    : SECTIONS.filter((section) => section !== 'publish');
+  const section: SectionId =
+    parseSection(query.section, sections) ??
+    (listingPrefill !== null && listingPrefill !== undefined ? 'listings' : 'general');
+  const sectionBase = `${base}?section=${section}`;
+  const sectionLinks = sections.map((sectionId) => ({
+    id: sectionId,
+    label: SECTION_LABELS[sectionId],
+    href: `${base}?section=${sectionId}`,
+  }));
+  // ADR-0038 D1: every successful save lands back here (same section — S1.5c.AC1) with `?saved=`
+  // and `SavedToast` says so.
+  const saved = `${sectionBase}&saved=saved`;
   const savedKey = queryValue(query.saved);
   const savedToast = isSavedMessageKey(savedKey) ? <SavedToast messageKey={savedKey} /> : null;
   const override = project.override;
@@ -265,8 +327,6 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
     modrinth: project.modrinthLink,
     curseforge: project.curseforgeLink,
   };
-  // `?listing=<modrinth id>` from the list page's match note (ADR-0037 D8) — odsens rows only.
-  const listingPrefill = exclusive ? queryValue(query.listing)?.slice(0, LISTING_REF_MAX) : null;
 
   // ---- Error round-trip (see header) ---------------------------------------------------------
   const errorForm = queryValue(query.form);
@@ -315,9 +375,19 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       project_id: id,
       title_override: orNull(formData.get('title_override')),
       description_override: orNull(formData.get('description_override')),
+    });
+    redirect(result.ok ? saved : withError(sectionBase, 'overrides', result.error));
+  }
+
+  // S1.5c: the notes live on their own section (`description`) with the `MarkdownEditor`; empty
+  // clears them (`null` — the 04 §1.4 nullable column). Errors report on the `overrides` form.
+  async function saveNotes(formData: FormData): Promise<void> {
+    'use server';
+    const result = await curateProject({
+      project_id: id,
       notes_md: orNull(formData.get('notes_md')),
     });
-    redirect(result.ok ? saved : withError(base, 'overrides', result.error));
+    redirect(result.ok ? saved : withError(sectionBase, 'overrides', result.error));
   }
 
   // Bound per platform (`.bind` — the `setStatus` precedent): one form per field. An empty ref
@@ -329,13 +399,13 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       platform,
       ref: orNull(formData.get(LINK_FIELD[platform])) ?? '',
     });
-    redirect(result.ok ? saved : withError(base, LINK_FORM[platform], result.error));
+    redirect(result.ok ? saved : withError(sectionBase, LINK_FORM[platform], result.error));
   }
 
   async function unlinkListing(platform: LinkPlatform): Promise<void> {
     'use server';
     const result = await unlinkProjectListing({ project_id: id, platform });
-    redirect(result.ok ? saved : withError(base, LINK_FORM[platform], result.error));
+    redirect(result.ok ? saved : withError(sectionBase, LINK_FORM[platform], result.error));
   }
 
   // PRG for the comments Toggle too (the list page's `curateAndRefresh` rationale): tag-only
@@ -360,7 +430,6 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       slug: orUndefined(formData.get('slug')),
       title: orUndefined(formData.get('title')),
       description: orUndefined(formData.get('description')),
-      body_md: orUndefined(formData.get('body_md')),
       project_type: projectTypeValue(formData.get('project_type')),
       categories: commaList(formData.get('categories')),
       loaders: checkedList(formData.getAll('loaders')), // CheckGrid boxes (ADR-0035 D4)
@@ -370,7 +439,21 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       issues_url: orNull(formData.get('issues_url')),
       discord_url: orNull(formData.get('discord_url')),
     });
-    redirect(result.ok ? saved : withError(base, 'details', result.error));
+    redirect(result.ok ? saved : withError(sectionBase, 'details', result.error));
+  }
+
+  // S1.5c: the body lives on its own section (`description`) with the `MarkdownEditor`. The
+  // Body posts VERBATIM (ADR-0040 D7): a one-field section whose Save kept the old text on an
+  // emptied field would say "Saved." and lie, so an empty string clears it (`bodyMdSchema`
+  // allows empty) — unlike `saveDetails`' partial-update `orUndefined`. Errors report on the
+  // `details` form so `fieldError('details', 'body_md')` lands on the editor.
+  async function saveBody(formData: FormData): Promise<void> {
+    'use server';
+    const result = await updateExclusiveProject({
+      id,
+      body_md: String(formData.get('body_md') ?? ''),
+    });
+    redirect(result.ok ? saved : withError(sectionBase, 'details', result.error));
   }
 
   // Bound per button (`.bind` — the `saveCommentsEnabled` precedent): Publish / Hide / Back to
@@ -378,7 +461,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   async function setStatus(status: 'draft' | 'published' | 'hidden'): Promise<void> {
     'use server';
     const result = await publishProject({ id, status });
-    redirect(result.ok ? saved : withError(base, 'publish', result.error));
+    redirect(result.ok ? saved : withError(sectionBase, 'publish', result.error));
   }
 
   // ---- Gallery (ADR-0038 D3): names for every image, Hide/Show for Modrinth images, Delete for
@@ -429,27 +512,29 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   async function saveGalleryNames(formData: FormData): Promise<void> {
     'use server';
     const rows = readGalleryRows(formData);
-    if (rows === null) redirect(withError(base, 'gallery', GALLERY_ROWS_ERROR));
+    if (rows === null) redirect(withError(sectionBase, 'gallery', GALLERY_ROWS_ERROR));
     const error = await saveGalleryRows(rows);
-    redirect(error === null ? saved : withError(base, 'gallery', error));
+    redirect(error === null ? saved : withError(sectionBase, 'gallery', error));
   }
 
   async function removeGalleryImage(url: string, formData: FormData): Promise<void> {
     'use server';
     const rows = readGalleryRows(formData);
-    if (rows === null) redirect(withError(base, 'gallery', GALLERY_ROWS_ERROR));
+    if (rows === null) redirect(withError(sectionBase, 'gallery', GALLERY_ROWS_ERROR));
     const error = await saveGalleryRows(rows.filter((row) => row.url !== url));
-    redirect(error === null ? `${base}?saved=removed` : withError(base, 'gallery', error));
+    redirect(
+      error === null ? `${sectionBase}&saved=removed` : withError(sectionBase, 'gallery', error),
+    );
   }
 
   async function setGalleryHidden(url: string, hidden: boolean, formData: FormData): Promise<void> {
     'use server';
     const rows = readGalleryRows(formData);
-    if (rows === null) redirect(withError(base, 'gallery', GALLERY_ROWS_ERROR));
+    if (rows === null) redirect(withError(sectionBase, 'gallery', GALLERY_ROWS_ERROR));
     const error = await saveGalleryRows(
       rows.map((row) => (row.url === url ? { ...row, hidden } : row)),
     );
-    redirect(error === null ? saved : withError(base, 'gallery', error));
+    redirect(error === null ? saved : withError(sectionBase, 'gallery', error));
   }
 
   // ---- Moderator rendering helpers (03 §2.10 rule) -------------------------------------------
@@ -886,211 +971,302 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
     </section>
   );
 
-  // ---- EXCLUSIVE branch (`source='odsens'` — the S1.3 editor) --------------------------------
+  // ---- Section bodies (S1.5c — ADR-0039 D2: one renders at a time) --------------------------
 
-  if (exclusive) {
-    const statusWord = adminProjectStatus(project.status, override?.hidden ?? false);
+  // `general` — odsens: the DETAILS form (real `projects` columns) without the body; synced: the
+  // OVERRIDES form without the notes. The comments toggle sits under both (every project has a
+  // `project_overrides` row).
+  const generalSection = exclusive ? (
+    <section
+      className={styles['admin-project-section']}
+      aria-labelledby={sectionTitleId('DETAILS')}
+    >
+      <h2 id={sectionTitleId('DETAILS')} className={styles['admin-project-heading']}>
+        DETAILS
+      </h2>
+      <form action={saveDetails} className={styles['admin-project-form']}>
+        <Field
+          label="Slug"
+          name="slug"
+          defaultValue={project.slug}
+          maxLength={64}
+          helper="Fixed once published."
+          error={fieldError('details', 'slug')}
+          disabled={!canCurate}
+        />
+        <Field
+          label="Title"
+          name="title"
+          defaultValue={project.title}
+          maxLength={80}
+          counter
+          error={fieldError('details', 'title')}
+          disabled={!canCurate}
+        />
+        <Field
+          label="Description"
+          name="description"
+          type="textarea"
+          defaultValue={project.description}
+          maxLength={256}
+          counter
+          helper="One or two sentences for cards and search."
+          error={fieldError('details', 'description')}
+          disabled={!canCurate}
+          inputProps={{ rows: 3 }}
+        />
+        <Select
+          label="Type"
+          name="project_type"
+          options={PROJECT_TYPE_OPTIONS}
+          defaultValue={project.projectType}
+          disabled={!canCurate}
+        />
+        <Field
+          label="Categories"
+          name="categories"
+          defaultValue={project.categories.join(', ')}
+          helper="Comma separated."
+          error={fieldError('details', 'categories')}
+          disabled={!canCurate}
+        />
+        <CheckGrid
+          label="Loaders"
+          name="loaders"
+          options={LOADER_OPTIONS}
+          defaultValue={project.loaders}
+          helper="Tick every loader this works on."
+          error={fieldError('details', 'loaders')}
+          disabled={!canCurate}
+        />
+        <Field
+          label="Game versions"
+          name="game_versions"
+          defaultValue={project.gameVersions.join(', ')}
+          helper="Comma separated. 1.21 or 24w14a."
+          error={fieldError('details', 'game_versions')}
+          disabled={!canCurate}
+        />
+        <Field
+          label="Licence"
+          name="license"
+          defaultValue={project.license ?? ''}
+          maxLength={64}
+          helper="Empty clears it."
+          error={fieldError('details', 'license')}
+          disabled={!canCurate}
+        />
+        <Field
+          label="Source link"
+          name="source_url"
+          type="url"
+          defaultValue={project.sourceUrl ?? ''}
+          maxLength={512}
+          helper="Full https:// link. Empty clears it."
+          error={fieldError('details', 'source_url')}
+          disabled={!canCurate}
+        />
+        <Field
+          label="Issues link"
+          name="issues_url"
+          type="url"
+          defaultValue={project.issuesUrl ?? ''}
+          maxLength={512}
+          helper="Full https:// link. Empty clears it."
+          error={fieldError('details', 'issues_url')}
+          disabled={!canCurate}
+        />
+        <Field
+          label="Discord link"
+          name="discord_url"
+          type="url"
+          defaultValue={project.discordUrl ?? ''}
+          maxLength={512}
+          helper="Full https:// link. Empty clears it."
+          error={fieldError('details', 'discord_url')}
+          disabled={!canCurate}
+        />
+        {detailsFormError ? (
+          <p role="alert" className={styles['admin-project-error']}>
+            {detailsFormError}
+          </p>
+        ) : null}
+        <div className={styles['admin-project-actions']}>
+          {saveButton('details', 'Save', 'primary')}
+        </div>
+      </form>
+
+      {commentsToggle}
+    </section>
+  ) : (
+    <section
+      className={styles['admin-project-section']}
+      aria-labelledby={sectionTitleId('OVERRIDES')}
+    >
+      <h2 id={sectionTitleId('OVERRIDES')} className={styles['admin-project-heading']}>
+        OVERRIDES
+      </h2>
+      <form action={saveOverrides} className={styles['admin-project-form']}>
+        <Field
+          label="Title override"
+          name="title_override"
+          defaultValue={override?.titleOverride ?? ''}
+          maxLength={80}
+          counter
+          helper="Empty keeps the synced title."
+          error={fieldError('overrides', 'title_override')}
+          disabled={!canCurate}
+        />
+        <Field
+          label="Description override"
+          name="description_override"
+          type="textarea"
+          defaultValue={override?.descriptionOverride ?? ''}
+          maxLength={256}
+          counter
+          helper="Empty keeps the synced description."
+          error={fieldError('overrides', 'description_override')}
+          disabled={!canCurate}
+          inputProps={{ rows: 3 }}
+        />
+        {overridesFormError ? (
+          <p role="alert" className={styles['admin-project-error']}>
+            {overridesFormError}
+          </p>
+        ) : null}
+        <div className={styles['admin-project-actions']}>
+          {saveButton('save', 'Save', 'primary')}
+        </div>
+      </form>
+
+      {commentsToggle}
+    </section>
+  );
+
+  // `description` — the `MarkdownEditor` (ADR-0039 D4) on `body_md` (odsens) or `notes_md`
+  // (synced); moderators get it disabled inside the `adminOnly` span (03 §2.10; the Preview
+  // toggle stays usable — ADR-0040 D5).
+  const descriptionSection = exclusive ? (
+    <section
+      className={styles['admin-project-section']}
+      aria-labelledby={sectionTitleId('DESCRIPTION')}
+    >
+      <h2 id={sectionTitleId('DESCRIPTION')} className={styles['admin-project-heading']}>
+        DESCRIPTION
+      </h2>
+      <form action={saveBody} className={styles['admin-project-form']}>
+        {adminOnly(
+          <MarkdownEditor
+            label="Body"
+            name="body_md"
+            defaultValue={project.bodyMd}
+            maxLength={65536}
+            helper="Markdown. The About tab on the public page."
+            error={fieldError('details', 'body_md')}
+            disabled={!canCurate}
+            variant="about"
+          />,
+        )}
+        {detailsFormError ? (
+          <p role="alert" className={styles['admin-project-error']}>
+            {detailsFormError}
+          </p>
+        ) : null}
+        <div className={styles['admin-project-actions']}>
+          {saveButton('body', 'Save', 'primary')}
+        </div>
+      </form>
+    </section>
+  ) : (
+    <section className={styles['admin-project-section']} aria-labelledby={sectionTitleId('NOTES')}>
+      <h2 id={sectionTitleId('NOTES')} className={styles['admin-project-heading']}>
+        NOTES
+      </h2>
+      <form action={saveNotes} className={styles['admin-project-form']}>
+        {adminOnly(
+          <MarkdownEditor
+            label="Notes"
+            name="notes_md"
+            defaultValue={override?.notesMd ?? ''}
+            maxLength={20000}
+            helper="Markdown. Shows under About as a note."
+            error={fieldError('overrides', 'notes_md')}
+            disabled={!canCurate}
+            variant="note"
+          />,
+        )}
+        {overridesFormError ? (
+          <p role="alert" className={styles['admin-project-error']}>
+            {overridesFormError}
+          </p>
+        ) : null}
+        <div className={styles['admin-project-actions']}>
+          {saveButton('notes', 'Save', 'primary')}
+        </div>
+      </form>
+    </section>
+  );
+
+  // `publish` — odsens rows only (a synced row's durable hide is `project_overrides.hidden`).
+  const publishSection = (() => {
+    if (!exclusive) return null;
     const stateSentence =
       project.status === 'draft'
         ? 'This project is a draft. Nobody sees it.'
         : project.status === 'published'
           ? `Live on /projects/${project.slug}.`
           : 'Hidden.';
-
     return (
-      <div className={styles['admin-project']}>
-        {savedToast}
-        <header className={styles['admin-project-head']}>
-          <PixelLabel as="p" tone="gold" size={11}>
-            ADMIN
-          </PixelLabel>
-          <div className={styles['admin-project-status-row']}>
-            <h1 className={styles['admin-project-title']}>{project.title}</h1>
-            <StatusPill status={statusWord} />
-          </div>
-          <div className={styles['admin-project-meta']}>
-            <TypeBadge type={project.projectType} />
-            <span className={styles['admin-project-source']}>
-              {project.source} · {project.slug} · {formatCount(project.downloadsTotal)} downloads
-            </span>
-          </div>
-        </header>
-
-        <section
-          className={styles['admin-project-section']}
-          aria-labelledby={sectionTitleId('PUBLISH')}
-        >
-          <h2 id={sectionTitleId('PUBLISH')} className={styles['admin-project-heading']}>
-            PUBLISH
-          </h2>
-          <p className={styles['admin-project-state']}>{stateSentence}</p>
-          <div className={styles['admin-project-actions']}>
-            {project.status === 'published' ? (
-              <form action={setStatus.bind(null, 'hidden')}>
-                {saveButton('hide', 'Hide', 'secondary')}
-              </form>
-            ) : (
-              <form action={setStatus.bind(null, 'published')}>
-                {saveButton('publish', 'Publish', 'primary')}
-              </form>
-            )}
-            {project.status !== 'draft' ? (
-              <form action={setStatus.bind(null, 'draft')}>
-                {saveButton('unpublish', 'Back to draft', 'ghost')}
-              </form>
-            ) : null}
-          </div>
-          {publishError ? (
-            <p role="alert" className={styles['admin-project-error']}>
-              {publishError}
-            </p>
+      <section
+        className={styles['admin-project-section']}
+        aria-labelledby={sectionTitleId('PUBLISH')}
+      >
+        <h2 id={sectionTitleId('PUBLISH')} className={styles['admin-project-heading']}>
+          PUBLISH
+        </h2>
+        <p className={styles['admin-project-state']}>{stateSentence}</p>
+        <div className={styles['admin-project-actions']}>
+          {project.status === 'published' ? (
+            <form action={setStatus.bind(null, 'hidden')}>
+              {saveButton('hide', 'Hide', 'secondary')}
+            </form>
+          ) : (
+            <form action={setStatus.bind(null, 'published')}>
+              {saveButton('publish', 'Publish', 'primary')}
+            </form>
+          )}
+          {project.status !== 'draft' ? (
+            <form action={setStatus.bind(null, 'draft')}>
+              {saveButton('unpublish', 'Back to draft', 'ghost')}
+            </form>
           ) : null}
-          {commentsToggle}
-        </section>
-
-        <section
-          className={styles['admin-project-section']}
-          aria-labelledby={sectionTitleId('DETAILS')}
-        >
-          <h2 id={sectionTitleId('DETAILS')} className={styles['admin-project-heading']}>
-            DETAILS
-          </h2>
-          <form action={saveDetails} className={styles['admin-project-form']}>
-            <Field
-              label="Slug"
-              name="slug"
-              defaultValue={project.slug}
-              maxLength={64}
-              helper="Fixed once published."
-              error={fieldError('details', 'slug')}
-              disabled={!canCurate}
-            />
-            <Field
-              label="Title"
-              name="title"
-              defaultValue={project.title}
-              maxLength={80}
-              counter
-              error={fieldError('details', 'title')}
-              disabled={!canCurate}
-            />
-            <Field
-              label="Description"
-              name="description"
-              type="textarea"
-              defaultValue={project.description}
-              maxLength={256}
-              counter
-              helper="One or two sentences for cards and search."
-              error={fieldError('details', 'description')}
-              disabled={!canCurate}
-              inputProps={{ rows: 3 }}
-            />
-            <Field
-              label="Body"
-              name="body_md"
-              type="textarea"
-              defaultValue={project.bodyMd}
-              maxLength={65536}
-              helper="Markdown. The About tab."
-              error={fieldError('details', 'body_md')}
-              disabled={!canCurate}
-              inputProps={{ rows: 10 }}
-            />
-            <Select
-              label="Type"
-              name="project_type"
-              options={PROJECT_TYPE_OPTIONS}
-              defaultValue={project.projectType}
-              disabled={!canCurate}
-            />
-            <Field
-              label="Categories"
-              name="categories"
-              defaultValue={project.categories.join(', ')}
-              helper="Comma separated."
-              error={fieldError('details', 'categories')}
-              disabled={!canCurate}
-            />
-            <CheckGrid
-              label="Loaders"
-              name="loaders"
-              options={LOADER_OPTIONS}
-              defaultValue={project.loaders}
-              helper="Tick every loader this works on."
-              error={fieldError('details', 'loaders')}
-              disabled={!canCurate}
-            />
-            <Field
-              label="Game versions"
-              name="game_versions"
-              defaultValue={project.gameVersions.join(', ')}
-              helper="Comma separated. 1.21 or 24w14a."
-              error={fieldError('details', 'game_versions')}
-              disabled={!canCurate}
-            />
-            <Field
-              label="Licence"
-              name="license"
-              defaultValue={project.license ?? ''}
-              maxLength={64}
-              helper="Empty clears it."
-              error={fieldError('details', 'license')}
-              disabled={!canCurate}
-            />
-            <Field
-              label="Source link"
-              name="source_url"
-              type="url"
-              defaultValue={project.sourceUrl ?? ''}
-              maxLength={512}
-              helper="Full https:// link. Empty clears it."
-              error={fieldError('details', 'source_url')}
-              disabled={!canCurate}
-            />
-            <Field
-              label="Issues link"
-              name="issues_url"
-              type="url"
-              defaultValue={project.issuesUrl ?? ''}
-              maxLength={512}
-              helper="Full https:// link. Empty clears it."
-              error={fieldError('details', 'issues_url')}
-              disabled={!canCurate}
-            />
-            <Field
-              label="Discord link"
-              name="discord_url"
-              type="url"
-              defaultValue={project.discordUrl ?? ''}
-              maxLength={512}
-              helper="Full https:// link. Empty clears it."
-              error={fieldError('details', 'discord_url')}
-              disabled={!canCurate}
-            />
-            {detailsFormError ? (
-              <p role="alert" className={styles['admin-project-error']}>
-                {detailsFormError}
-              </p>
-            ) : null}
-            <div className={styles['admin-project-actions']}>
-              {saveButton('details', 'Save', 'primary')}
-            </div>
-          </form>
-        </section>
-
-        {listingsSection}
-
-        {iconSection}
-
-        {gallerySection}
-
-        {versionsSection}
-      </div>
+        </div>
+        {publishError ? (
+          <p role="alert" className={styles['admin-project-error']}>
+            {publishError}
+          </p>
+        ) : null}
+      </section>
     );
-  }
+  })();
 
-  // ---- SYNCED branch (`source='modrinth'` — the S1.2 curate view) ----------------------------
+  const sectionBody: Record<SectionId, ReactNode> = {
+    general: generalSection,
+    description: descriptionSection,
+    gallery: (
+      <>
+        {iconSection}
+        {gallerySection}
+      </>
+    ),
+    versions: versionsSection,
+    listings: listingsSection,
+    publish: publishSection,
+  };
+
+  // ---- Page (both branches; the header keeps its S1.2 / S1.3 shape) ---------------------------
+
+  const statusWord = adminProjectStatus(project.status, override?.hidden ?? false);
 
   return (
     <div className={styles['admin-project']}>
@@ -1099,77 +1275,36 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         <PixelLabel as="p" tone="gold" size={11}>
           ADMIN
         </PixelLabel>
-        <h1 className={styles['admin-project-title']}>{project.title}</h1>
-        <div className={styles['admin-project-meta']}>
-          <TypeBadge type={project.projectType} />
-          <StatusPill status={adminProjectStatus(project.status, override?.hidden ?? false)} />
-          <span className={styles['admin-project-source']}>
-            {project.source} · {project.slug} · {formatCount(project.downloadsTotal)} downloads
-          </span>
-        </div>
+        {exclusive ? (
+          <>
+            <div className={styles['admin-project-status-row']}>
+              <h1 className={styles['admin-project-title']}>{project.title}</h1>
+              <StatusPill status={statusWord} />
+            </div>
+            <div className={styles['admin-project-meta']}>
+              <TypeBadge type={project.projectType} />
+              <span className={styles['admin-project-source']}>
+                {project.source} · {project.slug} · {formatCount(project.downloadsTotal)} downloads
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <h1 className={styles['admin-project-title']}>{project.title}</h1>
+            <div className={styles['admin-project-meta']}>
+              <TypeBadge type={project.projectType} />
+              <StatusPill status={statusWord} />
+              <span className={styles['admin-project-source']}>
+                {project.source} · {project.slug} · {formatCount(project.downloadsTotal)} downloads
+              </span>
+            </div>
+          </>
+        )}
       </header>
 
-      <section
-        className={styles['admin-project-section']}
-        aria-labelledby={sectionTitleId('OVERRIDES')}
-      >
-        <h2 id={sectionTitleId('OVERRIDES')} className={styles['admin-project-heading']}>
-          OVERRIDES
-        </h2>
-        <form action={saveOverrides} className={styles['admin-project-form']}>
-          <Field
-            label="Title override"
-            name="title_override"
-            defaultValue={override?.titleOverride ?? ''}
-            maxLength={80}
-            counter
-            helper="Empty keeps the synced title."
-            error={fieldError('overrides', 'title_override')}
-            disabled={!canCurate}
-          />
-          <Field
-            label="Description override"
-            name="description_override"
-            type="textarea"
-            defaultValue={override?.descriptionOverride ?? ''}
-            maxLength={256}
-            counter
-            helper="Empty keeps the synced description."
-            error={fieldError('overrides', 'description_override')}
-            disabled={!canCurate}
-            inputProps={{ rows: 3 }}
-          />
-          <Field
-            label="Notes"
-            name="notes_md"
-            type="textarea"
-            defaultValue={override?.notesMd ?? ''}
-            maxLength={20000}
-            helper="Markdown. Shows under About as a note."
-            error={fieldError('overrides', 'notes_md')}
-            disabled={!canCurate}
-            inputProps={{ rows: 6 }}
-          />
-          {overridesFormError ? (
-            <p role="alert" className={styles['admin-project-error']}>
-              {overridesFormError}
-            </p>
-          ) : null}
-          <div className={styles['admin-project-actions']}>
-            {saveButton('save', 'Save', 'primary')}
-          </div>
-        </form>
-
-        {commentsToggle}
-      </section>
-
-      {listingsSection}
-
-      {iconSection}
-
-      {gallerySection}
-
-      {versionsSection}
+      <EditorSections key={section} sections={sectionLinks} active={section}>
+        {sectionBody[section]}
+      </EditorSections>
     </div>
   );
 }
