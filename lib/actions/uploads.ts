@@ -249,6 +249,14 @@ export async function uploadProjectMedia(
     if (project.source === 'odsens') {
       // Exclusive gallery lives on `projects.gallery` (U3: same final path → the existing entry).
       const existing = findGalleryEntry(project.gallery, 'url', finalPath);
+      // 04 §1.4: 20 images at most on either source (the `updateExclusiveProject` bound; ADR-0038 D3).
+      if (
+        existing === null &&
+        Array.isArray(project.gallery) &&
+        project.gallery.length >= EXTRA_GALLERY_MAX
+      ) {
+        return fail('validation', '20 images maximum.', { field: 'gallery' });
+      }
       if (existing !== null) {
         logAdmin(
           'uploadProjectMedia',
