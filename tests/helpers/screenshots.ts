@@ -1,10 +1,12 @@
 /**
  * tests/helpers/screenshots.ts — `shoot(page, name)` (docs/build/05-test-plan.md §1.3, H-8, T-E2E-19).
  * Full-page PNG to `test-results/screenshots/<name>@<viewport.width>.png` — the design-fidelity input.
+ * Waits for the route fade first (`settleRouteFade`, ADR-0035 D3) so no capture shows a half-faded page.
  */
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import type { Page } from '@playwright/test';
+import { settleRouteFade } from './routeFade';
 
 export const SCREENSHOT_DIR = path.join(process.cwd(), 'test-results', 'screenshots');
 
@@ -46,6 +48,7 @@ async function settlePage(page: Page): Promise<void> {
 export async function shoot(page: Page, name: string): Promise<string> {
   await mkdir(SCREENSHOT_DIR, { recursive: true });
   const file = screenshotPath(page, name);
+  await settleRouteFade(page);
   await settlePage(page);
   await page.screenshot({ path: file, fullPage: true });
   return file;

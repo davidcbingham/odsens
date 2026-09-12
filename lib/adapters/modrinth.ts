@@ -1,6 +1,7 @@
 /**
  * lib/adapters/modrinth.ts — `createModrinth` (04 §4.1 export list verbatim; §5.2 P1–P5 mapping;
- * §3.1 steps 1–3 shapes; 04 SC-09/SC-10/SC-25; 05 T-ADP-2..6, T-ADP-20; ADR-0002 #77).
+ * §3.1 steps 1–3 shapes; 04 SC-09/SC-10/SC-25; 05 T-ADP-2..6, T-ADP-20, T-ADP-22; ADR-0002 #77;
+ * ADR-0037 D1/D10 — `getProject` + the pure `parseModrinthRef`).
  *
  * Pure I/O + mapping, no DB access (04 §4 A1–A3). Factory `createModrinth({fetch, env})` — env is an
  * argument (the caller passes `lib/env.ts`'s `env`); this module reads no environment of its own
@@ -13,12 +14,23 @@
  *
  * Mapping functions are pure module exports (A3) and also returned by the factory so the 04 §4.1
  * function list holds on the instance.
+ *
+ * S1.5a (ADR-0037 D1/D10): `getProject(idOrSlug)` → `GET /project/{id|slug}` resolves the listing
+ * `linkProjectListing` pastes (the action maps a 404 to `not_found`, anything else to
+ * `upstream_error`); `parseModrinthRef(ref)` is the pure grammar behind the editor's "Modrinth
+ * listing" field — a Modrinth URL (the seven type segments + `/project/`, `www.` optional, trailing
+ * path ignored), a bare slug or a bare id; any other host → `null`. The listing's page URL is
+ * built from the adapter's id by `modrinthListingUrl` (`lib/format/project.ts`, pure — imported
+ * here and exposed on the instance so link URLs never come from the pasted string).
  */
 import 'server-only';
 import { z } from 'zod';
 import { fetchJson, sleep } from '@/lib/adapters/http';
 import type { Env } from '@/lib/env';
+import { modrinthListingUrl } from '@/lib/format/project';
 import { SLUG_RE, isReservedSlug, slugify } from '@/lib/validation/slug';
+
+export { modrinthListingUrl };
 
 /** 04 §4.1 base URL — unit tests assert the real host (05 T-ADP-3); e2e overrides to :4010. */
 export const MODRINTH_API = 'https://api.modrinth.com/v2';
@@ -215,6 +227,33 @@ export function normalizeSyncedSlug(slug: string, title: string, externalId: str
   return `p-${slugify(externalId)}`;
 }
 
+/**
+ * ADR-0037 D1: a bare Modrinth id or slug (base62 ids; slugs are lower-case with `-`/`_`/`.`).
+ * A ref made only of dots (`.`, `..`) is refused up front: WHATWG URL normalisation would turn
+ * `/project/..` into a request for a different endpoint than the one D10 pins (security-reviewer).
+ */
+const MODRINTH_REF_RE = /^(?!\.+$)[A-Za-z0-9._-]{1,64}$/;
+
+/**
+ * ADR-0037 D1: `https://(www.)?modrinth.com/<type>/<slug-or-id>[/…]` — the seven type segments
+ * plus the type-neutral `/project/`; capture 2 is the slug or id (never dots only), anything after
+ * it is ignored.
+ */
+const MODRINTH_URL_RE =
+  /^https:\/\/(www\.)?modrinth\.com\/(?:mod|plugin|datapack|resourcepack|shader|modpack|project)\/((?!\.+(?:[/?#]|$))[A-Za-z0-9._-]{1,64})(?:[/?#].*)?$/;
+
+/**
+ * ADR-0037 D1 grammar for `linkProjectListing({platform:'modrinth'}).ref`: a Modrinth project URL,
+ * a bare slug or a bare id → `{ref}` (what `getProject` resolves); any other host, scheme or shape
+ * → `null` (the action fails it as `validation`). Pure (A3) — exported for tests and the schema module.
+ */
+export function parseModrinthRef(ref: string): { ref: string } | null {
+  const trimmed = ref.trim();
+  if (MODRINTH_REF_RE.test(trimmed)) return { ref: trimmed };
+  const fromUrl = MODRINTH_URL_RE.exec(trimmed)?.[2];
+  return fromUrl !== undefined ? { ref: fromUrl } : null;
+}
+
 /** Modrinth icon URLs come pre-resized: `…/data/<id>/<hash>_96.webp`. Captures the base for the original probe. */
 const RESIZED_ICON_RE = /^(https:\/\/cdn\.modrinth\.com\/data\/[^/]+\/[0-9a-f]+)_\d+\.webp$/;
 
@@ -373,9 +412,18 @@ export function createModrinth({
     listVersions(projectId: string): Promise<ModrinthVersion[]> {
       return request<ModrinthVersion[]>(`${base}/project/${encodeURIComponent(projectId)}/version`);
     },
+    /**
+     * ADR-0037 D10 (04 §4.1): `GET /project/{id|slug}` — the raw Project object for one listing.
+     * A 404 surfaces as `AdapterError {status: 404}` (the action's `not_found`).
+     */
+    getProject(idOrSlug: string): Promise<ModrinthProject> {
+      return request<ModrinthProject>(`${base}/project/${encodeURIComponent(idOrSlug)}`);
+    },
     mapProject,
     mapVersion,
     mapProjectType,
+    parseModrinthRef,
+    modrinthListingUrl,
     resolveIconUrl,
   };
 }

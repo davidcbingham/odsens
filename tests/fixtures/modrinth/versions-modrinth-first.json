@@ -1,0 +1,44 @@
+[
+  {
+    "id": "sdv00499",
+    "project_id": "sd000102",
+    "author_id": "sdu00001",
+    "featured": false,
+    "name": "Hosted first",
+    "version_number": "9.9.0",
+    "changelog": "## 9.9.0\n\n- Uploaded to odsens before Modrinth listed it",
+    "changelog_url": null,
+    "date_published": "2026-09-01T12:00:00Z",
+    "downloads": 40,
+    "version_type": "release",
+    "status": "listed",
+    "requested_status": null,
+    "dependencies": [],
+    "game_versions": ["1.21.1"],
+    "loaders": ["fabric"],
+    "files": [
+      {
+        "hashes": {
+          "sha1": "ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10",
+          "sha512": "ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10ff10"
+        },
+        "url": "https://cdn.modrinth.com/data/sd000102/versions/sdv00499/pixel-chameleon-9.9.0.jar",
+        "filename": "pixel-chameleon-9.9.0.jar",
+        "primary": true,
+        "size": 170000,
+        "file_type": null
+      },
+      {
+        "hashes": {
+          "sha1": "ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11",
+          "sha512": "ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11ff11"
+        },
+        "url": "https://cdn.modrinth.com/data/sd000102/versions/sdv00499/pixel-chameleon-9.9.0-sources.jar",
+        "filename": "pixel-chameleon-9.9.0-sources.jar",
+        "primary": false,
+        "size": 90000,
+        "file_type": null
+      }
+    ]
+  }
+]

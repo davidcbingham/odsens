@@ -7,13 +7,16 @@
  * the actions file. Messages are plain words (DESIGN.md §7), never zod internals (04 SC-02).
  *
  * `curateProjectInput` is the 04 §1.4 either/or: the batch `reorder` shape (ADR-0002 A11) or the
- * per-project override shape. The `extra_gallery.path` prefix rule needs `project_id` from the same
- * input, so it is a `superRefine` on the per-project object; the "object exists in the bucket" half
- * (HEAD check) needs I/O and lives in the action. `setProjectLinkInput.ref` reuses the adapter's
- * pure `parseRef` (04 §1.4 grammar: digits or CurseForge URL) so the grammar has one source of truth.
+ * per-project override shape. The `extra_gallery.path` folder rule (`galleryPathPattern`, exported)
+ * is applied in the ACTION since ADR-0037 D5(e): an entry already stored on the row skips it (a
+ * folded duplicate's entries live under the old folder), which needs the stored row; the "object
+ * exists in the bucket" half (HEAD check) needs I/O and lives there too. `linkProjectListingInput.ref`
+ * reuses the adapters' pure grammars — `parseRef` (CurseForge: digits or URL) and `parseModrinthRef`
+ * (Modrinth: URL, slug or id — ADR-0037 D1) — so each grammar has one source of truth.
  */
 import { z } from 'zod';
 import { parseRef } from '@/lib/adapters/curseforge';
+import { parseModrinthRef } from '@/lib/adapters/modrinth';
 import { slugSchema } from '@/lib/validation/slug';
 
 /** 04 §1.4: `featured_order` is an int 1..99 (both shapes). */
@@ -46,50 +49,42 @@ const extraGalleryEntry = z.object({
     .int({ error: 'Order is a whole number.' }),
 });
 
-/** 04 §1.4: every path is `project-media/<this project_id>/gallery/<name>.(png|jpg|webp)`. */
-const galleryPathPattern = (projectId: string): RegExp =>
+/**
+ * 04 §1.4: every NEW path is `project-media/<this project_id>/gallery/<name>.(png|jpg|webp)`.
+ * Applied by `curateProject` (ADR-0037 D5(e): entries already stored on the row are exempt).
+ */
+export const galleryPathPattern = (projectId: string): RegExp =>
   new RegExp(`^project-media/${projectId}/gallery/[A-Za-z0-9._-]+\\.(png|jpg|webp)$`);
 
+/** The message `curateProject` returns for a new entry outside this project's gallery folder. */
+export const GALLERY_FOLDER_MESSAGE = "That image isn't in this project's gallery folder.";
+
 /** 04 §1.4 per-project shape — every field beyond `project_id` optional (partial override upsert). */
-const curateProjectOverride = z
-  .object({
-    project_id: projectIdSchema,
-    featured: z.boolean().optional(),
-    featured_order: featuredOrderSchema.nullable().optional(),
-    hidden: z.boolean().optional(),
-    title_override: z
-      .string()
-      .min(1, { error: 'Type a title.' })
-      .max(80, { error: 'Too long. 80 characters maximum.' })
-      .nullable()
-      .optional(),
-    description_override: z
-      .string()
-      .min(1, { error: 'Type a description.' })
-      .max(256, { error: 'Too long. 256 characters maximum.' })
-      .nullable()
-      .optional(),
-    extra_gallery: z.array(extraGalleryEntry).max(20, { error: '20 images maximum.' }).optional(),
-    notes_md: z
-      .string()
-      .max(20000, { error: 'Too long. 20000 characters maximum.' })
-      .nullable()
-      .optional(),
-    comments_enabled: z.boolean().optional(),
-  })
-  .superRefine((value, ctx) => {
-    if (value.extra_gallery === undefined) return;
-    const pattern = galleryPathPattern(value.project_id);
-    value.extra_gallery.forEach((entry, index) => {
-      if (!pattern.test(entry.path)) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['extra_gallery', index, 'path'],
-          message: "That image isn't in this project's gallery folder.",
-        });
-      }
-    });
-  });
+const curateProjectOverride = z.object({
+  project_id: projectIdSchema,
+  featured: z.boolean().optional(),
+  featured_order: featuredOrderSchema.nullable().optional(),
+  hidden: z.boolean().optional(),
+  title_override: z
+    .string()
+    .min(1, { error: 'Type a title.' })
+    .max(80, { error: 'Too long. 80 characters maximum.' })
+    .nullable()
+    .optional(),
+  description_override: z
+    .string()
+    .min(1, { error: 'Type a description.' })
+    .max(256, { error: 'Too long. 256 characters maximum.' })
+    .nullable()
+    .optional(),
+  extra_gallery: z.array(extraGalleryEntry).max(20, { error: '20 images maximum.' }).optional(),
+  notes_md: z
+    .string()
+    .max(20000, { error: 'Too long. 20000 characters maximum.' })
+    .nullable()
+    .optional(),
+  comments_enabled: z.boolean().optional(),
+});
 
 export const curateProjectInput = z.union([curateProjectReorder, curateProjectOverride]);
 
@@ -109,27 +104,54 @@ export type CurateProjectOverrideInput = {
 };
 export type CurateProjectInput = CurateProjectReorderInput | CurateProjectOverrideInput;
 
-export const setProjectLinkInput = z
+/** ADR-0037 D1: the two platforms a listing can be linked from (`project_links.platform`). */
+export const LINK_PLATFORM = z.enum(['modrinth', 'curseforge'], {
+  error: 'Pick Modrinth or CurseForge.',
+});
+
+export const CURSEFORGE_REF_MESSAGE = 'Use a CurseForge id or project URL.';
+export const MODRINTH_REF_MESSAGE = 'Use a Modrinth project URL, slug or id.';
+
+/**
+ * ADR-0037 D1 `linkProjectListing` input: `{project_id, platform, ref}`. The grammar per platform
+ * comes from the adapters' pure parsers (one source of truth each); the action resolves the ref
+ * upstream and re-parses for type narrowing only.
+ */
+export const linkProjectListingInput = z
   .object({
     project_id: projectIdSchema,
-    platform: z.literal('curseforge', { error: 'Only CurseForge links are supported.' }),
-    ref: z.string().max(300, { error: 'Too long. 300 characters maximum.' }).nullable(),
+    platform: LINK_PLATFORM,
+    ref: z
+      .string({ error: 'Paste a listing URL, slug or id.' })
+      .min(1, { error: 'Paste a listing URL, slug or id.' })
+      .max(300, { error: 'Too long. 300 characters maximum.' }),
   })
   .superRefine((value, ctx) => {
-    // 04 §1.4 grammar via the adapter's pure `parseRef`; `null` removes the link and is always valid.
-    if (value.ref !== null && parseRef(value.ref) === null) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['ref'],
-        message: 'Use a CurseForge id or project URL.',
-      });
+    if (value.platform === 'curseforge' && parseRef(value.ref) === null) {
+      ctx.addIssue({ code: 'custom', path: ['ref'], message: CURSEFORGE_REF_MESSAGE });
+    }
+    if (value.platform === 'modrinth' && parseModrinthRef(value.ref) === null) {
+      ctx.addIssue({ code: 'custom', path: ['ref'], message: MODRINTH_REF_MESSAGE });
     }
   });
 
-export type SetProjectLinkInput = {
+export type LinkPlatform = 'modrinth' | 'curseforge';
+
+export type LinkProjectListingInput = {
   project_id: string;
-  platform: 'curseforge';
-  ref: string | null;
+  platform: LinkPlatform;
+  ref: string;
+};
+
+/** ADR-0037 D1 `unlinkProjectListing` input: `{project_id, platform}`. */
+export const unlinkProjectListingInput = z.object({
+  project_id: projectIdSchema,
+  platform: LINK_PLATFORM,
+});
+
+export type UnlinkProjectListingInput = {
+  project_id: string;
+  platform: LinkPlatform;
 };
 
 // ---------------------------------------------------------------------------------------------

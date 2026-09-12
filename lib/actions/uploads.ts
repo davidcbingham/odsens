@@ -2,7 +2,8 @@
 /**
  * lib/actions/uploads.ts — `uploadProjectMedia`, `uploadProjectFile` (04 §1.4.5 two-phase
  * signed-upload pattern + the two §1.4 contracts; SC-18..SC-21, SC-24; 01 INV-51/52/53;
- * ADR-0002 C7 / C10 / C16; 05 T-ACT-38 / T-ACT-39 / T-ACT-73).
+ * ADR-0002 C7 / C10 / C16; ADR-0037 D5(a)/(b) uploads for every source; 05 T-ACT-38 / T-ACT-39 /
+ * T-ACT-73 / T-ACT-83).
  *
  * Both actions are ONE name with a discriminated `phase` (04 §1.4.5):
  *   `begin`  — role check → rate limit (U2: a `begin` counts even without a commit) → declared
@@ -22,13 +23,29 @@
  * no duplicate row; a bare commit retry AFTER a successful commit finds the pending object moved
  * and answers `validation` "never arrived" — the client re-sends the bytes, which converges).
  * File commits are path-idempotent per the 04 letter: same `(version_id, filename)` + same sha512
- * → the existing row (`ok`), different bytes under the same name → `conflict` (04 §1.4 "filename
- * unique within version"), checked BEFORE the version-metadata upsert.
+ * on a HOSTED sibling → the existing row (`ok`), different bytes under the same name → `conflict`
+ * (04 §1.4 "filename unique within version" — hosted rows only since ADR-0037 D5(b): a CDN-only
+ * row may share a filename), checked BEFORE the version-metadata upsert.
  *
- * Admin-only for every kind and source (ADR-0002 C7); `uploadProjectFile` and media `kind='icon'`
- * additionally require `source='odsens'` (synced icons/files belong to Modrinth — 04 §1.4);
- * media `kind='gallery'` on a synced project appends to `project_overrides.extra_gallery`
- * (ADR-0002 C10). SC-24: keys-only `msg:'admin'` line before every `ok:true`.
+ * Admin-only for every kind and source (ADR-0002 C7). ADR-0037 D5 — uploads for EVERY source:
+ *   (a) media `kind='icon'` on a `source='modrinth'` row sets `projects.icon_url = path` (the sync
+ *       keeps a Storage-path icon — D2); `gallery` on a synced row still appends to
+ *       `project_overrides.extra_gallery` (ADR-0002 C10).
+ *   (b) `uploadProjectFile` accepts every `source`. `begin` picks the existing version with that
+ *       `version_number` on this project — an `external_id IS NULL` row first, else the newest
+ *       synced row with that number (ADR-0026 allows duplicates) — or a fresh uuid. `commit`
+ *       sibling rules over the version's files: a CDN-only sibling with the same `sha512`
+ *       (`storage_path IS NULL`) gains `storage_path = path` (it becomes the hosted row, keeps
+ *       `url` — the mirror of the sync's "hosted row gains url"; both upload orders converge on
+ *       one row) and the hosted `primary` rule applies to it; a hosted sibling with the same
+ *       filename + same `sha512` → the existing row (U3); a hosted sibling with the same filename
+ *       and different bytes → `conflict`; otherwise a new hosted row. `primary` is scoped to
+ *       HOSTED siblings ("clear primary on siblings" and "no primary yet" consider
+ *       `storage_path IS NOT NULL` rows only — CDN rows keep their own primary, written by the
+ *       sync). On a hosted version row (`external_id IS NULL`) the version metadata upserts as
+ *       before; on a synced version row the form's metadata is IGNORED (the row follows Modrinth)
+ *       and only the file row is written.
+ * SC-24: keys-only `msg:'admin'` line before every `ok:true`.
  */
 import { revalidateTag } from 'next/cache';
 import { fail, ok, type ActionResult } from '@/lib/actions/result';
@@ -69,8 +86,6 @@ type Admin = ReturnType<typeof createAdminClient>;
 
 const NOT_FOUND_PROJECT = "That project doesn't exist.";
 const NOT_YOUR_PATH = "That path isn't this project's.";
-const NOT_EXCLUSIVE_FILES = 'Synced projects keep their files on Modrinth.';
-const NOT_EXCLUSIVE_ICON = 'Synced projects keep their icon on Modrinth.';
 const FILENAME_TAKEN = 'A file with that name already exists in this version.';
 const VERSION_TAKEN = 'That version number already exists.';
 
@@ -151,10 +166,7 @@ export async function uploadProjectMedia(
 
     const project = await readProjectHead(admin, data.project_id);
     if (project === null) return fail('not_found', NOT_FOUND_PROJECT);
-    // Icons are sync-owned on Modrinth rows (04 §1.4: `source='odsens'` only; modrinth → forbidden).
-    if (data.kind === 'icon' && project.source !== 'odsens') {
-      return fail('forbidden', NOT_EXCLUSIVE_ICON);
-    }
+    // ADR-0037 D5(a): every source — an icon on a synced row is a hosted icon the sync keeps.
 
     if (data.phase === 'begin') {
       await assertRateLimit('upload:project-media', user.id);
@@ -219,6 +231,7 @@ export async function uploadProjectMedia(
     await moveObject(PROJECT_MEDIA_BUCKET, data.path, finalPath);
 
     if (data.kind === 'icon') {
+      // Any source (ADR-0037 D5(a)): a Storage-path icon wins over the synced one on every run.
       const { error } = await admin
         .from('projects')
         .update({ icon_url: finalPath })
@@ -312,21 +325,22 @@ export async function uploadProjectFile(
 
     const project = await readProjectHead(admin, data.project_id);
     if (project === null) return fail('not_found', NOT_FOUND_PROJECT);
-    if (project.source !== 'odsens') return fail('forbidden', NOT_EXCLUSIVE_FILES);
+    // ADR-0037 D5(b): every source — a Modrinth-first project can carry hosted files too.
 
     if (data.phase === 'begin') {
       await assertRateLimit('upload:project-files', user.id);
-      // Existing exclusive version for (project_id, version_number) — or a fresh uuid the path
-      // reserves; the version row itself is upserted only at commit (04 §1.4).
-      const { data: version, error } = await admin
+      // The existing version for (project_id, version_number) — an `external_id IS NULL` row
+      // first, else the newest synced row with that number (ADR-0026 duplicates; ADR-0037 D5(b))
+      // — or a fresh uuid the path reserves; the version row itself is written only at commit.
+      const { data: versions, error } = await admin
         .from('project_versions')
-        .select('id')
+        .select('id, external_id, date_published')
         .eq('project_id', data.project_id)
         .eq('version_number', data.version_number)
-        .is('external_id', null)
-        .maybeSingle();
+        .order('date_published', { ascending: false });
       if (error) throw new Error(`project_versions read failed: ${error.code}`);
-      const versionId = version?.id ?? crypto.randomUUID();
+      const hosted = versions.find((row) => row.external_id === null);
+      const versionId = hosted?.id ?? versions[0]?.id ?? crypto.randomUUID();
 
       const filename = sanitizeFilename(data.filename);
       const path = projectFilePath(data.project_id, versionId, filename);
@@ -340,16 +354,15 @@ export async function uploadProjectFile(
     if (parsed === null) return fail('forbidden', NOT_YOUR_PATH);
 
     // The embedded version id must be free or belong to THIS project (a crafted path could name
-    // another project's version — INV-53).
+    // another project's version — INV-53). A synced version row is accepted (D5(b)).
     const { data: versionRow, error: versionReadError } = await admin
       .from('project_versions')
       .select('id, project_id, external_id')
       .eq('id', parsed.versionId)
       .maybeSingle();
     if (versionReadError) throw new Error(`project_versions read failed: ${versionReadError.code}`);
-    if (versionRow !== null) {
-      if (versionRow.project_id !== data.project_id) return fail('forbidden', NOT_YOUR_PATH);
-      if (versionRow.external_id !== null) return fail('forbidden', NOT_YOUR_PATH);
+    if (versionRow !== null && versionRow.project_id !== data.project_id) {
+      return fail('forbidden', NOT_YOUR_PATH);
     }
 
     const bytes = await downloadObjectBytes(PROJECT_FILES_BUCKET, data.path);
@@ -365,52 +378,125 @@ export async function uploadProjectFile(
     }
     const sha512 = sha512Hex(bytes);
 
-    // Existing files of this version — U3 idempotency + filename uniqueness run BEFORE the
-    // version-metadata upsert (04 §1.4 lists the filename check under Validation; §1.4.5
-    // sequences validation → write, so a `conflict` return must leave the version untouched).
-    // A null versionRow has no files yet; the arrays stay empty.
+    // Existing files of this version — the D5(b) sibling rules run BEFORE the version-metadata
+    // upsert (04 §1.4 lists the filename check under Validation; §1.4.5 sequences validation →
+    // write, so a `conflict` return must leave the version untouched). A null versionRow has no
+    // files yet; the arrays stay empty.
     type SiblingRow = {
       id: string;
       filename: string;
       sha512: string | null;
       size_bytes: number;
+      storage_path: string | null;
       primary: boolean;
     };
     let siblings: SiblingRow[] = [];
     if (versionRow !== null) {
       const { data: rows, error: siblingsError } = await admin
         .from('project_files')
-        .select('id, filename, sha512, size_bytes, primary')
+        .select('id, filename, sha512, size_bytes, storage_path, primary')
         .eq('version_id', versionRow.id);
       if (siblingsError) throw new Error(`project_files read failed: ${siblingsError.code}`);
       siblings = rows;
+    }
+    const hostedSiblings = siblings.filter((row) => row.storage_path !== null);
+    const hostedHasPrimary = hostedSiblings.some((row) => row.primary);
+    // Hosted `primary` rule (04 §1.4, scoped to hosted rows — D5(b)): `primary:true` demotes the
+    // hosted siblings; the version's first hosted file is primary.
+    const makePrimary = data.primary === true || !hostedHasPrimary;
 
-      const existing = siblings.find((row) => row.filename === parsed.filename);
-      if (existing !== undefined) {
-        if (existing.sha512 === sha512) {
-          // Same bytes re-committed — the existing row, no duplicate, no metadata rewrite (U3).
-          logAdmin(
-            'uploadProjectFile',
-            ctx,
-            user.id,
-            { type: 'project', id: data.project_id },
-            data,
-          );
-          return ok<UploadProjectFileData>({
-            version_id: versionRow.id,
-            file: {
-              id: existing.id,
-              filename: existing.filename,
-              size_bytes: existing.size_bytes,
-              sha512,
-            },
-          });
+    const done = (
+      versionId: string,
+      file: SiblingRow | { id: string },
+    ): ActionResult<UploadProjectFileData> => {
+      revalidateTag('projects', 'max');
+      revalidateTag(`project:${project.slug}`, 'max');
+      logAdmin('uploadProjectFile', ctx, user.id, { type: 'project', id: data.project_id }, data);
+      return ok<UploadProjectFileData>({
+        version_id: versionId,
+        file: {
+          id: file.id,
+          filename: 'filename' in file ? file.filename : parsed.filename,
+          size_bytes: 'size_bytes' in file ? file.size_bytes : bytes.byteLength,
+          sha512,
+        },
+      });
+    };
+
+    /** The form's version metadata onto a HOSTED version row (`external_id IS NULL`) — D5(b). */
+    const updateHostedVersionMetadata = async (
+      id: string,
+    ): Promise<ActionResult<UploadProjectFileData> | null> => {
+      const updated = await admin
+        .from('project_versions')
+        .update({
+          version_number: data.version.version_number,
+          name: data.version.name ?? null,
+          changelog_md: data.version.changelog_md ?? null,
+          game_versions: data.version.game_versions,
+          loaders: data.version.loaders,
+          version_type: data.version.version_type,
+          ...(data.version.date_published !== undefined
+            ? { date_published: data.version.date_published }
+            : {}),
+        })
+        .eq('id', id);
+      if (updated.error) {
+        if (updated.error.code === UNIQUE_VIOLATION) {
+          return fail('conflict', VERSION_TAKEN, { field: 'version_number' });
         }
-        return fail('conflict', FILENAME_TAKEN, { field: 'filename' });
+        throw new Error(`project_versions update failed: ${updated.error.code}`);
       }
+      return null;
+    };
+
+    const hostedSameName = hostedSiblings.find((row) => row.filename === parsed.filename);
+    if (hostedSameName !== undefined && versionRow !== null) {
+      if (hostedSameName.sha512 === sha512) {
+        // Same bytes re-committed — the existing row, no duplicate, no metadata rewrite (U3).
+        logAdmin('uploadProjectFile', ctx, user.id, { type: 'project', id: data.project_id }, data);
+        return ok<UploadProjectFileData>({
+          version_id: versionRow.id,
+          file: {
+            id: hostedSameName.id,
+            filename: hostedSameName.filename,
+            size_bytes: hostedSameName.size_bytes,
+            sha512,
+          },
+        });
+      }
+      return fail('conflict', FILENAME_TAKEN, { field: 'filename' });
     }
 
-    // Upsert the version (external_id null — exclusive) under the ADR-0026 partial unique.
+    // A CDN-only sibling with the same bytes: the same file already lives in the other home — the
+    // row gains `storage_path` (keeps `url`) and becomes the hosted row; no new row (D5(b)).
+    const cdnTwin = siblings.find((row) => row.storage_path === null && row.sha512 === sha512);
+    if (cdnTwin !== undefined && versionRow !== null) {
+      if (data.primary === true && hostedHasPrimary) {
+        const cleared = await admin
+          .from('project_files')
+          .update({ primary: false })
+          .eq('version_id', versionRow.id)
+          .eq('primary', true)
+          .not('storage_path', 'is', null);
+        if (cleared.error) throw new Error(`project_files update failed: ${cleared.error.code}`);
+      }
+      const { error: twinError } = await admin
+        .from('project_files')
+        .update({ storage_path: data.path, primary: makePrimary })
+        .eq('id', cdnTwin.id);
+      if (twinError) throw new Error(`project_files update failed: ${twinError.code}`);
+      // A hosted version row still takes the form's metadata (D5(b) "as today"); a synced row
+      // follows Modrinth and ignores it.
+      if (versionRow.external_id === null) {
+        const metadata = await updateHostedVersionMetadata(versionRow.id);
+        if (metadata !== null) return metadata;
+      }
+      return done(versionRow.id, cdnTwin);
+    }
+
+    // Version row: insert (exclusive identity) / update the metadata on a hosted row; a synced row
+    // follows Modrinth — the form's metadata is ignored (D5(b)).
     let versionId: string;
     if (versionRow === null) {
       const inserted = await admin
@@ -439,37 +525,19 @@ export async function uploadProjectFile(
       versionId = inserted.data.id;
     } else {
       versionId = versionRow.id;
-      const updated = await admin
-        .from('project_versions')
-        .update({
-          version_number: data.version.version_number,
-          name: data.version.name ?? null,
-          changelog_md: data.version.changelog_md ?? null,
-          game_versions: data.version.game_versions,
-          loaders: data.version.loaders,
-          version_type: data.version.version_type,
-          ...(data.version.date_published !== undefined
-            ? { date_published: data.version.date_published }
-            : {}),
-        })
-        .eq('id', versionId);
-      if (updated.error) {
-        if (updated.error.code === UNIQUE_VIOLATION) {
-          return fail('conflict', VERSION_TAKEN, { field: 'version_number' });
-        }
-        throw new Error(`project_versions update failed: ${updated.error.code}`);
+      if (versionRow.external_id === null) {
+        const metadata = await updateHostedVersionMetadata(versionId);
+        if (metadata !== null) return metadata;
       }
     }
 
-    // Primary rule (04 §1.4): `primary:true` demotes siblings; a version's first file is primary.
-    const hasPrimary = siblings.some((row) => row.primary);
-    const makePrimary = data.primary === true || !hasPrimary;
-    if (data.primary === true && hasPrimary) {
+    if (data.primary === true && hostedHasPrimary) {
       const cleared = await admin
         .from('project_files')
         .update({ primary: false })
         .eq('version_id', versionId)
-        .eq('primary', true);
+        .eq('primary', true)
+        .not('storage_path', 'is', null);
       if (cleared.error) throw new Error(`project_files update failed: ${cleared.error.code}`);
     }
 
@@ -497,17 +565,6 @@ export async function uploadProjectFile(
       throw new Error(`project_files insert failed: ${fileError.code}`);
     }
 
-    revalidateTag('projects', 'max');
-    revalidateTag(`project:${project.slug}`, 'max');
-    logAdmin('uploadProjectFile', ctx, user.id, { type: 'project', id: data.project_id }, data);
-    return ok<UploadProjectFileData>({
-      version_id: versionId,
-      file: {
-        id: fileRow.id,
-        filename: parsed.filename,
-        size_bytes: bytes.byteLength,
-        sha512,
-      },
-    });
+    return done(versionId, fileRow);
   });
 }

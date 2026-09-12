@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { CommentThread } from '@/components/comments/CommentThread';
 import { Breadcrumb } from '@/components/primitives/Breadcrumb';
 import { Chip } from '@/components/primitives/Chip';
@@ -16,7 +16,12 @@ import { GetItPanel, type GetItPanelProps } from '@/components/projects/GetItPan
 import { TipPanel } from '@/components/projects/TipPanel';
 import { VersionsTable } from '@/components/projects/VersionsTable';
 import { listPublicComments } from '@/lib/data/comments';
-import { getProjectDetail, listPublishedProjects, type ProjectDetail } from '@/lib/data/projects';
+import {
+  listPublishedProjects,
+  resolveProjectPage,
+  type ProjectDetail,
+  type ProjectPageResolution,
+} from '@/lib/data/projects';
 import { getPublicSettings } from '@/lib/data/settings';
 import { relativeTime } from '@/lib/format/date';
 import { formatCountFull } from '@/lib/format/number';
@@ -25,33 +30,41 @@ import styles from './page.module.css';
 
 /**
  * `/projects/[slug]` — project detail (02 §1.1/§2.3; 00 S1.2 "Public routes"; DESIGN.md §6 #3,
- * §12.5; pass-3 "Project detail" mockup).
+ * §12.5; pass-3 "Project detail" mockup; ADR-0037 D4 redirects, D6 primary rule + "Also on"
+ * rows + Source row, D7 `is_exclusive`).
  *
  * ISR(600; projects, project:<slug>, settings) — 01 INV-38, 02 §0.1/§5/RP-23: `revalidate = 600`
  * matches `lib/data/projects.ts` `getProjectDetail`, whose `unstable_cache` entry carries the two
  * project tags; `lib/data/settings.ts` adds `settings` and `lib/data/comments.ts` re-uses
  * `project:<slug>` (every comment action revalidates it — 02 §5). The page never touches a
  * Supabase client or `cookies()` (01 INV-09/INV-12, 02 RP-03); the data reads are
- * `getProjectDetail(slug)`, `getPublicSettings()` and `listPublicComments(target)`. Unknown slug,
- * `status <> 'published'` or `overrides.hidden` → the view has no row → `notFound()` (02 §2.3;
- * 00 S1.2.AC9; SM-04). `generateStaticParams` = all published non-hidden slugs,
- * `dynamicParams = true` so new slugs render on demand (02 §2.3 "Data (ISR shell)").
+ * `resolveProjectPage(slug)`, `getPublicSettings()` and `listPublicComments(target)`. Unknown
+ * slug, `status <> 'published'` or `overrides.hidden` → the view has no row → `notFound()`
+ * (02 §2.3; 00 S1.2.AC9; SM-04) — unless `project_redirects` maps the slug to a visible
+ * canonical project (a folded duplicate, ADR-0037 D4): then BOTH `generateMetadata` and the
+ * page body issue `permanentRedirect('/projects/<canonical slug>')` before any `notFound()`
+ * (metadata runs first — a redirect placed only in the body would never fire; ADR-0025: the
+ * streamed ISR route may answer 200 + a client redirect instead of a 308). `generateStaticParams`
+ * = all published non-hidden slugs, `dynamicParams = true` so new slugs render on demand
+ * (02 §2.3 "Data (ISR shell)").
  *
  * Sections in DOM order per 02 §2.3: Breadcrumb (Projects › title) · header (104px icon well,
- * `h1` title, description, row = `ExclusiveBadge` first when `detail.exclusive` (the
- * `isExclusive` predicate — 00 S1.3.AC1/AC8) + `TypeBadge` + up to 4 `Chip`s +
+ * `h1` title, description, row = `ExclusiveBadge` first when `detail.exclusive` (the view's
+ * `is_exclusive` — ADR-0037 D7; 00 S1.3.AC1/AC8, S1.5a.AC5) + `TypeBadge` + up to 4 `Chip`s +
  * `downloads_total`) · `Gallery`+`Lightbox` (renders nothing at 0 images) · ABOUT
  * (`Markdown(body_md)`, then `overrides.notes_md` under a `NoteCallout`) · VERSIONS & FILES
- * (`VersionsTable` — Download hrefs computed by `lib/data/projects.ts` per ADR-0002 #42) ·
+ * (`VersionsTable` — per-file Download hrefs + kinds computed by `lib/data/projects.ts`,
+ * ADR-0037 D6 / ADR-0002 #42) ·
  * COMMENTS (`CommentThread`, the ADR-0002 C1 client seam — 02 §2.3 #6, 00 S1.4: the public
  * thread from `listPublicComments` is in the ISR HTML as props, the viewer's own rows merge in
  * after hydration; `commentsEnabled = overrides.comments_enabled ?? !comments_closed_default`;
  * the `<section id="comments">` is the `#comments` fragment target and points its
  * `aria-labelledby` at the `SectionTitle` heading the thread renders). Right rail (sticky ≥900px, plain sections on phone —
- * DESIGN.md §6 #3): `GetItPanel` (synced primary → the Modrinth page "Download on Modrinth",
- * exclusive → the latest version's primary file; rows + combined-count line — 02 §2.3 rail),
- * DETAILS panel (`DetailsList`: type, updated = `external_updated_at ?? updated_at`, licence,
- * source — 02 §2.3), `TipPanel` placeholder slab → `/support` (00 S1.2 until S1.9).
+ * DESIGN.md §6 #3): `GetItPanel` (`getItProps` — the ADR-0037 D6 primary rule: a hosted
+ * primary file on any source → "Download" + "Also on" rows; else the Modrinth home →
+ * "Download on Modrinth" + bare platform rows; combined-count line — 02 §2.3 rail), DETAILS
+ * panel (`DetailsList`: type, updated = `external_updated_at ?? updated_at`, licence, source —
+ * 02 §2.3; D6 Source wording), `TipPanel` placeholder slab → `/support` (00 S1.2 until S1.9).
  * `TrackedLink download {project, source, from}` emitters live INSIDE `GetItPanel`
  * (`from:'get-it'`) and `VersionsTable` (`from:'versions'`) — 03 §2.2 emitters table; the page
  * passes no analytics props.
@@ -70,10 +83,21 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
   return projects.map(({ slug }) => ({ slug }));
 }
 
+/**
+ * ADR-0037 D4: a folded slug redirects (308) to its canonical page; nothing → `notFound()`.
+ * Called from `generateMetadata` AND the page body — both throw, so the body never renders a
+ * redirected or unknown slug.
+ */
+async function resolveOrLeave(slug: string): Promise<ProjectDetail> {
+  const resolved: ProjectPageResolution = await resolveProjectPage(slug);
+  if (resolved === null) notFound();
+  if (resolved.kind === 'redirect') permanentRedirect(`/projects/${resolved.slug}`);
+  return resolved.detail;
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const detail = await getProjectDetail(slug);
-  if (detail === null) notFound();
+  const detail = await resolveOrLeave(slug);
   return {
     title: detail.title,
     description: detail.description,
@@ -98,13 +122,16 @@ const TYPE_LABELS: Record<ProjectType, string> = {
 };
 
 /**
- * GET IT panel wiring (02 §2.3 rail): synced → primary is the Modrinth project page ("Download
- * on Modrinth"; ADR-0002 #42 — the rail keeps the project link, file cells keep the CDN URLs),
- * exclusive → the latest version's primary file (`/api/download/<id>`, route S1.3). Rows:
- * Modrinth count for synced, CurseForge count when `project_links` has one (count from
- * `downloads_curseforge` so the rows always sum to `downloads_total` — 00 S1.2.AC6); the direct
- * row renders inside the component from `combined.direct`. An exclusive with no file (broken
- * publish invariant, 04) renders no panel rather than a dead button.
+ * GET IT panel wiring (02 §2.3 rail as amended by ADR-0037 D6). Primary: `detail.primaryFile`
+ * of `kind: 'direct'` (the hosted primary of the newest version with a hosted file — on any
+ * source) → "Download" to `/api/download/<id>` with its file meta; otherwise the project's
+ * Modrinth home → "Download on Modrinth" with the newest CDN file's meta when there is one;
+ * neither → no panel (a broken publish invariant, 04 — never a dead button). Rows are
+ * `detail.links` (`platformRows`: Modrinth from `source` or the link, CurseForge from the link,
+ * counts from the project's per-platform columns so they always sum to `downloads_total` —
+ * 00 S1.2.AC6 / S1.5a.AC6), worded "Also on <platform>" only under a hosted primary and the
+ * bare platform word under "Download on Modrinth" (today's look); the direct row renders
+ * inside the component from `combined.direct`, unchanged.
  */
 function getItProps(detail: ProjectDetail): GetItPanelProps | null {
   const meta = detail.primaryFile;
@@ -119,28 +146,24 @@ function getItProps(detail: ProjectDetail): GetItPanelProps | null {
         }
       : undefined;
 
-  const rows: GetItPanelProps['rows'] = [];
-  if (detail.modrinthUrl !== null) {
-    rows.push({
-      platform: 'modrinth',
-      href: detail.modrinthUrl,
-      downloads: detail.downloads.modrinth,
-    });
-  }
-  const curseforge = detail.links.find((link) => link.platform === 'curseforge');
-  if (curseforge !== undefined) {
-    rows.push({
-      platform: 'curseforge',
-      href: curseforge.url,
-      downloads: detail.downloads.curseforge,
-    });
-  }
-
+  const hostedPrimary = meta !== null && fileMeta !== undefined && meta.kind === 'direct';
+  const rows: GetItPanelProps['rows'] = detail.links.map((link) => ({
+    platform: link.platform,
+    href: link.url,
+    downloads: link.downloads,
+    ...(hostedPrimary ? { also: true } : {}),
+  }));
   const shared = {
     rows,
     combined: { total: detail.downloads.total, direct: detail.downloads.direct },
     slug: detail.slug,
   };
+  if (hostedPrimary) {
+    return {
+      primary: { kind: 'direct', href: meta.href, label: 'Download', fileMeta },
+      ...shared,
+    };
+  }
   if (detail.modrinthUrl !== null) {
     return {
       primary: {
@@ -152,13 +175,23 @@ function getItProps(detail: ProjectDetail): GetItPanelProps | null {
       ...shared,
     };
   }
-  if (meta !== null && fileMeta !== undefined) {
-    return {
-      primary: { kind: 'direct', href: meta.href, label: 'Download', fileMeta },
-      ...shared,
-    };
-  }
   return null;
+}
+
+/**
+ * DETAILS "Source" value (02 §2.3 rail; ADR-0037 D6): `source='modrinth'` → a "Modrinth" link
+ * to the listing; `odsens` with no link (`is_exclusive`) → "Only on odsens"; `odsens` with a
+ * platform link → "odsens" (it lives here first, and elsewhere too — the GET IT rows say where).
+ */
+function sourceValue(detail: ProjectDetail) {
+  if (detail.source === 'modrinth' && detail.modrinthUrl !== null) {
+    return (
+      <a href={detail.modrinthUrl} rel="noopener" className={styles['detail-source-link']}>
+        Modrinth
+      </a>
+    );
+  }
+  return detail.exclusive ? 'Only on odsens' : 'odsens';
 }
 
 /** DETAILS list rows, exactly type · updated · licence · source (02 §2.3 rail; DESIGN.md §6 #3). */
@@ -172,13 +205,7 @@ function detailsItems(detail: ProjectDetail): DetailsListItem[] {
       label: 'Source',
       value: (
         <>
-          {detail.modrinthUrl !== null ? (
-            <a href={detail.modrinthUrl} rel="noopener" className={styles['detail-source-link']}>
-              Modrinth
-            </a>
-          ) : (
-            'Only on odsens'
-          )}
+          {sourceValue(detail)}
           {detail.sourceUrl !== null ? (
             <>
               {' · '}
@@ -195,8 +222,7 @@ function detailsItems(detail: ProjectDetail): DetailsListItem[] {
 
 export default async function ProjectDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const detail = await getProjectDetail(slug);
-  if (detail === null) notFound();
+  const detail = await resolveOrLeave(slug);
 
   const target = { type: 'project' as const, id: detail.id, slug: detail.slug };
   const [settings, thread] = await Promise.all([getPublicSettings(), listPublicComments(target)]);
@@ -274,12 +300,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               <h2 id="versions-title" className={styles['detail-h2']}>
                 VERSIONS &amp; FILES
               </h2>
-              <VersionsTable
-                versions={detail.versions}
-                source={detail.source}
-                projectId={detail.id}
-                slug={detail.slug}
-              />
+              <VersionsTable versions={detail.versions} projectId={detail.id} slug={detail.slug} />
             </section>
           ) : null}
 

@@ -250,3 +250,56 @@
   font-size: var(--text-label-sm);
   font-weight: 700;
 }
+
+/* ---- S1.5a listings (ADR-0037 D8; DESIGN.md §5 Admin field) ---- */
+
+/* The two listing fields side by side from the tablet floor (DESIGN.md §6, 600px), stacked on phone (03 C-13 fluid). */
+.admin-project-listings {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-24);
+}
+
+@media (min-width: 600px) {
+  .admin-project-listings {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.admin-project-listing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+/* The linked row under a field: URL · count · Remove — the helper-text voice, chalk for the link. */
+.admin-project-linked {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+  font-size: var(--text-label);
+}
+
+/* A link is a target too: 44px minimum (DESIGN.md §5) — the `.get-it-row` recipe. */
+.admin-project-linked-url {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--chalk);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
+.admin-project-linked-count {
+  color: var(--mute-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Where a file lives (odsens / Modrinth) — a word, never a colour alone (03 C-26). */
+.admin-project-file-home {
+  color: var(--mute-dim);
+  font-size: var(--text-label-sm);
+}

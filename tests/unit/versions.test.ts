@@ -1,8 +1,9 @@
 /**
  * tests/unit/versions.test.ts — `lib/versions.ts`: `groupGameVersions` (05 T-UNIT-39; 03 V-01;
- * 02 §2.2 `version` param) and the VERSIONS & FILES ordering helpers (05 T-UNIT-30 —
- * "versionsTable sort": `date_published` desc, files primary-first, changelog flag drives the
- * "Changes ▾" link). Pure — no DOM, no network, no clock.
+ * 02 §2.2 `version` param), the VERSIONS & FILES ordering helpers (05 T-UNIT-30 — "versionsTable
+ * sort": `date_published` desc, files `hostedFirst` (amended by ADR-0037 D6 — was primary-first),
+ * changelog flag drives the "Changes ▾" link) and the ADR-0037 D6 primary-download rule
+ * (05 T-UNIT-49: `hostedFirst` rank, `selectPrimaryFile`). Pure — no DOM, no network, no clock.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -10,10 +11,12 @@ import {
   formatVersionList,
   groupGameVersions,
   hasChangelog,
+  hostedFirst,
   isSnapshotVersion,
   matchesVersionGroup,
-  primaryFirst,
+  selectPrimaryFile,
   sortVersionsForTable,
+  type FileKind,
 } from '@/lib/versions';
 
 describe('T-UNIT-39 groupGameVersions (03 V-01)', () => {
@@ -64,31 +67,26 @@ describe('T-UNIT-39 groupGameVersions (03 V-01)', () => {
   });
 });
 
-describe('T-UNIT-30 versionsTable sort (lib/versions.ts)', () => {
+describe('T-UNIT-30 versionsTable sort (lib/versions.ts; ADR-0037 D6 amended)', () => {
+  const cdn = (id: string, primary = false) => ({ id, kind: 'modrinth' as FileKind, primary });
   const versions = [
     {
       id: 'v-old',
       datePublished: '2025-01-10T00:00:00Z',
       changelogMd: null,
-      files: [{ id: 'f1', primary: false }],
+      files: [cdn('f1')],
     },
     {
       id: 'v-new',
       datePublished: '2026-06-01T12:00:00Z',
       changelogMd: '- fixed the sound',
-      files: [
-        { id: 'sources', primary: false },
-        { id: 'jar', primary: true },
-      ],
+      files: [cdn('sources'), cdn('jar', true)],
     },
     {
       id: 'v-mid',
       datePublished: '2025-11-20T00:00:00Z',
       changelogMd: '',
-      files: [
-        { id: 'a', primary: false },
-        { id: 'b', primary: false },
-      ],
+      files: [cdn('a'), cdn('b')],
     },
   ];
 
@@ -96,17 +94,17 @@ describe('T-UNIT-30 versionsTable sort (lib/versions.ts)', () => {
     expect(sortVersionsForTable(versions).map((v) => v.id)).toEqual(['v-new', 'v-mid', 'v-old']);
   });
 
-  it('T-UNIT-30 puts the primary file first within a version, stable otherwise', () => {
+  it('T-UNIT-30 puts the primary file first within a version, stable otherwise (hostedFirst)', () => {
     const sorted = sortVersionsForTable(versions);
     expect(sorted.map((v) => v.files.map((f) => f.id))).toEqual([
       ['jar', 'sources'], // primary first
       ['a', 'b'], // stable when no primary
       ['f1'],
     ]);
-    expect(primaryFirst([{ primary: false }, { primary: true }, { primary: false }])).toEqual([
-      { primary: true },
-      { primary: false },
-      { primary: false },
+    expect(hostedFirst([cdn('x'), cdn('y', true), cdn('z')]).map((f) => f.id)).toEqual([
+      'y',
+      'x',
+      'z',
     ]);
   });
 
@@ -122,6 +120,59 @@ describe('T-UNIT-30 versionsTable sort (lib/versions.ts)', () => {
     const input = versions.map((v) => ({ ...v, files: [...v.files] }));
     const snapshot = JSON.parse(JSON.stringify(input)) as unknown;
     sortVersionsForTable(input);
+    expect(input).toEqual(snapshot);
+  });
+});
+
+describe('T-UNIT-49 primary-download rule (ADR-0037 D6: hostedFirst, selectPrimaryFile)', () => {
+  const file = (id: string, kind: FileKind, primary: boolean) => ({ id, kind, primary });
+  const hostedPrimary = file('hosted-primary', 'direct', true);
+  const hosted = file('hosted', 'direct', false);
+  const cdnPrimary = file('cdn-primary', 'modrinth', true);
+  const cdn = file('cdn', 'modrinth', false);
+
+  it('T-UNIT-49 hostedFirst ranks hosted primary → hosted → CDN primary → CDN, stable within a rank', () => {
+    const order = hostedFirst([cdn, cdnPrimary, hosted, hostedPrimary]).map((f) => f.id);
+    expect(order).toEqual(['hosted-primary', 'hosted', 'cdn-primary', 'cdn']);
+    // Stable: two files of the same rank keep their given order.
+    const twoHosted = hostedFirst([file('h1', 'direct', false), file('h2', 'direct', false)]);
+    expect(twoHosted.map((f) => f.id)).toEqual(['h1', 'h2']);
+    // A version living in two homes (ADR-0037 D2 sha512 pairing): the file we serve before the mirror.
+    expect(hostedFirst([cdnPrimary, hostedPrimary]).map((f) => f.id)).toEqual([
+      'hosted-primary',
+      'cdn-primary',
+    ]);
+  });
+
+  it('T-UNIT-49 selectPrimaryFile = the hosted primary of the newest version with a hosted file', () => {
+    const versions = [
+      { datePublished: '2026-01-01T00:00:00Z', files: [cdnPrimary] }, // newest, CDN-only
+      { datePublished: '2025-06-01T00:00:00Z', files: [cdn, hosted, hostedPrimary] },
+      { datePublished: '2025-01-01T00:00:00Z', files: [file('older-hosted', 'direct', true)] },
+    ];
+    // An older hosted release beats a newer CDN-only one (David: the hosted file is always the primary).
+    expect(selectPrimaryFile(versions)?.id).toBe('hosted-primary');
+  });
+
+  it('T-UNIT-49 selectPrimaryFile takes the first hosted file when the version has no hosted primary flag', () => {
+    const versions = [{ datePublished: '2026-01-01T00:00:00Z', files: [cdnPrimary, hosted] }];
+    expect(selectPrimaryFile(versions)?.id).toBe('hosted');
+  });
+
+  it('T-UNIT-49 selectPrimaryFile → null with no hosted file anywhere (caller falls back to the Modrinth home)', () => {
+    expect(
+      selectPrimaryFile([{ datePublished: '2026-01-01T00:00:00Z', files: [cdnPrimary, cdn] }]),
+    ).toBeNull();
+    expect(selectPrimaryFile([])).toBeNull();
+  });
+
+  it('T-UNIT-49 selectPrimaryFile never mutates its input', () => {
+    const input = [
+      { datePublished: '2025-01-01T00:00:00Z', files: [cdn, hostedPrimary] },
+      { datePublished: '2026-01-01T00:00:00Z', files: [cdn] },
+    ];
+    const snapshot = JSON.parse(JSON.stringify(input)) as unknown;
+    selectPrimaryFile(input);
     expect(input).toEqual(snapshot);
   });
 });

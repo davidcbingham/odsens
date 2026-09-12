@@ -627,6 +627,39 @@ export type Database = {
           },
         ]
       }
+      project_redirects: {
+        Row: {
+          created_at: string
+          old_slug: string
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          old_slug: string
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          old_slug?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_redirects_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_redirects_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_versions: {
         Row: {
           changelog_md: string | null
@@ -965,6 +998,7 @@ export type Database = {
           game_versions: string[] | null
           icon_url: string | null
           id: string | null
+          is_exclusive: boolean | null
           issues_url: string | null
           license: string | null
           loaders: string[] | null
@@ -1050,6 +1084,10 @@ export type Database = {
       comment_target_visible: {
         Args: { p_target_id: string; p_target_type: string }
         Returns: boolean
+      }
+      fold_project: {
+        Args: { p_canonical_id: string; p_duplicate_id: string }
+        Returns: Json
       }
       is_admin: { Args: never; Returns: boolean }
       is_moderator: { Args: never; Returns: boolean }

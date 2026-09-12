@@ -10,7 +10,7 @@
  * (the runner emits only for `ok=false`).
  *
  * Steps: for each `project_links` row `platform='curseforge'`: `getMod(external_id)` (the stored id
- * is text — `setProjectLink` writes `String(id)` — converted back to the numeric CF id) →
+ * is text — `linkProjectListing` writes `String(id)` — converted back to the numeric CF id) →
  * `downloads = data.downloadCount`, `url = data.links.websiteUrl` → update
  * `project_links.downloads, synced_at` and `projects.downloads_curseforge`. A per-item error keeps
  * the old numbers (J-P); the adapter enforces sequential calls (04 §4.2). Idempotency key:

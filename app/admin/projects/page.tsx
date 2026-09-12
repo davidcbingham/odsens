@@ -17,6 +17,7 @@ import {
   listAdminProjects,
   listSyncStatus,
   PROJECT_SYNC_SOURCES,
+  suggestMatches,
   type AdminProjectListItem,
 } from '@/lib/data/admin';
 import { formatCount } from '@/lib/format/number';
@@ -46,6 +47,11 @@ import styles from './page.module.css';
  *    after the action — the `[id]` page's PRG precedent — because tag-only revalidation does
  *    not re-render an untagged dynamic route in the action round trip, so a bare bound
  *    `curateProject` would leave the rendered toggle stale until the next navigation.
+ *    S1.5a (ADR-0037 D8; 00 S1.5a.AC7): under a `source='modrinth'` row's name, when an `odsens`
+ *    row shares its `projectMatchKey` (slug or title — `suggestMatches`, pure), the helper-voice
+ *    note "Looks like the same project as <title> —" with a ghost "Link it" link to
+ *    `/admin/projects/<odsens id>?listing=<external_id>` (the editor prefills its Modrinth
+ *    field). A suggestion only — nothing links automatically.
  * 2. FEATURED ORDER — `ReorderableList` of the featured projects; one completed reorder =
  *    ONE `curateProject` call with the batch shape `{reorder: [{project_id, featured_order}]}`
  *    (ADR-0002 A11; 03 §2.10 "the parent calls `curateProject` once") via the module-level
@@ -153,29 +159,45 @@ export default async function AdminProjectsPage() {
     listSyncStatus(PROJECT_SYNC_SOURCES),
   ]);
 
-  const rows: TableProps['rows'] = projects.map((project) => ({
-    key: project.id,
-    project: (
-      <span className={styles['admin-projects-name']}>
-        <span className={styles['admin-projects-title']}>{project.title}</span>
-        <span className={styles['admin-projects-slug']}>{project.slug}</span>
-      </span>
-    ),
-    type: <TypeBadge type={project.projectType} />,
-    status: <StatusPill status={adminProjectStatus(project.status, project.hidden)} />,
-    downloads: (
-      <span className={styles['admin-projects-downloads']}>
-        {formatCount(project.downloadsTotal)}
-      </span>
-    ),
-    featured: curationToggle(project, 'featured', canCurate),
-    hidden: curationToggle(project, 'hidden', canCurate),
-    open: (
-      <Button variant="ghost" size="sm" href={`/admin/projects/${project.id}`}>
-        Open
-      </Button>
-    ),
-  }));
+  const matches = suggestMatches(projects);
+  const rows: TableProps['rows'] = projects.map((project) => {
+    const match = matches.get(project.id);
+    return {
+      key: project.id,
+      project: (
+        <span className={styles['admin-projects-name']}>
+          <span className={styles['admin-projects-title']}>{project.title}</span>
+          <span className={styles['admin-projects-slug']}>{project.slug}</span>
+          {match !== undefined ? (
+            <span className={styles['admin-projects-match']}>
+              <span>{`Looks like the same project as ${match.odsensTitle}\u00A0—`}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                href={`/admin/projects/${match.odsensId}?listing=${encodeURIComponent(match.externalId)}`}
+              >
+                Link it
+              </Button>
+            </span>
+          ) : null}
+        </span>
+      ),
+      type: <TypeBadge type={project.projectType} />,
+      status: <StatusPill status={adminProjectStatus(project.status, project.hidden)} />,
+      downloads: (
+        <span className={styles['admin-projects-downloads']}>
+          {formatCount(project.downloadsTotal)}
+        </span>
+      ),
+      featured: curationToggle(project, 'featured', canCurate),
+      hidden: curationToggle(project, 'hidden', canCurate),
+      open: (
+        <Button variant="ghost" size="sm" href={`/admin/projects/${project.id}`}>
+          Open
+        </Button>
+      ),
+    };
+  });
 
   // Featured projects in current order (order asc, unordered last, then title) — ADR-0002 A11.
   const featured = projects
