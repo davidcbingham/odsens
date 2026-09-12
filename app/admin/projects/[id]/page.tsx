@@ -28,8 +28,15 @@ import {
 import type { ActionError } from '@/lib/actions/result';
 import { uploadProjectFile, uploadProjectMedia } from '@/lib/actions/uploads';
 import { getViewer } from '@/lib/auth';
-import { adminProjectStatus, getAdminProject, listAdminProjectVersions } from '@/lib/data/admin';
-import { parseGalleryEntries, resolveMediaUrl } from '@/lib/data/projects';
+import {
+  adminProjectStatus,
+  getAdminProject,
+  listAdminProjectVersions,
+  parseProjectGallery,
+} from '@/lib/data/admin';
+import { resolveMediaUrl } from '@/lib/data/projects';
+import { SavedToast } from '@/components/admin/SavedToast';
+import { isSavedMessageKey } from '@/components/admin/savedMessages';
 import { formatDate } from '@/lib/format/date';
 import { formatCount } from '@/lib/format/number';
 import { modrinthListingUrl } from '@/lib/format/project';
@@ -145,7 +152,7 @@ function projectTypeValue(value: FormDataEntryValue | null): ProjectTypeValue | 
  * Remove buttons report on the same form as their field (ADR-0037 D8 "errors surface on the
  * field via the page's PRG `?form=link…` mechanism").
  */
-type FormName = 'overrides' | 'link' | 'link-modrinth' | 'publish' | 'details';
+type FormName = 'overrides' | 'link' | 'link-modrinth' | 'publish' | 'details' | 'gallery';
 
 type LinkPlatform = 'modrinth' | 'curseforge';
 
@@ -179,6 +186,57 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return { title: `${project.title} · Admin` };
 }
 
+/** One editor gallery row (ADR-0038 D3) — `url` is the stored key; `src` the resolved picture. */
+type GalleryRow = {
+  home: 'own' | 'synced' | 'extra';
+  url: string;
+  src: string;
+  title: string;
+  description: string;
+  ordering: number;
+  featured: boolean;
+  hidden: boolean;
+};
+
+const GALLERY_ROWS_MAX = 60;
+
+/** The message when a posted GALLERY form is not the one the page rendered (ADR-0038 D3). */
+const GALLERY_ROWS_ERROR: ActionError = {
+  code: 'validation',
+  message: "Couldn't read the pictures. Reload the page and try again.",
+};
+
+/**
+ * The rows the GALLERY form posted, in order (indexed hidden inputs). Never truncates: a save
+ * writes the rows as the whole gallery, so a short or oversized post could delete pictures by
+ * omission — such a post returns `null` and nothing is written (backend gate, ADR-0038 D3).
+ */
+function readGalleryRows(formData: FormData): GalleryRow[] | null {
+  const count = Number(formData.get('gallery_count'));
+  if (!Number.isInteger(count) || count < 1 || count > GALLERY_ROWS_MAX) return null;
+  const rows: GalleryRow[] = [];
+  const text = (name: string): string => {
+    const value = formData.get(name);
+    return typeof value === 'string' ? value : '';
+  };
+  for (let index = 0; index < count; index += 1) {
+    const url = text(`gallery_url_${String(index)}`);
+    const home = text(`gallery_home_${String(index)}`);
+    if (url === '' || (home !== 'own' && home !== 'synced' && home !== 'extra')) return null;
+    rows.push({
+      home,
+      url,
+      src: url,
+      title: text(`gallery_title_${String(index)}`).trim(),
+      description: text(`gallery_description_${String(index)}`),
+      ordering: Number(text(`gallery_ordering_${String(index)}`)) || 0,
+      featured: text(`gallery_featured_${String(index)}`) === '1',
+      hidden: text(`gallery_hidden_${String(index)}`) === '1',
+    });
+  }
+  return rows;
+}
+
 export default async function AdminProjectPage({ params, searchParams }: PageProps) {
   const { id } = await params;
   const query = await searchParams;
@@ -197,6 +255,10 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   const versions = await listAdminProjectVersions(id);
 
   const base = `/admin/projects/${id}`;
+  // ADR-0038 D1: every successful save lands back here with `?saved=` and `SavedToast` says so.
+  const saved = `${base}?saved=saved`;
+  const savedKey = queryValue(query.saved);
+  const savedToast = isSavedMessageKey(savedKey) ? <SavedToast messageKey={savedKey} /> : null;
   const override = project.override;
   const commentsEnabled = override?.commentsEnabled ?? true;
   const links: Record<LinkPlatform, typeof project.curseforgeLink> = {
@@ -243,6 +305,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   ];
   const detailsFormError = formLevelError('details', DETAILS_FIELDS);
   const publishError = errorForm === 'publish' && errorMessage !== null ? errorMessage : null;
+  const galleryError = errorForm === 'gallery' && errorMessage !== null ? errorMessage : null;
 
   // ---- Server-function glue (03 C-17 `<form action>`; typed inputs per 04 §1.4) ---------------
 
@@ -254,7 +317,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       description_override: orNull(formData.get('description_override')),
       notes_md: orNull(formData.get('notes_md')),
     });
-    redirect(result.ok ? base : withError(base, 'overrides', result.error));
+    redirect(result.ok ? saved : withError(base, 'overrides', result.error));
   }
 
   // Bound per platform (`.bind` — the `setStatus` precedent): one form per field. An empty ref
@@ -266,13 +329,13 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       platform,
       ref: orNull(formData.get(LINK_FIELD[platform])) ?? '',
     });
-    redirect(result.ok ? base : withError(base, LINK_FORM[platform], result.error));
+    redirect(result.ok ? saved : withError(base, LINK_FORM[platform], result.error));
   }
 
   async function unlinkListing(platform: LinkPlatform): Promise<void> {
     'use server';
     const result = await unlinkProjectListing({ project_id: id, platform });
-    redirect(result.ok ? base : withError(base, LINK_FORM[platform], result.error));
+    redirect(result.ok ? saved : withError(base, LINK_FORM[platform], result.error));
   }
 
   // PRG for the comments Toggle too (the list page's `curateAndRefresh` rationale): tag-only
@@ -284,7 +347,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   }): Promise<void> {
     'use server';
     await curateProject(input);
-    redirect(base);
+    redirect(saved);
   }
 
   // The details form edits the real `projects` columns (04 §1.4 `{id} & Partial<create>`): empty
@@ -307,7 +370,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       issues_url: orNull(formData.get('issues_url')),
       discord_url: orNull(formData.get('discord_url')),
     });
-    redirect(result.ok ? base : withError(base, 'details', result.error));
+    redirect(result.ok ? saved : withError(base, 'details', result.error));
   }
 
   // Bound per button (`.bind` — the `saveCommentsEnabled` precedent): Publish / Hide / Back to
@@ -315,7 +378,78 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   async function setStatus(status: 'draft' | 'published' | 'hidden'): Promise<void> {
     'use server';
     const result = await publishProject({ id, status });
-    redirect(result.ok ? base : withError(base, 'publish', result.error));
+    redirect(result.ok ? saved : withError(base, 'publish', result.error));
+  }
+
+  // ---- Gallery (ADR-0038 D3): names for every image, Hide/Show for Modrinth images, Delete for
+  // uploaded ones. One form carries every row (indexed hidden inputs); the row buttons are
+  // per-button server functions (`formAction`) that read the same rows and change one of them.
+  // Which action writes depends on the row's home: `own` = `projects.gallery` (odsens row →
+  // `updateExclusiveProject`), `synced` = `project_overrides.gallery_overrides`, `extra` =
+  // `project_overrides.extra_gallery` (both → `curateProject`).
+
+  async function saveGalleryRows(rows: GalleryRow[]): Promise<ActionError | null> {
+    'use server';
+    if (exclusive) {
+      const result = await updateExclusiveProject({
+        id,
+        gallery: rows
+          .filter((row) => row.home === 'own')
+          .map((row) => ({
+            url: row.url,
+            title: row.title === '' ? null : row.title,
+            description: row.description === '' ? null : row.description,
+            ordering: row.ordering,
+            featured: row.featured,
+          })),
+      });
+      return result.ok ? null : result.error;
+    }
+    const result = await curateProject({
+      project_id: id,
+      gallery_overrides: rows
+        .filter((row) => row.home === 'synced')
+        .map((row) => ({
+          url: row.url,
+          hidden: row.hidden,
+          title: row.title === '' ? null : row.title,
+        })),
+      extra_gallery: rows
+        .filter((row) => row.home === 'extra')
+        .map((row) => ({
+          path: row.url,
+          ...(row.title === '' ? {} : { title: row.title }),
+          ...(row.description === '' ? {} : { description: row.description }),
+          ordering: row.ordering,
+        })),
+    });
+    return result.ok ? null : result.error;
+  }
+
+  async function saveGalleryNames(formData: FormData): Promise<void> {
+    'use server';
+    const rows = readGalleryRows(formData);
+    if (rows === null) redirect(withError(base, 'gallery', GALLERY_ROWS_ERROR));
+    const error = await saveGalleryRows(rows);
+    redirect(error === null ? saved : withError(base, 'gallery', error));
+  }
+
+  async function removeGalleryImage(url: string, formData: FormData): Promise<void> {
+    'use server';
+    const rows = readGalleryRows(formData);
+    if (rows === null) redirect(withError(base, 'gallery', GALLERY_ROWS_ERROR));
+    const error = await saveGalleryRows(rows.filter((row) => row.url !== url));
+    redirect(error === null ? `${base}?saved=removed` : withError(base, 'gallery', error));
+  }
+
+  async function setGalleryHidden(url: string, hidden: boolean, formData: FormData): Promise<void> {
+    'use server';
+    const rows = readGalleryRows(formData);
+    if (rows === null) redirect(withError(base, 'gallery', GALLERY_ROWS_ERROR));
+    const error = await saveGalleryRows(
+      rows.map((row) => (row.url === url ? { ...row, hidden } : row)),
+    );
+    redirect(error === null ? saved : withError(base, 'gallery', error));
   }
 
   // ---- Moderator rendering helpers (03 §2.10 rule) -------------------------------------------
@@ -386,6 +520,172 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         Off closes the thread. Old comments stay.
       </p>
     </div>
+  );
+
+  // ---- Gallery rows (ADR-0038 D3) ------------------------------------------------------------
+
+  const ownRows: GalleryRow[] = exclusive
+    ? parseProjectGallery(project.gallery).map((entry) => ({
+        home: 'own',
+        url: entry.url,
+        src: resolveMediaUrl(entry.url),
+        title: entry.title ?? '',
+        description: entry.description ?? '',
+        ordering: entry.ordering,
+        featured: entry.featured,
+        hidden: false,
+      }))
+    : [];
+  const syncedRows: GalleryRow[] = exclusive
+    ? []
+    : parseProjectGallery(project.gallery).map((entry) => {
+        const curated = override?.galleryOverrides.find((item) => item.url === entry.url);
+        return {
+          home: 'synced',
+          url: entry.url,
+          src: resolveMediaUrl(entry.url),
+          title: curated?.title ?? entry.title ?? '',
+          description: entry.description ?? '',
+          ordering: entry.ordering,
+          featured: entry.featured,
+          hidden: curated?.hidden ?? false,
+        };
+      });
+  const extraRows: GalleryRow[] = exclusive
+    ? []
+    : (override?.extraGallery ?? []).map((entry) => ({
+        home: 'extra',
+        url: entry.path,
+        src: resolveMediaUrl(entry.path),
+        title: entry.title ?? '',
+        description: entry.description ?? '',
+        ordering: entry.ordering,
+        featured: false,
+        hidden: false,
+      }));
+  const galleryRows = [...ownRows, ...syncedRows, ...extraRows];
+
+  const galleryRow = (row: GalleryRow, index: number) => (
+    <li
+      key={row.url}
+      className={styles['admin-project-gallery-item']}
+      data-hidden={row.hidden ? '' : undefined}
+      data-testid="admin-gallery-row"
+    >
+      <Image
+        className={styles['admin-project-gallery-thumb']}
+        src={row.src}
+        alt=""
+        width={96}
+        height={64}
+        sizes="96px"
+      />
+      <input type="hidden" name={`gallery_url_${index}`} value={row.url} />
+      <input type="hidden" name={`gallery_home_${index}`} value={row.home} />
+      <input type="hidden" name={`gallery_description_${index}`} value={row.description} />
+      <input type="hidden" name={`gallery_ordering_${index}`} value={String(row.ordering)} />
+      <input type="hidden" name={`gallery_featured_${index}`} value={row.featured ? '1' : ''} />
+      <input type="hidden" name={`gallery_hidden_${index}`} value={row.hidden ? '1' : ''} />
+      <div className={styles['admin-project-gallery-fields']}>
+        <Field
+          label="Name"
+          name={`gallery_title_${index}`}
+          defaultValue={row.title}
+          maxLength={120}
+          helper={
+            row.home === 'synced'
+              ? row.hidden
+                ? 'From Modrinth — hidden on odsens'
+                : 'From Modrinth'
+              : 'Uploaded here'
+          }
+          disabled={!canCurate}
+          inputProps={listingInputProps()}
+        />
+      </div>
+      <div className={styles['admin-project-gallery-actions']}>
+        {row.home === 'synced' ? (
+          canCurate ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              type="submit"
+              arrow={false}
+              formAction={setGalleryHidden.bind(null, row.url, !row.hidden)}
+            >
+              {row.hidden ? 'Show' : 'Hide'}
+            </Button>
+          ) : (
+            saveButton(`gallery-hide-${String(index)}`, row.hidden ? 'Show' : 'Hide', 'ghost')
+          )
+        ) : canCurate ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            type="submit"
+            arrow={false}
+            formAction={removeGalleryImage.bind(null, row.url)}
+          >
+            Delete
+          </Button>
+        ) : (
+          saveButton(`gallery-delete-${String(index)}`, 'Delete', 'ghost')
+        )}
+      </div>
+    </li>
+  );
+
+  const gallerySection = (
+    <section
+      className={styles['admin-project-section']}
+      aria-labelledby={sectionTitleId('GALLERY')}
+    >
+      <h2 id={sectionTitleId('GALLERY')} className={styles['admin-project-heading']}>
+        GALLERY
+      </h2>
+      {galleryRows.length > 0 ? (
+        <form action={saveGalleryNames} className={styles['admin-project-form']}>
+          <input type="hidden" name="gallery_count" value={String(galleryRows.length)} />
+          {/* Implicit submission (Enter in a Name field) fires the form's FIRST submit button —
+              this hidden one has no `formAction`, so Enter means "Save names", never a row's
+              Hide or Delete (frontend gate, ADR-0038 D3). */}
+          <button
+            type="submit"
+            tabIndex={-1}
+            aria-hidden="true"
+            className="visually-hidden"
+            disabled={!canCurate}
+          >
+            Save names
+          </button>
+          <ul className={styles['admin-project-gallery']}>{galleryRows.map(galleryRow)}</ul>
+          {galleryError ? (
+            <p role="alert" className={styles['admin-project-error']}>
+              {galleryError}
+            </p>
+          ) : null}
+          <div className={styles['admin-project-actions']}>
+            {saveButton('gallery', 'Save names', 'secondary')}
+          </div>
+        </form>
+      ) : (
+        <p className={styles['admin-project-empty']}>No images yet.</p>
+      )}
+      {adminOnly(
+        <UploadWell
+          kind="project-media"
+          targetIds={{ project_id: id, kind: 'gallery' }}
+          action={uploadProjectMediaAction}
+          multiple
+          disabled={!canCurate}
+        />,
+      )}
+      <p className={styles['admin-project-helper']}>
+        {exclusive
+          ? 'Names show under each picture. Delete removes the file.'
+          : 'Modrinth images can be renamed or hidden here — the listing on Modrinth is untouched. Uploaded images can be deleted.'}
+      </p>
+    </section>
   );
 
   // ---- Shared sections (both branches — ADR-0037 D5/D8) --------------------------------------
@@ -596,10 +896,10 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         : project.status === 'published'
           ? `Live on /projects/${project.slug}.`
           : 'Hidden.';
-    const gallery = parseGalleryEntries(project.gallery);
 
     return (
       <div className={styles['admin-project']}>
+        {savedToast}
         <header className={styles['admin-project-head']}>
           <PixelLabel as="p" tone="gold" size={11}>
             ADMIN
@@ -783,37 +1083,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
 
         {iconSection}
 
-        <section
-          className={styles['admin-project-section']}
-          aria-labelledby={sectionTitleId('GALLERY')}
-        >
-          <h2 id={sectionTitleId('GALLERY')} className={styles['admin-project-heading']}>
-            GALLERY
-          </h2>
-          {gallery.length > 0 ? (
-            <ul className={styles['admin-project-gallery']}>
-              {gallery.map((entry) => (
-                <li key={entry.url} className={styles['admin-project-gallery-item']}>
-                  <span className={styles['admin-project-gallery-path']}>{entry.url}</span>
-                  {entry.title !== null ? (
-                    <span className={styles['admin-project-gallery-title']}>{entry.title}</span>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className={styles['admin-project-empty']}>No images yet.</p>
-          )}
-          {adminOnly(
-            <UploadWell
-              kind="project-media"
-              targetIds={{ project_id: id, kind: 'gallery' }}
-              action={uploadProjectMediaAction}
-              multiple
-              disabled={!canCurate}
-            />,
-          )}
-        </section>
+        {gallerySection}
 
         {versionsSection}
       </div>
@@ -824,6 +1094,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
 
   return (
     <div className={styles['admin-project']}>
+      {savedToast}
       <header className={styles['admin-project-head']}>
         <PixelLabel as="p" tone="gold" size={11}>
           ADMIN
@@ -896,40 +1167,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
 
       {iconSection}
 
-      <section
-        className={styles['admin-project-section']}
-        aria-labelledby={sectionTitleId('EXTRA GALLERY')}
-      >
-        <h2 id={sectionTitleId('EXTRA GALLERY')} className={styles['admin-project-heading']}>
-          EXTRA GALLERY
-        </h2>
-        {override && override.extraGallery.length > 0 ? (
-          <ul className={styles['admin-project-gallery']}>
-            {override.extraGallery.map((entry) => (
-              <li key={entry.path} className={styles['admin-project-gallery-item']}>
-                <span className={styles['admin-project-gallery-path']}>{entry.path}</span>
-                {entry.title ? (
-                  <span className={styles['admin-project-gallery-title']}>{entry.title}</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className={styles['admin-project-empty']}>No extra images yet.</p>
-        )}
-        {adminOnly(
-          <UploadWell
-            kind="project-media"
-            targetIds={{ project_id: id, kind: 'gallery' }}
-            action={uploadProjectMediaAction}
-            multiple
-            disabled={!canCurate}
-          />,
-        )}
-        <p className={styles['admin-project-helper']}>
-          Images upload to the project&apos;s own gallery folder.
-        </p>
-      </section>
+      {gallerySection}
 
       {versionsSection}
     </div>

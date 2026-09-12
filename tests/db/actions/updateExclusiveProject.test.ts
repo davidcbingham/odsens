@@ -27,6 +27,7 @@ import { expectInternal, withDbFault, type DbCallTarget } from '@/tests/helpers/
 import { cleanupFactories, makeProject } from '@/tests/helpers/factories';
 import { SEED_PROJECTS } from '@/tests/helpers/seedIds';
 import { spyLog, spyRevalidateTag, type LogSpy } from '@/tests/helpers/spies';
+import { listObjects, removeObjects, uploadFixture } from '@/tests/helpers/storage';
 
 setupActionMocks();
 
@@ -282,4 +283,132 @@ describe('T-ACT-36 updateExclusiveProject fields + slug clash + DB faults', () =
       expect(tags.calls).toEqual([]);
     },
   );
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-86 — ADR-0038 D3: an odsens project's own gallery edited in place (names; removals delete
+// the Storage object); a url the row does not hold → validation, nothing written.
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-86 updateExclusiveProject gallery (ADR-0038 D3)', () => {
+  let projectId = '';
+  let firstPath = '';
+  let secondPath = '';
+  const objects: string[] = [];
+
+  beforeEach(async () => {
+    projectId = await makeProject({ source: 'odsens', status: 'draft' });
+    firstPath = `project-media/${projectId}/gallery/first.png`;
+    secondPath = `project-media/${projectId}/gallery/second.png`;
+    for (const path of [firstPath, secondPath]) {
+      const objectPath = path.replace(/^project-media\//, '');
+      await uploadFixture('project-media', objectPath, 'images/avatar-600.png');
+      objects.push(objectPath);
+    }
+    const { error } = await service
+      .from('projects')
+      .update({
+        gallery: [
+          { url: firstPath, title: null, description: null, ordering: 0, featured: false },
+          { url: secondPath, title: 'Two', description: 'desc', ordering: 1, featured: true },
+        ],
+      })
+      .eq('id', projectId);
+    if (error) throw new Error(`arrange: projects update failed: ${error.message}`);
+  });
+
+  afterAll(async () => {
+    await removeObjects('project-media', objects);
+  });
+
+  it('T-ACT-86 names land in place; ordering/featured/description ride through', async () => {
+    expectOk(
+      await callAction(
+        updateExclusiveProject,
+        {
+          id: projectId,
+          gallery: [
+            { url: firstPath, title: 'One', description: null, ordering: 0, featured: false },
+            { url: secondPath, title: 'Two!', description: 'desc', ordering: 1, featured: true },
+          ],
+        },
+        { role: 'admin' },
+      ),
+    );
+    const { data } = await service.from('projects').select('gallery').eq('id', projectId).single();
+    expect(data?.gallery).toEqual([
+      { url: firstPath, title: 'One', description: null, ordering: 0, featured: false },
+      { url: secondPath, title: 'Two!', description: 'desc', ordering: 1, featured: true },
+    ]);
+  });
+
+  it('T-ACT-86 an entry left out is removed and its Storage object deleted', async () => {
+    expectOk(
+      await callAction(
+        updateExclusiveProject,
+        {
+          id: projectId,
+          gallery: [{ url: secondPath, title: 'Two', ordering: 1, featured: true }],
+        },
+        { role: 'admin' },
+      ),
+    );
+    const { data } = await service.from('projects').select('gallery').eq('id', projectId).single();
+    expect(data?.gallery).toEqual([
+      { url: secondPath, title: 'Two', description: null, ordering: 1, featured: true },
+    ]);
+    expect(await listObjects('project-media', `${projectId}/gallery`)).toEqual([
+      `${projectId}/gallery/second.png`,
+    ]);
+  });
+
+  it('T-ACT-86 a Modrinth CDN url left out of an odsens row is removed from the row, no Storage call', async () => {
+    // A folded duplicate can leave CDN entries on an odsens row (ADR-0037 D3); dropping one is a
+    // row edit only — `removeObject` is never asked for a non-`project-media/` path.
+    const cdn = 'https://cdn.modrinth.com/data/t/images/left-over.png';
+    const seeded = await service
+      .from('projects')
+      .update({
+        gallery: [
+          { url: cdn, title: 'Left over', description: null, ordering: 0, featured: false },
+          { url: firstPath, title: null, description: null, ordering: 1, featured: false },
+        ],
+      })
+      .eq('id', projectId);
+    if (seeded.error) throw new Error(seeded.error.message);
+    expectOk(
+      await callAction(
+        updateExclusiveProject,
+        { id: projectId, gallery: [{ url: firstPath, ordering: 1 }] },
+        { role: 'admin' },
+      ),
+    );
+    const { data } = await service.from('projects').select('gallery').eq('id', projectId).single();
+    expect(data?.gallery).toEqual([
+      { url: firstPath, title: null, description: null, ordering: 1, featured: false },
+    ]);
+    expect((await listObjects('project-media', `${projectId}/gallery`)).sort()).toEqual([
+      `${projectId}/gallery/first.png`,
+      `${projectId}/gallery/second.png`,
+    ]);
+  });
+
+  it('T-ACT-86 a url the row does not hold → validation, nothing written, no object touched', async () => {
+    expectFail(
+      await callAction(
+        updateExclusiveProject,
+        {
+          id: projectId,
+          gallery: [{ url: `project-media/${projectId}/gallery/ghost.png`, ordering: 0 }],
+        },
+        { role: 'admin' },
+      ),
+      'validation',
+    );
+    const { data } = await service.from('projects').select('gallery').eq('id', projectId).single();
+    expect(data?.gallery).toHaveLength(2);
+    expect((await listObjects('project-media', `${projectId}/gallery`)).sort()).toEqual([
+      `${projectId}/gallery/first.png`,
+      `${projectId}/gallery/second.png`,
+    ]);
+  });
 });

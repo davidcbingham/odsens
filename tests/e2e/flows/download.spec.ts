@@ -185,8 +185,11 @@ test.describe('download route', () => {
     expect(await download.failure()).toBeNull();
 
     // D7 — analytics fire client-side on the button, never in the route: exactly one va call.
-    await expect.poll(() => vaCalls.length).toBeGreaterThan(0);
-    expect(vaCalls).toEqual([
+    // `<Analytics />` (ADR-0038 D4) also reports page views through `window.va('pageview', …)` — only
+    // the custom events of 04 §5.6 are under test here.
+    const events = () => vaCalls.filter(([kind]) => kind === 'event');
+    await expect.poll(() => events().length).toBeGreaterThan(0);
+    expect(events()).toEqual([
       [
         'event',
         {

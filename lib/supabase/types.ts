@@ -578,6 +578,7 @@ export type Database = {
           extra_gallery: Json
           featured: boolean
           featured_order: number | null
+          gallery_overrides: Json
           hidden: boolean
           notes_md: string | null
           project_id: string
@@ -591,6 +592,7 @@ export type Database = {
           extra_gallery?: Json
           featured?: boolean
           featured_order?: number | null
+          gallery_overrides?: Json
           hidden?: boolean
           notes_md?: string | null
           project_id: string
@@ -604,6 +606,7 @@ export type Database = {
           extra_gallery?: Json
           featured?: boolean
           featured_order?: number | null
+          gallery_overrides?: Json
           hidden?: boolean
           notes_md?: string | null
           project_id?: string

@@ -21,6 +21,8 @@ import {
   type AdminProjectListItem,
 } from '@/lib/data/admin';
 import { formatCount } from '@/lib/format/number';
+import { SavedToast } from '@/components/admin/SavedToast';
+import { isSavedMessageKey } from '@/components/admin/savedMessages';
 import styles from './page.module.css';
 
 /**
@@ -93,7 +95,7 @@ async function reorderFeatured(ids: string[]): Promise<void> {
 async function curateAndRefresh(input: CurateProjectInput): Promise<void> {
   'use server';
   await curateProject(input);
-  redirect('/admin/projects');
+  redirect('/admin/projects?saved=saved'); // ADR-0038 D1 — the "Saved." toast
 }
 
 const COLUMNS: TableProps['columns'] = [
@@ -146,7 +148,12 @@ function curationToggle(
   );
 }
 
-export default async function AdminProjectsPage() {
+type PageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> };
+
+export default async function AdminProjectsPage({ searchParams }: PageProps) {
+  const query = await searchParams;
+  const savedRaw = Array.isArray(query.saved) ? query.saved[0] : query.saved;
+  const savedToast = isSavedMessageKey(savedRaw) ? <SavedToast messageKey={savedRaw} /> : null;
   // RP-04: bail quietly for anon / role `user` — the layout renders `AdminGate` / the root 404;
   // a page-thrown `notFound()` here would replace the anon gate (defence in depth, 01 INV-31).
   const viewer = await getViewer();
@@ -222,6 +229,7 @@ export default async function AdminProjectsPage() {
 
   return (
     <div className={styles['admin-projects']}>
+      {savedToast}
       <header className={styles['admin-projects-head']}>
         <h1 className="visually-hidden">Projects</h1>
         <PixelLabel as="p" tone="gold" size={11}>

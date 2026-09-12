@@ -107,15 +107,31 @@
   outline: 2px solid var(--line-soft);
 }
 
-.admin-project-gallery-path {
-  color: var(--chalk);
-  font-size: var(--text-label);
-  overflow-wrap: anywhere;
+/* ADR-0038 D3: thumbnail · name field · Hide/Show or Delete. */
+.admin-project-gallery-thumb {
+  flex: none;
+  width: 96px;
+  height: 64px;
+  object-fit: cover;
+  background: var(--slab-sunk);
+  outline: 2px solid var(--line-soft);
 }
 
-.admin-project-gallery-title {
-  color: var(--mute-dim);
-  font-size: var(--text-label-sm);
+.admin-project-gallery-item[data-hidden] .admin-project-gallery-thumb {
+  opacity: 0.5;
+}
+
+/* The Name field (its helper says where the picture lives — a word, never a colour alone, 03 C-26). */
+.admin-project-gallery-fields {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.admin-project-gallery-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  margin-left: auto;
 }
 
 .admin-project-empty {

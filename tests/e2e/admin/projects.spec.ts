@@ -1265,6 +1265,133 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
  * `rate_limit_hits` this test created (scopes `upload:*` from the begins, `download` from the
  * 302), and `restoreContentTables` is the byte-level safety net for a failed run.
  */
+/** A public-gallery image by name: the large image (`alt`) or a thumb button (`aria-label`). */
+function galleryImage(page: Page, name: string) {
+  return page.locator(
+    `img[alt="${name}"], button[aria-label="Show image 1: ${name}"], button[aria-label="Show image 2: ${name}"]`,
+  );
+}
+
+test.describe('editor feedback + gallery curation (T-E2E-54)', () => {
+  // ADR-0038 D1/D3 on the synced seed pixel-chameleon (SEED-4: two Modrinth gallery images "In
+  // hand" (featured) + "Bonk"). Every write here lands on `project_overrides.gallery_overrides`,
+  // reset to `[]` in `afterAll` (the SEED-6 override row keeps its other columns —
+  // `restoreContentTables` stays the byte-level safety net).
+  /** SEED-4's two Modrinth gallery entries, as `supabase/seed.sql` stores them. */
+  const SEED_PIXEL_GALLERY = [
+    {
+      url: 'https://cdn.modrinth.com/data/sd000101/images/gallery-1.png',
+      title: 'In hand',
+      description: null,
+      ordering: 0,
+      featured: true,
+    },
+    {
+      url: 'https://cdn.modrinth.com/data/sd000101/images/gallery-2.png',
+      title: 'Bonk',
+      description: null,
+      ordering: 1,
+      featured: false,
+    },
+  ];
+
+  // Arrange from the seed truth rather than from whatever the earlier tests left (a local db lane
+  // run before the e2e lane can leave the synced gallery empty; CI resets the database first).
+  test.beforeAll(async () => {
+    const service = loose(asRole('service'));
+    const gallery = await service
+      .from('projects')
+      .update({ gallery: SEED_PIXEL_GALLERY })
+      .eq('id', PIXEL);
+    if (gallery.error) throw new Error(`arrange gallery failed: ${gallery.error.message}`);
+    const overrides = await service
+      .from('project_overrides')
+      .update({ gallery_overrides: [] })
+      .eq('project_id', PIXEL);
+    if (overrides.error) throw new Error(`arrange overrides failed: ${overrides.error.message}`);
+  });
+
+  test.afterAll(async () => {
+    const service = loose(asRole('service'));
+    const { error } = await service
+      .from('project_overrides')
+      .update({ gallery_overrides: [] })
+      .eq('project_id', PIXEL);
+    if (error) throw new Error(`restore gallery_overrides failed: ${error.message}`);
+  });
+
+  test('T-E2E-54 Save → "Saved." toast; rename + hide a Modrinth image → public gallery follows; Show restores', async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    await loginAs(page, 'admin');
+    await page.goto(`/admin/projects/${PIXEL}`);
+
+    // The GALLERY rows: a thumbnail, a Name field and a Hide button each (thumbnails are pictures).
+    const rows = page.getByTestId('admin-gallery-row');
+    await expect(rows).toHaveCount(2);
+    await expect(rows.first().locator('img')).toBeVisible();
+    await expect(rows.first().getByText('From Modrinth', { exact: true })).toBeVisible();
+
+    // Rename "Bonk" → "Bonk!" and Save names → the toast says Saved. (ADR-0038 D1) and the query
+    // is stripped so a reload does not repeat it.
+    const bonk = rows.filter({ has: page.getByLabel('Name').and(page.locator('[value="Bonk"]')) });
+    await expect(bonk).toHaveCount(1);
+    await bonk.getByLabel('Name').fill('Bonk!');
+    await submitAndWait(page, 'Save names');
+    await expect(page.getByRole('status')).toContainText('Saved.');
+    await expect(page).not.toHaveURL(/saved=/);
+    await expect(page.getByLabel('Name').nth(1)).toHaveValue('Bonk!');
+    await expectAtUrl(page, '/projects/pixel-chameleon', async () => {
+      // The public `Gallery` shows the featured image large (`alt`) and the rest as thumbs
+      // (`aria-label="Show image N: <alt>"`) — either form proves the name landed.
+      await expect(galleryImage(page, 'Bonk!').first()).toBeAttached({ timeout: 1_000 });
+    });
+
+    // Enter in a Name field means "Save names" — never the first row's Hide/Delete (the hidden
+    // default submit button; frontend gate, ADR-0038 D3): both rows survive, the name lands.
+    await page.goto(`/admin/projects/${PIXEL}`);
+    await page.getByLabel('Name').nth(1).fill('Bonk!!');
+    const enterPost = page.waitForResponse(
+      (res) => res.request().method() === 'POST' && res.url().includes('/admin/projects/'),
+    );
+    await page.getByLabel('Name').nth(1).press('Enter');
+    await enterPost;
+    await expect(page.getByRole('status')).toContainText('Saved.');
+    await expect(rows).toHaveCount(2);
+    await expect(page.getByLabel('Name').nth(1)).toHaveValue('Bonk!!');
+    await page.getByLabel('Name').nth(1).fill('Bonk!');
+    await submitAndWait(page, 'Save names');
+
+    // Hide the featured "In hand" → the row says so, the public gallery shows one image.
+    await page.goto(`/admin/projects/${PIXEL}`);
+    await rows.first().getByRole('button', { name: 'Hide', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Saved.');
+    await expect(rows.first().getByText('From Modrinth — hidden on odsens')).toBeVisible();
+    await expectAtUrl(page, '/projects/pixel-chameleon', async () => {
+      await expect(galleryImage(page, 'In hand')).toHaveCount(0, { timeout: 1_000 });
+      await expect(galleryImage(page, 'Bonk!').first()).toBeAttached({ timeout: 1_000 });
+    });
+
+    // Show brings it back.
+    await page.goto(`/admin/projects/${PIXEL}`);
+    await rows.first().getByRole('button', { name: 'Show', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Saved.');
+    await expectAtUrl(page, '/projects/pixel-chameleon', async () => {
+      await expect(galleryImage(page, 'In hand').first()).toBeAttached({ timeout: 1_000 });
+    });
+
+    // Moderator: the Name fields and row buttons are disabled, never hidden (03 §2.10).
+    await logout(page);
+    await loginAs(page, 'mod');
+    await page.goto(`/admin/projects/${PIXEL}`);
+    await expect(rows).toHaveCount(2);
+    await expect(rows.first().getByLabel('Name')).toBeDisabled();
+    await expect(rows.first().getByRole('button', { name: 'Hide', exact: true })).toBeDisabled();
+    await expectNoSeriousA11y(page);
+  });
+});
+
 test.describe('exclusive lifecycle (T-E2E-35)', () => {
   const SLUG = 't-e2e-excl';
   const TITLE = 'E2E Exclusive';

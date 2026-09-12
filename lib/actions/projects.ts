@@ -84,6 +84,7 @@ import { AdapterError } from '@/lib/adapters/http';
 import { createModrinth, parseModrinthRef, type ModrinthProject } from '@/lib/adapters/modrinth';
 import { requireRole } from '@/lib/auth';
 import { env } from '@/lib/env';
+import { removeObjectQuietly } from '@/lib/files';
 import { modrinthListingUrl } from '@/lib/format/project';
 import { log } from '@/lib/log';
 import { assertRateLimit } from '@/lib/rate-limit';
@@ -168,9 +169,25 @@ function overridePatch(data: CurateProjectOverrideInput): OverridePatch {
   if (data.description_override !== undefined)
     patch.description_override = data.description_override;
   if (data.extra_gallery !== undefined) patch.extra_gallery = data.extra_gallery;
+  if (data.gallery_overrides !== undefined) patch.gallery_overrides = data.gallery_overrides;
   if (data.notes_md !== undefined) patch.notes_md = data.notes_md;
   if (data.comments_enabled !== undefined) patch.comments_enabled = data.comments_enabled;
   return patch;
+}
+
+/** ADR-0038 D3: the message `updateExclusiveProject` returns for a `gallery.url` the row does not hold. */
+const GALLERY_NOT_STORED_MESSAGE = "That image isn't in this project's gallery.";
+
+/** The `url` values of a stored `projects.gallery` jsonb (malformed entries ignored). */
+function storedGalleryUrls(json: Json | null | undefined): Set<string> {
+  const urls = new Set<string>();
+  if (!Array.isArray(json)) return urls;
+  for (const item of json) {
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) continue;
+    const url = (item as Record<string, Json | undefined>)['url'];
+    if (typeof url === 'string' && url !== '') urls.add(url);
+  }
+  return urls;
 }
 
 /** The `path` values of a stored `extra_gallery` jsonb (malformed entries ignored). */
@@ -215,6 +232,9 @@ export async function curateProject(
     const slug = await readProjectSlug(admin, data.project_id);
     if (slug === null) return fail('not_found', NOT_FOUND_PROJECT);
 
+    // ADR-0038 D3: an uploaded image dropped from `extra_gallery` is deleted from Storage after the
+    // row is written (the object has no other reference — 04 §1.4 U1).
+    let droppedPaths: string[] = [];
     if (data.extra_gallery !== undefined) {
       // ADR-0037 D5(e): entries already stored on the row skip the folder rule (validated when
       // added; a folded duplicate's live under the old folder). New entries must be in THIS
@@ -226,6 +246,8 @@ export async function curateProject(
         .maybeSingle();
       if (storedError) throw new Error(`project_overrides read failed: ${storedError.code}`);
       const known = storedGalleryPaths(stored?.extra_gallery);
+      const kept = new Set(data.extra_gallery.map((entry) => entry.path));
+      droppedPaths = [...known].filter((path) => !kept.has(path));
       const pattern = galleryPathPattern(data.project_id);
       const issues = data.extra_gallery.flatMap((entry, index) =>
         known.has(entry.path) || pattern.test(entry.path)
@@ -258,6 +280,12 @@ export async function curateProject(
       .select()
       .single();
     if (error) throw new Error(`project_overrides upsert failed: ${error.code}`);
+    for (const path of droppedPaths) {
+      await removeObjectQuietly(PROJECT_MEDIA_BUCKET, path, {
+        action: 'curateProject',
+        id: data.project_id,
+      });
+    }
 
     revalidateTag('projects', 'max');
     revalidateTag(`project:${slug}`, 'max');
@@ -745,6 +773,37 @@ export async function updateExclusiveProject(
       if (data.issues_url !== undefined) patch.issues_url = data.issues_url;
       if (data.discord_url !== undefined) patch.discord_url = data.discord_url;
 
+      // ADR-0038 D3: the project's own gallery edited in place — every url must already be
+      // stored (uploads add entries); an entry left out is removed, and its Storage object with it.
+      let droppedObjects: string[] = [];
+      if (data.gallery !== undefined) {
+        const { data: head, error: headError } = await admin
+          .from('projects')
+          .select('gallery')
+          .eq('id', data.id)
+          .single();
+        if (headError) throw new Error(`projects read failed: ${headError.code}`);
+        const stored = storedGalleryUrls(head.gallery);
+        const unknown = data.gallery.find((entry) => !stored.has(entry.url));
+        if (unknown !== undefined) {
+          return fail('validation', GALLERY_NOT_STORED_MESSAGE, {
+            field: 'gallery',
+            issues: [{ path: 'gallery', message: GALLERY_NOT_STORED_MESSAGE }],
+          });
+        }
+        const kept = new Set(data.gallery.map((entry) => entry.url));
+        droppedObjects = [...stored].filter(
+          (url) => !kept.has(url) && url.startsWith(PROJECT_MEDIA_PREFIX),
+        );
+        patch.gallery = data.gallery.map((entry) => ({
+          url: entry.url,
+          title: entry.title ?? null,
+          description: entry.description ?? null,
+          ordering: entry.ordering,
+          featured: entry.featured ?? false,
+        }));
+      }
+
       const { data: row, error } = await admin
         .from('projects')
         .update(patch)
@@ -756,6 +815,12 @@ export async function updateExclusiveProject(
           return fail('conflict', SLUG_TAKEN, { field: 'slug' });
         }
         throw new Error(`projects update failed: ${error.code}`);
+      }
+      for (const path of droppedObjects) {
+        await removeObjectQuietly(PROJECT_MEDIA_BUCKET, path, {
+          action: 'updateExclusiveProject',
+          id: data.id,
+        });
       }
 
       revalidateTag('projects', 'max');

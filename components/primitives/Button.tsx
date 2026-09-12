@@ -23,6 +23,8 @@ export type ButtonProps = {
   children: ReactNode;
   className?: string;
   onClick?: MouseEventHandler<HTMLButtonElement>;
+  /** A per-button server function inside a shared `<form>` (React 19; ADR-0038 D3 gallery rows). */
+  formAction?: (formData: FormData) => void | Promise<void>;
   ref?: Ref<HTMLButtonElement>;
   'aria-describedby'?: string;
 };
@@ -38,6 +40,7 @@ export function Button({
   children,
   className,
   onClick,
+  formAction,
   ref,
   'aria-describedby': describedBy,
 }: ButtonProps) {
@@ -75,6 +78,7 @@ export function Button({
       aria-describedby={describedBy}
       {...(pending ? { 'data-pending': '' } : {})}
       onClick={onClick}
+      formAction={formAction}
     >
       {content}
     </button>

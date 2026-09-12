@@ -52,8 +52,11 @@ test.describe('sign-in start', () => {
     expect(started.searchParams.get('provider')).toBe('google');
     expect(started.searchParams.get('redirect_to')).toBe(`${siteUrl}/auth/callback?next=%2F`);
 
-    await expect.poll(() => vaCalls.length).toBeGreaterThan(0);
-    expect(vaCalls).toEqual([['event', { name: 'sign_in', data: { from: 'nav' } }]]);
+    // `<Analytics />` (ADR-0038 D4) also reports page views through `window.va('pageview', …)` — only
+    // the custom events of 04 §5.6 are under test here.
+    const events = () => vaCalls.filter(([kind]) => kind === 'event');
+    await expect.poll(() => events().length).toBeGreaterThan(0);
+    expect(events()).toEqual([['event', { name: 'sign_in', data: { from: 'nav' } }]]);
 
     // No session: the PKCE verifier cookie may exist, an `sb-*-auth-token` never does.
     const cookies = await context.cookies();
