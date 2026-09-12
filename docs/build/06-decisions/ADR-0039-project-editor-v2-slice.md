@@ -1,7 +1,7 @@
 # ADR-0039 — S1.5c Project editor v2: a slice inserted before the Support page
 
 ## Status
-Accepted (2026-09-12 — planning PR, see README index)
+Accepted (2026-09-12 — planning PR #20)
 
 ## Date
 2026-09-12
