@@ -14,6 +14,11 @@ export type AvatarProps = {
   /** Banned composer / Anonymous rows: opacity .5. */
   dim?: boolean;
   fallback?: 'initial' | 'question';
+  /**
+   * `'none'` drops the white outline: the crown **site mark** in the Nav / Admin header is a logo,
+   * not a person's picture (ADR-0038 D2; DESIGN.md v1.9 §5 Nav, §9 Admin). People keep the frame.
+   */
+  frame?: 'outline' | 'none';
   className?: string;
 };
 
@@ -23,10 +28,14 @@ export function Avatar({
   size,
   dim = false,
   fallback = 'initial',
+  frame = 'outline',
   className,
 }: AvatarProps) {
   const classes = className ? `${styles.avatar} ${className}` : styles.avatar;
-  const flags = dim ? { 'data-dim': '' } : {};
+  const flags = {
+    ...(dim ? { 'data-dim': '' } : {}),
+    ...(frame === 'none' ? { 'data-frame': 'none' } : {}),
+  };
 
   if (src) {
     return (

@@ -172,7 +172,9 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
       ...(discord_url !== undefined ? { discord_url } : {}),
     });
     redirect(
-      result.ok ? `/admin/projects/${result.data.id}` : withError(BASE, 'create', result.error),
+      result.ok
+        ? `/admin/projects/${result.data.id}?saved=created` // ADR-0038 D1 — "Project created."
+        : withError(BASE, 'create', result.error),
     );
   }
 

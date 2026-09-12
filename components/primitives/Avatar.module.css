@@ -12,6 +12,13 @@
   container-type: inline-size;
 }
 
+/* The crown site mark (Nav / Admin header): no outline, no well — the box keeps its size so the
+   header rhythm is unchanged (ADR-0038 D2; DESIGN.md v1.9). */
+.avatar[data-frame='none'] {
+  border-color: transparent;
+  background: transparent;
+}
+
 /* sizes (visual box incl. border) */
 .avatar[data-size='28'] {
   width: 28px;

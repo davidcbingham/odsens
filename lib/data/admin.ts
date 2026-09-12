@@ -72,6 +72,58 @@ export type AdminGalleryEntry = {
   ordering: number;
 };
 
+/** One `projects.gallery` entry as stored (url = CDN url on a synced row, Storage path on an odsens row). */
+export type AdminProjectGalleryEntry = {
+  url: string;
+  title: string | null;
+  description: string | null;
+  ordering: number;
+  featured: boolean;
+};
+
+/** Tolerant parse of the `projects.gallery` jsonb WITHOUT resolving urls (the editor needs the stored key). */
+export function parseProjectGallery(json: unknown): AdminProjectGalleryEntry[] {
+  if (!Array.isArray(json)) return [];
+  const entries: AdminProjectGalleryEntry[] = [];
+  for (const item of json) {
+    if (typeof item !== 'object' || item === null) continue;
+    const record = item as Record<string, unknown>;
+    const url = record.url ?? record.path;
+    if (typeof url !== 'string' || url === '') continue;
+    entries.push({
+      url,
+      title: typeof record.title === 'string' && record.title !== '' ? record.title : null,
+      description:
+        typeof record.description === 'string' && record.description !== ''
+          ? record.description
+          : null,
+      ordering: typeof record.ordering === 'number' ? record.ordering : entries.length,
+      featured: record.featured === true,
+    });
+  }
+  return entries.sort((a, b) => Number(b.featured) - Number(a.featured) || a.ordering - b.ordering);
+}
+
+/** One `project_overrides.gallery_overrides` entry (ADR-0038 D3). */
+export type GalleryOverride = { url: string; hidden: boolean; title: string | null };
+
+/** Tolerant parse of the `gallery_overrides` jsonb — malformed entries are dropped. */
+export function parseGalleryOverrides(json: unknown): GalleryOverride[] {
+  if (!Array.isArray(json)) return [];
+  const entries: GalleryOverride[] = [];
+  for (const item of json) {
+    if (typeof item !== 'object' || item === null) continue;
+    const record = item as Record<string, unknown>;
+    if (typeof record.url !== 'string' || record.url === '') continue;
+    entries.push({
+      url: record.url,
+      hidden: record.hidden === true,
+      title: typeof record.title === 'string' && record.title !== '' ? record.title : null,
+    });
+  }
+  return entries;
+}
+
 /** Tolerant parse of the `extra_gallery` jsonb — malformed entries are dropped, order ascending. */
 export function parseExtraGallery(json: unknown): AdminGalleryEntry[] {
   if (!Array.isArray(json)) return [];
@@ -239,6 +291,8 @@ export type AdminProjectDetail = {
     notesMd: string | null;
     commentsEnabled: boolean;
     extraGallery: AdminGalleryEntry[];
+    /** ADR-0038 D3 — per-image hide / rename of the synced gallery, keyed by url. */
+    galleryOverrides: GalleryOverride[];
   } | null;
   /** The manual CurseForge link (Q39), when set. */
   curseforgeLink: AdminProjectLink | null;
@@ -272,7 +326,7 @@ export const getAdminProject = cache(async (id: string): Promise<AdminProjectDet
     db
       .from('project_overrides')
       .select(
-        'featured, featured_order, hidden, title_override, description_override, notes_md, comments_enabled, extra_gallery',
+        'featured, featured_order, hidden, title_override, description_override, notes_md, comments_enabled, extra_gallery, gallery_overrides',
       )
       .eq('project_id', id)
       .maybeSingle(),
@@ -317,6 +371,7 @@ export const getAdminProject = cache(async (id: string): Promise<AdminProjectDet
           notesMd: override.data.notes_md,
           commentsEnabled: override.data.comments_enabled,
           extraGallery: parseExtraGallery(override.data.extra_gallery),
+          galleryOverrides: parseGalleryOverrides(override.data.gallery_overrides),
         }
       : null,
     curseforgeLink: linkFor('curseforge'),

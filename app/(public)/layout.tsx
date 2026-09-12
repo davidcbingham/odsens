@@ -4,6 +4,7 @@ import { Nav } from '@/components/layout/Nav';
 import { Footer } from '@/components/layout/Footer';
 import { ToastProvider } from '@/components/layout/Toast';
 import { ViewerProvider } from '@/components/accounts/ViewerProvider';
+import { Analytics } from '@vercel/analytics/next';
 
 /**
  * (public) layout — the site chrome (ADR-0002 C5; 02 RP-09): SkipLink, Toast live region,
@@ -23,6 +24,8 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
           <Footer />
         </ViewerProvider>
       </ToastProvider>
+      {/* Vercel Web Analytics — public routes only (01 INV-59; pulled forward from S1.10 by ADR-0038 D4). */}
+      <Analytics />
     </>
   );
 }

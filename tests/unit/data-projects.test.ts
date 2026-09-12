@@ -18,6 +18,8 @@ import {
   fileKind,
   isExclusive,
   isNewProject,
+  applyGalleryOverrides,
+  parseGalleryOverrides,
   mergeGallery,
   modrinthHome,
   parseGalleryEntries,
@@ -334,5 +336,69 @@ describe('T-UNIT-49 read model per ADR-0037 D6 (per-file href/kind, hidden CDN r
     ]);
     // An exclusive: no rows at all.
     expect(platformRows('odsens', null, [], counts)).toEqual([]);
+  });
+});
+
+// T-UNIT-51 — ADR-0038 D3: per-image curation of a synced gallery (hide / rename), applied on read.
+describe('T-UNIT-51 gallery overrides (ADR-0038 D3)', () => {
+  const base = [
+    { url: 'https://cdn.modrinth.com/g1.png', title: 'In hand', ordering: 0, featured: false },
+    { url: 'https://cdn.modrinth.com/g2.png', title: 'Bonk', ordering: 1, featured: true },
+    { url: 'https://cdn.modrinth.com/g3.png', title: null, ordering: 2, featured: false },
+  ];
+
+  it('parseGalleryOverrides keeps well-formed entries only and normalises hidden/title', () => {
+    expect(
+      parseGalleryOverrides([
+        { url: 'https://cdn.modrinth.com/g1.png', hidden: true },
+        { url: 'https://cdn.modrinth.com/g2.png', title: 'Renamed' },
+        { url: 'https://cdn.modrinth.com/g3.png', title: '' },
+        { url: '' },
+        'nope',
+        null,
+        { hidden: true },
+      ]),
+    ).toEqual([
+      { url: 'https://cdn.modrinth.com/g1.png', hidden: true, title: null },
+      { url: 'https://cdn.modrinth.com/g2.png', hidden: false, title: 'Renamed' },
+      { url: 'https://cdn.modrinth.com/g3.png', hidden: false, title: null },
+    ]);
+    expect(parseGalleryOverrides(null)).toEqual([]);
+    expect(parseGalleryOverrides('[]')).toEqual([]);
+  });
+
+  it('applyGalleryOverrides drops hidden images and swaps in an overridden title, nothing else', () => {
+    const entries = parseGalleryEntries(base);
+    const out = applyGalleryOverrides(entries, [
+      { url: 'https://cdn.modrinth.com/g1.png', hidden: true },
+      { url: 'https://cdn.modrinth.com/g2.png', title: 'Renamed bonk' },
+      { url: 'https://cdn.modrinth.com/nope.png', hidden: true }, // unknown url — ignored
+    ]);
+    expect(out.map((entry) => [entry.url, entry.title])).toEqual([
+      ['https://cdn.modrinth.com/g2.png', 'Renamed bonk'],
+      ['https://cdn.modrinth.com/g3.png', null],
+    ]);
+    // No overrides → the same entries, a fresh array.
+    const same = applyGalleryOverrides(entries, null);
+    expect(same).toEqual(entries);
+    expect(same).not.toBe(entries);
+  });
+
+  it('mergeGallery applies the overrides to the synced entries only; uploaded extras are untouched', () => {
+    const merged = mergeGallery(
+      base,
+      [{ path: 'project-media/p1/gallery/x.png', title: 'Mine', ordering: 0 }],
+      'Metal Pipe Mace',
+      [
+        { url: 'https://cdn.modrinth.com/g2.png', hidden: true }, // the featured one — gone
+        { url: 'https://cdn.modrinth.com/g1.png', title: 'Held' },
+      ],
+    );
+    expect(merged.map((image) => image.alt)).toEqual([
+      'Held',
+      'Mine',
+      'Metal Pipe Mace screenshot 3',
+    ]);
+    expect(merged.some((image) => image.url.endsWith('/g2.png'))).toBe(false);
   });
 });

@@ -47,7 +47,7 @@ export function AdminShell({ viewer, counts, children, mainLandmark = true }: Ad
         <div className={styles['admin-shell-header-inner']}>
           <div className={styles['admin-shell-header-left']}>
             <Link href="/" className={styles['admin-shell-brand']} aria-label="odsens home">
-              <Avatar src="/brand/avatar-80.png" alt="OddSense" size={28} />
+              <Avatar src="/brand/avatar-80.png" alt="OddSense" size={28} frame="none" />
               <span className={styles['admin-shell-wordmark']}>ODSENS</span>
             </Link>
             <Link href="/admin" className={styles['admin-shell-home']} aria-label="Admin home">
