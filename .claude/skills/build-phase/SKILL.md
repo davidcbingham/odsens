@@ -21,7 +21,7 @@ Initial build, a new phase (e.g. "Phase 2: Ko-fi"), or any change touching ≥2 
 4. **Gate each slice — spawn the gate agents in parallel, in the background** (`.claude/agents/`): **`spec-drift-reviewer` (always)**, `design-fidelity-reviewer` + `frontend-reviewer` (if UI touched), `security-reviewer` (if auth/uploads/webhooks/comments/admin touched), `backend-reviewer` (if server code touched), `supabase-reviewer` (if `supabase/` touched). Launch all applicable ones in one Agent call batch, keep working on the next slice while they run, then paste each verdict table into the PR body. After deploy, spawn `deploy-checker` on the preview URL. A slice doesn't merge with an open ❌; a second ❌ on the same item → stop and ask.
 5. **Freeze points**: after each phase, tag (`v0.x`), update `docs/spec.md` revision log, list what's deferred.
 5b. **Slice 0 (scaffold) also writes** the two build-time helper skills from Oliver's set: `ship` and `keep-docs` (specs in `docs/site-management-skills.md`), plus CI via `test-engineer`.
-6. **End of phase report**: what shipped, what's deferred, what Oliver should try, any new questions → `docs/questions.md`.
+6. **End of phase report** (two audiences): for David — a plain-English, visitor's-eye account of what people on odsens.com can now do or see, then what Oliver can now do in admin, no spec/test/ADR IDs (CLAUDE.md "Talking to David"); for the record — what shipped, what's deferred, what Oliver should try, any new questions → `docs/questions.md`.
 
 ## Guardrails
 - No feature outside the stated scope without noting it as deferred.
