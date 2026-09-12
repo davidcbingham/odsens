@@ -49,6 +49,7 @@
   --alert-deep: #7a1f14; /* §11.3 (14) error page shadow */
   --scrim-92: rgba(13, 19, 27, 0.92); /* §5 Lightbox */
   --scrim-35: rgba(13, 19, 27, 0.35); /* §11.1 Video facade */
+  --scrim: rgba(13, 19, 27, 0.6); /* v1.10 §11.3 #20 Dialog scrim */
   --hatch: repeating-linear-gradient(
     45deg,
     rgba(0, 0, 0, 0.1) 0 14px,
@@ -107,6 +108,8 @@
   --text-wordmark: 20px; /* ODSENS wordmark in nav/footer */
   --text-input: 16px; /* DESIGN.md §11.1 Handle field value (S1.1) */
   --text-stat: 34px; /* DESIGN.md §11.1 Stat tile number (S1.2; non-colour — 03 §9, no ADR needed) */
+  --text-dialog-title: 22px; /* DESIGN.md v1.10 §11.3 #20 Dialog title (S1.5c; non-colour — 03 §9, no ADR needed) */
+  --text-dialog-body: 16px; /* DESIGN.md v1.10 §11.3 #20 Dialog body line (S1.5c; non-colour — 03 §9) */
   --text-pixel-10: 10px;
   --text-pixel-11: 11px;
   --text-pixel-12: 12px;
