@@ -1,7 +1,7 @@
 # ADR-0037 — S1.5a cross-posted projects contract
 
 ## Status
-Proposed
+Accepted (2026-09-11 — S1.5a merge, v0.6.1)
 
 ## Date
 2026-09-11
