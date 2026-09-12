@@ -1348,6 +1348,21 @@ test.describe('editor feedback + gallery curation (T-E2E-54)', () => {
       await expect(galleryImage(page, 'Bonk!').first()).toBeAttached({ timeout: 1_000 });
     });
 
+    // Enter in a Name field means "Save names" — never the first row's Hide/Delete (the hidden
+    // default submit button; frontend gate, ADR-0038 D3): both rows survive, the name lands.
+    await page.goto(`/admin/projects/${PIXEL}`);
+    await page.getByLabel('Name').nth(1).fill('Bonk!!');
+    const enterPost = page.waitForResponse(
+      (res) => res.request().method() === 'POST' && res.url().includes('/admin/projects/'),
+    );
+    await page.getByLabel('Name').nth(1).press('Enter');
+    await enterPost;
+    await expect(page.getByRole('status')).toContainText('Saved.');
+    await expect(rows).toHaveCount(2);
+    await expect(page.getByLabel('Name').nth(1)).toHaveValue('Bonk!!');
+    await page.getByLabel('Name').nth(1).fill('Bonk!');
+    await submitAndWait(page, 'Save names');
+
     // Hide the featured "In hand" → the row says so, the public gallery shows one image.
     await page.goto(`/admin/projects/${PIXEL}`);
     await rows.first().getByRole('button', { name: 'Hide', exact: true }).click();

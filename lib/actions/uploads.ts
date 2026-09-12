@@ -114,6 +114,9 @@ function logAdmin(
 
 type ProjectHead = { slug: string; source: 'modrinth' | 'odsens'; gallery: Json };
 
+/** 04 §1.4 `curateProject` bound on `extra_gallery`, enforced on the upload side too (ADR-0038 D3). */
+const EXTRA_GALLERY_MAX = 20;
+
 async function readProjectHead(admin: Admin, projectId: string): Promise<ProjectHead | null> {
   const { data, error } = await admin
     .from('projects')
@@ -285,6 +288,10 @@ export async function uploadProjectMedia(
     if (existing !== null) {
       logAdmin('uploadProjectMedia', ctx, user.id, { type: 'project', id: data.project_id }, data);
       return ok<UploadProjectMediaData>({ path: finalPath, entry: existing });
+    }
+    // 04 §1.4: `extra_gallery` holds 20 images at most (the `curateProject` bound; ADR-0038 D3).
+    if (Array.isArray(currentExtra) && currentExtra.length >= EXTRA_GALLERY_MAX) {
+      return fail('validation', '20 images maximum.', { field: 'gallery' });
     }
     const entry: Json = {
       path: finalPath,

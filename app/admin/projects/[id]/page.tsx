@@ -200,9 +200,20 @@ type GalleryRow = {
 
 const GALLERY_ROWS_MAX = 60;
 
-/** The rows the GALLERY form posted, in order (indexed hidden inputs; malformed rows dropped). */
-function readGalleryRows(formData: FormData): GalleryRow[] {
-  const count = Math.min(Number(formData.get('gallery_count') ?? 0) || 0, GALLERY_ROWS_MAX);
+/** The message when a posted GALLERY form is not the one the page rendered (ADR-0038 D3). */
+const GALLERY_ROWS_ERROR: ActionError = {
+  code: 'validation',
+  message: "Couldn't read the pictures. Reload the page and try again.",
+};
+
+/**
+ * The rows the GALLERY form posted, in order (indexed hidden inputs). Never truncates: a save
+ * writes the rows as the whole gallery, so a short or oversized post could delete pictures by
+ * omission — such a post returns `null` and nothing is written (backend gate, ADR-0038 D3).
+ */
+function readGalleryRows(formData: FormData): GalleryRow[] | null {
+  const count = Number(formData.get('gallery_count'));
+  if (!Number.isInteger(count) || count < 1 || count > GALLERY_ROWS_MAX) return null;
   const rows: GalleryRow[] = [];
   const text = (name: string): string => {
     const value = formData.get(name);
@@ -211,7 +222,7 @@ function readGalleryRows(formData: FormData): GalleryRow[] {
   for (let index = 0; index < count; index += 1) {
     const url = text(`gallery_url_${String(index)}`);
     const home = text(`gallery_home_${String(index)}`);
-    if (url === '' || (home !== 'own' && home !== 'synced' && home !== 'extra')) continue;
+    if (url === '' || (home !== 'own' && home !== 'synced' && home !== 'extra')) return null;
     rows.push({
       home,
       url,
@@ -417,23 +428,27 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
 
   async function saveGalleryNames(formData: FormData): Promise<void> {
     'use server';
-    const error = await saveGalleryRows(readGalleryRows(formData));
+    const rows = readGalleryRows(formData);
+    if (rows === null) redirect(withError(base, 'gallery', GALLERY_ROWS_ERROR));
+    const error = await saveGalleryRows(rows);
     redirect(error === null ? saved : withError(base, 'gallery', error));
   }
 
   async function removeGalleryImage(url: string, formData: FormData): Promise<void> {
     'use server';
-    const rows = readGalleryRows(formData).filter((row) => row.url !== url);
-    const error = await saveGalleryRows(rows);
+    const rows = readGalleryRows(formData);
+    if (rows === null) redirect(withError(base, 'gallery', GALLERY_ROWS_ERROR));
+    const error = await saveGalleryRows(rows.filter((row) => row.url !== url));
     redirect(error === null ? `${base}?saved=removed` : withError(base, 'gallery', error));
   }
 
   async function setGalleryHidden(url: string, hidden: boolean, formData: FormData): Promise<void> {
     'use server';
-    const rows = readGalleryRows(formData).map((row) =>
-      row.url === url ? { ...row, hidden } : row,
+    const rows = readGalleryRows(formData);
+    if (rows === null) redirect(withError(base, 'gallery', GALLERY_ROWS_ERROR));
+    const error = await saveGalleryRows(
+      rows.map((row) => (row.url === url ? { ...row, hidden } : row)),
     );
-    const error = await saveGalleryRows(rows);
     redirect(error === null ? saved : withError(base, 'gallery', error));
   }
 
@@ -543,7 +558,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         url: entry.path,
         src: resolveMediaUrl(entry.path),
         title: entry.title ?? '',
-        description: '',
+        description: entry.description ?? '',
         ordering: entry.ordering,
         featured: false,
         hidden: false,
@@ -577,16 +592,16 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           name={`gallery_title_${index}`}
           defaultValue={row.title}
           maxLength={120}
+          helper={
+            row.home === 'synced'
+              ? row.hidden
+                ? 'From Modrinth — hidden on odsens'
+                : 'From Modrinth'
+              : 'Uploaded here'
+          }
           disabled={!canCurate}
           inputProps={listingInputProps()}
         />
-        <span className={styles['admin-project-gallery-home']}>
-          {row.home === 'synced'
-            ? row.hidden
-              ? 'From Modrinth — hidden on odsens'
-              : 'From Modrinth'
-            : 'Uploaded here'}
-        </span>
       </div>
       <div className={styles['admin-project-gallery-actions']}>
         {row.home === 'synced' ? (
@@ -631,6 +646,18 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       {galleryRows.length > 0 ? (
         <form action={saveGalleryNames} className={styles['admin-project-form']}>
           <input type="hidden" name="gallery_count" value={String(galleryRows.length)} />
+          {/* Implicit submission (Enter in a Name field) fires the form's FIRST submit button —
+              this hidden one has no `formAction`, so Enter means "Save names", never a row's
+              Hide or Delete (frontend gate, ADR-0038 D3). */}
+          <button
+            type="submit"
+            tabIndex={-1}
+            aria-hidden="true"
+            className="visually-hidden"
+            disabled={!canCurate}
+          >
+            Save names
+          </button>
           <ul className={styles['admin-project-gallery']}>{galleryRows.map(galleryRow)}</ul>
           {galleryError ? (
             <p role="alert" className={styles['admin-project-error']}>

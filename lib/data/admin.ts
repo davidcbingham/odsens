@@ -69,6 +69,7 @@ export function adminProjectStatus(
 export type AdminGalleryEntry = {
   path: string;
   title: string | null;
+  description: string | null;
   ordering: number;
 };
 
@@ -135,6 +136,7 @@ export function parseExtraGallery(json: unknown): AdminGalleryEntry[] {
     entries.push({
       path: record.path,
       title: typeof record.title === 'string' ? record.title : null,
+      description: typeof record.description === 'string' ? record.description : null,
       ordering: typeof record.ordering === 'number' ? record.ordering : 0,
     });
   }

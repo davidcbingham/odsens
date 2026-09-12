@@ -121,18 +121,10 @@
   opacity: 0.5;
 }
 
+/* The Name field (its helper says where the picture lives — a word, never a colour alone, 03 C-26). */
 .admin-project-gallery-fields {
-  display: flex;
   flex: 1 1 240px;
-  flex-direction: column;
-  gap: var(--space-4);
   min-width: 0;
-}
-
-/* Where the picture lives (Modrinth / uploaded here) — a word, never a colour alone (03 C-26). */
-.admin-project-gallery-home {
-  color: var(--mute-dim);
-  font-size: var(--text-label-sm);
 }
 
 .admin-project-gallery-actions {

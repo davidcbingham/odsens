@@ -71,7 +71,10 @@ const galleryTitleSchema = z
  * on `project_overrides.gallery_overrides`; `mergeGallery` applies it.
  */
 export const galleryOverrideEntry = z.object({
-  url: z.url({ error: 'Not an image url.' }).max(2048),
+  url: z
+    .url({ error: 'Not an image url.' })
+    .startsWith('https://', { error: 'Image links start with https://.' })
+    .max(2048),
   hidden: z.boolean().optional(),
   title: galleryTitleSchema.nullable().optional(),
 });
