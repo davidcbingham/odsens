@@ -13,6 +13,11 @@ Ground rules
 - Keep `docs/questions.md` updated when decisions are made.
 - Secrets go in `.env` (gitignored); template in `.env.example`.
 
+Talking to David (project owner, non-engineer — set 2026-09-12)
+- **End-of-build updates are written for a visitor, not an engineer.** When a slice, fix pass or session closes, lead with what people using odsens.com can now do or see that they couldn't before — in plain English, as Oliver's audience would experience it (e.g. "A project Oliver posts here and on Modrinth is now one page: the download button hands out his own file, and the Modrinth count shows underneath"). Then, briefly, what Oliver can now do in the admin area. Only after that, and only if David must act on it, the plumbing (PR, tag, branch names, test IDs, ADR numbers).
+- No engineering-speak in anything addressed to him: no spec section numbers, test IDs, invariant names, migration timestamps or gate tables in prose. Those live in the PR body and `docs/questions.md`, where engineers and gate agents read them.
+- No progress updates unless he must act; asks are one plain sentence plus the concrete click or paste he needs to do. Engineering decisions are Claude's to make.
+
 Skills follow the hand-off protocol in `docs/skill-handoffs.md` (owns / does-not-own / triggers / stop-and-ask / hand-off note).
 Gate agents (in `.claude/agents/`, read-only, run in background/parallel): `spec-drift-reviewer` (every PR), `design-fidelity-reviewer`, `frontend-reviewer`, `security-reviewer`, `backend-reviewer`, `supabase-reviewer`, `deploy-checker` — spawn in a batch per slice, paste `GATE:` verdicts into the PR.
 Skills (in `.claude/skills/`): build specialists exist now — `build-phase` (foreman), `supabase-ops`, `vercel-ops`,
