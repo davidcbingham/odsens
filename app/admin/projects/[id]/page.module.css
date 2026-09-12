@@ -253,14 +253,14 @@
 
 /* ---- S1.5a listings (ADR-0037 D8; DESIGN.md §5 Admin field) ---- */
 
-/* The two listing fields side by side from 640px, stacked on phone (03 C-13 fluid). */
+/* The two listing fields side by side from the tablet floor (DESIGN.md §6, 600px), stacked on phone (03 C-13 fluid). */
 .admin-project-listings {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-24);
 }
 
-@media (min-width: 640px) {
+@media (min-width: 600px) {
   .admin-project-listings {
     grid-template-columns: 1fr 1fr;
   }
