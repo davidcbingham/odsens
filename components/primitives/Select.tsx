@@ -26,7 +26,10 @@ import styles from './Select.module.css';
  * The previous native `<select>` was the device picker (Oliver, 2026-09-11).
  *
  * Forms: a hidden `<input name>` carries the value, so server `<form action>`s read
- * `formData.get(name)` exactly as before. Controlled only when both `value` and `onChange` are
+ * `formData.get(name)` exactly as before; a pick re-renders that value by property assignment,
+ * which fires no native event, so after commit the hidden input dispatches a bubbling `change` —
+ * the way a delegated listener (the project editor's dirty tracker, ADR-0039 D3; ADR-0040 D9)
+ * learns of the pick. Additive (03 C-03): no prop changes. Controlled only when both `value` and `onChange` are
  * given; otherwise `defaultValue ?? value ?? options[0]` seeds internal state (uncontrolled admin
  * forms). Ids derive from `name` (`select-<name>`) so `getByLabel(label)` resolves to the trigger.
  * `compact` = the filter-bar arrangement (label inline, `--mute`); default = stacked admin label.
@@ -73,6 +76,8 @@ export function Select({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const typed = useRef<{ text: string; at: number }>({ text: '', at: 0 });
+  const hiddenRef = useRef<HTMLInputElement>(null);
+  const announceRef = useRef(false);
   const optionIdBase = useId();
 
   const close = useCallback((refocus: boolean) => {
@@ -86,10 +91,19 @@ export function Select({
       if (!option || option.disabled) return;
       if (!controlled) setInner(option.value);
       onChange?.(option.value);
+      announceRef.current = true;
       close(true);
     },
     [options, controlled, onChange, close],
   );
+
+  // After a pick commits, the hidden input announces the new value as a native `change` (see the
+  // header). Runs after every render so the dispatch always follows the commit that closed the list.
+  useEffect(() => {
+    if (!announceRef.current) return;
+    announceRef.current = false;
+    hiddenRef.current?.dispatchEvent(new Event('change', { bubbles: true }));
+  });
 
   const openAt = (index: number) => {
     setActive(index);
@@ -213,7 +227,7 @@ export function Select({
       <span id={labelId} className={styles['select-label']}>
         {label}
       </span>
-      <input type="hidden" name={name} value={current} disabled={disabled} />
+      <input ref={hiddenRef} type="hidden" name={name} value={current} disabled={disabled} />
       <span className={styles['select-well']}>
         <button
           ref={triggerRef}
