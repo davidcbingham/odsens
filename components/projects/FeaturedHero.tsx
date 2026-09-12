@@ -27,6 +27,9 @@ import styles from './FeaturedHero.module.css';
  * gold-button face is an inner `<span>` carrying `Button.module.css`'s `.button` +
  * `data-variant="gold"` — reusing the one gold recipe (03 C-20: never re-implement a gold
  * button) and keeping `data-variant="gold"` in the DOM for 05's hero e2e assertion.
+ * `downloadKind: null` (02 §2.1 #1 — no hosted file and no Modrinth home, a broken publish
+ * invariant) renders no DOWNLOAD at all: only "See the project" remains, so no `download` event
+ * is ever fired for a click that lands on our own page.
  */
 export type FeaturedHeroProject = {
   slug: string;
@@ -39,7 +42,8 @@ export type FeaturedHeroProject = {
   /** Version/loader chips, already ordered by the page. */
   chips: string[];
   downloadHref: string;
-  downloadKind: 'direct' | 'modrinth';
+  /** `null` = nothing to download (02 §2.1 #1 degrade): the gold DOWNLOAD is not rendered. */
+  downloadKind: 'direct' | 'modrinth' | null;
 };
 
 export type FeaturedHeroProps = {
@@ -78,20 +82,22 @@ export function FeaturedHero({ project, screenshot }: FeaturedHeroProps) {
         <h1 className={styles['featured-hero-title']}>{project.title}</h1>
         <p className={styles['featured-hero-description']}>{project.description}</p>
         <div className={styles['featured-hero-cta']}>
-          <TrackedLink
-            event="download"
-            props={{ project: project.slug, source: project.downloadKind, from: 'hero' }}
-            href={project.downloadHref}
-            className={styles['featured-hero-download']}
-          >
-            <span
-              className={`${buttonStyles.button} ${styles['featured-hero-download-face']}`}
-              data-variant="gold"
-              data-size="md"
+          {project.downloadKind !== null ? (
+            <TrackedLink
+              event="download"
+              props={{ project: project.slug, source: project.downloadKind, from: 'hero' }}
+              href={project.downloadHref}
+              className={styles['featured-hero-download']}
             >
-              {DOWNLOAD_LABEL}
-            </span>
-          </TrackedLink>
+              <span
+                className={`${buttonStyles.button} ${styles['featured-hero-download-face']}`}
+                data-variant="gold"
+                data-size="md"
+              >
+                {DOWNLOAD_LABEL}
+              </span>
+            </TrackedLink>
+          ) : null}
           <Button variant="secondary" href={`/projects/${project.slug}`}>
             {SECONDARY_LABEL}
           </Button>

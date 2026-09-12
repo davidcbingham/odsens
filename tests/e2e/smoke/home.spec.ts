@@ -131,11 +131,12 @@ test.describe('home', () => {
       await expect(page.locator('header nav a[href="/support"]')).toBeVisible();
     }
 
-    // Hero CTAs: gold DOWNLOAD → the Modrinth project URL (synced hero — 02 §2.1 #1), tracked
+    // Hero CTAs: gold DOWNLOAD → the Modrinth listing URL from the seed `external_id` `sd000102`
+    // (synced hero with no hosted file — 02 §2.1 #1 as amended by ADR-0037 D6), tracked
     // (`TrackedLink`, gold face via Button recipe); secondary "See the project" → the detail page.
     const hero = page.locator('section', { has: h1 });
     const download = hero.getByRole('link', { name: 'DOWNLOAD' });
-    await expect(download).toHaveAttribute('href', 'https://modrinth.com/project/pixel-chameleon');
+    await expect(download).toHaveAttribute('href', 'https://modrinth.com/project/sd000102');
     await expect(download.locator('[data-variant="gold"]')).toBeVisible();
     await expect(hero.getByRole('link', { name: 'See the project' })).toHaveAttribute(
       'href',

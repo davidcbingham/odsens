@@ -12,9 +12,16 @@
  * read-only (H-1): denied write cells target the SEED-6 link `(…0102, curseforge)` and are proven
  * no-ops through `service`; allowed write cells use links on visible factory projects (removed by
  * `cleanupFactories` via the project FK cascade).
+ *
+ * S1.5a (ADR-0037 D1/D9; migration 20260911120000): T-RLS-135 — `modrinth` link rows (an odsens
+ * project's listing) go through the same visibility predicate, including the PostgREST embed from
+ * `projects_public`, and the listing unique `project_links_platform_external_id_key (platform,
+ * external_id)` makes a second link to one listing a 23505 (the `conflict` backstop of
+ * `linkProjectListing`).
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { asRole, type TestRole } from '@/tests/helpers/asRole';
+import { asRole, loose, type TestRole } from '@/tests/helpers/asRole';
+import { sql } from '@/tests/helpers/db';
 import { expectPolicy } from '@/tests/helpers/expectPolicy';
 import { cleanupFactories, makeProject } from '@/tests/helpers/factories';
 import { SEED_PROJECTS } from '@/tests/helpers/seedIds';
@@ -235,5 +242,108 @@ describe('T-RLS-38 project_links delete', () => {
       filter: { project_id: projectId, platform: 'curseforge' },
       expectRows: 1,
     });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-RLS-135 (S1.5a, ADR-0037 D1/D9) — `modrinth` link rows through the visibility predicate and the
+// PostgREST embed from `projects_public`; the listing unique (platform, external_id) → 23505.
+// pub | pub | pub | pub | A | A for a visible odsens project's listing; D for a draft's (T-RLS-35).
+// ---------------------------------------------------------------------------------------------
+describe('T-RLS-135 project_links modrinth rows + the listing unique (ADR-0037)', () => {
+  let linkedId = '';
+  let listingId = '';
+
+  beforeAll(async () => {
+    linkedId = await makeProject({ source: 'odsens', status: 'published' });
+    listingId = `t_rls135_${linkedId.replace(/-/g, '').slice(0, 8)}`;
+    const { error } = await service.from('project_links').insert({
+      project_id: linkedId,
+      platform: 'modrinth',
+      external_id: listingId,
+      url: `https://modrinth.com/project/${listingId}`,
+      downloads: 12,
+      synced_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(`arrange: project_links insert failed: ${error.message}`);
+  });
+
+  it.each(['anon', ...NON_ADMIN, 'admin', 'service'] as const)(
+    'T-RLS-135 %s reads the modrinth link of a visible odsens project (direct + embedded from projects_public)',
+    async (role) => {
+      const direct = await asRole(role)
+        .from('project_links')
+        .select('platform, external_id, downloads')
+        .eq('project_id', linkedId);
+      expect(direct.error).toBeNull();
+      expect(direct.data).toEqual([
+        { platform: 'modrinth', external_id: listingId, downloads: 12 },
+      ]);
+
+      // The read model joins links from the view (03 GetItPanel "Also on" rows come from here).
+      const embedded = await loose(asRole(role))
+        .from('projects_public')
+        .select('id, is_exclusive, project_links(platform, external_id)')
+        .eq('id', linkedId);
+      expect(embedded.error).toBeNull();
+      expect(embedded.data).toEqual([
+        {
+          id: linkedId,
+          is_exclusive: false,
+          project_links: [{ platform: 'modrinth', external_id: listingId }],
+        },
+      ]);
+    },
+  );
+
+  it.each(['anon', ...NON_ADMIN] as const)(
+    'T-RLS-135 %s sees neither the draft project nor its modrinth link through projects_public',
+    async (role) => {
+      const embedded = await loose(asRole(role))
+        .from('projects_public')
+        .select('id, project_links(platform)')
+        .eq('id', draftProjectId);
+      expect(embedded.error).toBeNull();
+      expect(embedded.data).toEqual([]);
+      await expectPolicy({
+        table: 'project_links',
+        op: 'select',
+        role,
+        allowed: false,
+        filter: { project_id: draftProjectId, platform: 'modrinth' },
+      });
+    },
+  );
+
+  it('T-RLS-135 a second link to the same (platform, external_id) is refused with 23505 — even through service', async () => {
+    const otherId = await makeProject({ source: 'odsens', status: 'published' });
+    const { error } = await service.from('project_links').insert({
+      project_id: otherId,
+      platform: 'modrinth',
+      external_id: listingId,
+      url: `https://modrinth.com/project/${listingId}`,
+      downloads: 0,
+      synced_at: new Date().toISOString(),
+    });
+    expect(error?.code).toBe('23505');
+    expect(error?.message).toContain('project_links_platform_external_id_key');
+    // The unique is on the PAIR: the same external_id on another platform is a different listing.
+    const otherPlatform = await service.from('project_links').insert({
+      project_id: otherId,
+      platform: 'curseforge',
+      external_id: listingId,
+      url: `https://www.curseforge.com/minecraft/mc-mods/${listingId}`,
+      downloads: 0,
+      synced_at: new Date().toISOString(),
+    });
+    expect(otherPlatform.error).toBeNull();
+  });
+
+  it('T-RLS-135 the listing unique is a unique index on (platform, external_id) (catalog)', () => {
+    const rows = sql(
+      "select indexdef from pg_indexes where schemaname = 'public' and tablename = 'project_links' and indexname = 'project_links_platform_external_id_key'",
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.[0]).toMatch(/CREATE UNIQUE INDEX .* \(platform, external_id\)/);
   });
 });

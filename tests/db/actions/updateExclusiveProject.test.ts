@@ -245,6 +245,26 @@ describe('T-ACT-36 updateExclusiveProject fields + slug clash + DB faults', () =
     expect(tags.calls).toEqual([]);
   });
 
+  it('T-ACT-36 a folded project\'s old slug (project_redirects) while draft → conflict "That slug\'s taken.", slug unchanged (ADR-0037 D4)', async () => {
+    const projectId = await makeProject({ status: 'draft' });
+    const keptSlug = await slugOf(projectId);
+    const folded = uniqueSlug();
+    const { error: arrangeError } = await service
+      .from('project_redirects')
+      .insert({ old_slug: folded, project_id: projectId });
+    expect(arrangeError).toBeNull();
+    const tags = spyRevalidateTag();
+
+    const error = expectFail(
+      await callAction(updateExclusiveProject, { id: projectId, slug: folded }, { role: 'admin' }),
+      'conflict',
+    );
+    expect(error.message).toBe("That slug's taken.");
+    expect(error.field).toBe('slug');
+    expect(await slugOf(projectId)).toBe(keptSlug);
+    expect(tags.calls).toEqual([]);
+  });
+
   it.each<{ name: string; target: DbCallTarget }>([
     { name: 'the project read', target: { table: 'projects', op: 'select' } },
     { name: 'the update', target: { table: 'projects', op: 'update' } },

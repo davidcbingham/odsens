@@ -7,6 +7,12 @@
  * (admin reads drafts from the base table, tests/db/rls/projects.test.ts). Applies
  * `title_override`/`description_override` and derives `downloads_total`. Cell order:
  * anon | user | banned | mod | admin | svc.
+ *
+ * S1.5a (ADR-0037 D7/D9; migration 20260911120200): the trailing column `is_exclusive` =
+ * `source = 'odsens' and no project_links row` — the one predicate cards, hero and detail read for
+ * `ExclusiveBadge` (00 S1.5a.AC5). Seed truths: seed-exclusive-pack true; metal-pipe-mace and
+ * pixel-chameleon false (synced). Linking a factory odsens project flips it to false; removing the
+ * link brings it back.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { asRole, type TestRole } from '@/tests/helpers/asRole';
@@ -101,5 +107,78 @@ describe('T-RLS-23 projects_public downloads_total', () => {
         (row?.downloads_curseforge ?? 0) +
         (row?.downloads_direct ?? 0),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-RLS-22 is_exclusive (S1.5a, ADR-0037 D7) — A all roles: seed …0103 true, …0101 / …0102 false
+// ---------------------------------------------------------------------------------------------
+describe('T-RLS-22 projects_public is_exclusive (ADR-0037 D7)', () => {
+  it('T-RLS-22 is_exclusive is the LAST column of the view (create or replace appended it)', () => {
+    const columns = sql(
+      "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'projects_public' order by ordinal_position",
+    ).map(([name]) => name);
+    expect(columns.at(-1)).toBe('is_exclusive');
+  });
+
+  it.each(ALL_ROLES)(
+    'T-RLS-22 %s reads is_exclusive true on seed-exclusive-pack, false on metal-pipe-mace and pixel-chameleon',
+    async (role) => {
+      const { data, error } = await asRole(role)
+        .from('projects_public')
+        .select('id, source, is_exclusive')
+        .in('id', Object.values(SEED_PROJECTS));
+      expect(error).toBeNull();
+      const byId = new Map((data ?? []).map((r) => [r.id, r]));
+      expect(byId.get(SEED_PROJECTS.seedExclusivePack)).toEqual({
+        id: SEED_PROJECTS.seedExclusivePack,
+        source: 'odsens',
+        is_exclusive: true,
+      });
+      // …0101 has no link at all: false because it is synced, not because of a link row.
+      expect(byId.get(SEED_PROJECTS.metalPipeMace)).toEqual({
+        id: SEED_PROJECTS.metalPipeMace,
+        source: 'modrinth',
+        is_exclusive: false,
+      });
+      // …0102 is synced AND carries the SEED-6 curseforge link.
+      expect(byId.get(SEED_PROJECTS.pixelChameleon)).toEqual({
+        id: SEED_PROJECTS.pixelChameleon,
+        source: 'modrinth',
+        is_exclusive: false,
+      });
+    },
+  );
+
+  it('T-RLS-22 a link on an odsens project flips is_exclusive to false; removing it brings it back (AC5)', async () => {
+    const projectId = await makeProject({ source: 'odsens', status: 'published' });
+    const read = async (): Promise<boolean | null> => {
+      const { data, error } = await asRole('anon')
+        .from('projects_public')
+        .select('is_exclusive')
+        .eq('id', projectId)
+        .single();
+      expect(error).toBeNull();
+      return data?.is_exclusive ?? null;
+    };
+    expect(await read()).toBe(true);
+    const externalId = `t_rls22_${projectId.replace(/-/g, '').slice(0, 8)}`;
+    const linked = await service.from('project_links').insert({
+      project_id: projectId,
+      platform: 'curseforge',
+      external_id: externalId,
+      url: `https://www.curseforge.com/minecraft/mc-mods/${externalId}`,
+      downloads: 0,
+      synced_at: new Date().toISOString(),
+    });
+    expect(linked.error).toBeNull();
+    expect(await read()).toBe(false);
+    const removed = await service
+      .from('project_links')
+      .delete()
+      .eq('project_id', projectId)
+      .eq('platform', 'curseforge');
+    expect(removed.error).toBeNull();
+    expect(await read()).toBe(true);
   });
 });

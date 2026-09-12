@@ -1,6 +1,7 @@
 /**
- * tests/db/actions/publishProject.test.ts — T-ACT-37 (05 §7.2; 04 §1.4 `publishProject`;
- * ADR-0002 C7 admin-only, #65 publish preconditions; migrations 20260827090000/90300).
+ * tests/db/actions/publishProject.test.ts — T-ACT-37 + the `publishProject` clause of T-ACT-83
+ * (05 §7.2; 04 §1.4 `publishProject`; ADR-0002 C7 admin-only, #65 publish preconditions;
+ * ADR-0037 D5(c) every source; migrations 20260827090000/90300).
  *
  * Admin only (matrix rows brief — same shape as T-ACT-34). `draft`→`published` sets `published_at`
  * when NULL and never overwrites it after (hidden → draft → published again keeps the first
@@ -8,14 +9,15 @@
  * `icon_url NULL` → `precondition_failed` naming the icon; no file with a `storage_path` →
  * `precondition_failed` "Nothing to download yet." (a file row WITHOUT `storage_path` — the synced
  * shape — does not count); both missing → both sentences. `published`→`hidden` and back to `draft`
- * are unguarded. A synced seed project → `forbidden`. Every success revalidates `projects` +
+ * are unguarded. A `source='modrinth'` row is ACCEPTED (ADR-0037 D5(c) — amended 2026-09-11; the
+ * preconditions apply unchanged, T-ACT-83). Every success revalidates `projects` +
  * `project:<slug>`; after publish the row appears in `projects_public` for anon (definer view,
  * 05 T-RLS-22 sibling check).
  *
  * All mutations run on factory rows (`cleanupFactories` in `afterAll`); the publishable
  * arrangement is service-side (factory `icon_url` + version + file with `storage_path` — the
- * precondition reads the DB, not the bucket). The modrinth seed project only ever receives a
- * DENIED call, so seed rows stay byte-identical (05 H-1).
+ * precondition reads the DB, not the bucket). The synced rows are FACTORY rows (a Modrinth-first
+ * project with a hosted file), so seed rows stay byte-identical (05 H-1).
  */
 import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -25,7 +27,6 @@ import { asRole } from '@/tests/helpers/asRole';
 import { callAction, setupActionMocks } from '@/tests/helpers/callAction';
 import { expectInternal, withDbFault, type DbCallTarget } from '@/tests/helpers/dbFault';
 import { cleanupFactories, makeFile, makeProject, makeVersion } from '@/tests/helpers/factories';
-import { SEED_PROJECTS } from '@/tests/helpers/seedIds';
 import { spyLog, spyRevalidateTag, type LogSpy } from '@/tests/helpers/spies';
 
 setupActionMocks();
@@ -193,27 +194,46 @@ describe('T-ACT-37 publishProject', () => {
     expect((await statusAndPublishedAt(projectId)).published_at).toBe(first.published_at);
   });
 
-  it('T-ACT-37 a synced seed project → forbidden (synced projects are curated, not edited)', async () => {
-    // Prove the row exists and is synced first — the denial must be the source check, not not_found.
-    const { data: seed, error: seedError } = await service
-      .from('projects')
-      .select('source, status')
-      .eq('id', SEED_PROJECTS.metalPipeMace)
-      .single();
-    expect(seedError).toBeNull();
-    expect(seed).toEqual({ source: 'modrinth', status: 'published' });
+  it("T-ACT-37 / T-ACT-83 a source='modrinth' row is accepted (ADR-0037 D5(c)): no hosted file → precondition_failed; icon + hosted file → published", async () => {
+    // Amended 2026-09-11 (ADR-0037): the S1.3 `forbidden` for synced rows is gone — a
+    // Modrinth-first project that gained hosted files publishes like an exclusive.
+    const projectId = randomUUID();
+    await makeProject({
+      id: projectId,
+      source: 'modrinth',
+      external_id: `t_${projectId.replace(/-/g, '').slice(0, 8)}`,
+      status: 'draft',
+      icon_url: ICON(projectId),
+    });
+    const versionId = await makeVersion({
+      project_id: projectId,
+      external_id: `t_v_${projectId.replace(/-/g, '').slice(0, 8)}`,
+    });
+    await makeFile({
+      version_id: versionId,
+      url: 'https://cdn.modrinth.com/data/t/versions/t/t.zip',
+    });
 
-    const error = expectFail(
-      await callAction(
-        publishProject,
-        { id: SEED_PROJECTS.metalPipeMace, status: 'hidden' },
-        { role: 'admin' },
-      ),
-      'forbidden',
+    // A CDN-only file does not count — the preconditions are unchanged.
+    const missing = expectFail(
+      await callAction(publishProject, { id: projectId, status: 'published' }, { role: 'admin' }),
+      'precondition_failed',
     );
-    expect(error.message).toBe('Synced projects are curated, not edited.');
-    // Untouched (05 H-1).
-    expect((await statusAndPublishedAt(SEED_PROJECTS.metalPipeMace)).status).toBe('published');
+    expect(missing.message).toBe('Nothing to download yet.');
+    expect((await statusAndPublishedAt(projectId)).status).toBe('draft');
+
+    // A hosted file on the synced version (D5(b)) satisfies it.
+    await makeFile({ version_id: versionId, storage_path: storedPath(projectId, versionId) });
+    const tags = spyRevalidateTag();
+    const data = expectOk(
+      await callAction(publishProject, { id: projectId, status: 'published' }, { role: 'admin' }),
+    );
+    expect(data).toEqual({ id: projectId, status: 'published' });
+    const row = await statusAndPublishedAt(projectId);
+    expect(row.status).toBe('published');
+    expect(row.published_at).not.toBeNull();
+    expect(tags.calls).toHaveLength(2);
+    expect(tags.calls[0]).toBe('projects');
   });
 });
 

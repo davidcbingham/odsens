@@ -1,7 +1,8 @@
 /**
- * tests/db/actions/uploadProjectMedia.test.ts — T-ACT-38 + T-ACT-73 (media half) (05 §7.2;
- * 04 §1.4 `uploadProjectMedia` + §1.4.5 two-phase pattern; ADR-0002 C7 / C10 / C16;
- * 01 INV-51/52/53; migration 20260827200200; fixtures `images/*`).
+ * tests/db/actions/uploadProjectMedia.test.ts — T-ACT-38 + T-ACT-73 (media half) + the icon
+ * clause of T-ACT-83 (05 §7.2; 04 §1.4 `uploadProjectMedia` + §1.4.5 two-phase pattern;
+ * ADR-0002 C7 / C10 / C16; ADR-0037 D5(a) icons on every source; 01 INV-51/52/53; migration
+ * 20260827200200; fixtures `images/*`).
  *
  * Auth matrix: anon `unauthenticated` · user D `forbidden` · banned D `forbidden` (the seed banned
  * account has role `user`, so `requireRole`'s rank check answers — 04 SC-04) · **mod D `forbidden`**
@@ -11,15 +12,16 @@
  * returns `{path, token, signed_url}` with a uuid pending path and writes NO DB row; the 61st begin
  * in an hour → `rate_limited` (60/hour/user, 04 §5.5). `commit` re-validates the ACTUAL bytes
  * (SC-19): svg bytes / wrong dimensions → `validation` AND the pending object is deleted; success
- * moves the object to its `{hash16}` path and writes `projects.icon_url` (icon, `odsens` only —
- * a Modrinth project refuses at begin already), `projects.gallery` (`odsens` gallery, ordering
- * max+1) or `project_overrides.extra_gallery` (Modrinth gallery — ADR-0002 C10), then revalidates
+ * moves the object to its `{hash16}` path and writes `projects.icon_url` (icon — on EVERY source
+ * since ADR-0037 D5(a), amended 2026-09-11: a Modrinth-first row's Storage-path icon is one the
+ * sync keeps), `projects.gallery` (`odsens` gallery, ordering max+1) or
+ * `project_overrides.extra_gallery` (Modrinth gallery — ADR-0002 C10), then revalidates
  * `projects` + `project:<slug>`. U3: a re-PUT + re-commit of the same bytes returns the SAME entry,
  * no duplicate. T-ACT-73: a commit `path` for another project id → `forbidden`, object untouched;
  * every `begin` records exactly one `rate_limit_hits` row even when never committed.
  *
  * All action calls run as FACTORY admins (`callActionAs`) so the seed admin's
- * `upload:project-media` budget stays untouched for other files (setProjectLink precedent).
+ * `upload:project-media` budget stays untouched for other files (the link-action precedent).
  * The Modrinth gallery test appends to the SEED `metal-pipe-mace` override row — snapshotted in
  * `beforeAll` and restored byte-for-byte in `afterAll` (05 H-1 `mutatesSeed`). Storage objects the
  * suite leaves behind are tracked and removed in `afterAll` (the pending ones are deleted by the
@@ -309,14 +311,11 @@ describe('T-ACT-38 begin', () => {
     await clearRateLimitHits(SCOPE, burner);
   });
 
-  it('T-ACT-38 icon begin on a Modrinth project → forbidden (icons are sync-owned; commit refuses too)', async () => {
-    const error = expectFail(
-      await callActionAs(uploadProjectMedia, beginInput(MACE, 'icon', 'image/png'), {
-        profileId: adminId,
-      }),
-      'forbidden',
-    );
-    expect(error.message).toBe('Synced projects keep their icon on Modrinth.');
+  it('T-ACT-38 icon begin on a Modrinth-first factory project → {path, token, signed_url} (ADR-0037 D5(a): every source)', async () => {
+    const syncedId = await makeProject({ source: 'modrinth', external_id: `t_${randomUUID()}` });
+    const data = await beginOk(syncedId, 'icon', 'image/png');
+    expect(data.path).toMatch(new RegExp(`^project-media/${syncedId}/icon/[0-9a-f-]{36}\\.png$`));
+    expect((await projectRow(syncedId)).icon_url).toBeNull();
   });
 });
 
@@ -412,6 +411,30 @@ describe('T-ACT-38 commit — success', () => {
     leftoverObjects.push(objectPath(finalPath));
 
     expect((await projectRow(projectId)).icon_url).toBe(finalPath);
+    expect(tags.calls).toEqual(['projects', `project:${slug}`]);
+  });
+
+  it('T-ACT-38 / T-ACT-83 icon on a Modrinth-first project → projects.icon_url = the Storage path (ADR-0037 D5(a))', async () => {
+    // A synced row with the Modrinth CDN icon; the hosted icon replaces it and the sync keeps a
+    // Storage-path icon (D2 — "a hosted icon wins on any row").
+    const syncedId = await makeProject({
+      source: 'modrinth',
+      external_id: `t_${randomUUID()}`,
+      icon_url: 'https://cdn.modrinth.com/data/t/icon.png',
+    });
+    const { slug } = await projectRow(syncedId);
+    const begin = await beginOk(syncedId, 'icon', 'image/png');
+    const put = await putSigned(begin.signed_url, begin.token, 'images/icon-256.png');
+    expect(put.status).toBe(200);
+
+    const bytes = await fixtureBytes('images', 'icon-256.png');
+    const finalPath = `project-media/${syncedId}/icon/${hash16Of(bytes)}.png`;
+    const tags = spyRevalidateTag();
+
+    const data = expectCommitOk(await commitMedia(syncedId, 'icon', begin.path));
+    expect(data.path).toBe(finalPath);
+    leftoverObjects.push(objectPath(finalPath));
+    expect((await projectRow(syncedId)).icon_url).toBe(finalPath);
     expect(tags.calls).toEqual(['projects', `project:${slug}`]);
   });
 

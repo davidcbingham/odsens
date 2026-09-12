@@ -1,9 +1,12 @@
 /**
  * tests/unit/adapters/modrinth.test.ts — `lib/adapters/modrinth.ts` (05 T-ADP-2..6 + the modrinth
- * half of T-ADP-20; 04 §4.1 export list, §5.2 P1–P5, §3.1 step 2/3 shapes; ADR-0002 #77).
- * Fixtures: `tests/fixtures/modrinth/{user-projects,versions,versions-empty,error-429}.json`
- * (F-5; `user-projects.json` carries the docs/spec.md §3 snapshot — 18 projects, seed-aligned
- * external ids `sd000101`/`sd000102`). Pure over `mockFetch` (05 H-5); quota waits via fake timers.
+ * half of T-ADP-20, T-ADP-21, T-ADP-22; 04 §4.1 export list, §5.2 P1–P5, §3.1 step 2/3 shapes;
+ * ADR-0002 #77; ADR-0034 D1/D4; ADR-0037 D1/D10 `getProject` / `parseModrinthRef` /
+ * `modrinthListingUrl`). Fixtures: `tests/fixtures/modrinth/{user-projects,versions,versions-empty,
+ * error-429}.json` + `project/{sd000101,sd000199}.json` (F-5; `user-projects.json` carries the
+ * docs/spec.md §3 snapshot — 18 projects, seed-aligned external ids `sd000101`/`sd000102`;
+ * `project/sd000101.json` is its `sd000101` object byte-equal, `project/sd000199.json` a listing
+ * absent from the list). Pure over `mockFetch` (05 H-5); quota waits via fake timers.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ZodError } from 'zod';
@@ -17,10 +20,14 @@ import {
   mapProject,
   mapProjectType,
   mapVersion,
+  modrinthListingUrl,
   normalizeSyncedSlug,
+  parseModrinthRef,
   type ModrinthProject,
   type ModrinthVersion,
 } from '@/lib/adapters/modrinth';
+import { AdapterError } from '@/lib/adapters/http';
+import { modrinthListingUrl as formatListingUrl } from '@/lib/format/project';
 import { loadFixture, loadFixtureText } from '../../helpers/fixtures';
 import { mockFetch } from '../../helpers/mockFetch';
 
@@ -468,5 +475,110 @@ describe('T-ADP-21 synced slugs, gallery originals, icon originals (ADR-0034 D1/
     ).resolves.toBe('https://cdn.modrinth.com/data/sd000101/icon.png');
     await expect(modrinth.resolveIconUrl(null)).resolves.toBeNull();
     expect(failingSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('T-ADP-22 getProject, parseModrinthRef, modrinthListingUrl (ADR-0037 D1/D10)', () => {
+  it('T-ADP-22 getProject(id) → GET /project/<id> on the real host; the alias fixture equals the user-projects object', async () => {
+    const fetchSpy = vi.fn(
+      mockFetch({
+        [`${MODRINTH_API}/project/sd000101`]: async () =>
+          new Response(await loadFixtureText('modrinth', 'project/sd000101.json'), { status: 200 }),
+        [`${MODRINTH_API}/project/e2e-cross-post`]: async () =>
+          new Response(await loadFixtureText('modrinth', 'project/sd000199.json'), { status: 200 }),
+      }),
+    );
+    const modrinth = createModrinth({ fetch: fetchSpy, env: ENV });
+    const byId = await modrinth.getProject('sd000101');
+    expect(byId).toEqual(bySlug('metal-pipe-mace'));
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(`${MODRINTH_API}/project/sd000101`);
+
+    // A slug resolves on the same path; the response carries the id the link stores.
+    const bySlugRef = await modrinth.getProject('e2e-cross-post');
+    expect(bySlugRef).toMatchObject({
+      id: 'sd000199',
+      slug: 'e2e-cross-post',
+      title: 'E2E Cross Post',
+      downloads: 4321,
+      versions: [],
+    });
+    expect(fetchSpy.mock.calls[1]?.[0]).toBe(`${MODRINTH_API}/project/e2e-cross-post`);
+  });
+
+  it('T-ADP-22 getProject encodes the ref and surfaces a 404 as AdapterError {status: 404} (no retry)', async () => {
+    const fetchSpy = vi.fn(
+      mockFetch({
+        [`${MODRINTH_API}/project/no%20such`]: () =>
+          new Response('{"error":"not_found"}', { status: 404 }),
+      }),
+    );
+    const modrinth = createModrinth({ fetch: fetchSpy, env: ENV });
+    let thrown: unknown;
+    try {
+      await modrinth.getProject('no such');
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(AdapterError);
+    expect((thrown as AdapterError).status).toBe(404);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    // URL forms — the seven type segments + /project/, www optional, trailing path ignored.
+    ['https://modrinth.com/mod/sodium', 'sodium'],
+    ['https://modrinth.com/plugin/some-plugin', 'some-plugin'],
+    ['https://modrinth.com/datapack/heavy-spear', 'heavy-spear'],
+    ['https://www.modrinth.com/resourcepack/sd000199/versions', 'sd000199'],
+    ['https://modrinth.com/shader/a_shader.pack', 'a_shader.pack'],
+    ['https://modrinth.com/modpack/AbCd1234/', 'AbCd1234'],
+    ['https://modrinth.com/project/sd000199', 'sd000199'],
+    ['https://modrinth.com/project/sd000199/version/1.0.0?x=1#top', 'sd000199'],
+    ['https://modrinth.com/mod/sodium?rel=x', 'sodium'],
+    // Bare slug / bare id (base62, mixed case), whitespace trimmed.
+    ['e2e-cross-post', 'e2e-cross-post'],
+    ['sd000199', 'sd000199'],
+    ['AbCdEf12', 'AbCdEf12'],
+    ['  sd000199  ', 'sd000199'],
+    ['a'.repeat(64), 'a'.repeat(64)],
+  ])('T-ADP-22 parseModrinthRef(%j) → {ref: %j}', (ref, expected) => {
+    expect(parseModrinthRef(ref)).toEqual({ ref: expected });
+  });
+
+  it.each([
+    // Any other host, scheme or shape → null (security-reviewer: only modrinth.com).
+    'https://www.curseforge.com/minecraft/mc-mods/x',
+    'https://modrinth.com.example/mod/x',
+    'https://example.com/modrinth.com/mod/x',
+    'https://evil-modrinth.com/mod/x',
+    'http://modrinth.com/mod/sodium',
+    'https://api.modrinth.com/v2/project/sodium',
+    'https://modrinth.com/user/OddSense',
+    'https://modrinth.com/mod/',
+    'https://modrinth.com/mods/sodium',
+    'https://modrinth.com/mod/has space',
+    'not a slug',
+    'a'.repeat(65),
+    'slug/with/slash',
+    '',
+    '   ',
+    // Dot-only refs: WHATWG normalisation would resolve `/project/..` to another endpoint.
+    '.',
+    '..',
+    'https://modrinth.com/mod/.',
+    'https://modrinth.com/mod/..',
+    'https://modrinth.com/mod/../sodium',
+  ])('T-ADP-22 parseModrinthRef(%j) → null', (ref) => {
+    expect(parseModrinthRef(ref)).toBeNull();
+  });
+
+  it('T-ADP-22 modrinthListingUrl: the type-neutral /project/<id> page, built from the id, encoded; one function on both modules', () => {
+    expect(modrinthListingUrl('sd000199')).toBe('https://modrinth.com/project/sd000199');
+    expect(modrinthListingUrl('AbCd1234')).toBe('https://modrinth.com/project/AbCd1234');
+    expect(modrinthListingUrl('odd id')).toBe('https://modrinth.com/project/odd%20id');
+    expect(modrinthListingUrl).toBe(formatListingUrl);
+    const modrinth = createModrinth({ fetch: vi.fn(mockFetch({})), env: ENV });
+    expect(modrinth.modrinthListingUrl('sd000199')).toBe('https://modrinth.com/project/sd000199');
+    expect(modrinth.parseModrinthRef('sd000199')).toEqual({ ref: 'sd000199' });
   });
 });

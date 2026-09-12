@@ -1,8 +1,8 @@
 /**
  * tests/db/jobs/syncModrinth.test.ts — T-ACT-45, T-ACT-46, T-ACT-47, T-ACT-48, T-ACT-49, T-ACT-50,
- * T-ACT-51, T-ACT-70 (04 §3/§3.1 SC-11/SC-13, J-P/J-I/J-D; 05 §7.2 jobs layer; migrations
- * 20260827090000..90400). `mutatesSeed`: the file empties `projects` for the first-run case and
- * restores every content table from a snapshot in `afterAll` (05 H-1).
+ * T-ACT-51, T-ACT-70, T-ACT-78, T-ACT-82 (04 §3/§3.1 SC-11/SC-13, J-P/J-I/J-D; 05 §7.2 jobs layer;
+ * migrations 20260827090000..90400, 20260911120000). `mutatesSeed`: the file empties `projects` for
+ * the first-run case and restores every content table from a snapshot in `afterAll` (05 H-1).
  *
  * Harness per 05 §7.2: the job runs against the local DB with the adapters' `fetch` mocked to
  * fixtures — `spyFetch` routes the fixture-server URLs (`MODRINTH_API_BASE`, ADR-0002 #73) to
@@ -18,6 +18,19 @@
  * persists, one again after an ok run, one when no previous run exists, and a lost `emit` logged
  * (`emit_failed`) rather than thrown. The list call fails with a 400 (not retried, SC-09) so each
  * failing run is fast. Events are purged in `afterAll`.
+ *
+ * S1.5a (T-ACT-82, ADR-0037 D2): the adoption describe proves the sync's "one project, many homes"
+ * rules against factory rows — a linked listing (a `project_links` `modrinth` row on an odsens
+ * project) never inserts a `projects` row and never touches the canonical metadata; versions key on
+ * `external_id` globally (a stray row is re-parented); a hosted version adopts the same-numbered
+ * upstream version on a linked row AND on a Modrinth-first row (the ADR-0026 tie-break by `sha512`,
+ * else adapter order); `sha512` pairing (same bytes → no new row, the hosted row gains `url`; same
+ * filename + different bytes → its own CDN row); a hosted icon survives; the slug-collision insert
+ * lands as `p-<id>` and keeps it on rerun; a duplicate whose listing is linked elsewhere is hidden by
+ * step 4 and two runs converge without a fold; the linked listing revalidates `project:<canonical
+ * slug>`; a rerun changes nothing but `synced_at`. Listings are derived in memory from the recorded
+ * list (F-6); the version payloads are the hand-made `versions-adopt.json` (listing `sd000197`) and
+ * `versions-modrinth-first.json` (chameleon `9.9.0`) in the `versions.json` shape.
  */
 import { NextRequest } from 'next/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -25,6 +38,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { GET } from '@/app/api/cron/sync-modrinth/route';
 import { mapProject, type ModrinthProject } from '@/lib/adapters/modrinth';
+import { modrinthListingUrl } from '@/lib/format/project';
 import { syncModrinth } from '@/lib/jobs/syncModrinth';
 import type { JobSummary } from '@/lib/jobs/types';
 import { asRole } from '@/tests/helpers/asRole';
@@ -38,7 +52,10 @@ import { REPO_ROOT } from '@/tests/helpers/envTest';
 import { withDbFault } from '@/tests/helpers/dbFault';
 import {
   cleanupFactories,
+  makeFile,
+  makeProject,
   makeSyncRun,
+  makeVersion,
   purgeNotificationEvents,
   trackNotificationEvent,
 } from '@/tests/helpers/factories';
@@ -79,14 +96,22 @@ const json = (value: unknown) => (): Response =>
     headers: { 'content-type': 'application/json; charset=utf-8' },
   });
 
-/** Default routes: the full list (18 importable + shader + draft), chameleon versions, others empty. */
+/**
+ * Default routes: the full list (18 importable + shader + draft), chameleon versions, others empty.
+ * Overrides come FIRST so a per-listing `project/<id>/version` route wins over the `/project/`
+ * prefix catch-all (`spyFetch` matches in key order); a default is dropped when overridden.
+ */
 function routes(list: ModrinthProject[], overrides: FixtureMap = {}): FixtureMap {
-  return {
+  const defaults: FixtureMap = {
     [`${PROJECT_PREFIX}${CHAMELEON_ID}/version`]: 'modrinth/versions.json',
     [PROJECT_PREFIX]: 'modrinth/versions-empty.json',
     [LIST_URL]: json(list),
-    ...overrides,
   };
+  const map: FixtureMap = { ...overrides };
+  for (const [key, route] of Object.entries(defaults)) {
+    if (!(key in map)) map[key] = route;
+  }
+  return map;
 }
 
 async function syncRunCount(): Promise<number> {
@@ -263,7 +288,7 @@ describe('syncModrinth (04 §3.1)', () => {
     expect(count).toBe(0);
   });
 
-  it('T-ACT-48 versions upsert on external_id, files on (version_id, filename); absent kept', async () => {
+  it('T-ACT-48 versions upsert on external_id, files on (version_id, filename) among CDN-only rows; absent kept', async () => {
     const chameleon = await projectBySlug('pixel-chameleon');
     const { data: versions } = await service
       .from('project_versions')
@@ -344,7 +369,7 @@ describe('syncModrinth (04 §3.1)', () => {
     expect(count).toBe(0);
   });
 
-  it('T-ACT-49 a project absent from the list goes hidden; children + overrides survive; reappearing republishes', async () => {
+  it('T-ACT-49 a project absent from the list goes hidden (step 4 — from the list, never per-item success); children + overrides survive; reappearing republishes', async () => {
     const chameleon = await projectBySlug('pixel-chameleon');
     const override = await service
       .from('project_overrides')
@@ -627,6 +652,461 @@ describe('syncModrinth (04 §3.1)', () => {
       }
     });
   });
+  describe('T-ACT-82 sync adoption — one project, many homes (ADR-0037 D2)', () => {
+    const CROSS_ID = 'sd000197';
+    const COLLIDE_ID = 'sd000196';
+    const CROSS_VERSIONS_URL = `${PROJECT_PREFIX}${CROSS_ID}/version`;
+    const CHAMELEON_VERSIONS_URL = `${PROJECT_PREFIX}${CHAMELEON_ID}/version`;
+    /** The fixtures' sha512 values are an 8-char token × 16 (128 hex chars). */
+    const sha = (token: string): string => token.repeat(16);
+    const CDN = 'https://cdn.modrinth.com/data';
+
+    type Row = Record<string, unknown>;
+
+    /** A listing derived in memory from the recorded first project (F-6 — never a hand-edited file). */
+    function listing(id: string, slug: string, title: string, downloads: number): ModrinthProject {
+      const base = baseList[0];
+      if (base === undefined) throw new Error('user-projects.json is empty');
+      return { ...base, id, slug, title, downloads } as ModrinthProject;
+    }
+
+    async function insertLink(projectId: string, externalId: string): Promise<void> {
+      const { error } = await service.from('project_links').insert({
+        project_id: projectId,
+        platform: 'modrinth',
+        external_id: externalId,
+        url: modrinthListingUrl(externalId),
+        downloads: 0,
+        synced_at: new Date(Date.now() - 60_000).toISOString(),
+      });
+      if (error) throw new Error(error.message);
+    }
+
+    async function linkOf(projectId: string): Promise<Row> {
+      const { data, error } = await service
+        .from('project_links')
+        .select('*')
+        .eq('project_id', projectId)
+        .eq('platform', 'modrinth')
+        .single();
+      if (error) throw new Error(error.message);
+      return data as unknown as Row;
+    }
+
+    async function projectById(id: string): Promise<Row> {
+      const { data, error } = await service.from('projects').select('*').eq('id', id).single();
+      if (error) throw new Error(error.message);
+      return data as unknown as Row;
+    }
+
+    async function versionsOf(projectId: string): Promise<Row[]> {
+      const { data, error } = await service
+        .from('project_versions')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('id');
+      if (error) throw new Error(error.message);
+      return data as unknown as Row[];
+    }
+
+    async function filesOf(versionIds: string[]): Promise<Row[]> {
+      if (versionIds.length === 0) return [];
+      const { data, error } = await service
+        .from('project_files')
+        .select('*')
+        .in('version_id', versionIds)
+        .order('id');
+      if (error) throw new Error(error.message);
+      return data as unknown as Row[];
+    }
+
+    async function rowsForListing(externalId: string): Promise<number> {
+      const { count, error } = await service
+        .from('projects')
+        .select('id', { count: 'exact', head: true })
+        .eq('source', 'modrinth')
+        .eq('external_id', externalId);
+      if (error) throw new Error(error.message);
+      return count ?? 0;
+    }
+
+    /** A hosted file row (`storage_path` set, no `url`) — what `uploadProjectFile` commits. */
+    function hosted(projectId: string, versionId: string, filename: string, token: string) {
+      return makeFile({
+        version_id: versionId,
+        filename,
+        storage_path: `project-files/${projectId}/${versionId}/${filename}`,
+        sha512: sha(token),
+        url: null,
+        primary: true,
+        size_bytes: 4096,
+      });
+    }
+
+    afterAll(async () => {
+      await cleanupFactories();
+      // The slug-collision insert is a synced row (not factory-tracked); the snapshot restore would
+      // drop it in the file's afterAll, but later cases in this file count modrinth rows.
+      const dropCollide = await service.from('projects').delete().eq('external_id', COLLIDE_ID);
+      if (dropCollide.error) throw new Error(dropCollide.error.message);
+    });
+
+    it('T-ACT-82 a linked listing syncs INTO the canonical odsens row: no projects row, metadata untouched, versions adopt / re-parent / insert, sha512 pairing; rerun idempotent', async () => {
+      // Arrange — the canonical odsens project with four hosted versions (external_id null) and a
+      // stray row elsewhere already carrying one of the listing's version ids.
+      const canonical = await makeProject({ source: 'odsens', status: 'published' });
+      const h100 = await makeVersion({
+        project_id: canonical,
+        version_number: '1.0.0',
+        name: 't_ hosted 1.0.0',
+      });
+      const h110 = await makeVersion({ project_id: canonical, version_number: '1.1.0' });
+      const h200 = await makeVersion({ project_id: canonical, version_number: '2.0.0' });
+      const h300 = await makeVersion({ project_id: canonical, version_number: '3.0.0' });
+      const h100File = await hosted(canonical, h100, 't-cross-post-1.0.0.jar', 'aa10aa10'); // = upstream primary
+      const h110File = await hosted(canonical, h110, 't-cross-post-1.1.0.jar', 'bb99bb99'); // same name, other bytes
+      const h200File = await hosted(canonical, h200, 'my-build.jar', 'cc11cc11'); // = the NeoForge 2.0.0 file
+      const h300File = await hosted(canonical, h300, 'other.jar', 'dd99dd99'); // matches neither 3.0.0
+      const stray = await makeProject({ source: 'odsens', status: 'published' });
+      const strayVersion = await makeVersion({
+        project_id: stray,
+        version_number: '4.0.0',
+        external_id: 'sdv00907',
+      });
+      await insertLink(canonical, CROSS_ID);
+      const cross = listing(CROSS_ID, 't-cross-post', 'T Cross Post', 4242);
+      const canonicalBefore = await projectById(canonical);
+      const straySlug = (await projectById(stray)).slug as string;
+
+      // Act — run 1.
+      spyFetch(
+        routes([...fullList, cross], { [CROSS_VERSIONS_URL]: 'modrinth/versions-adopt.json' }),
+      );
+      const tags = spyRevalidateTag();
+      const summary = await run();
+      expect(summary.ok).toBe(true);
+      expect(summary.errors).toEqual([]);
+
+      // Never a `projects` row for the listing; the canonical metadata is Oliver's.
+      expect(await rowsForListing(CROSS_ID)).toBe(0);
+      const canonicalAfter = await projectById(canonical);
+      expect(canonicalAfter.downloads_modrinth).toBe(4242);
+      expect(canonicalAfter.synced_at).toEqual(canonicalBefore.synced_at);
+      const metadata = (row: Row): Row => {
+        const copy = { ...row };
+        delete copy.downloads_modrinth;
+        delete copy.updated_at;
+        return copy;
+      };
+      expect(metadata(canonicalAfter)).toEqual(metadata(canonicalBefore));
+      const link = await linkOf(canonical);
+      expect(link.downloads).toBe(4242);
+      expect(link.url).toBe(modrinthListingUrl(CROSS_ID));
+
+      // Versions: 4 adopted + 2 inserted duplicates + 1 re-parented = 7, each upstream id once.
+      const versions = await versionsOf(canonical);
+      expect(versions).toHaveLength(7);
+      const byExternal = new Map(versions.map((row) => [row.external_id as string, row]));
+      expect([...byExternal.keys()].sort()).toEqual([
+        'sdv00901',
+        'sdv00902',
+        'sdv00903',
+        'sdv00904',
+        'sdv00905',
+        'sdv00906',
+        'sdv00907',
+      ]);
+      // Adoption on the linked row (same version_number, external_id was null) — ids kept.
+      expect(byExternal.get('sdv00901')?.id).toBe(h100);
+      expect(byExternal.get('sdv00902')?.id).toBe(h110);
+      // ADR-0026 tie-break: the candidate sharing a sha512 with the hosted file adopts (NeoForge)…
+      expect(byExternal.get('sdv00904')?.id).toBe(h200);
+      expect(byExternal.get('sdv00903')?.id).not.toBe(h200);
+      // …else the first in adapter order (3.0.0 Fabric).
+      expect(byExternal.get('sdv00905')?.id).toBe(h300);
+      expect(byExternal.get('sdv00906')?.id).not.toBe(h300);
+      // Global re-parent: the stray row followed its listing, id kept.
+      expect(byExternal.get('sdv00907')?.id).toBe(strayVersion);
+      expect(await versionsOf(stray)).toEqual([]);
+      // Sync-owned columns follow Modrinth from adoption on.
+      const adopted100 = byExternal.get('sdv00901');
+      expect(adopted100?.name).toBe('First cross post');
+      expect(adopted100?.downloads).toBe(1200);
+      expect(adopted100?.changelog_md).toContain('Posted on both homes');
+      expect(new Date(adopted100?.date_published as string).toISOString()).toBe(
+        '2026-08-01T12:00:00.000Z',
+      );
+
+      // Files — sha512 pairing: same bytes → no new row, the hosted row gains the CDN url.
+      const f100 = await filesOf([h100]);
+      expect(f100).toHaveLength(2);
+      const paired = f100.find((row) => row.id === h100File);
+      expect(paired?.url).toBe(`${CDN}/${CROSS_ID}/versions/sdv00901/t-cross-post-1.0.0.jar`);
+      expect(paired?.storage_path).not.toBeNull();
+      expect(paired?.primary).toBe(true);
+      const sources = f100.find((row) => row.id !== h100File);
+      expect(sources?.filename).toBe('t-cross-post-1.0.0-sources.jar');
+      expect(sources?.storage_path).toBeNull();
+      expect(sources?.primary).toBe(false);
+      // Same filename, different bytes: the hosted row is left alone, the upstream file is its own CDN row.
+      const f110 = await filesOf([h110]);
+      expect(f110).toHaveLength(2);
+      const hostedRow110 = f110.find((row) => row.id === h110File);
+      expect(hostedRow110?.url).toBeNull();
+      expect(hostedRow110?.sha512).toBe(sha('bb99bb99'));
+      const cdnRow110 = f110.find((row) => row.id !== h110File);
+      expect(cdnRow110?.filename).toBe('t-cross-post-1.1.0.jar');
+      expect(cdnRow110?.sha512).toBe(sha('bb10bb10'));
+      expect(cdnRow110?.storage_path).toBeNull();
+      // Pairing by bytes, not by name: `my-build.jar` gained the NeoForge CDN url; no second row.
+      const f200 = await filesOf([h200]);
+      expect(f200).toHaveLength(1);
+      expect(f200[0]?.id).toBe(h200File);
+      expect(f200[0]?.url).toBe(
+        `${CDN}/${CROSS_ID}/versions/sdv00904/t-cross-post-2.0.0-neoforge.jar`,
+      );
+      // No byte match: the hosted row keeps no url; the upstream file lands as a CDN row.
+      const f300 = await filesOf([h300]);
+      expect(f300).toHaveLength(2);
+      expect(f300.find((row) => row.id === h300File)?.url).toBeNull();
+      expect(f300.find((row) => row.id !== h300File)?.storage_path).toBeNull();
+      // The inserted duplicates and the re-parented row carry their own CDN file.
+      for (const externalId of ['sdv00903', 'sdv00906', 'sdv00907']) {
+        const rows = await filesOf([byExternal.get(externalId)?.id as string]);
+        expect(rows).toHaveLength(1);
+        expect(rows[0]?.storage_path).toBeNull();
+        expect(rows[0]?.primary).toBe(true);
+      }
+
+      // Revalidate: the canonical slug (never the Modrinth slug) + the re-parent source.
+      expect(tags.calls).toContain('projects');
+      expect(tags.calls).toContain(`project:${canonicalBefore.slug as string}`);
+      expect(tags.calls).toContain(`project:${straySlug}`);
+      expect(tags.calls).not.toContain('project:t-cross-post');
+      expect(summary.items).toBeGreaterThanOrEqual(1);
+
+      // Rerun — nothing but the link's synced_at moves; the linked listing counts no item.
+      const versionIds = versions.map((row) => row.id as string);
+      const filesBefore = await filesOf(versionIds);
+      const linkBefore = await linkOf(canonical);
+      spyFetch(
+        routes([...fullList, cross], { [CROSS_VERSIONS_URL]: 'modrinth/versions-adopt.json' }),
+      );
+      const rerunTags = spyRevalidateTag();
+      const rerun = await run();
+      expect(rerun.ok).toBe(true);
+      expect(rerun.errors).toEqual([]);
+      expect(rerun.items).toBe(0);
+      expect(rerun.versions).toBe(0);
+      expect(rerun.files).toBe(0);
+      expect(rerunTags.calls).toEqual([]);
+      expect(await projectById(canonical)).toEqual(canonicalAfter);
+      expect(await versionsOf(canonical)).toEqual(versions);
+      expect(await filesOf(versionIds)).toEqual(filesBefore);
+      expect(await rowsForListing(CROSS_ID)).toBe(0);
+      const linkAfter = await linkOf(canonical);
+      expect(linkAfter.synced_at).not.toBe(linkBefore.synced_at);
+      expect(linkAfter.downloads).toBe(linkBefore.downloads);
+      expect(linkAfter.url).toBe(linkBefore.url);
+
+      await cleanupFactories();
+    }, 60_000);
+
+    it('T-ACT-82 a Modrinth-first row adopts its hosted version and keeps a hosted icon (never probed)', async () => {
+      const chameleon = await projectBySlug('pixel-chameleon');
+      const chameleonId = chameleon.id as string;
+      const hostedIcon = `project-media/${chameleonId}/icon/t_icon.png`;
+      const pre = await service
+        .from('projects')
+        .update({ icon_url: hostedIcon })
+        .eq('id', chameleonId);
+      if (pre.error) throw new Error(pre.error.message);
+      const h990 = await makeVersion({ project_id: chameleonId, version_number: '9.9.0' });
+      const h990File = await hosted(chameleonId, h990, 'pixel-chameleon-9.9.0.jar', 'ff10ff10');
+      // Upstream advertises a resized icon: a probe would HEAD the CDN — a hosted icon must not.
+      const listWithResizedIcon = fullList.map((project) =>
+        project.id === CHAMELEON_ID
+          ? { ...project, icon_url: `${CDN}/${CHAMELEON_ID}/abc123_96.webp` }
+          : project,
+      );
+      const cdnCalls = (calls: readonly string[]) =>
+        calls.filter((url) => url.startsWith('https://cdn.modrinth.com/'));
+
+      try {
+        const spy = spyFetch(
+          routes(listWithResizedIcon, {
+            [CHAMELEON_VERSIONS_URL]: 'modrinth/versions-modrinth-first.json',
+          }),
+        );
+        const tags = spyRevalidateTag();
+        const summary = await run();
+        expect(summary.ok).toBe(true);
+        expect(summary.errors).toEqual([]);
+        expect(cdnCalls(spy.calls)).toEqual([]);
+        expect((await projectById(chameleonId)).icon_url).toBe(hostedIcon);
+
+        const adopted = (await versionsOf(chameleonId)).find((row) => row.id === h990);
+        expect(adopted?.external_id).toBe('sdv00499');
+        expect(adopted?.name).toBe('Hosted first');
+        expect(adopted?.downloads).toBe(40);
+        const files = await filesOf([h990]);
+        expect(files).toHaveLength(2);
+        const hostedRow = files.find((row) => row.id === h990File);
+        expect(hostedRow?.url).toBe(
+          `${CDN}/${CHAMELEON_ID}/versions/sdv00499/pixel-chameleon-9.9.0.jar`,
+        );
+        expect(hostedRow?.primary).toBe(true);
+        const cdnRow = files.find((row) => row.id !== h990File);
+        expect(cdnRow?.filename).toBe('pixel-chameleon-9.9.0-sources.jar');
+        expect(cdnRow?.storage_path).toBeNull();
+        expect(cdnRow?.primary).toBe(false);
+        expect(tags.calls).toContain('project:pixel-chameleon');
+
+        // Rerun: the hosted icon is still not a change, no probe, only synced_at/updated_at move.
+        const before = await projectById(chameleonId);
+        const versionsBefore = await versionsOf(chameleonId);
+        const spy2 = spyFetch(
+          routes(listWithResizedIcon, {
+            [CHAMELEON_VERSIONS_URL]: 'modrinth/versions-modrinth-first.json',
+          }),
+        );
+        const rerunTags = spyRevalidateTag();
+        const rerun = await run();
+        expect(rerun.ok).toBe(true);
+        expect(rerun.items).toBe(0);
+        expect(rerun.versions).toBe(0);
+        expect(rerun.files).toBe(0);
+        expect(cdnCalls(spy2.calls)).toEqual([]);
+        expect(rerunTags.calls).toEqual([]);
+        const after = await projectById(chameleonId);
+        expect(after.icon_url).toBe(hostedIcon);
+        expect(stable(after)).toEqual(stable(before));
+        expect(await versionsOf(chameleonId)).toEqual(versionsBefore);
+      } finally {
+        // Self-contained: a hosted icon is never overwritten by the sync, so put the fixture value back.
+        await cleanupFactories();
+        const reset = await service
+          .from('projects')
+          .update({ icon_url: chameleon.icon_url as string })
+          .eq('id', chameleonId);
+        if (reset.error) throw new Error(reset.error.message);
+      }
+    }, 60_000);
+
+    it('T-ACT-82 slug collision: an odsens row holds the mapped slug → insert as p-<id>, no error; the stored slug is kept on rerun', async () => {
+      await makeProject({
+        source: 'odsens',
+        status: 'published',
+        slug: 't-collide',
+        title: 'T Collide',
+      });
+      const collide = listing(COLLIDE_ID, 't-collide', 'T Collide', 7);
+      spyFetch(routes([...fullList, collide]));
+      const tags = spyRevalidateTag();
+      const summary = await run();
+      expect(summary.ok).toBe(true);
+      expect(summary.errors).toEqual([]);
+      expect(await rowsForListing(COLLIDE_ID)).toBe(1);
+      const inserted = await projectBySlug(`p-${COLLIDE_ID}`);
+      expect(inserted.external_id).toBe(COLLIDE_ID);
+      expect(inserted.status).toBe('published');
+      expect(inserted.title).toBe('T Collide');
+      expect(tags.calls).toContain(`project:p-${COLLIDE_ID}`);
+      // The odsens row still owns the slug.
+      expect((await projectBySlug('t-collide')).source).toBe('odsens');
+
+      // Rerun: the collision persists → the stored slug is kept, nothing changes.
+      spyFetch(routes([...fullList, collide]));
+      const rerunTags = spyRevalidateTag();
+      const rerun = await run();
+      expect(rerun.ok).toBe(true);
+      expect(rerun.errors).toEqual([]);
+      expect(rerun.items).toBe(0);
+      expect(rerunTags.calls).toEqual([]);
+      const kept = await projectById(inserted.id as string);
+      expect(kept.slug).toBe(`p-${COLLIDE_ID}`);
+      expect(stable(kept)).toEqual(stable(inserted));
+
+      await cleanupFactories();
+      // The inserted listing row is synced (not factory-tracked): drop it here so the next case's
+      // `hidden` count sees only its own duplicate (the describe's afterAll repeats this, harmlessly).
+      const drop = await service.from('projects').delete().eq('external_id', COLLIDE_ID);
+      if (drop.error) throw new Error(drop.error.message);
+    }, 60_000);
+
+    it('T-ACT-82 a duplicate whose listing is linked elsewhere: step 4 hides it, its versions follow the link, no fold, two runs converge', async () => {
+      // The link is written, the fold never ran (the D1 failure-order case): the sync must converge.
+      const canonical = await makeProject({ source: 'odsens', status: 'published' });
+      const canonicalSlug = (await projectById(canonical)).slug as string;
+      const canonicalBefore = await projectById(canonical);
+      const duplicate = await projectBySlug('pixel-chameleon');
+      const duplicateId = duplicate.id as string;
+      const upstreamIds = (await loadFixture<{ id: string }[]>('modrinth', 'versions.json')).map(
+        (version) => version.id,
+      );
+      const before = await versionsOf(duplicateId);
+      const listedRows = before.filter((row) => upstreamIds.includes(row.external_id as string));
+      const keptRows = before.filter((row) => !upstreamIds.includes(row.external_id as string));
+      expect(listedRows).toHaveLength(upstreamIds.length);
+      await insertLink(canonical, CHAMELEON_ID);
+      const chameleonRaw = baseList.find((project) => project.id === CHAMELEON_ID);
+      expect(chameleonRaw).toBeDefined();
+
+      try {
+        spyFetch(routes(fullList));
+        const tags = spyRevalidateTag();
+        const summary = await run();
+        expect(summary.ok).toBe(true);
+        expect(summary.errors).toEqual([]);
+        expect(summary.hidden).toBe(1);
+        expect((await projectById(duplicateId)).status).toBe('hidden');
+        expect(await rowsForListing(CHAMELEON_ID)).toBe(1); // still exactly one row, never a second
+        // Every upstream-listed version row followed its listing (global external_id key), ids
+        // kept; rows absent upstream (the T-ACT-48 duplicates) stay where they are (ADR-0002 #66).
+        const moved = await versionsOf(canonical);
+        expect(moved.map((row) => row.id as string).sort()).toEqual(
+          listedRows.map((row) => row.id as string).sort(),
+        );
+        expect((await versionsOf(duplicateId)).map((row) => row.id as string).sort()).toEqual(
+          keptRows.map((row) => row.id as string).sort(),
+        );
+        // The canonical row: only downloads_modrinth moved.
+        const canonicalAfter = await projectById(canonical);
+        expect(canonicalAfter.downloads_modrinth).toBe(
+          mapProject(chameleonRaw as ModrinthProject).downloads_modrinth,
+        );
+        expect(canonicalAfter.title).toBe(canonicalBefore.title);
+        expect(canonicalAfter.icon_url).toBe(canonicalBefore.icon_url);
+        expect(canonicalAfter.synced_at).toEqual(canonicalBefore.synced_at);
+        expect(tags.calls).toContain(`project:${canonicalSlug}`);
+        expect(tags.calls).toContain('project:pixel-chameleon');
+
+        // Run 2 converges: nothing changes, nothing revalidates.
+        spyFetch(routes(fullList));
+        const rerunTags = spyRevalidateTag();
+        const rerun = await run();
+        expect(rerun.ok).toBe(true);
+        expect(rerun.hidden).toBe(0);
+        expect(rerun.items).toBe(0);
+        expect(rerun.versions).toBe(0);
+        expect(rerun.files).toBe(0);
+        expect(rerunTags.calls).toEqual([]);
+        expect((await projectById(duplicateId)).status).toBe('hidden');
+        expect(await versionsOf(canonical)).toEqual(moved);
+        expect(await projectById(canonical)).toEqual(canonicalAfter);
+      } finally {
+        // Unlink (the factory project takes its link and the moved rows with it) and let the next
+        // run republish the listing's own row with its versions from the fixture.
+        await cleanupFactories();
+        spyFetch(routes(fullList));
+        const back = await run();
+        expect(back.ok).toBe(true);
+        expect((await projectById(duplicateId)).status).toBe('published');
+        expect((await versionsOf(duplicateId)).length).toBe(before.length);
+      }
+    }, 60_000);
+  });
+
   describe('T-ACT-74 sync.failed edge (04 J-F, ADR-0030 D1)', () => {
     const LIST_FAILS: FixtureMap = { [LIST_URL]: 'status:400' };
     const NOW = () => new Date().toISOString();

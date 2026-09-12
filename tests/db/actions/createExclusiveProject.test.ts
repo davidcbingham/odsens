@@ -9,7 +9,8 @@
  *
  * Validation (T-ACT-35): slug regex + `RESERVED_SLUGS` → `validation`; taken slug → `conflict` —
  * against BOTH seed slugs (`metal-pipe-mace`, a Modrinth row, proving cross-source uniqueness, and
- * `seed-exclusive-pack`) and case-insensitively against a mixed-case factory slug (the citext half:
+ * `seed-exclusive-pack`), against a folded project's old slug in `project_redirects` (ADR-0037 D4 —
+ * the redirect keeps resolving, so the slug cannot be re-taken; citext) and case-insensitively against a mixed-case factory slug (the citext half:
  * an uppercase INPUT like `Metal-Pipe-Mace` never reaches the DB — the schema regex rejects it —
  * so case-insensitivity is proven with a lowercase input vs a mixed-case stored slug). `title` /
  * `description` / `body_md` boundaries; `loaders` outside `LOADERS`; extra `source` / `external_id`
@@ -182,6 +183,31 @@ describe('T-ACT-35 createExclusiveProject validation', () => {
     );
     expect(error.message).toBe("That slug's taken.");
     expect(error.field).toBe('slug');
+  });
+
+  it('T-ACT-35 a folded project\'s old slug (project_redirects, citext) → conflict "That slug\'s taken.", no row (ADR-0037 D4)', async () => {
+    const target = await makeProject();
+    const tag = randomUUID().replace(/-/g, '').slice(0, 12);
+    // A redirect row as the fold leaves it (service — the fold RPC is the only writer); mixed case
+    // proves the citext read: the lowercase input must still hit it.
+    const { error: arrangeError } = await service
+      .from('project_redirects')
+      .insert({ old_slug: `T-${tag.toUpperCase()}-Folded`, project_id: target });
+    expect(arrangeError).toBeNull();
+
+    const error = expectFail(
+      await callAction(createExclusiveProject, validInput({ slug: `t-${tag}-folded` }), {
+        role: 'admin',
+      }),
+      'conflict',
+    );
+    expect(error.message).toBe("That slug's taken.");
+    expect(error.field).toBe('slug');
+    const { data: rows } = await service
+      .from('projects')
+      .select('id')
+      .eq('slug', `t-${tag}-folded`);
+    expect(rows).toEqual([]);
   });
 
   it('T-ACT-35 extra source/external_id/downloads_modrinth/status keys ignored; max boundaries accepted; NO revalidate', async () => {

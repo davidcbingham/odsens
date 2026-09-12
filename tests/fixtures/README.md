@@ -5,7 +5,7 @@ Policy: `docs/build/05-test-plan.md` §2 (F-1..F-8). Adapters and jobs are teste
 
 | Dir | Contents | Arrives |
 |---|---|---|
-| `modrinth/` `curseforge/` | recorded API JSON per F-5 (`user-projects.json`, `project-*.json`, `versions*.json`, `error-*.json`; `mod.json`, `search.json`, `error-403/404.json`) | S1.2 |
+| `modrinth/` `curseforge/` | recorded API JSON per F-5 (`user-projects.json`, `project-*.json`, `versions*.json`, `error-*.json`; `mod.json`, `search.json`, `error-403/404.json`). S1.5a (ADR-0037 D10): `project/sd000101.json` (the `sd000101` object of `user-projects.json`, byte-equal — an alias for the adapter's `GET /project/{id}`) and `project/sd000199.json` (hand-made from the same shape: id `sd000199`, slug `e2e-cross-post`, title `E2E Cross Post`, 4321 downloads, `versions: []` — a listing absent from the 18-project list, so no sync run ever imports it; no `.meta.json`, like the S1.5 discord/resend shapes); `versions-adopt.json` (hand-made, `versions.json` shape, listing `sd000197` versions `sdv00901..sdv00907` — the T-ACT-82 adoption / tie-break / re-parent set) and `versions-modrinth-first.json` (hand-made, `sd000102` version `sdv00499` `9.9.0` — adoption on a Modrinth-first row); neither has a `.meta.json`. | S1.2 / S1.5a |
 | `youtube/` | `rss.xml`, `rss-malformed.xml`, `videos-list.json`, `playlist-items.json`, `oembed.json`, `videos-mentions.json`, `channels.json` | S1.6 (mentions S1.8) |
 | `oembed/` | `og-page.html`, `no-og.html`, `tiktok.html` | S1.8 |
 | `discord/` `resend/` | `webhook-ok.json` (the message object a `?wait=true` post returns), `429.json` (`retry_after: 250`, ms per 04 §4.6), POST alias `webhooks/123.json` (= `webhook-ok.json` byte for byte) · `send-ok.json` (`{id}`), `422.json` (Resend `validation_error`) (+ `__snapshots__/` for T-ADP-19). Hand-made minimal shapes (04 §4.5/§4.6), not recordings — no `.meta.json`. | S1.5 |
@@ -30,7 +30,10 @@ maps `GET http://127.0.0.1:4010/<source>/<path>` → `tests/fixtures/<source>/<p
 `.env.test` point the adapters there (ADR-0002 #73). POST routes (S1.5, ADR-0030 D8 — the request body is read and
 discarded): `POST /discord/webhooks/<id>/<token>` → `discord/webhooks/<id>.json` (200; unknown id → 404, which the
 Settings Test line shows as `✕ Discord said no: 404`) and `POST /resend/emails` → `resend/send-ok.json` (200); every
-other POST → 405. `scripts/fixture-server.mjs` (dependency-free, CI-5) and the `.ts` helper stay in step.
+other POST → 405. `.json` fallback (S1.5a, ADR-0037 D10): a GET whose resolved path is a directory or does not exist is
+served from `<path>.json` when that file exists — `GET /modrinth/project/sd000101` → `project/sd000101.json` beside the
+`project/sd000101/version` alias directory, `GET /modrinth/project/sd000199` → `project/sd000199.json`.
+`scripts/fixture-server.mjs` (dependency-free, CI-5) and the `.ts` helper stay in step.
 
 API-path aliases (S1.2, e2e only): the server maps URL paths verbatim, but the adapters request real API shapes
 (`/user/<user>/projects`, `/project/<id>/version`, `/mods/<id>` — 04 §4), so those paths exist as byte-for-byte

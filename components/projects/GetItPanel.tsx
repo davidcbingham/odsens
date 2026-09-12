@@ -31,6 +31,14 @@ import styles from './GetItPanel.module.css';
  * File meta shows the sha512 when the file carries one (00 S1.3.AC3 "sha512 stored and
  * displayed in GetItPanel file meta"): a labelled line under the loaders/size/filename line,
  * full 128-hex value in its own `<span>` so the 05 e2e can read the whole hash.
+ *
+ * Platform rows (ADR-0037 D6 "one project, many homes"): each row's word is the platform name
+ * (`sourceWord`) — "Modrinth" / "CurseForge" — or, when the row carries `also: true`, "Also on
+ * Modrinth" / "Also on CurseForge". The page sets `also` on every row when the primary is a
+ * hosted file (`primary.kind === 'direct'`) and leaves it off under "Download on Modrinth"
+ * (today's look — no "also" under a Modrinth primary). `also` is an additive optional field on
+ * the 03 `rows` shape (the 03 C-03 precedent); the direct row and the combined-count block are
+ * unchanged, and the rows still sum to `combined.total` (00 S1.5a.AC6).
  */
 export type GetItPanelProps = {
   primary: {
@@ -46,7 +54,13 @@ export type GetItPanelProps = {
       loaders: string[];
     };
   };
-  rows: { platform: 'modrinth' | 'curseforge'; href: string; downloads: number }[];
+  rows: {
+    platform: 'modrinth' | 'curseforge';
+    href: string;
+    downloads: number;
+    /** "Also on <platform>" — set when the primary download is a hosted file (ADR-0037 D6). */
+    also?: boolean;
+  }[];
   combined: { total: number; direct: number };
   slug: string;
   className?: string;
@@ -98,7 +112,9 @@ export function GetItPanel({ primary, rows, combined, slug, className }: GetItPa
                 className={styles['get-it-row']}
               >
                 <PlatformMark platform={row.platform} size={24} />
-                <span className={styles['get-it-row-word']}>{sourceWord(row.platform)}</span>
+                <span className={styles['get-it-row-word']}>
+                  {row.also ? `Also on ${sourceWord(row.platform)}` : sourceWord(row.platform)}
+                </span>
                 <PixelLabel
                   size={11}
                   informational

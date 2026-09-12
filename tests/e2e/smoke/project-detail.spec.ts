@@ -4,7 +4,9 @@
  *
  *  - T-E2E-3, S1.2 + S1.4 scope (05 §8 rows: "except SEEN ON"): title/breadcrumb/header, ABOUT
  *    markdown, VERSIONS & FILES ("Download", never "Get"; `Changes ▾` expander), GET IT panel
- *    (primary → Modrinth URL; rows `1.6K` / `120`; combined line `1.7K`), DETAILS list, and the
+ *    (primary → the Modrinth listing URL, built from the seed `external_id` `sd000102` —
+ *    ADR-0037 D6 / ADR-0034 D1, never our slug; rows `1.6K` / `120`; combined line `1.7K`),
+ *    DETAILS list, and the
  *    COMMENTS part (S1.4; 03 §2.2 `SectionTitle`, ADR-0002 #76, ADR-0028 D1): anon on SEED-9 sees
  *    `3 TOTAL` = the published root `…0201`, the creator reply `…0202` (CREATOR tag —
  *    `owner_profile_id`) and the `…0204` "Hidden by a moderator." slot; the deleted `…0205` has no
@@ -96,7 +98,7 @@ test.describe('project detail', () => {
     // GET IT panel: primary → the Modrinth project URL; per-platform rows; combined line 1.7K.
     const getIt = page.locator('aside[aria-labelledby="get-it-pixel-chameleon"]');
     const primary = getIt.locator('a[data-variant="primary"]');
-    await expect(primary).toHaveAttribute('href', 'https://modrinth.com/project/pixel-chameleon');
+    await expect(primary).toHaveAttribute('href', 'https://modrinth.com/project/sd000102');
     await expect(primary).toContainText('Download on Modrinth');
     const modrinthRow = getIt.getByRole('link', { name: /Modrinth.*opens in new tab/ });
     await expect(modrinthRow.getByText('1.6K ↓')).toBeVisible();
@@ -116,7 +118,7 @@ test.describe('project detail', () => {
     await expect(details.getByText('Mod', { exact: true })).toBeVisible();
     await expect(details.getByRole('link', { name: 'Modrinth' })).toHaveAttribute(
       'href',
-      'https://modrinth.com/project/pixel-chameleon',
+      'https://modrinth.com/project/sd000102',
     );
 
     // COMMENTS (S1.4 part of T-E2E-3): the section points at the thread's SectionTitle heading,

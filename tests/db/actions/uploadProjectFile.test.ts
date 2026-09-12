@@ -1,12 +1,13 @@
 /**
- * tests/db/actions/uploadProjectFile.test.ts — T-ACT-39 + the `project-files` half of T-ACT-73
- * (05 §7.2; 04 §1.4 `uploadProjectFile`, §1.4.5 two-phase signed uploads, SC-19/SC-20/SC-21;
- * 01 INV-51/52/53; ADR-0002 C7 / C16; ADR-0026 exclusive-version identity).
+ * tests/db/actions/uploadProjectFile.test.ts — T-ACT-39 + the `project-files` half of T-ACT-73 +
+ * the upload clauses of T-ACT-83 (05 §7.2; 04 §1.4 `uploadProjectFile`, §1.4.5 two-phase signed
+ * uploads, SC-19/SC-20/SC-21; 01 INV-51/52/53; ADR-0002 C7 / C16; ADR-0026 exclusive-version
+ * identity; ADR-0037 D5(b) uploads for every source).
  *
  * Auth matrix: anon `unauthenticated` · user D `forbidden` · banned D `forbidden` (the seed banned
  * account has role `user`, so `requireRole`'s rank check answers) · mod D `forbidden` (admin-only,
- * ADR-0002 C7) · admin A. The synced seed project (SEED_PROJECTS.metalPipeMace, read-only) answers
- * `forbidden` on BOTH phases — synced files live on Modrinth (04 §1.4).
+ * ADR-0002 C7) · admin A on every `source` (ADR-0037 D5(b)): a synced project accepts a file row and
+ * its synced version metadata keeps following Modrinth — T-ACT-83 below.
  *
  * `begin` validates the DECLARED ext/size/version_number in the schema (no rate-limit budget burned),
  * returns `project-files/<pid>/<version uuid>/<sanitized filename>` with NO DB row — reusing the id
@@ -35,9 +36,14 @@ import { expectFail, expectOk } from '@/tests/helpers/actionResult';
 import { clearRateLimitHits, countRateLimitHits } from '@/tests/helpers/arrange';
 import { asRole, SEED_ROLE_IDS } from '@/tests/helpers/asRole';
 import { callAction, callActionAs, setupActionMocks } from '@/tests/helpers/callAction';
-import { cleanupFactories, makeProject, makeUser, makeVersion } from '@/tests/helpers/factories';
+import {
+  cleanupFactories,
+  makeFile,
+  makeProject,
+  makeUser,
+  makeVersion,
+} from '@/tests/helpers/factories';
 import { fixturePath } from '@/tests/helpers/fixtures';
-import { SEED_PROJECTS } from '@/tests/helpers/seedIds';
 import { putSigned, removeObjects, uploadFixture } from '@/tests/helpers/storage';
 import { spyRevalidateTag } from '@/tests/helpers/spies';
 
@@ -243,40 +249,6 @@ describe('T-ACT-39 uploadProjectFile', () => {
       // The limiter sits after `requireRole` — a refused caller burns no budget.
       expect(await countRateLimitHits(SCOPE, SEED_ROLE_IDS[role])).toBe(0);
     }
-  });
-
-  it('T-ACT-39 synced seed project → forbidden on begin AND commit (files live on Modrinth)', async () => {
-    // The denied row provably exists (seed, read-only) and is synced.
-    const { data: seedRow, error } = await service
-      .from('projects')
-      .select('id, source')
-      .eq('id', SEED_PROJECTS.metalPipeMace)
-      .single();
-    expect(error).toBeNull();
-    expect(seedRow).toMatchObject({ id: SEED_PROJECTS.metalPipeMace, source: 'modrinth' });
-
-    const begin = expectFail(
-      await callAction(uploadProjectFile, beginInput(SEED_PROJECTS.metalPipeMace), {
-        role: 'admin',
-      }),
-      'forbidden',
-    );
-    expect(begin.message).toBe('Synced projects keep their files on Modrinth.');
-
-    const commit = expectFail(
-      await callAction(
-        uploadProjectFile,
-        commitInput(
-          SEED_PROJECTS.metalPipeMace,
-          `project-files/${SEED_PROJECTS.metalPipeMace}/${randomUUID()}/pack.zip`,
-        ),
-        { role: 'admin' },
-      ),
-      'forbidden',
-    );
-    expect(commit.message).toBe('Synced projects keep their files on Modrinth.');
-    // The project check precedes the limiter — neither refused phase burned budget.
-    expect(await countRateLimitHits(SCOPE, SEED_ROLE_IDS.admin)).toBe(0);
   });
 
   // ---- begin: declared-value validation (schema — lib/actions/uploads.schema.ts) --------------
@@ -657,5 +629,214 @@ describe('T-ACT-39 uploadProjectFile', () => {
     // The failed commit removed ITS object only — the earlier committed object survives (U1).
     expect(await objectExists(begin.path)).toBe(false);
     expect(await objectExists(storyPath)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-83 — uploads on synced rows (ADR-0037 D5(b)): begin's version pick, file-row-only commits,
+// the CDN twin that gains storage_path, primary scoped per home, filenames shared across homes
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-83 uploadProjectFile on a Modrinth-first project (ADR-0037 D5(b))', () => {
+  const tag = (id: string): string => id.replace(/-/g, '').slice(0, 8);
+  let syncedId = '';
+
+  beforeAll(async () => {
+    syncedId = await makeProject({ source: 'modrinth', external_id: `t_${randomUUID()}` });
+  });
+
+  it('T-ACT-83 begin picks the newest synced row for that version_number (no external_id NULL row), the NULL row when one exists', async () => {
+    const older = await makeVersion({
+      project_id: syncedId,
+      external_id: `t_old_${tag(syncedId)}`,
+      version_number: '3.0.0',
+      date_published: '2026-01-01T00:00:00.000Z',
+    });
+    const newer = await makeVersion({
+      project_id: syncedId,
+      external_id: `t_new_${tag(syncedId)}`,
+      version_number: '3.0.0',
+      date_published: '2026-02-01T00:00:00.000Z',
+    });
+    const picked = await beginAsAdmin(beginInput(syncedId, { version_number: '3.0.0' }));
+    expect(picked.path).toBe(`project-files/${syncedId}/${newer}/pack.zip`);
+    expect(versionIdIn(picked.path)).not.toBe(older);
+
+    const hosted = await makeVersion({
+      project_id: syncedId,
+      external_id: null,
+      version_number: '3.0.0',
+    });
+    const preferred = await beginAsAdmin(beginInput(syncedId, { version_number: '3.0.0' }));
+    expect(preferred.path).toBe(`project-files/${syncedId}/${hosted}/pack.zip`);
+  });
+
+  it('T-ACT-83 commit onto a synced version → the file row only (metadata ignored); a CDN row may share the filename; first hosted file primary beside the CDN primary', async () => {
+    const version = await makeVersion({
+      project_id: syncedId,
+      external_id: `t_sv_${tag(syncedId)}`,
+      version_number: '1.0.0',
+      name: 'From Modrinth',
+      changelog_md: 'synced changelog',
+      loaders: ['fabric'],
+    });
+    const cdnFile = await makeFile({
+      version_id: version,
+      filename: 'pack.zip',
+      sha512: `t_other_${tag(version)}`,
+      url: 'https://cdn.modrinth.com/data/t/versions/t/pack.zip',
+      primary: true,
+    });
+
+    const begin = await beginAsAdmin(beginInput(syncedId));
+    expect(begin.path).toBe(`project-files/${syncedId}/${version}/pack.zip`);
+    trackObject(begin.path);
+    expect((await putSigned(begin.signed_url, begin.token, 'files/pack.zip')).ok).toBe(true);
+
+    const tags = spyRevalidateTag();
+    const data = await commitAsAdmin({
+      phase: 'commit',
+      project_id: syncedId,
+      path: begin.path,
+      version: { ...versionFields('1.0.0'), name: 'Ignored name', changelog_md: 'ignored' },
+    });
+    expect(data.version_id).toBe(version);
+    expect(data.file.sha512).toBe(PACK_ZIP_SHA512);
+
+    // The synced row follows Modrinth — the form's metadata never landed.
+    const { data: row, error } = await service
+      .from('project_versions')
+      .select('external_id, name, changelog_md, loaders')
+      .eq('id', version)
+      .single();
+    expect(error).toBeNull();
+    expect(row).toEqual({
+      external_id: `t_sv_${tag(syncedId)}`,
+      name: 'From Modrinth',
+      changelog_md: 'synced changelog',
+      loaders: ['fabric'],
+    });
+
+    // Two rows share the filename (one per home); each home has its own primary.
+    const files = await fileRows(version);
+    expect(files).toHaveLength(2);
+    expect(files.find((file) => file.id === cdnFile)).toMatchObject({
+      storage_path: null,
+      primary: true,
+    });
+    expect(files.find((file) => file.id === data.file.id)).toMatchObject({
+      filename: 'pack.zip',
+      sha512: PACK_ZIP_SHA512,
+      url: null,
+      storage_path: begin.path,
+      primary: true,
+    });
+    expect(tags.calls).toEqual(['projects', `project:${await slugOf(syncedId)}`]);
+  });
+
+  it('T-ACT-83 a CDN-only sibling with the same sha512 gains storage_path (keeps url), becomes the hosted primary, no new row', async () => {
+    const version = await makeVersion({
+      project_id: syncedId,
+      external_id: `t_twin_${tag(syncedId)}`,
+      version_number: '2.0.0',
+    });
+    const twin = await makeFile({
+      version_id: version,
+      filename: 'mirror.zip',
+      sha512: PACK_ZIP_SHA512,
+      url: 'https://cdn.modrinth.com/data/t/versions/t/mirror.zip',
+      primary: true,
+    });
+
+    const begin = await beginAsAdmin(beginInput(syncedId, { version_number: '2.0.0' }));
+    expect(begin.path).toBe(`project-files/${syncedId}/${version}/pack.zip`);
+    trackObject(begin.path);
+    expect((await putSigned(begin.signed_url, begin.token, 'files/pack.zip')).ok).toBe(true);
+
+    const data = await commitAsAdmin(commitInput(syncedId, begin.path, { versionNumber: '2.0.0' }));
+    expect(data.version_id).toBe(version);
+    // The existing row is the answer — the same bytes already lived in the other home.
+    expect(data.file.id).toBe(twin);
+    expect(data.file.sha512).toBe(PACK_ZIP_SHA512);
+
+    expect(await fileRows(version)).toEqual([
+      {
+        id: twin,
+        filename: 'mirror.zip',
+        size_bytes: 1024,
+        sha512: PACK_ZIP_SHA512,
+        url: 'https://cdn.modrinth.com/data/t/versions/t/mirror.zip',
+        storage_path: begin.path,
+        primary: true,
+        download_count: 0,
+      },
+    ]);
+  });
+
+  it('T-ACT-83 a CDN twin on a HOSTED version row (external_id NULL) still takes the form metadata; on a synced row it does not', async () => {
+    // Hosted version 3.0.0 on the synced project with a CDN-only twin of pack.zip beside it.
+    const hosted = await makeVersion({
+      project_id: syncedId,
+      external_id: null,
+      version_number: '9.9.9',
+      changelog_md: '- before',
+    });
+    const twin = await makeFile({
+      version_id: hosted,
+      filename: 'mirror-9.zip',
+      sha512: PACK_ZIP_SHA512,
+      url: 'https://cdn.modrinth.com/data/t/versions/t9/mirror-9.zip',
+      primary: true,
+    });
+    const begin = await beginAsAdmin(beginInput(syncedId, { version_number: '9.9.9' }));
+    trackObject(begin.path);
+    expect((await putSigned(begin.signed_url, begin.token, 'files/pack.zip')).ok).toBe(true);
+    const data = await commitAsAdmin(commitInput(syncedId, begin.path, { versionNumber: '9.9.9' }));
+    expect(data.file.id).toBe(twin);
+    const { data: after } = await service
+      .from('project_versions')
+      .select('changelog_md, external_id')
+      .eq('id', hosted)
+      .single();
+    // `versionFields` carries the '- initial drop' changelog — the hosted row took it (D5(b)).
+    expect(after).toEqual({ changelog_md: '- initial drop', external_id: null });
+  });
+
+  it('T-ACT-83 primary is scoped to hosted siblings: primary:true demotes the hosted primary only, the CDN primary stays', async () => {
+    const version = await makeVersion({
+      project_id: syncedId,
+      external_id: `t_prim_${tag(syncedId)}`,
+      version_number: '4.0.0',
+    });
+    const cdnPrimary = await makeFile({
+      version_id: version,
+      filename: 'upstream.zip',
+      sha512: `t_up_${tag(version)}`,
+      url: 'https://cdn.modrinth.com/data/t/versions/t/upstream.zip',
+      primary: true,
+    });
+
+    const first = await beginAsAdmin(
+      beginInput(syncedId, { version_number: '4.0.0', filename: 'first.zip' }),
+    );
+    trackObject(first.path);
+    expect((await putSigned(first.signed_url, first.token, 'files/pack.zip')).ok).toBe(true);
+    const firstCommit = await commitAsAdmin(
+      commitInput(syncedId, first.path, { versionNumber: '4.0.0' }),
+    );
+
+    const second = await beginAsAdmin(
+      beginInput(syncedId, { version_number: '4.0.0', filename: 'second.zip' }),
+    );
+    trackObject(second.path);
+    expect((await putSigned(second.signed_url, second.token, 'files/pack.zip')).ok).toBe(true);
+    const secondCommit = await commitAsAdmin(
+      commitInput(syncedId, second.path, { versionNumber: '4.0.0', primary: true }),
+    );
+
+    const byId = new Map((await fileRows(version)).map((file) => [file.id, file]));
+    expect(byId.get(cdnPrimary)?.primary).toBe(true); // the CDN home keeps its primary
+    expect(byId.get(firstCommit.file.id)?.primary).toBe(false); // demoted among hosted rows
+    expect(byId.get(secondCommit.file.id)?.primary).toBe(true);
+    expect(byId.size).toBe(3);
   });
 });

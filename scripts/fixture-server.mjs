@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 /**
  * scripts/fixture-server.mjs — starts the e2e fixture server standalone (ADR-0002 #73; 05 CI-5;
- * ADR-0030 D8 — the two POST routes).
+ * ADR-0030 D8 — the two POST routes; ADR-0037 D10 — the `.json` fallback).
  *   node scripts/fixture-server.mjs [port]      (default 4010)
  * GET/HEAD: serves tests/fixtures/<source>/<path> at http://127.0.0.1:<port>/<source>/<path>.
+ *   A GET whose resolved path is a directory or does not exist is served from `<path>.json` when
+ *   that file exists (S1.5a: `GET /modrinth/project/sd000101` → `project/sd000101.json`, beside the
+ *   `project/sd000101/version` alias directory — the adapter's `GET /project/{id}`).
  * POST (S1.5, the request body is read and discarded — never stored, never logged):
  *   POST /discord/webhooks/<id>/<token>  → tests/fixtures/discord/webhooks/<id>.json (200; unknown id → 404)
  *   POST /resend/emails                  → tests/fixtures/resend/send-ok.json (200)
@@ -61,6 +64,23 @@ function resolvePostFixture(urlPath) {
   return null;
 }
 
+/** ADR-0037 D10: a missing file or a directory falls back to `<path>.json` when that is a file. */
+async function withJsonFallback(file) {
+  try {
+    const info = await stat(file);
+    if (info.isFile()) return file;
+  } catch {
+    // missing — try the .json twin
+  }
+  try {
+    const info = await stat(`${file}.json`);
+    if (info.isFile()) return `${file}.json`;
+  } catch {
+    // no twin either — serveFile answers 404
+  }
+  return file;
+}
+
 /** Log form of a URL: the Discord webhook token segment is shown as `…<last 4>` (never whole, even here). */
 function displayUrl(url) {
   return url.replace(
@@ -105,7 +125,7 @@ const server = createServer(async (req, res) => {
   if (method !== 'GET' && method !== 'HEAD') return send(405, 'method not allowed');
   const file = resolveFixture(req.url ?? '/');
   if (!file) return send(404, 'not found');
-  return serveFile(file);
+  return serveFile(await withJsonFallback(file));
 });
 
 server.listen(port, '127.0.0.1', () => {

@@ -8,7 +8,10 @@
  * (S1.5) = `site_settings` row 1 (webhook masked, never raw — 04 §1.3 / 01 INV-43) +
  * `notification_matrix` (`getAdminSettings`) and `public_profiles where role <> 'user'`
  * (`listModerators`, 01 INV-45); 01 INV-12 "reads go through `lib/data/<area>.ts`"; registry Modules
- * `data/<area>.ts` — `admin` added 2026-08-27, registry add-first rule).
+ * `data/<area>.ts` — `admin` added 2026-08-27, registry add-first rule). S1.5a (ADR-0037 D8):
+ * `listAdminProjects` carries `externalId` and the pure `suggestMatches` (the `/admin/projects`
+ * "Looks like the same project" note — 00 S1.5a.AC7; 05 T-UNIT-50); `getAdminProject` carries
+ * `externalId` + `modrinthLink` beside `curseforgeLink` from ONE `project_links` read.
  *
  * The admin read seam is the REQUEST-COOKIE server client (`lib/supabase/server.ts`) under the
  * S1.2 RLS policies (ADR-0022 `project_is_visible() or is_admin()` arms) — admin routes are
@@ -26,6 +29,7 @@ import 'server-only';
 import { cache } from 'react';
 import { avatarUrlFor, type CommentAuthor } from '@/lib/data/comments';
 import { combinedDownloads } from '@/lib/format/downloads';
+import { projectMatchKey } from '@/lib/format/project';
 import { maskSecret } from '@/lib/format/secret';
 import {
   COMING_LATER_KINDS,
@@ -38,7 +42,7 @@ import {
 import { matrixDefaults, type MatrixEntry } from '@/lib/notify/matrix';
 import { createServerClient } from '@/lib/supabase/server';
 import type { Database, Json } from '@/lib/supabase/types';
-import { sortVersionsForTable } from '@/lib/versions';
+import { sortVersionsForTable, type FileKind } from '@/lib/versions';
 
 type ProjectType = Database['public']['Enums']['project_type'];
 type ProjectSource = Database['public']['Enums']['project_source'];
@@ -94,6 +98,8 @@ export type AdminProjectListItem = {
   projectType: ProjectType;
   source: ProjectSource;
   status: ProjectStatus;
+  /** `projects.external_id` — the Modrinth listing id on synced rows, null on exclusives (ADR-0037 D8). */
+  externalId: string | null;
   /** `modrinth + curseforge + direct` (05 T-UNIT-11 `combinedDownloads`). */
   downloadsTotal: number;
   /** Override-derived; a project without an override row reads `false` / `null` / `false`. */
@@ -101,6 +107,63 @@ export type AdminProjectListItem = {
   featuredOrder: number | null;
   hidden: boolean;
 };
+
+/** The columns `suggestMatches` reads — a subset of `AdminProjectListItem` so tests stay small. */
+export type SuggestMatchRow = {
+  id: string;
+  slug: string;
+  title: string;
+  source: ProjectSource;
+  externalId: string | null;
+};
+
+/** One `/admin/projects` match note: the `odsens` twin of a `source='modrinth'` row (ADR-0037 D8). */
+export type SuggestedMatch = {
+  /** The `odsens` row the note points at (`/admin/projects/<odsensId>?listing=<externalId>`). */
+  odsensId: string;
+  odsensTitle: string;
+  /** The synced row's Modrinth listing id — what the editor's Modrinth field is prefilled with. */
+  externalId: string;
+};
+
+/**
+ * The `/admin/projects` "Looks like the same project as <title> — link it" rule (ADR-0037 D8;
+ * 00 S1.5a.AC7; 05 T-UNIT-50). Pure. For every `source='modrinth'` row that carries an
+ * `external_id`, the first `source='odsens'` row (in the given order — the list is title A→Z)
+ * whose `projectMatchKey(slug)` OR `projectMatchKey(title)` equals the synced row's slug key or
+ * title key. The title leg matters because ADR-0037 D2 gives a slug-colliding synced row the
+ * last-resort `p-<id>` slug (ADR-0034 D1), so only the title still says "same project". An
+ * empty key (`''`) never matches. Nothing here links anything — the note is a suggestion only.
+ * Keyed by the SYNCED row's id.
+ */
+export function suggestMatches(rows: readonly SuggestMatchRow[]): Map<string, SuggestedMatch> {
+  const exclusives = rows
+    .filter((row) => row.source === 'odsens')
+    .map((row) => ({
+      row,
+      keys: new Set(
+        [projectMatchKey(row.slug), projectMatchKey(row.title)].filter((key) => key !== ''),
+      ),
+    }));
+  const matches = new Map<string, SuggestedMatch>();
+  if (exclusives.length === 0) return matches;
+  for (const synced of rows) {
+    if (synced.source !== 'modrinth' || synced.externalId === null || synced.externalId === '') {
+      continue;
+    }
+    const keys = [projectMatchKey(synced.slug), projectMatchKey(synced.title)].filter(
+      (key) => key !== '',
+    );
+    const twin = exclusives.find(({ keys: own }) => keys.some((key) => own.has(key)));
+    if (twin === undefined) continue;
+    matches.set(synced.id, {
+      odsensId: twin.row.id,
+      odsensTitle: twin.row.title,
+      externalId: synced.externalId,
+    });
+  }
+  return matches;
+}
 
 /**
  * Every project the session may read (admin: all statuses — 05 T-RLS-16..18), with its override
@@ -112,7 +175,7 @@ export async function listAdminProjects(): Promise<AdminProjectListItem[]> {
     db
       .from('projects')
       .select(
-        'id, slug, title, project_type, source, status, downloads_modrinth, downloads_curseforge, downloads_direct',
+        'id, slug, title, project_type, source, status, external_id, downloads_modrinth, downloads_curseforge, downloads_direct',
       )
       .order('title', { ascending: true }),
     db.from('project_overrides').select('project_id, featured, featured_order, hidden'),
@@ -130,6 +193,7 @@ export async function listAdminProjects(): Promise<AdminProjectListItem[]> {
       projectType: row.project_type,
       source: row.source,
       status: row.status,
+      externalId: row.external_id,
       downloadsTotal: combinedDownloads(row),
       featured: override?.featured ?? false,
       featuredOrder: override?.featured_order ?? null,
@@ -148,6 +212,8 @@ export type AdminProjectDetail = {
   projectType: ProjectType;
   source: ProjectSource;
   status: ProjectStatus;
+  /** `projects.external_id` — the home listing of a `source='modrinth'` row (ADR-0037 D8). */
+  externalId: string | null;
   downloadsTotal: number;
   /** S1.3 exclusive-editor columns (04 §1.4 `updateExclusiveProject` fields + publish state). */
   bodyMd: string;
@@ -175,12 +241,18 @@ export type AdminProjectDetail = {
     extraGallery: AdminGalleryEntry[];
   } | null;
   /** The manual CurseForge link (Q39), when set. */
-  curseforgeLink: { externalId: string; url: string; downloads: number } | null;
+  curseforgeLink: AdminProjectLink | null;
+  /** The `modrinth` link of an `odsens` row (ADR-0037 D1/D8); always null on synced rows. */
+  modrinthLink: AdminProjectLink | null;
 };
+
+/** One `project_links` row as the editor shows it (URL + `formatCount(downloads)`). */
+export type AdminProjectLink = { externalId: string; url: string; downloads: number };
 
 /**
  * One project by id (any status the session may read — 02 §1.3), with its override row and
- * CurseForge link. Null = unknown id OR filtered by RLS (moderators on hidden/draft rows,
+ * platform links (ONE `project_links` read serves both platforms — ADR-0037 D8). Null = unknown
+ * id OR filtered by RLS (moderators on hidden/draft rows,
  * 05 T-RLS-17/18) — the page maps both to `notFound()` (02 §1.3 Files cell). React-`cache()`d
  * so `generateMetadata` and the page share one read per request.
  */
@@ -189,14 +261,14 @@ export const getAdminProject = cache(async (id: string): Promise<AdminProjectDet
   const project = await db
     .from('projects')
     .select(
-      'id, slug, title, description, project_type, source, status, downloads_modrinth, downloads_curseforge, downloads_direct, body_md, categories, loaders, game_versions, license, source_url, issues_url, discord_url, icon_url, published_at, gallery',
+      'id, slug, title, description, project_type, source, status, external_id, downloads_modrinth, downloads_curseforge, downloads_direct, body_md, categories, loaders, game_versions, license, source_url, issues_url, discord_url, icon_url, published_at, gallery',
     )
     .eq('id', id)
     .maybeSingle();
   if (project.error) throw new Error(`admin project read failed: ${project.error.code}`);
   if (project.data === null) return null;
 
-  const [override, link] = await Promise.all([
+  const [override, links] = await Promise.all([
     db
       .from('project_overrides')
       .select(
@@ -204,15 +276,15 @@ export const getAdminProject = cache(async (id: string): Promise<AdminProjectDet
       )
       .eq('project_id', id)
       .maybeSingle(),
-    db
-      .from('project_links')
-      .select('external_id, url, downloads')
-      .eq('project_id', id)
-      .eq('platform', 'curseforge')
-      .maybeSingle(),
+    db.from('project_links').select('platform, external_id, url, downloads').eq('project_id', id),
   ]);
   if (override.error) throw new Error(`admin override read failed: ${override.error.code}`);
-  if (link.error) throw new Error(`admin link read failed: ${link.error.code}`);
+  if (links.error) throw new Error(`admin links read failed: ${links.error.code}`);
+
+  const linkFor = (platform: 'modrinth' | 'curseforge'): AdminProjectLink | null => {
+    const row = links.data.find((link) => link.platform === platform);
+    return row ? { externalId: row.external_id, url: row.url, downloads: row.downloads } : null;
+  };
 
   return {
     id: project.data.id,
@@ -222,6 +294,7 @@ export const getAdminProject = cache(async (id: string): Promise<AdminProjectDet
     projectType: project.data.project_type,
     source: project.data.source,
     status: project.data.status,
+    externalId: project.data.external_id,
     downloadsTotal: combinedDownloads(project.data),
     bodyMd: project.data.body_md,
     categories: project.data.categories,
@@ -246,13 +319,8 @@ export const getAdminProject = cache(async (id: string): Promise<AdminProjectDet
           extraGallery: parseExtraGallery(override.data.extra_gallery),
         }
       : null,
-    curseforgeLink: link.data
-      ? {
-          externalId: link.data.external_id,
-          url: link.data.url,
-          downloads: link.data.downloads,
-        }
-      : null,
+    curseforgeLink: linkFor('curseforge'),
+    modrinthLink: linkFor('modrinth'),
   };
 });
 
@@ -267,6 +335,8 @@ export type AdminVersionFile = {
   url: string | null;
   primary: boolean;
   downloadCount: number;
+  /** ADR-0037 D6 per-file home: hosted (`storage_path`) → `direct`, else the Modrinth CDN row. */
+  kind: FileKind;
 };
 
 export type AdminVersion = {
@@ -283,9 +353,11 @@ export type AdminVersion = {
 
 /**
  * Every version of one project with its files embedded, in the `VersionsTable` order (05
- * T-UNIT-30 via `sortVersionsForTable`): versions newest-first, files primary-first. One select —
- * `project_files` rides the `project_versions` FK embed. Same RLS story as `getAdminProject`:
- * a moderator on a draft/hidden project never reaches this call (the page 404s first).
+ * T-UNIT-30 via `sortVersionsForTable`): versions newest-first, files `hostedFirst` (ADR-0037
+ * D6 — each file's `kind` is derived from `storage_path`). One select — `project_files` rides
+ * the `project_versions` FK embed. Read on every source since S1.5a (the file well renders on
+ * synced rows too). Same RLS story as `getAdminProject`: a moderator on a draft/hidden project
+ * never reaches this call (the page 404s first).
  */
 export async function listAdminProjectVersions(projectId: string): Promise<AdminVersion[]> {
   const db = await createServerClient();
@@ -317,6 +389,7 @@ export async function listAdminProjectVersions(projectId: string): Promise<Admin
         url: file.url,
         primary: file.primary,
         downloadCount: file.download_count,
+        kind: file.storage_path !== null ? 'direct' : 'modrinth',
       })),
     })),
   );

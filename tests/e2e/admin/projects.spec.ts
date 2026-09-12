@@ -31,6 +31,13 @@
  *    as `oddsense` — matrix, webhook against the :4010 fixture server, admin emails, moderators
  *    through `setUserRole`, Ko-fi) is the final describe; SEED-1 + SEED-2 restored in its
  *    `afterAll` through `restoreSeedSettings()`.
+ *  - S1.5a (same file, same reason — ADR-0037 D11): T-E2E-34 amended for the LISTINGS recipe
+ *    (the CurseForge field's Link / Remove buttons; the seed CF listing 900001 is freed from
+ *    pixel-chameleon via the service client for the MACE leg because
+ *    `project_links_platform_external_id_key` allows one project per listing, and restored
+ *    after); the `cross-posted projects` describe right after T-E2E-41 holds T-E2E-51 (the
+ *    editor field on the seed exclusive), T-E2E-52 (the fold on test-created rows) and T-E2E-53
+ *    (uploads on a Modrinth-first test row). Never folds a seed row.
  *
  * Seed truths: SEED-4..6 (3 published projects; overrides featured 1 = pixel-chameleon,
  * 2 = seed-exclusive-pack; CF link 900001 on pixel-chameleon), SEED-12 (one ok run per source),
@@ -56,12 +63,15 @@ import { loadEnvTest } from '../../helpers/envTest';
 import {
   cleanupFactories,
   makeComment,
+  makeFile,
+  makeProject,
   makeUser,
+  makeVersion,
   purgeNotificationEvents,
   restoreSeedCommentCounts,
 } from '../../helpers/factories';
-import { fixturePath } from '../../helpers/fixtures';
-import { loginAs } from '../../helpers/loginAs';
+import { fixturePath, loadFixture } from '../../helpers/fixtures';
+import { loginAs, logout } from '../../helpers/loginAs';
 import { shoot } from '../../helpers/screenshots';
 import { listObjects, removeObjects } from '../../helpers/storage';
 import { SEED_COMMENTS, SEED_PROJECTS, SEED_USERS } from '../../helpers/seedIds';
@@ -113,6 +123,42 @@ async function expectAtUrl(page: Page, url: string, assert: () => Promise<void>)
     await page.goto(url);
     await assert();
   }).toPass({ timeout: 20_000, intervals: [400, 800, 1_600] });
+}
+
+type ServiceClient = ReturnType<typeof loose>;
+
+/** SEED-6: the CurseForge listing 900001 on pixel-chameleon (url = the fixture's websiteUrl). */
+const SEED_CF_LINK = {
+  project_id: PIXEL,
+  platform: 'curseforge',
+  external_id: '900001',
+  url: 'https://www.curseforge.com/minecraft/mc-mods/pixel-chameleon',
+  downloads: 120,
+} as const;
+
+/**
+ * S1.5a: `project_links_platform_external_id_key` (ADR-0037 D1/D9) lets one project hold a
+ * listing, and `mods/900001` is the only CurseForge id the fixture server answers — so a test
+ * that links 900001 elsewhere parks the seed row first and puts it back after (service client;
+ * `restoreContentTables` remains the byte-level safety net).
+ */
+async function freeSeedCurseforgeListing(service: ServiceClient): Promise<void> {
+  const deleted = await service
+    .from('project_links')
+    .delete()
+    .eq('project_id', PIXEL)
+    .eq('platform', 'curseforge');
+  expect(deleted.error).toBeNull();
+}
+
+async function restoreSeedCurseforgeListing(service: ServiceClient): Promise<void> {
+  const restored = await service.from('project_links').upsert(
+    { ...SEED_CF_LINK, synced_at: new Date().toISOString() },
+    {
+      onConflict: 'project_id,platform',
+    },
+  );
+  expect(restored.error).toBeNull();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -220,17 +266,27 @@ test('T-E2E-34 moderator: list + curate controls present but disabled ("Admin on
   await expect(page.getByText('Not allowed.')).toHaveCount(0);
   await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0);
 
-  // `[id]` curate view: fields, comments toggle and both saves disabled the same way.
+  // `[id]` curate view: fields, comments toggle, Save and the LISTINGS Link disabled the same way.
+  // On a synced row the Modrinth field is read-only and has no buttons (ADR-0037 D8) — present,
+  // disabled for a moderator like every other field, never hidden.
   await page.goto(`/admin/projects/${MACE}`);
   await expect(page.getByLabel('Title override')).toBeDisabled();
   await expect(page.getByLabel('Notes')).toBeDisabled();
   await expect(page.getByLabel('CurseForge id or URL')).toBeDisabled();
+  const homeListing = page.getByLabel('Modrinth listing (URL, slug or id)');
+  await expect(homeListing).toBeDisabled();
+  await expect(homeListing).toHaveAttribute('readonly', '');
+  await expect(homeListing).toHaveValue('https://modrinth.com/project/sd000101');
+  await expect(
+    page.getByText("Synced from Modrinth — this is the project's home listing."),
+  ).toBeVisible();
   await expect(toggleFor(page, 'Comments on Metal Pipe Mace').input).toBeDisabled();
-  for (const name of ['Save', 'Save link']) {
+  for (const name of ['Save', 'Link']) {
     const button = page.getByRole('button', { name, exact: true });
     await expect(button).toBeDisabled();
     expect(await button.evaluate((el) => el.closest('[title="Admin only"]') !== null)).toBe(true);
   }
+  await expect(page.getByRole('button', { name: 'Remove', exact: true })).toHaveCount(0);
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -363,10 +419,22 @@ test('T-E2E-34 admin: feature/hide/reorder on the list, notes + CF id on [id] �
   });
 
   // -- CF id entry (900001) → link row + downloads_curseforge set immediately (via service) ---
+  // S1.5a: the CurseForge field is the LISTINGS recipe (ADR-0037 D8) — a Link button, then the
+  // link's URL + count + a Remove button. The fixture server answers `mods/900001` only, and the
+  // seed holds 900001 on pixel-chameleon (SEED-6) while `project_links_platform_external_id_key`
+  // allows one project per listing — so the seed row is parked via the service client for this
+  // leg and put back after (byte-level: `restoreContentTables` in afterAll is the safety net).
+  await freeSeedCurseforgeListing(service);
   await page.goto(`/admin/projects/${MACE}`);
+  await expect(page.getByText('Empty removes the link')).toHaveCount(0);
+  await expect(page.getByText('Digits or the project URL.')).toBeVisible();
   await page.getByLabel('CurseForge id or URL').fill('900001');
-  await submitAndWait(page, 'Save link');
-  await expect(page.getByText('Linked. 120 downloads counted.')).toBeVisible();
+  await submitAndWait(page, 'Link');
+  const cfLinked = page.locator(
+    'a[href="https://www.curseforge.com/minecraft/mc-mods/pixel-chameleon"]',
+  );
+  await expect(cfLinked).toBeVisible();
+  await expect(page.getByText('120 downloads', { exact: true })).toBeVisible();
 
   const link = await service
     .from('project_links')
@@ -383,9 +451,10 @@ test('T-E2E-34 admin: feature/hide/reorder on the list, notes + CF id on [id] �
     .single();
   expect(project.data?.downloads_curseforge).toBe(120);
 
-  // Revert: empty ref → the action deletes the link and zeroes the count (04 §1.4).
-  await page.getByLabel('CurseForge id or URL').fill('');
-  await submitAndWait(page, 'Save link');
+  // Revert: Remove → `unlinkProjectListing` deletes the link and zeroes the count (ADR-0037 D1).
+  await submitAndWait(page, 'Remove');
+  await expect(cfLinked).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Remove', exact: true })).toHaveCount(0);
   const removed = await service
     .from('project_links')
     .select('external_id')
@@ -399,6 +468,11 @@ test('T-E2E-34 admin: feature/hide/reorder on the list, notes + CF id on [id] �
     .eq('id', MACE)
     .single();
   expect(zeroed.data?.downloads_curseforge).toBe(0);
+  await restoreSeedCurseforgeListing(service);
+  // The service write revalidates nothing: one no-op `curateProject` save repairs the ISR
+  // entries that carry the `projects` tag (the T-E2E-41 precedent).
+  await page.goto(`/admin/projects/${PIXEL}`);
+  await submitAndWait(page, 'Save');
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -471,6 +545,688 @@ test('T-E2E-41 Sync now (Modrinth): lock → "Already running."; real run → ne
     await expect(page.getByText('3 things. Some useful, some not.')).toBeVisible({
       timeout: 500,
     });
+  });
+});
+
+/**
+ * S1.5a — cross-posted projects (ADR-0037 D11; 00 S1.5a.AC1/AC3/AC4/AC5/AC6/AC7/AC8). Lives in
+ * THIS file for the same reason as T-E2E-35: the `admin` project is serial only within a file.
+ * Never folds a seed row — T-E2E-52/53 fold and upload on FACTORY rows only.
+ *
+ *  - T-E2E-51: the LISTINGS field on the seed exclusive (…0103). The fixture listing `sd000199`
+ *    (`tests/fixtures/modrinth/project/sd000199.json` — absent from the 18-project user list, so
+ *    no sync run imports it) is linked through the field → link row + `formatCount(downloads)`
+ *    shown; the ONLY ON ODSENS badge leaves the detail page, the `/projects` card and the `/`
+ *    Featured card (the seed hero is pixel-chameleon — not touched); GET IT gains "Also on
+ *    Modrinth <count>"; a CurseForge link (900001 — the seed row parked as in T-E2E-34) adds
+ *    "Also on CurseForge 120" and the combined total = direct + modrinth + curseforge; "Sync now"
+ *    writes no `projects` row for the listing (the link row survives, still on …0103); the
+ *    `/admin/projects` match note (a draft synced twin created via the factory) opens the editor
+ *    with the field prefilled and creates no link row; Remove → badge back everywhere;
+ *    moderator: field, buttons and wells disabled "Admin only"; axe on the editor at 1280 + 390.
+ *  - T-E2E-52: the fold. A factory `source='modrinth'` row for `sd000199` (two CDN versions +
+ *    files, one comment) folded into a factory published exclusive by linking: the versions and
+ *    the comment now hang on the canonical row, the duplicate row is gone, a `project_redirects`
+ *    row maps the old slug, and the old URL lands on the canonical page (status ∈ {308, 200} —
+ *    ADR-0025: the streamed ISR route may answer 200 + a client redirect; its `<title>`, both
+ *    versions listed once each); `/admin/projects` and the sitemap no longer carry the duplicate.
+ *  - T-E2E-53: uploads on a Modrinth-first factory row (published, visible): the Modrinth field
+ *    is read-only (home helper, no Link / Remove of its own); icon + file through the real wells
+ *    (two-phase, the T-E2E-35 pattern) — the file lands on the SYNCED `1.0.0` (D5(b): hosted
+ *    first, CDN after) → `/projects/<slug>` GET IT primary hits `/api/download/<id>` with a 302
+ *    and "Also on Modrinth" stays a row.
+ *
+ * Cleanup (05 H-1): every link is removed THROUGH `unlinkProjectListing` where the row survives;
+ * factory rows leave via `cleanupFactories` (FK cascade takes versions/files/links/redirects/
+ * overrides); Storage objects of T-E2E-53 are removed; the `project_link` / `upload:*` /
+ * `download` rate-limit hits this block created are forgotten so local reruns within the hour
+ * stay green; `restoreContentTables(snapshot)` is the byte-level safety net; one no-op
+ * `curateProject` save repairs the ISR entries last (the T-E2E-41 precedent).
+ */
+test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
+  const EXCL = SEED_PROJECTS.seedExclusivePack;
+  const EXCL_SLUG = 'seed-exclusive-pack';
+  const EXCL_TITLE = 'Seed Exclusive Pack';
+  const LISTING_ID = 'sd000199';
+  const LISTING_URL = `https://modrinth.com/project/${LISTING_ID}`; // modrinthListingUrl(id)
+  const LISTING_FIELD = 'Modrinth listing (URL, slug or id)';
+  const CF_FIELD = 'CurseForge id or URL';
+  const CF_URL = 'https://www.curseforge.com/minecraft/mc-mods/pixel-chameleon';
+  /** The badge's full text — `getByText` is a case-insensitive substring match, and the seed
+   *  exclusive's description says "lives only on odsens.com" (the T-E2E-4 locator shape). */
+  const BADGE = 'Exclusive: ★ ONLY ON ODSENS';
+
+  type Listing = { id: string; slug: string; title: string; downloads: number };
+  let listing: Listing;
+
+  test.beforeAll(async () => {
+    loadEnvTest();
+    listing = await loadFixture<Listing>('modrinth', `project/${LISTING_ID}.json`);
+    expect(listing.id).toBe(LISTING_ID);
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const service = loose(asRole('service'));
+    await cleanupFactories();
+    await restoreSeedCommentCounts();
+    await service.from('rate_limit_hits').delete().eq('scope', 'project_link');
+    await service.from('rate_limit_hits').delete().like('scope', 'upload:%');
+    await service.from('rate_limit_hits').delete().eq('scope', 'download');
+    await restoreContentTables(snapshot);
+    // Repair the public ISR entries after the service-side restore: one no-op `curateProject`
+    // save revalidates the `projects` tag every S1.2 cache entry carries (the T-E2E-41
+    // precedent), in a fresh admin context since afterAll has no page.
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    try {
+      await loginAs(page, 'admin');
+      await page.goto(`/admin/projects/${PIXEL}`);
+      await submitAndWait(page, 'Save');
+      await expectAtUrl(page, '/projects', async () => {
+        await expect(page.locator('article')).toHaveCount(3, { timeout: 1_000 });
+      });
+    } finally {
+      await context.close();
+    }
+  });
+
+  function service() {
+    return loose(asRole('service'));
+  }
+
+  /** `formatCount` for the 1K..1M range (the fixture's count) — `4300` → `4.3K`, `4000` → `4K`. */
+  function compact(n: number): string {
+    return `${String(Math.round(n / 100) / 10)}K`;
+  }
+
+  /** `formatCountFull` — the detail header's "12,431 DOWNLOADS" grouping (no `Intl` — 01 INV-68). */
+  function grouped(n: number): string {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  /** The form that owns a LISTINGS field (each field is its own form — two Link buttons per page). */
+  function listingForm(page: Page, label: string) {
+    return page.locator('form', { has: page.getByLabel(label, { exact: true }) });
+  }
+
+  /** The linked row under a field: `<a href=url>` · `<n> downloads` · Remove — the form's sibling. */
+  function linkedRow(page: Page, label: string) {
+    return listingForm(page, label)
+      .locator('..')
+      .locator(':scope > div', { has: page.getByRole('button', { name: 'Remove', exact: true }) });
+  }
+
+  /** Clicks a button INSIDE `scope` and waits for the server-action POST round trip (PRG). */
+  async function submitIn(page: Page, scope: ReturnType<Page['locator']>, name: string) {
+    const post = page.waitForResponse(
+      (res) => res.request().method() === 'POST' && res.url().includes('/admin/projects/'),
+    );
+    await scope.getByRole('button', { name, exact: true }).click();
+    await post;
+  }
+
+  /** The `ProjectCard` for a slug on a list page (the badge sits inside the `<article>`). */
+  function cardFor(page: Page, slug: string) {
+    return page.locator('article', { has: page.locator(`a[href="/projects/${slug}"]`) });
+  }
+
+  async function linkRow(projectId: string, platform: 'modrinth' | 'curseforge') {
+    const row = await service()
+      .from('project_links')
+      .select('project_id, external_id, url, downloads')
+      .eq('project_id', projectId)
+      .eq('platform', platform)
+      .maybeSingle();
+    expect(row.error).toBeNull();
+    return row.data as {
+      project_id: string;
+      external_id: string;
+      url: string;
+      downloads: number;
+    } | null;
+  }
+
+  async function downloads(projectId: string) {
+    const row = await service()
+      .from('projects')
+      .select('downloads_modrinth, downloads_curseforge, downloads_direct')
+      .eq('id', projectId)
+      .single();
+    expect(row.error).toBeNull();
+    return row.data as {
+      downloads_modrinth: number;
+      downloads_curseforge: number;
+      downloads_direct: number;
+    };
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // T-E2E-51 — the LISTINGS field on the seed exclusive: link, badge, GET IT rows, sync, match
+  // note, remove
+  // ---------------------------------------------------------------------------------------------
+
+  test('T-E2E-51 admin: link sd000199 on the seed exclusive → link row + count, badge gone (detail/card/featured), GET IT "Also on" rows + combined total, Sync now adds no row, match note prefills, Remove → badge back; axe 1280 + 390', async ({
+    page,
+  }) => {
+    // ~20 navigations with ISR re-checks plus one real sync run (the T-E2E-34 budget rationale).
+    test.setTimeout(150_000);
+    const db = service();
+    await loginAs(page, 'admin');
+
+    // -- Pristine editor first: axe at 1280 and 390 (00 S1.5a.AC9's admin half) ---------------
+    await page.goto(`/admin/projects/${EXCL}`);
+    await expect(page.getByRole('heading', { name: 'LISTINGS' })).toBeVisible();
+    const modrinthForm = listingForm(page, LISTING_FIELD);
+    const curseforgeForm = listingForm(page, CF_FIELD);
+    await expect(modrinthForm.getByText('Versions arrive on the next sync.')).toBeVisible();
+    await expect(curseforgeForm.getByText('Digits or the project URL.')).toBeVisible();
+    await expect(page.getByText('Empty removes the link')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Link', exact: true })).toHaveCount(2);
+    await expect(page.getByRole('button', { name: 'Remove', exact: true })).toHaveCount(0);
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'admin-project-listings');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/admin/projects/${EXCL}`);
+    await expect(page.getByRole('heading', { name: 'LISTINGS' })).toBeVisible();
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'admin-project-listings');
+    await page.setViewportSize({ width: 1280, height: 800 });
+
+    // The seed truth: badge on the detail page, the /projects card and the / Featured card.
+    await expectAtUrl(page, `/projects/${EXCL_SLUG}`, async () => {
+      await expect(page.getByText(BADGE).first()).toBeVisible({ timeout: 1_000 });
+    });
+
+    // -- Match note (00 S1.5a.AC7): a DRAFT synced twin (never public, never folded) -----------
+    const twinId = await makeProject({
+      source: 'modrinth',
+      external_id: LISTING_ID,
+      slug: listing.slug,
+      title: EXCL_TITLE, // the title leg of `projectMatchKey` (the slugs differ)
+      project_type: 'datapack',
+      status: 'draft',
+    });
+    await page.goto('/admin/projects');
+    const twinRow = page.locator('tbody tr', { hasText: listing.slug });
+    await expect(twinRow.getByText(`Looks like the same project as ${EXCL_TITLE}`)).toBeVisible();
+    await twinRow.getByRole('link', { name: 'Link it', exact: true }).click();
+    await page.waitForURL(`**/admin/projects/${EXCL}?listing=${LISTING_ID}`);
+    await expect(page.getByLabel(LISTING_FIELD, { exact: true })).toHaveValue(LISTING_ID);
+    expect(await linkRow(EXCL, 'modrinth'), 'nothing links automatically').toBeNull();
+    // The twin leaves BEFORE the real link so the seed exclusive is never a fold target.
+    const twinGone = await db.from('projects').delete().eq('id', twinId);
+    expect(twinGone.error).toBeNull();
+
+    // -- Link through the field (a Modrinth URL — 00 S1.5a.AC1) -------------------------------
+    await page
+      .getByLabel(LISTING_FIELD, { exact: true })
+      .fill(`https://modrinth.com/datapack/${LISTING_ID}`);
+    await submitIn(page, modrinthForm, 'Link');
+    await expect(page).toHaveURL(`/admin/projects/${EXCL}`); // PRG, no ?form= error
+    const modrinthLinked = linkedRow(page, LISTING_FIELD);
+    await expect(modrinthLinked.locator(`a[href="${LISTING_URL}"]`)).toHaveText(LISTING_URL);
+    await expect(modrinthLinked.getByText(`${compact(listing.downloads)} downloads`)).toBeVisible();
+    await expect(modrinthLinked.getByRole('button', { name: 'Remove', exact: true })).toBeVisible();
+    expect(await linkRow(EXCL, 'modrinth')).toMatchObject({
+      external_id: LISTING_ID,
+      url: LISTING_URL,
+      downloads: listing.downloads,
+    });
+    expect((await downloads(EXCL)).downloads_modrinth).toBe(listing.downloads);
+
+    // -- Badge gone (00 S1.5a.AC5) + GET IT "Also on Modrinth <count>" (AC6) ------------------
+    const getIt = page.locator(`aside[aria-labelledby="get-it-${EXCL_SLUG}"]`);
+    await expectAtUrl(page, `/projects/${EXCL_SLUG}`, async () => {
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(EXCL_TITLE, {
+        timeout: 1_000,
+      });
+      await expect(page.getByText(BADGE)).toHaveCount(0, { timeout: 500 });
+      await expect(getIt.locator('a', { hasText: 'Also on Modrinth' })).toContainText(
+        compact(listing.downloads),
+        { timeout: 500 },
+      );
+    });
+    // The primary stays the hosted file (ADR-0037 D6 — the hosted file is always the primary).
+    expect(await getIt.locator('a[data-variant="primary"]').getAttribute('href')).toMatch(
+      /^\/api\/download\/[0-9a-f-]{36}$/,
+    );
+    await expectAtUrl(page, '/projects', async () => {
+      await expect(cardFor(page, EXCL_SLUG)).toHaveCount(1, { timeout: 1_000 });
+      await expect(cardFor(page, EXCL_SLUG).getByText(BADGE)).toHaveCount(0, {
+        timeout: 500,
+      });
+    });
+    await expectAtUrl(page, '/', async () => {
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Pixel Chameleon', {
+        timeout: 1_000,
+      });
+      await expect(cardFor(page, EXCL_SLUG)).toHaveCount(1, { timeout: 500 });
+      await expect(cardFor(page, EXCL_SLUG).getByText(BADGE)).toHaveCount(0, {
+        timeout: 500,
+      });
+    });
+
+    // -- CurseForge too: "Also on CurseForge 120" + combined = direct + modrinth + curseforge --
+    await freeSeedCurseforgeListing(db);
+    await page.goto(`/admin/projects/${EXCL}`);
+    await page.getByLabel(CF_FIELD, { exact: true }).fill('900001');
+    await submitIn(page, curseforgeForm, 'Link');
+    await expect(page).toHaveURL(`/admin/projects/${EXCL}`);
+    const curseforgeLinked = linkedRow(page, CF_FIELD);
+    await expect(curseforgeLinked.locator(`a[href="${CF_URL}"]`)).toBeVisible();
+    await expect(curseforgeLinked.getByText('120 downloads', { exact: true })).toBeVisible();
+    const counts = await downloads(EXCL);
+    expect(counts).toMatchObject({
+      downloads_modrinth: listing.downloads,
+      downloads_curseforge: 120,
+    });
+    const total = counts.downloads_direct + counts.downloads_modrinth + counts.downloads_curseforge;
+    await expectAtUrl(page, `/projects/${EXCL_SLUG}`, async () => {
+      await expect(getIt.locator('a', { hasText: 'Also on CurseForge' })).toContainText('120', {
+        timeout: 1_000,
+      });
+      await expect(getIt.locator('a', { hasText: 'Also on Modrinth' })).toContainText(
+        compact(listing.downloads),
+        { timeout: 500 },
+      );
+      // The combined line: compact total (05 T-E2E-3's shape) + the header's full count.
+      await expect(getIt).toContainText(compact(total), { timeout: 500 });
+      await expect(page.getByText(`${grouped(total)} DOWNLOADS`, { exact: true })).toBeVisible({
+        timeout: 500,
+      });
+    });
+    await page.goto(`/admin/projects/${EXCL}`);
+    await submitIn(page, curseforgeLinked, 'Remove');
+    expect(await linkRow(EXCL, 'curseforge')).toBeNull();
+    expect((await downloads(EXCL)).downloads_curseforge).toBe(0);
+    await restoreSeedCurseforgeListing(db);
+
+    // -- "Sync now" → no `projects` row for the listing; the link stays on the canonical ------
+    // The run imports the other fixture projects (fixtures ⊇ seed, T-E2E-41); a snapshot taken
+    // here — with the Modrinth link in place — is restored right after so the rest of the test
+    // runs against seed + link only.
+    const linkedSnapshot = await snapshotContentTables();
+    await page.goto('/admin/projects');
+    const modrinthRow = page.locator('tr', { hasText: 'Modrinth' });
+    await modrinthRow.getByRole('button', { name: 'Sync now' }).click();
+    await expect(page.getByText('Sync started.')).toBeVisible({ timeout: 30_000 });
+    await expect(modrinthRow.getByText('LIVE', { exact: true })).toBeVisible({ timeout: 15_000 });
+    const latest = await db
+      .from('sync_runs')
+      .select('ok')
+      .eq('source', 'modrinth')
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .single();
+    expect(latest.data?.ok).toBe(true);
+    const imported = await db
+      .from('projects')
+      .select('id')
+      .eq('source', 'modrinth')
+      .eq('external_id', LISTING_ID);
+    expect(imported.error).toBeNull();
+    expect(imported.data, 'the sync never imports a linked listing as its own row').toEqual([]);
+    expect(await linkRow(EXCL, 'modrinth')).toMatchObject({
+      project_id: EXCL,
+      external_id: LISTING_ID,
+    });
+    await restoreContentTables(linkedSnapshot);
+
+    // -- Remove → link gone, count zeroed, badge back on detail + card (00 S1.5a.AC5) ----------
+    await page.goto(`/admin/projects/${EXCL}`);
+    await submitIn(page, linkedRow(page, LISTING_FIELD), 'Remove');
+    await expect(page).toHaveURL(`/admin/projects/${EXCL}`);
+    await expect(page.getByRole('button', { name: 'Remove', exact: true })).toHaveCount(0);
+    expect(await linkRow(EXCL, 'modrinth')).toBeNull();
+    expect((await downloads(EXCL)).downloads_modrinth).toBe(0);
+    await expectAtUrl(page, `/projects/${EXCL_SLUG}`, async () => {
+      await expect(page.getByText(BADGE).first()).toBeVisible({ timeout: 1_000 });
+      await expect(getIt.locator('a', { hasText: 'Also on Modrinth' })).toHaveCount(0, {
+        timeout: 500,
+      });
+    });
+    await expectAtUrl(page, '/projects', async () => {
+      await expect(cardFor(page, EXCL_SLUG).getByText(BADGE)).toBeVisible({
+        timeout: 1_000,
+      });
+    });
+    // … and on its `/` card (cards, hero and detail read the same `is_exclusive` column).
+    await expectAtUrl(page, '/', async () => {
+      await expect(cardFor(page, EXCL_SLUG).getByText(BADGE)).toBeVisible({
+        timeout: 1_000,
+      });
+    });
+  });
+
+  test('T-E2E-51 moderator: the listing fields, Link buttons and upload wells on the seed exclusive are disabled ("Admin only"), never hidden', async ({
+    page,
+  }) => {
+    await logout(page);
+    await loginAs(page, 'mod');
+    await page.goto(`/admin/projects/${EXCL}`);
+    await expect(page.getByRole('heading', { name: 'LISTINGS' })).toBeVisible();
+    // The fields follow the buttons' recipe (ADR-0037 D8): `disabled` + `title="Admin only"`.
+    for (const label of [LISTING_FIELD, CF_FIELD]) {
+      const field = page.getByLabel(label, { exact: true });
+      await expect(field).toBeDisabled();
+      await expect(field).toHaveAttribute('title', 'Admin only');
+    }
+    const links = page.getByRole('button', { name: 'Link', exact: true });
+    await expect(links).toHaveCount(2);
+    for (let i = 0; i < 2; i += 1) {
+      await expect(links.nth(i)).toBeDisabled();
+      expect(await links.nth(i).evaluate((el) => el.closest('[title="Admin only"]') !== null)).toBe(
+        true,
+      );
+    }
+    // Wells (icon, gallery, file): inert but present — the T-E2E-35 assertion shape.
+    const wells = page.locator('[data-state][aria-disabled="true"][title="Admin only"]');
+    await expect(wells).toHaveCount(3);
+    const fileInputs = page.locator('input[type="file"]');
+    await expect(fileInputs).toHaveCount(3);
+    for (let i = 0; i < 3; i += 1) {
+      await expect(fileInputs.nth(i)).toBeDisabled();
+    }
+    // Clicking a disabled Link issues no action call and no forbidden alert (02 §1.3).
+    const posts: string[] = [];
+    page.on('request', (req) => {
+      if (req.method() === 'POST') posts.push(req.url());
+    });
+    await links.first().click({ force: true });
+    await page.waitForTimeout(500);
+    expect(posts).toEqual([]);
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0);
+    await logout(page);
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // T-E2E-52 — the fold: a synced duplicate of the listing folds into a factory exclusive
+  // ---------------------------------------------------------------------------------------------
+
+  test('T-E2E-52 fold: linking a listing the sync already imported moves its versions + comment onto the exclusive, deletes the duplicate, the old URL lands on the canonical page (title, both versions once), /admin/projects + sitemap drop the duplicate', async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    const db = service();
+    const CANON_SLUG = 't-e2e-fold-canon';
+    const CANON_TITLE = 'E2E Fold Canonical';
+    const OLD_SLUG = 't-e2e-fold-dup';
+
+    // The canonical is PUBLISHED: `project_redirects` reads are visible-or-admin (ADR-0037 D4),
+    // and the public route resolves the redirect on the anon client, so a draft target 404s.
+    const canonId = await makeProject({
+      source: 'odsens',
+      slug: CANON_SLUG,
+      title: CANON_TITLE,
+      project_type: 'datapack',
+      status: 'published',
+    });
+    const dupId = await makeProject({
+      source: 'modrinth',
+      external_id: LISTING_ID,
+      slug: OLD_SLUG,
+      title: listing.title,
+      project_type: 'datapack',
+      status: 'published',
+    });
+    const versionId = await makeVersion({
+      project_id: dupId,
+      external_id: 't-e2e-fold-ver',
+      version_number: '1.0.0',
+      game_versions: ['1.21'],
+      loaders: ['datapack'],
+    });
+    const fileId = await makeFile({
+      version_id: versionId,
+      filename: 'e2e-cross-post-1.0.0.zip',
+      url: `https://cdn.modrinth.com/data/${LISTING_ID}/versions/t-e2e-fold-ver/e2e-cross-post-1.0.0.zip`,
+      storage_path: null,
+      primary: true,
+    });
+    // A second synced version — the public page must list each once after the fold (05 T-E2E-52).
+    const version2Id = await makeVersion({
+      project_id: dupId,
+      external_id: 't-e2e-fold-ver-2',
+      version_number: '1.1.0',
+      game_versions: ['1.21'],
+      loaders: ['datapack'],
+      date_published: '2026-02-01T12:00:00Z',
+    });
+    await makeFile({
+      version_id: version2Id,
+      filename: 'e2e-cross-post-1.1.0.zip',
+      url: `https://cdn.modrinth.com/data/${LISTING_ID}/versions/t-e2e-fold-ver-2/e2e-cross-post-1.1.0.zip`,
+      storage_path: null,
+      primary: true,
+    });
+    const commentId = await makeComment({
+      target_id: dupId,
+      body: 't_ fold me onto the canonical project',
+    });
+
+    await loginAs(page, 'admin');
+    await page.goto(`/admin/projects/${canonId}`);
+    await page.getByLabel(LISTING_FIELD, { exact: true }).fill(LISTING_ID);
+    await submitIn(page, listingForm(page, LISTING_FIELD), 'Link');
+    await expect(page).toHaveURL(`/admin/projects/${canonId}`);
+    await expect(linkedRow(page, LISTING_FIELD).locator(`a[href="${LISTING_URL}"]`)).toBeVisible();
+    // The editor's VERSIONS & FILES list now shows the moved versions and their CDN files.
+    await expect(page.getByText('v1.0.0', { exact: true })).toBeVisible();
+    await expect(page.getByText('v1.1.0', { exact: true })).toBeVisible();
+    await expect(page.getByText('e2e-cross-post-1.0.0.zip')).toBeVisible();
+    await expect(page.getByText('e2e-cross-post-1.1.0.zip')).toBeVisible();
+
+    // Moved: versions + files follow the canonical; the comment re-targets; the duplicate is gone.
+    const version = await db
+      .from('project_versions')
+      .select('project_id, external_id')
+      .eq('id', versionId)
+      .single();
+    expect(version.data).toMatchObject({ project_id: canonId, external_id: 't-e2e-fold-ver' });
+    const version2 = await db
+      .from('project_versions')
+      .select('project_id')
+      .eq('id', version2Id)
+      .single();
+    expect(version2.data?.project_id).toBe(canonId);
+    const file = await db.from('project_files').select('version_id').eq('id', fileId).single();
+    expect(file.data?.version_id).toBe(versionId);
+    const comment = await db.from('comments').select('target_id').eq('id', commentId).single();
+    expect(comment.data?.target_id).toBe(canonId);
+    const duplicate = await db.from('projects').select('id').eq('id', dupId).maybeSingle();
+    expect(duplicate.data, 'the duplicate row is folded away').toBeNull();
+    const redirect = await db
+      .from('project_redirects')
+      .select('project_id')
+      .eq('old_slug', OLD_SLUG)
+      .maybeSingle();
+    expect(redirect.data?.project_id).toBe(canonId);
+    expect(await linkRow(canonId, 'modrinth')).toMatchObject({ external_id: LISTING_ID });
+
+    // The old URL lands on the canonical page (ADR-0025: 308, or 200 + a client redirect).
+    await expect(async () => {
+      const probe = await page.request.get(`/projects/${OLD_SLUG}`, { maxRedirects: 0 });
+      expect([308, 200]).toContain(probe.status());
+      await page.goto(`/projects/${OLD_SLUG}`);
+      await page.waitForURL(`**/projects/${CANON_SLUG}`, { timeout: 5_000 });
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(CANON_TITLE, {
+        timeout: 1_000,
+      });
+    }).toPass({ timeout: 20_000, intervals: [400, 800, 1_600] });
+    // The landing page is the canonical one (its `<title>`), lists both synced versions once each
+    // (a CDN Download link per file — the project has a Modrinth home, so CDN rows render), and
+    // the moved comment renders on the canonical thread.
+    await expect(page).toHaveTitle(new RegExp(CANON_TITLE));
+    await expect(
+      page.getByRole('link', { name: 'Download e2e-cross-post-1.0.0.zip', exact: true }),
+    ).toHaveCount(1);
+    await expect(
+      page.getByRole('link', { name: 'Download e2e-cross-post-1.1.0.zip', exact: true }),
+    ).toHaveCount(1);
+    await expect(page.getByText('t_ fold me onto the canonical project')).toBeVisible();
+
+    // `/admin/projects` no longer lists the duplicate; the sitemap carries the canonical slug and
+    // not the folded one (the link's `revalidateTag('projects')` refreshes it — RP-07).
+    await page.goto('/admin/projects');
+    await expect(page.locator('tbody tr', { hasText: CANON_SLUG })).toHaveCount(1);
+    await expect(page.locator('tbody tr', { hasText: OLD_SLUG })).toHaveCount(0);
+    await expect(async () => {
+      const sitemap = await page.request.get('/sitemap.xml');
+      expect(sitemap.status()).toBe(200);
+      const xml = await sitemap.text();
+      expect(xml).toContain(`/projects/${CANON_SLUG}<`);
+      expect(xml).not.toContain(`/projects/${OLD_SLUG}<`);
+    }).toPass({ timeout: 20_000, intervals: [400, 800, 1_600] });
+
+    // Cleanup is `cleanupFactories` in afterAll: the canonical's delete cascades the moved
+    // versions/files, the link and the redirect row; the tracked duplicate id deletes 0 rows.
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // T-E2E-53 — uploads on a Modrinth-first row → hosted primary (302) + "Also on Modrinth"
+  // ---------------------------------------------------------------------------------------------
+
+  test('T-E2E-53 Modrinth-first row: read-only home listing; icon + file upload onto the synced 1.0.0 → hosted file first, GET IT primary 302 via /api/download, "Also on Modrinth" row stays', async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    const db = service();
+    const SLUG = 't-e2e-first-on-modrinth';
+    const TITLE = 'E2E First On Modrinth';
+    const projectId = await makeProject({
+      source: 'modrinth',
+      external_id: LISTING_ID,
+      slug: SLUG,
+      title: TITLE,
+      project_type: 'datapack',
+      status: 'published',
+      loaders: ['datapack'],
+      game_versions: ['1.21'],
+      downloads_modrinth: listing.downloads,
+    });
+    // One synced release with a CDN file — the Modrinth-first shape (ADR-0037 D5/D6).
+    const cdnVersionId = await makeVersion({
+      project_id: projectId,
+      external_id: 't-e2e-first-ver',
+      version_number: '1.0.0',
+      game_versions: ['1.21'],
+      loaders: ['datapack'],
+      date_published: '2026-01-10T12:00:00Z',
+    });
+    await makeFile({
+      version_id: cdnVersionId,
+      filename: 'first-on-modrinth-1.0.0.zip',
+      url: `https://cdn.modrinth.com/data/${LISTING_ID}/versions/t-e2e-first-ver/first-on-modrinth-1.0.0.zip`,
+      storage_path: null,
+      primary: true,
+    });
+
+    try {
+      await loginAs(page, 'admin');
+      await page.goto(`/admin/projects/${projectId}`);
+      const of = (name: string) =>
+        page.locator('section', { has: page.getByRole('heading', { name, exact: true }) });
+      const icon = of('ICON');
+      const versions = of('VERSIONS & FILES');
+      // The synced branch keeps its curate panel and shows no publish controls (ADR-0037 D5c).
+      await expect(page.getByRole('heading', { name: 'OVERRIDES' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Publish', exact: true })).toHaveCount(0);
+      // A synced row IS its listing (ADR-0037 D8): the Modrinth field is read-only with the home
+      // helper and no Link / Remove of its own; the CurseForge field keeps its Link button.
+      const homeListing = page.getByLabel(LISTING_FIELD, { exact: true });
+      await expect(homeListing).toHaveValue(LISTING_URL);
+      await expect(homeListing).toHaveAttribute('readonly', '');
+      await expect(
+        page.getByText("Synced from Modrinth — this is the project's home listing."),
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Link', exact: true })).toHaveCount(1);
+      await expect(listingForm(page, CF_FIELD).getByRole('button', { name: 'Link' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Remove', exact: true })).toHaveCount(0);
+
+      // Icon upload (two-phase — the T-E2E-35 pattern; `done` is the contract).
+      const iconWell = icon.locator('[data-state]');
+      await iconWell
+        .locator('input[type="file"]')
+        .setInputFiles(fixturePath('images', 'icon-256.png'));
+      await expect(iconWell).toHaveAttribute('data-state', 'done', { timeout: 15_000 });
+      await expect(icon.getByAltText(`${TITLE} icon`)).toBeVisible({ timeout: 15_000 });
+      const iconRow = await db.from('projects').select('icon_url').eq('id', projectId).single();
+      expect(iconRow.data?.icon_url).toMatch(new RegExp(`^project-media/${projectId}/icon/`));
+
+      // File upload onto the SYNCED 1.0.0 (same number = a hosted file on that release — ADR-0037
+      // D5(b); the form's version metadata is ignored, the row follows Modrinth), primary.
+      await versions.getByLabel('Version number').fill('1.0.0');
+      await versions.getByLabel('Game versions').fill('1.21');
+      const loaders = versions.getByRole('group', { name: 'Loaders' });
+      await loaders.getByText('Datapack', { exact: true }).click();
+      await expect(loaders.getByLabel('Datapack')).toBeChecked();
+      await toggleFor(page, 'Primary file').label.click({ force: true });
+      await expect(toggleFor(page, 'Primary file').input).toBeChecked();
+      const fileWell = versions.locator('[data-state]');
+      await fileWell.locator('input[type="file"]').setInputFiles(fixturePath('files', 'pack.zip'));
+      await expect(fileWell).toHaveAttribute('data-state', 'done', { timeout: 15_000 });
+      // One version, two homes: the hosted file first, the CDN file after it (`hostedFirst`).
+      await expect(versions.getByText('v1.0.0', { exact: true })).toHaveCount(1, {
+        timeout: 15_000,
+      });
+      const editorFiles = versions.locator('li[class*="admin-project-file"]');
+      await expect(editorFiles).toHaveCount(2);
+      await expect(editorFiles.nth(0)).toContainText('pack.zip');
+      await expect(editorFiles.nth(0)).toContainText('odsens');
+      await expect(editorFiles.nth(1)).toContainText('first-on-modrinth-1.0.0.zip');
+      await expect(editorFiles.nth(1)).toContainText('Modrinth');
+      const hostedRows = await db
+        .from('project_versions')
+        .select('id, external_id')
+        .eq('project_id', projectId);
+      expect(hostedRows.data).toEqual([{ id: cdnVersionId, external_id: 't-e2e-first-ver' }]);
+
+      // Public page: hosted primary (302 through the route), Modrinth stays an "Also on" row,
+      // no badge (the row has a platform home), DETAILS Source = Modrinth.
+      const getIt = page.locator(`aside[aria-labelledby="get-it-${SLUG}"]`);
+      await expect(async () => {
+        const response = await page.goto(`/projects/${SLUG}`);
+        expect(response?.status()).toBe(200);
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText(TITLE, { timeout: 1_000 });
+        const href = (await getIt.locator('a[data-variant="primary"]').getAttribute('href')) ?? '';
+        expect(href).toMatch(/^\/api\/download\/[0-9a-f-]{36}$/);
+        const probe = await page.request.get(href, { maxRedirects: 0 });
+        expect(probe.status()).toBe(302);
+        expect(probe.headers()['location'] ?? '').toContain('download=pack.zip');
+      }).toPass({ timeout: 20_000, intervals: [400, 800, 1_600] });
+      await expect(getIt.locator('a', { hasText: 'Also on Modrinth' })).toContainText(
+        compact(listing.downloads),
+      );
+      // VERSIONS & FILES: the one 1.0.0 row lists the hosted file first, the CDN file after it.
+      const downloadLinks = page.getByRole('link', { name: /^Download / });
+      await expect(downloadLinks).toHaveCount(2);
+      await expect(downloadLinks.nth(0)).toHaveAccessibleName('Download pack.zip');
+      await expect(downloadLinks.nth(1)).toHaveAccessibleName(
+        'Download first-on-modrinth-1.0.0.zip',
+      );
+      await expect(page.getByText(BADGE)).toHaveCount(0);
+      await expect(
+        page
+          .locator('section[aria-labelledby="details-title"]')
+          .getByText('Modrinth', { exact: true }),
+      ).toBeVisible();
+      const counted = await db
+        .from('projects')
+        .select('downloads_direct')
+        .eq('id', projectId)
+        .single();
+      expect(counted.data?.downloads_direct).toBeGreaterThanOrEqual(1);
+    } finally {
+      // Storage first, while the version rows still name the nested folders (T-E2E-35 pattern).
+      const rows = await db.from('project_versions').select('id').eq('project_id', projectId);
+      const filePaths: string[] = [];
+      for (const row of (rows.data ?? []) as { id: string }[]) {
+        filePaths.push(...(await listObjects('project-files', `${projectId}/${row.id}`)));
+      }
+      await removeObjects('project-files', filePaths);
+      await removeObjects('project-media', await listObjects('project-media', `${projectId}/icon`));
+      // The factory row (and its cascade) leaves in `cleanupFactories`.
+    }
   });
 });
 

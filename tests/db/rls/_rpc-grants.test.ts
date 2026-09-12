@@ -18,6 +18,11 @@
  *   migration_versions()                            anon/authenticated D · service A — the applied
  *                                                   version list `scripts/wait-for-schema.mjs` polls
  *                                                   before `next build` (S1.5, ADR-0029 D3)
+ *   fold_project(uuid,uuid)                         anon/authenticated D · service A — the S1.5a fold
+ *                                                   `linkProjectListing` issues through the service
+ *                                                   client (T-RLS-137, ADR-0037 D3; migration
+ *                                                   20260911120300); definer, search_path=public,
+ *                                                   VOLATILE (it writes)
  * S1.5 (ADR-0030 D11, migration 20260903120200): `check_handle` is ALSO denied to `service_role` and
  * `can_comment`'s set is re-stated with an every-role revoke, so the cells above hold on Supabase
  * images whose default ACL grants EXECUTE on new functions to every API role (the PR #8 CI lesson).
@@ -56,6 +61,7 @@ const FUNCTIONS = {
   comment_target_visible: 'public.comment_target_visible(text,uuid)',
   moderator_thread: 'public.moderator_thread(text,uuid)',
   migration_versions: 'public.migration_versions()',
+  fold_project: 'public.fold_project(uuid,uuid)',
 } as const;
 
 function canExecute(role: 'anon' | 'authenticated' | 'service_role', fn: string): boolean {
@@ -612,5 +618,68 @@ describe('T-RLS-129 migration_versions() (ADR-0029 D3)', () => {
     const { data, error } = await asRole('service').rpc('check_handle', { p_handle: 'seed_user' });
     expect(error?.code).toBe('42501');
     expect(data).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-RLS-137 fold_project(p_duplicate_id, p_canonical_id) — S1.5a, ADR-0037 D3/D9 (migration
+// 20260911120300). The fold `linkProjectListing` issues through the service client after
+// `requireRole('admin')`; every JWT role and PUBLIC are refused; definer + search_path = public;
+// VOLATILE (the one RPC here that writes across tables). Behaviour (merge order, dedupe, counters,
+// redirect) is T-ACT-81 (tests/db/actions/linkProjectListing.fold.test.ts); here only the grant
+// cells and that a refused call / a failed precondition writes nothing.
+// ---------------------------------------------------------------------------------------------
+describe('T-RLS-137 fold_project grants (ADR-0037 D3)', () => {
+  it('T-RLS-137 fold_project: anon/authenticated denied, service_role allowed, never PUBLIC', () => {
+    expect(canExecute('anon', FUNCTIONS.fold_project)).toBe(false);
+    expect(canExecute('authenticated', FUNCTIONS.fold_project)).toBe(false);
+    expect(canExecute('service_role', FUNCTIONS.fold_project)).toBe(true);
+    expect(publicCanExecute('fold_project')).toBe(false);
+  });
+
+  it('T-RLS-137 fold_project is a volatile plpgsql security-definer function with search_path = public returning jsonb', () => {
+    const rows = sql(
+      "select p.prosecdef, p.provolatile, l.lanname, coalesce(array_to_string(p.proconfig, ','), ''), pg_get_function_result(p.oid), pg_get_function_identity_arguments(p.oid) from pg_proc p join pg_namespace n on n.oid = p.pronamespace join pg_language l on l.oid = p.prolang where n.nspname = 'public' and p.proname = 'fold_project'",
+    );
+    expect(rows).toEqual([
+      [
+        't',
+        'v',
+        'plpgsql',
+        'search_path=public',
+        'jsonb',
+        'p_duplicate_id uuid, p_canonical_id uuid',
+      ],
+    ]);
+  });
+
+  it.each(['anon', 'user', 'mod', 'admin'] as const)(
+    'T-RLS-137 %s cannot call fold_project (42501) and the seed rows are untouched',
+    async (role) => {
+      const { data, error } = await asRole(role).rpc('fold_project', {
+        p_duplicate_id: SEED_PROJECTS.metalPipeMace,
+        p_canonical_id: SEED_PROJECTS.seedExclusivePack,
+      });
+      expect(error?.code).toBe('42501');
+      expect(data).toBeNull();
+      expect(
+        sql(
+          `select count(*) from public.projects where id in ('${SEED_PROJECTS.metalPipeMace}', '${SEED_PROJECTS.seedExclusivePack}')`,
+        ),
+      ).toEqual([['2']]);
+      expect(sql('select count(*) from public.project_redirects')).toEqual([['0']]);
+    },
+  );
+
+  it('T-RLS-137 service may call fold_project; a failed precondition raises a plain P0002 message and writes nothing', async () => {
+    // Same id twice: refused before any lock or write (the seed rows are never folded — 05 H-1).
+    const { data, error } = await asRole('service').rpc('fold_project', {
+      p_duplicate_id: SEED_PROJECTS.metalPipeMace,
+      p_canonical_id: SEED_PROJECTS.metalPipeMace,
+    });
+    expect(error?.code).toBe('P0002');
+    expect(error?.message).toBe('A project cannot be folded into itself.');
+    expect(data).toBeNull();
+    expect(sql('select count(*) from public.project_redirects')).toEqual([['0']]);
   });
 });
