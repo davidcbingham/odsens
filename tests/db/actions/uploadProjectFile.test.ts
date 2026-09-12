@@ -6,8 +6,8 @@
  *
  * Auth matrix: anon `unauthenticated` · user D `forbidden` · banned D `forbidden` (the seed banned
  * account has role `user`, so `requireRole`'s rank check answers) · mod D `forbidden` (admin-only,
- * ADR-0002 C7) · admin A. The synced seed project (SEED_PROJECTS.metalPipeMace, read-only) answers
- * `forbidden` on BOTH phases — synced files live on Modrinth (04 §1.4).
+ * ADR-0002 C7) · admin A on every `source` (ADR-0037 D5(b)): a synced project accepts a file row and
+ * its synced version metadata keeps following Modrinth — T-ACT-83 below.
  *
  * `begin` validates the DECLARED ext/size/version_number in the schema (no rate-limit budget burned),
  * returns `project-files/<pid>/<version uuid>/<sanitized filename>` with NO DB row — reusing the id
@@ -770,6 +770,35 @@ describe('T-ACT-83 uploadProjectFile on a Modrinth-first project (ADR-0037 D5(b)
         download_count: 0,
       },
     ]);
+  });
+
+  it('T-ACT-83 a CDN twin on a HOSTED version row (external_id NULL) still takes the form metadata; on a synced row it does not', async () => {
+    // Hosted version 3.0.0 on the synced project with a CDN-only twin of pack.zip beside it.
+    const hosted = await makeVersion({
+      project_id: syncedId,
+      external_id: null,
+      version_number: '9.9.9',
+      changelog_md: '- before',
+    });
+    const twin = await makeFile({
+      version_id: hosted,
+      filename: 'mirror-9.zip',
+      sha512: PACK_ZIP_SHA512,
+      url: 'https://cdn.modrinth.com/data/t/versions/t9/mirror-9.zip',
+      primary: true,
+    });
+    const begin = await beginAsAdmin(beginInput(syncedId, { version_number: '9.9.9' }));
+    trackObject(begin.path);
+    expect((await putSigned(begin.signed_url, begin.token, 'files/pack.zip')).ok).toBe(true);
+    const data = await commitAsAdmin(commitInput(syncedId, begin.path, { versionNumber: '9.9.9' }));
+    expect(data.file.id).toBe(twin);
+    const { data: after } = await service
+      .from('project_versions')
+      .select('changelog_md, external_id')
+      .eq('id', hosted)
+      .single();
+    // `versionFields` carries the '- initial drop' changelog — the hosted row took it (D5(b)).
+    expect(after).toEqual({ changelog_md: '- initial drop', external_id: null });
   });
 
   it('T-ACT-83 primary is scoped to hosted siblings: primary:true demotes the hosted primary only, the CDN primary stays', async () => {

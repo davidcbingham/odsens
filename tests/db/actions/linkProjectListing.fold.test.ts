@@ -1219,3 +1219,90 @@ describe('T-ACT-81 fold faulted → the hourly run re-parents the synced twin �
     expect((await service.from('projects').select('id').eq('id', duplicateId)).data).toEqual([]);
   });
 });
+
+// =============================================================================================
+// Section 4 — the canonical-side merge is scoped to the folded listing (ADR-0037 D3 (a))
+// =============================================================================================
+
+describe('T-ACT-81 fold_project — a synced same-numbered row of ANOTHER listing on the canonical is never merged', () => {
+  let canonicalId = '';
+  let duplicateId = '';
+  let hostedVersionId = '';
+  let strayVersionId = '';
+  let strayExternalId = '';
+
+  beforeAll(async () => {
+    canonicalId = await makeProject({ source: 'odsens', status: 'published' });
+    hostedVersionId = await makeVersion({
+      project_id: canonicalId,
+      version_number: '1.0.0',
+      date_published: '2026-05-01T12:00:00.000Z',
+    });
+    await makeFile({
+      version_id: hostedVersionId,
+      filename: 'pack-1.0.0.zip',
+      sha512: `t_sha_hosted_${tag(canonicalId)}`,
+      storage_path: `project-files/${canonicalId}/${hostedVersionId}/pack-1.0.0.zip`,
+      primary: true,
+    });
+    // An un-adopt leftover: a synced 1.0.0 on the canonical whose CDN url names a DIFFERENT listing.
+    const otherListing = `t_other_${tag(canonicalId)}`;
+    strayExternalId = `t_v_stray_${tag(canonicalId)}`;
+    strayVersionId = await makeVersion({
+      project_id: canonicalId,
+      external_id: strayExternalId,
+      version_number: '1.0.0',
+      date_published: '2026-05-02T12:00:00.000Z',
+    });
+    await makeFile({
+      version_id: strayVersionId,
+      filename: 'pack-1.0.0-other.zip',
+      sha512: `t_sha_other_${tag(canonicalId)}`,
+      url: `https://cdn.modrinth.com/data/${otherListing}/versions/${strayExternalId}/pack-1.0.0-other.zip`,
+      primary: true,
+    });
+    // The duplicate being folded belongs to a third listing and carries only a 1.1.0.
+    duplicateId = await makeProject({
+      source: 'modrinth',
+      external_id: `t_listing_${tag(canonicalId)}`,
+      status: 'published',
+    });
+    const dupVersionId = await makeVersion({
+      project_id: duplicateId,
+      external_id: `t_v_dup_${tag(canonicalId)}`,
+      version_number: '1.1.0',
+      date_published: '2026-05-03T12:00:00.000Z',
+    });
+    await makeFile({
+      version_id: dupVersionId,
+      filename: 'pack-1.1.0.zip',
+      sha512: `t_sha_dup_${tag(canonicalId)}`,
+      url: `https://cdn.modrinth.com/data/t_listing_${tag(canonicalId)}/versions/${dupVersionId}/pack-1.1.0.zip`,
+      primary: true,
+    });
+  });
+
+  afterAll(async () => {
+    await cleanupFactories();
+  });
+
+  it("T-ACT-81 folds the 1.1.0 across and leaves the other listing's 1.0.0 row untouched (versions_merged 0)", async () => {
+    const { data, error } = await fold(duplicateId, canonicalId);
+    expect(error).toBeNull();
+    expect(data).toMatchObject({ versions_moved: 1, versions_merged: 0, files_deduped: 0 });
+
+    const { data: rows } = await service
+      .from('project_versions')
+      .select('id, external_id, version_number')
+      .eq('project_id', canonicalId)
+      .order('version_number');
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        { id: hostedVersionId, external_id: null, version_number: '1.0.0' },
+        { id: strayVersionId, external_id: strayExternalId, version_number: '1.0.0' },
+        expect.objectContaining({ version_number: '1.1.0' }),
+      ]),
+    );
+    expect(rows).toHaveLength(3);
+  });
+});

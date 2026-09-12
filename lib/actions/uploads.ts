@@ -423,6 +423,33 @@ export async function uploadProjectFile(
       });
     };
 
+    /** The form's version metadata onto a HOSTED version row (`external_id IS NULL`) — D5(b). */
+    const updateHostedVersionMetadata = async (
+      id: string,
+    ): Promise<ActionResult<UploadProjectFileData> | null> => {
+      const updated = await admin
+        .from('project_versions')
+        .update({
+          version_number: data.version.version_number,
+          name: data.version.name ?? null,
+          changelog_md: data.version.changelog_md ?? null,
+          game_versions: data.version.game_versions,
+          loaders: data.version.loaders,
+          version_type: data.version.version_type,
+          ...(data.version.date_published !== undefined
+            ? { date_published: data.version.date_published }
+            : {}),
+        })
+        .eq('id', id);
+      if (updated.error) {
+        if (updated.error.code === UNIQUE_VIOLATION) {
+          return fail('conflict', VERSION_TAKEN, { field: 'version_number' });
+        }
+        throw new Error(`project_versions update failed: ${updated.error.code}`);
+      }
+      return null;
+    };
+
     const hostedSameName = hostedSiblings.find((row) => row.filename === parsed.filename);
     if (hostedSameName !== undefined && versionRow !== null) {
       if (hostedSameName.sha512 === sha512) {
@@ -459,6 +486,12 @@ export async function uploadProjectFile(
         .update({ storage_path: data.path, primary: makePrimary })
         .eq('id', cdnTwin.id);
       if (twinError) throw new Error(`project_files update failed: ${twinError.code}`);
+      // A hosted version row still takes the form's metadata (D5(b) "as today"); a synced row
+      // follows Modrinth and ignores it.
+      if (versionRow.external_id === null) {
+        const metadata = await updateHostedVersionMetadata(versionRow.id);
+        if (metadata !== null) return metadata;
+      }
       return done(versionRow.id, cdnTwin);
     }
 
@@ -493,26 +526,8 @@ export async function uploadProjectFile(
     } else {
       versionId = versionRow.id;
       if (versionRow.external_id === null) {
-        const updated = await admin
-          .from('project_versions')
-          .update({
-            version_number: data.version.version_number,
-            name: data.version.name ?? null,
-            changelog_md: data.version.changelog_md ?? null,
-            game_versions: data.version.game_versions,
-            loaders: data.version.loaders,
-            version_type: data.version.version_type,
-            ...(data.version.date_published !== undefined
-              ? { date_published: data.version.date_published }
-              : {}),
-          })
-          .eq('id', versionId);
-        if (updated.error) {
-          if (updated.error.code === UNIQUE_VIOLATION) {
-            return fail('conflict', VERSION_TAKEN, { field: 'version_number' });
-          }
-          throw new Error(`project_versions update failed: ${updated.error.code}`);
-        }
+        const metadata = await updateHostedVersionMetadata(versionId);
+        if (metadata !== null) return metadata;
       }
     }
 

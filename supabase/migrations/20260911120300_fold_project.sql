@@ -129,6 +129,15 @@ begin
        or (
          v.project_id = p_canonical_id
          and v.external_id is not null
+         -- … only when it belongs to the listing being folded (a synced file row's CDN url names
+         -- its listing id) — an un-adopt leftover from another listing is never glued onto a
+         -- hosted row here (it follows its own listing on the next run).
+         and exists (
+           select 1
+           from public.project_files lf
+           where lf.version_id = v.id
+             and lf.url like 'https://cdn.modrinth.com/data/' || v_dup.external_id || '/%'
+         )
          and exists (
            select 1
            from public.project_versions hv

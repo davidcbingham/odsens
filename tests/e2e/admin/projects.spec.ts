@@ -890,6 +890,12 @@ test.describe('cross-posted projects (T-E2E-51/52/53)', () => {
         timeout: 1_000,
       });
     });
+    // … and on its `/` card (cards, hero and detail read the same `is_exclusive` column).
+    await expectAtUrl(page, '/', async () => {
+      await expect(cardFor(page, EXCL_SLUG).getByText(BADGE)).toBeVisible({
+        timeout: 1_000,
+      });
+    });
   });
 
   test('T-E2E-51 moderator: the listing fields, Link buttons and upload wells on the seed exclusive are disabled ("Admin only"), never hidden', async ({
