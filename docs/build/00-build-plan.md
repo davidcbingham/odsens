@@ -477,7 +477,7 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 
 ### S1.5a — Cross-posted projects
 
-*(Inserted 2026-09-11 by ADR-0036 after Oliver's first use — "one project, many homes". Tag `v0.6.1`.)*
+*(Inserted 2026-09-11 by ADR-0036 after Oliver's first use — "one project, many homes". Tag `v0.6.1`. **Merged 2026-09-12** as `4706631` (PR #16), ADR-0037 Accepted; live on odsens.com — merge record in `docs/questions.md` S1.5a build notes.)*
 
 **Goal:** Oliver posts a project on odsens.com the moment it is ready and submits the same project to Modrinth (and CurseForge) in parallel; when a platform approves it, the site treats the listing as the same project — one URL, one thread, hosted files as the primary download, platform counts alongside — and a project that started on a platform can gain odsens-hosted files too.
 
