@@ -23,7 +23,7 @@ export const CURSEFORGE_API = 'https://api.curseforge.com/v1';
 /** Minecraft's CurseForge game id (04 §4.2 `searchBySlug`). */
 const GAME_ID_MINECRAFT = 432;
 
-/** 04 §1.4 `setProjectLink.ref` URL grammar — capture 3 is the slug. */
+/** 04 §1.4 `linkProjectListing.ref` URL grammar (the curseforge case; ADR-0037 D1) — capture 3 is the slug. */
 const CURSEFORGE_URL_RE =
   /^https:\/\/(www\.)?curseforge\.com\/minecraft\/(mc-mods|texture-packs|data-packs|bukkit-plugins|modpacks|shaders)\/([a-z0-9-]+)/;
 

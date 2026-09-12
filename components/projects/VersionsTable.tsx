@@ -2,7 +2,12 @@ import { Markdown } from '@/components/primitives/Markdown';
 import { PixelLabel } from '@/components/primitives/PixelLabel';
 import { TrackedLink } from '@/components/primitives/TrackedLink';
 import { formatFileSize } from '@/lib/format/size';
-import { formatVersionList, hasChangelog, sortVersionsForTable } from '@/lib/versions';
+import {
+  formatVersionList,
+  hasChangelog,
+  sortVersionsForTable,
+  type FileKind,
+} from '@/lib/versions';
 import { ChangelogExpander, ChangelogExpanderSummary } from './ChangelogExpander';
 import styles from './VersionsTable.module.css';
 
@@ -12,24 +17,31 @@ import styles from './VersionsTable.module.css';
  * Server Component (03 C-16: not on the island list) rendering its OWN `<table>` — not the
  * `Table` primitive — because the changelog needs an extra full-width `<tr>` (03); the client
  * leaf is `ChangelogExpander` with server-rendered `Markdown variant="changelog"` children
- * (03 C-19). Ordering: versions `date_published` desc, files primary-first
- * (`lib/versions.ts` `sortVersionsForTable`, 05 T-UNIT-30); `hasChangelog` drives "Changes ▾".
+ * (03 C-19). Ordering: versions `date_published` desc, files `hostedFirst` — hosted primary,
+ * hosted, CDN primary, CDN (`lib/versions.ts` `sortVersionsForTable`, 05 T-UNIT-30 as amended
+ * by ADR-0037 D6); `hasChangelog` drives "Changes ▾".
  *
- * File hrefs: synced file → the Modrinth CDN URL (`project_files.url`, ADR-0002 #42);
- * direct (`source: 'odsens'`) → `/api/download/[fileId]` (S1.3). Every download link is a
- * `TrackedLink event="download"` `{ project: slug, source, from: 'versions' }` (03 §2.2
- * emitters; 04 §5.6 shapes) — the download route itself does no analytics (04 D7). The
- * newest version's primary file gets the primary-button look, other rows the outlined link
- * (pass-3 mockup; 03: "`Button primary size=sm` or link"). Accessible name of each link is
- * "Download <filename>" (visually-hidden filename — `TrackedLink` takes no `aria-label`).
- * The expanded `<tr>` is `hidden` until open (not just visually).
+ * File hrefs and analytics come per FILE, not per project (ADR-0037 D6 — a version may live in
+ * two homes): `files[].kind` `'direct'` → `href` is `/api/download/[fileId]` (a hosted file on
+ * ANY source, 01 INV-55 as amended) and the `TrackedLink` `source` is `direct`; `'modrinth'` →
+ * `href` is the Modrinth CDN URL (`project_files.url`, ADR-0002 #42) and `source` is
+ * `modrinth`. The read model (`lib/data/projects.ts`) computes both; the S1.2 project-level
+ * `source` prop is gone. Every download link is a `TrackedLink event="download"`
+ * `{ project: slug, source: file.kind, from: 'versions' }` (03 §2.2 emitters; 04 §5.6 shapes) —
+ * the download route itself does no analytics (04 D7). The newest version's first file gets
+ * the primary-button look, other rows the outlined link (pass-3 mockup; 03: "`Button primary
+ * size=sm` or link"). Accessible name of each link is "Download <filename>" (visually-hidden
+ * filename — `TrackedLink` takes no `aria-label`). The expanded `<tr>` is `hidden` until open
+ * (not just visually).
  */
 export type VersionFile = {
   id: string;
   filename: string;
   sizeBytes: number;
-  /** Synced → Modrinth CDN URL (`project_files.url`); direct → `/api/download/[fileId]`. */
+  /** `kind: 'modrinth'` → Modrinth CDN URL (`project_files.url`); `'direct'` → `/api/download/[fileId]`. */
   href: string;
+  /** Where the bytes live — drives `href` and the `download` event's `source` (ADR-0037 D6). */
+  kind: FileKind;
   primary: boolean;
 };
 
@@ -46,24 +58,16 @@ export type ProjectVersion = {
 
 export type VersionsTableProps = {
   versions: ProjectVersion[];
-  source: 'modrinth' | 'odsens';
   projectId: string;
   slug: string;
   className?: string;
 };
 
-export function VersionsTable({
-  versions,
-  source,
-  projectId,
-  slug,
-  className,
-}: VersionsTableProps) {
+export function VersionsTable({ versions, projectId, slug, className }: VersionsTableProps) {
   if (versions.length === 0) return null; // page decides the empty layout (mirrors Gallery)
 
   const sorted = sortVersionsForTable(versions);
   const groupName = `changelog-${projectId}`; // 03: one open at a time per project
-  const downloadSource = source === 'odsens' ? 'direct' : 'modrinth'; // 04 §5.6 values
   const classes = className
     ? `${styles['versions-table-wrap']} ${className}`
     : styles['versions-table-wrap'];
@@ -90,7 +94,7 @@ export function VersionsTable({
       <td className={styles['versions-download']}>
         <TrackedLink
           event="download"
-          props={{ project: slug, source: downloadSource, from: 'versions' }}
+          props={{ project: slug, source: file.kind, from: 'versions' }}
           href={file.href}
           className={
             options.latest && options.firstFile

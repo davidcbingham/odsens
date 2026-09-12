@@ -1,6 +1,7 @@
 /**
  * lib/data/projects.ts — ISR reads for `/`, `/projects`, `/projects/[slug]` (registry Modules
- * `data/<area>.ts`; 02 §2.1/§2.2/§2.3).
+ * `data/<area>.ts`; 02 §2.1/§2.2/§2.3; ADR-0037 D4 `resolveProjectPage`, D6 primary-download
+ * rule + per-file href/kind + platform rows, D7 `is_exclusive`).
  *
  * Server-only. Every read runs on the cookie-less anon client (`lib/supabase/anon.ts` — 01
  * INV-13/INV-15: RLS as `anon`, never `cookies()`, never the admin client) against the public
@@ -24,6 +25,15 @@
  * `featured_order` among `project_overrides.featured = true`; 4-up = the NEXT featured by
  * `featured_order` (hero excluded); nothing featured → hero = highest `downloads_total` and
  * 4-up = the next four by `downloads_total`; fewer than 4 → what exists; 0 published → nothing.
+ *
+ * "One project, many homes" (ADR-0037 D6/D7): a project's files may live in our Storage
+ * (`storage_path` — served by `/api/download/<id>`, kind `direct`) and/or on the Modrinth CDN
+ * (`url`, kind `modrinth`) on ANY `source`; the primary download is the hosted primary file of
+ * the newest version that has one (`selectPrimaryFile`), else the project's Modrinth home
+ * (`modrinthHome`: the listing page for `source='modrinth'`, or the `modrinth` link's URL);
+ * CDN-only rows are not rendered while `is_exclusive` (no platform home). The badge predicate
+ * is the view column `is_exclusive` (D7) — `isExclusive()` stays as its pure twin. Old slugs
+ * of folded duplicates resolve through `project_redirects` (`resolveProjectPage`, D4).
  */
 import 'server-only';
 import { unstable_cache } from 'next/cache';
@@ -36,7 +46,8 @@ import { createAnonClient } from '@/lib/supabase/anon';
 import type { Database } from '@/lib/supabase/types';
 import { SLUG_RE } from '@/lib/validation/slug';
 import { loaderLabel, loaderLabels } from '@/lib/format/loader';
-import { groupGameVersions, primaryFirst } from '@/lib/versions';
+import { modrinthListingUrl } from '@/lib/format/project';
+import { groupGameVersions, hostedFirst, selectPrimaryFile, type FileKind } from '@/lib/versions';
 
 export type { ProjectListItem };
 
@@ -71,9 +82,12 @@ export function isNewProject(publishedAt: string | null, now: number = Date.now(
 /**
  * Exclusive gate (03 `ExclusiveBadge` row: "gating logic unit-tested in `lib/data/projects.ts`
  * `isExclusive()`"; DESIGN.md §5: "Never on a project that also lives on Modrinth or
- * CurseForge"). `source='odsens'` and, when the caller has them, no cross-post `project_links`.
- * List reads carry no links, so their cards use the source alone; the dedicated predicate test
- * (05 T-UNIT-36) lands with the badge in S1.3.
+ * CurseForge"). `source='odsens'` and no cross-post `project_links` row of any platform.
+ *
+ * ADR-0037 D7: the reads below take the badge from the `projects_public` column `is_exclusive`
+ * (`p.source = 'odsens' and not exists (project_links where project_id = p.id)`) so cards, hero
+ * and detail agree without inferring from `source` alone; this function is the SAME predicate
+ * in TypeScript — kept for unit parity (05 T-UNIT-36) and for callers that hold a row's links.
  */
 export function isExclusive(
   source: ProjectSource,
@@ -82,15 +96,23 @@ export function isExclusive(
   return source === 'odsens' && links.length === 0;
 }
 
+/** A `project_links` row as the read model needs it (platform + the URL the platform owns). */
+export type PlatformLink = { platform: LinkPlatform; url: string };
+
 /**
- * Canonical Modrinth project page for a synced project — the hero DOWNLOAD target and the
- * GET IT panel's Modrinth link (02 §2.1 #1 "synced: Modrinth project URL"; §2.3 rail). The
- * type-neutral `/project/<slug>` path is used because our `project_type` is remapped from
- * Modrinth's (04 §5.2 P1–P5, e.g. `mod`+`paper` → `plugin`), so a typed path could be wrong;
- * `/project/` resolves for every type. Modrinth slugs mirror ours (`syncModrinth` copies them).
+ * The project's Modrinth home (ADR-0037 D6): a `source='modrinth'` row IS its listing — the
+ * page is `modrinthListingUrl(external_id)` (the id, never our normalised slug — ADR-0034 D1);
+ * an `odsens` row's home is its `modrinth` link's URL; otherwise none. This is the GET IT
+ * "Download on Modrinth" target, the hero DOWNLOAD for a project with no hosted file, and the
+ * per-file data-guard fallback.
  */
-export function modrinthProjectUrl(slug: string): string {
-  return `https://modrinth.com/project/${slug}`;
+export function modrinthHome(
+  source: ProjectSource,
+  externalId: string | null,
+  links: readonly PlatformLink[],
+): string | null {
+  if (source === 'modrinth') return externalId !== null ? modrinthListingUrl(externalId) : null;
+  return links.find((link) => link.platform === 'modrinth')?.url ?? null;
 }
 
 /**
@@ -255,12 +277,13 @@ type ListRow = Pick<
   | 'downloads_total'
   | 'external_updated_at'
   | 'published_at'
+  | 'is_exclusive'
 >;
 
 // NOTE: select strings must stay single literals — concatenation widens them to `string` and
 // supabase-js's typed query parser then returns `GenericStringError` rows.
 const LIST_SELECT =
-  'slug, title, description, icon_url, project_type, source, loaders, game_versions, downloads_total, external_updated_at, published_at';
+  'slug, title, description, icon_url, project_type, source, loaders, game_versions, downloads_total, external_updated_at, published_at, is_exclusive';
 
 /** View columns are all nullable in the generated types; rows missing identity fields are skipped. */
 function toListItem(row: ListRow): ProjectListItem | null {
@@ -276,14 +299,14 @@ function toListItem(row: ListRow): ProjectListItem | null {
     type: row.project_type,
     chips: projectChips(gameVersions, loaders),
     downloadsTotal: row.downloads_total ?? 0,
-    exclusive: isExclusive(row.source),
+    exclusive: row.is_exclusive === true, // the view column (ADR-0037 D7), never `source` alone
     gameVersions,
     externalUpdatedAt: row.external_updated_at,
     publishedAt: row.published_at,
   };
 }
 
-type RawFile = {
+export type RawFile = {
   id: string;
   filename: string;
   size_bytes: number;
@@ -293,7 +316,7 @@ type RawFile = {
   primary: boolean;
 };
 
-type RawVersion = {
+export type RawVersion = {
   id: string;
   version_number: string;
   name: string | null;
@@ -304,25 +327,64 @@ type RawVersion = {
   project_files: RawFile[];
 };
 
-/**
- * Download href per file (02 §2.3 #4, ADR-0002 #42): exclusive (`source='odsens'`) →
- * `/api/download/<file id>` (route ships in S1.3; the href shape is fixed now); synced → the
- * Modrinth CDN `project_files.url`, falling back to the project's Modrinth page when a synced
- * row somehow has no URL (data guard — never an empty href).
- */
-function fileHref(source: ProjectSource, slug: string, file: RawFile): string {
-  if (source === 'odsens') return `/api/download/${file.id}`;
-  return file.url ?? modrinthProjectUrl(slug);
+/** ADR-0037 D6, per file: hosted (`storage_path` set) → `direct`; CDN-only → `modrinth`. */
+export function fileKind(file: Pick<RawFile, 'storage_path'>): FileKind {
+  return file.storage_path !== null ? 'direct' : 'modrinth';
 }
 
-function toVersion(source: ProjectSource, slug: string, raw: RawVersion): ProjectVersion {
-  const files: VersionFile[] = raw.project_files.map((file) => ({
-    id: file.id,
-    filename: file.filename,
-    sizeBytes: file.size_bytes,
-    href: fileHref(source, slug, file),
-    primary: file.primary,
-  }));
+/**
+ * Download href per file (02 §2.3 #4 as amended by ADR-0037 D6; 01 INV-55; ADR-0002 #42):
+ * hosted → `/api/download/<file id>` on ANY source; CDN-only → `project_files.url`, falling
+ * back to the project's Modrinth home when a synced row somehow has no URL (data guard).
+ * `null` only for a CDN-only row with no URL on a project with no Modrinth home — nothing to
+ * link, so the caller drops the row (never an empty href).
+ */
+export function fileHref(
+  file: Pick<RawFile, 'id' | 'url' | 'storage_path'>,
+  modrinthHomeUrl: string | null,
+): string | null {
+  if (file.storage_path !== null) return `/api/download/${file.id}`;
+  return file.url ?? modrinthHomeUrl;
+}
+
+/** Everything `projectVersions` / `pickPrimaryFile` need to know about the project itself. */
+export type VersionContext = {
+  /** `modrinthHome()` — the per-file fallback and the primary's fallback target. */
+  modrinthHomeUrl: string | null;
+  /** `is_exclusive` (ADR-0037 D7): CDN-only rows are not rendered while true (D6). */
+  exclusive: boolean;
+};
+
+/** A file with its computed `href`/`kind` — `VersionFile` plus the raw columns the panel shows. */
+type ResolvedFile = VersionFile & Pick<RawFile, 'sha512'>;
+
+/**
+ * The renderable files of one version (ADR-0037 D6): each with `href` + `kind`; CDN-only rows
+ * dropped while the project `is_exclusive` (an unlinked odsens project lists hosted files only,
+ * so the badge stays a true statement after an unlink — the rows come back when it is linked
+ * again); rows that would have no href dropped (data guard). Order is left to `hostedFirst`.
+ */
+function resolveFiles(files: readonly RawFile[], context: VersionContext): ResolvedFile[] {
+  const resolved: ResolvedFile[] = [];
+  for (const file of files) {
+    const kind = fileKind(file);
+    if (kind === 'modrinth' && context.exclusive) continue;
+    const href = fileHref(file, context.modrinthHomeUrl);
+    if (href === null) continue;
+    resolved.push({
+      id: file.id,
+      filename: file.filename,
+      sizeBytes: file.size_bytes,
+      href,
+      kind,
+      primary: file.primary,
+      sha512: file.sha512,
+    });
+  }
+  return resolved;
+}
+
+function toVersion(raw: RawVersion, files: readonly VersionFile[]): ProjectVersion {
   return {
     id: raw.id,
     versionNumber: raw.version_number,
@@ -331,18 +393,103 @@ function toVersion(source: ProjectSource, slug: string, raw: RawVersion): Projec
     loaders: loaderLabels(raw.loaders), // display names (ADR-0034 D2)
     datePublished: raw.date_published,
     changelogMd: raw.changelog_md,
-    files,
+    files: files.map(({ id, filename, sizeBytes, href, kind, primary }) => ({
+      id,
+      filename,
+      sizeBytes,
+      href,
+      kind,
+      primary,
+    })),
   };
 }
 
-/** Newest version (by `date_published`, 05 T-UNIT-30 order) → its primary-first file. */
-function latestPrimaryFile(versions: readonly RawVersion[]): RawFile | null {
-  const withFiles = versions.filter((version) => version.project_files.length > 0);
-  const latest = withFiles.sort(
-    (a, b) => Date.parse(b.date_published) - Date.parse(a.date_published),
-  )[0];
-  if (latest === undefined) return null;
-  return primaryFirst(latest.project_files)[0] ?? null;
+/**
+ * `VersionsTable` props for a project's raw versions (ADR-0037 D6; 05 T-UNIT-49): per-file
+ * `href`/`kind` via `resolveFiles`; a version left with no renderable file is dropped (nothing
+ * to list — the table would otherwise render an empty group). The component orders the result
+ * (`sortVersionsForTable`, 05 T-UNIT-30).
+ */
+export function projectVersions(
+  versions: readonly RawVersion[],
+  context: VersionContext,
+): ProjectVersion[] {
+  return versions.flatMap((raw) => {
+    const files = resolveFiles(raw.project_files, context);
+    return files.length > 0 ? [toVersion(raw, files)] : [];
+  });
+}
+
+/** The GET IT / hero primary (ADR-0037 D6) — a resolved file plus which rule chose it. */
+export type PrimaryPick = { file: ResolvedFile; kind: FileKind };
+
+/**
+ * The primary-download rule (ADR-0037 D6; 02 §2.1 #1, §2.3 rail; 05 T-UNIT-49), in order:
+ * 1. `selectPrimaryFile` — the hosted primary of the newest version with a hosted file
+ *    (`kind: 'direct'`, href `/api/download/<id>`) — on ANY source;
+ * 2. none, and the project has a Modrinth home → `kind: 'modrinth'`: the newest version's
+ *    first file in `hostedFirst` order (today's rule verbatim — its meta is what the panel
+ *    shows under "Download on Modrinth"; the button itself targets the home page);
+ * 3. no home and no hosted file → `null` (the S1.3 degrade: no panel; unreachable for a
+ *    published odsens row, whose publish precondition needs a hosted file).
+ * Hidden CDN-only rows (`exclusive`) never reach step 2 — an exclusive has no home.
+ */
+export function pickPrimaryFile(
+  versions: readonly RawVersion[],
+  context: VersionContext,
+): PrimaryPick | null {
+  const resolved = versions.map((raw) => ({
+    datePublished: raw.date_published,
+    files: resolveFiles(raw.project_files, context),
+  }));
+  const hosted = selectPrimaryFile(resolved);
+  if (hosted !== null) return { file: hosted, kind: 'direct' };
+  if (context.modrinthHomeUrl === null) return null;
+  const newest = resolved
+    .filter((version) => version.files.length > 0)
+    .sort((a, b) => Date.parse(b.datePublished) - Date.parse(a.datePublished))[0];
+  const first = newest !== undefined ? hostedFirst(newest.files)[0] : undefined;
+  return first !== undefined ? { file: first, kind: 'modrinth' } : null;
+}
+
+/** GET IT panel row source (02 §2.3 rail; ADR-0037 D6): the project's platform homes. */
+export type ProjectLinkItem = {
+  platform: LinkPlatform;
+  url: string;
+  downloads: number;
+};
+
+/**
+ * "Also on" rows (ADR-0037 D6; 00 S1.5a.AC6) from `project_links` OR `source`: a
+ * `source='modrinth'` row contributes a Modrinth row (`modrinthListingUrl(external_id)`, count
+ * `downloads_modrinth`); each `project_links` row contributes its `url` with the project's
+ * count for that platform (`downloads_modrinth` / `downloads_curseforge` — the columns the sync
+ * writes alongside the link, so the rows always sum to `downloads_total`). Modrinth first,
+ * then CurseForge (the S1.2 order); one row per platform.
+ */
+export function platformRows(
+  source: ProjectSource,
+  externalId: string | null,
+  links: readonly PlatformLink[],
+  downloads: { modrinth: number; curseforge: number },
+): ProjectLinkItem[] {
+  const rows = new Map<LinkPlatform, ProjectLinkItem>();
+  if (source === 'modrinth' && externalId !== null) {
+    rows.set('modrinth', {
+      platform: 'modrinth',
+      url: modrinthListingUrl(externalId),
+      downloads: downloads.modrinth,
+    });
+  }
+  for (const link of links) {
+    if (rows.has(link.platform)) continue;
+    rows.set(link.platform, {
+      platform: link.platform,
+      url: link.url,
+      downloads: link.platform === 'modrinth' ? downloads.modrinth : downloads.curseforge,
+    });
+  }
+  return (['modrinth', 'curseforge'] as const).flatMap((platform) => rows.get(platform) ?? []);
 }
 
 // ---- /projects — 02 §2.2 ---------------------------------------------------------------------
@@ -370,13 +517,6 @@ export const listPublishedProjects = unstable_cache(fetchProjectList, ['data-pro
 
 // ---- /projects/[slug] — 02 §2.3 --------------------------------------------------------------
 
-/** GET IT panel row source (02 §2.3 rail): the project's cross-post links. */
-export type ProjectLinkItem = {
-  platform: LinkPlatform;
-  url: string;
-  downloads: number;
-};
-
 export type ProjectDetail = {
   id: string;
   slug: string;
@@ -387,6 +527,7 @@ export type ProjectDetail = {
   iconUrl: string | null;
   type: ProjectType;
   source: ProjectSource;
+  /** The view's `is_exclusive` (ADR-0037 D7): `odsens` with no `project_links` row. */
   exclusive: boolean;
   /** Full chip list (versions then loaders); header caps at 4 (ADR-0002 #54). */
   chips: string[];
@@ -407,14 +548,21 @@ export type ProjectDetail = {
   gallery: GalleryImage[];
   /** OG image: the gallery entry marked `featured`, else null → page uses the default (RP-06). */
   ogImage: string | null;
-  /** `VersionsTable` props (hrefs computed; the component orders them, 05 T-UNIT-30). */
+  /**
+   * `VersionsTable` props (per-file `href`/`kind` computed by `projectVersions`; CDN-only rows
+   * hidden while `exclusive` — ADR-0037 D6; the component orders them, 05 T-UNIT-30).
+   */
   versions: ProjectVersion[];
+  /** GET IT platform rows (`platformRows`): from `project_links` or `source` (ADR-0037 D6). */
   links: ProjectLinkItem[];
-  /** Synced projects: the Modrinth page (GET IT primary + Modrinth row). Null for exclusives. */
+  /** The project's Modrinth home (`modrinthHome`) — "Download on Modrinth" target. Null = none. */
   modrinthUrl: string | null;
   /**
-   * Latest version's primary file with its computed `href` — the GET IT primary for exclusives
-   * (file meta per 03 `GetItPanel`) and the hero direct download. Null when no files exist.
+   * The primary download per ADR-0037 D6 (`pickPrimaryFile`): `kind: 'direct'` = the hosted
+   * primary of the newest version with a hosted file (`href` `/api/download/<id>` — the GET IT
+   * primary and the hero DOWNLOAD on any source); `kind: 'modrinth'` = the newest version's
+   * CDN file, whose meta the panel shows under "Download on Modrinth" (the button targets
+   * `modrinthUrl`). Null when the project has neither a hosted file nor a Modrinth home.
    */
   primaryFile: {
     id: string;
@@ -424,6 +572,7 @@ export type ProjectDetail = {
     gameVersions: string[];
     loaders: string[];
     href: string;
+    kind: FileKind;
   } | null;
   /** `overrides.notes_md` — second ABOUT block under a `NoteCallout` (02 §2.3 #3). */
   notesMd: string | null;
@@ -436,7 +585,7 @@ export type ProjectDetail = {
 };
 
 const DETAIL_SELECT =
-  'id, slug, title, description, body_md, icon_url, project_type, source, gallery, categories, loaders, game_versions, license, source_url, issues_url, discord_url, followers, downloads_modrinth, downloads_curseforge, downloads_direct, downloads_total, published_at, external_updated_at, updated_at, project_versions ( id, version_number, name, changelog_md, game_versions, loaders, date_published, project_files ( id, filename, size_bytes, sha512, url, storage_path, primary ) ), project_links ( platform, url, downloads ), project_overrides ( notes_md, comments_enabled, extra_gallery )';
+  'id, slug, title, description, body_md, icon_url, project_type, source, external_id, is_exclusive, gallery, categories, loaders, game_versions, license, source_url, issues_url, discord_url, followers, downloads_modrinth, downloads_curseforge, downloads_direct, downloads_total, published_at, external_updated_at, updated_at, project_versions ( id, version_number, name, changelog_md, game_versions, loaders, date_published, project_files ( id, filename, size_bytes, sha512, url, storage_path, primary ) ), project_links ( platform, url, downloads ), project_overrides ( notes_md, comments_enabled, extra_gallery )';
 
 async function fetchProjectDetail(slug: string): Promise<ProjectDetail | null> {
   const { data, error } = await createAnonClient()
@@ -464,14 +613,19 @@ async function fetchProjectDetail(slug: string): Promise<ProjectDetail | null> {
     ...parseGalleryEntries(overrides?.extra_gallery ?? null),
   ].find((entry) => entry.featured);
   const versions: RawVersion[] = row.project_versions;
-  const primary = latestPrimaryFile(versions);
   const gameVersions = row.game_versions ?? [];
   const loaders = row.loaders ?? [];
-  const links: ProjectLinkItem[] = row.project_links.map((link) => ({
-    platform: link.platform,
-    url: link.url,
-    downloads: link.downloads,
-  }));
+  const downloads = {
+    modrinth: row.downloads_modrinth ?? 0,
+    curseforge: row.downloads_curseforge ?? 0,
+    direct: row.downloads_direct ?? 0,
+    total: row.downloads_total ?? 0,
+  };
+  // ADR-0037 D6/D7: the home, the badge and the file rules all derive from source + links.
+  const exclusive = row.is_exclusive === true;
+  const modrinthUrl = modrinthHome(source, row.external_id, row.project_links);
+  const context: VersionContext = { modrinthHomeUrl: modrinthUrl, exclusive };
+  const primary = pickPrimaryFile(versions, context);
 
   return {
     id: row.id,
@@ -481,8 +635,8 @@ async function fetchProjectDetail(slug: string): Promise<ProjectDetail | null> {
     bodyMd: row.body_md ?? '',
     iconUrl: row.icon_url !== null ? resolveMediaUrl(row.icon_url) : null,
     type: row.project_type,
-    source: row.source,
-    exclusive: isExclusive(row.source, links),
+    source,
+    exclusive,
     chips: projectChips(gameVersions, loaders),
     gameVersions,
     loaders,
@@ -492,30 +646,26 @@ async function fetchProjectDetail(slug: string): Promise<ProjectDetail | null> {
     issuesUrl: row.issues_url,
     discordUrl: row.discord_url,
     followers: row.followers ?? 0,
-    downloads: {
-      modrinth: row.downloads_modrinth ?? 0,
-      curseforge: row.downloads_curseforge ?? 0,
-      direct: row.downloads_direct ?? 0,
-      total: row.downloads_total ?? 0,
-    },
+    downloads,
     publishedAt: row.published_at,
     externalUpdatedAt: row.external_updated_at,
     updatedAt: row.updated_at,
     gallery,
     ogImage: featuredEntry?.url ?? null,
-    versions: versions.map((version) => toVersion(source, slug, version)),
-    links,
-    modrinthUrl: row.source === 'modrinth' ? modrinthProjectUrl(row.slug) : null,
+    versions: projectVersions(versions, context),
+    links: platformRows(source, row.external_id, row.project_links, downloads),
+    modrinthUrl,
     primaryFile:
       primary !== null
         ? {
-            id: primary.id,
-            filename: primary.filename,
-            sizeBytes: primary.size_bytes,
-            sha512: primary.sha512,
+            id: primary.file.id,
+            filename: primary.file.filename,
+            sizeBytes: primary.file.sizeBytes,
+            sha512: primary.file.sha512,
             gameVersions,
             loaders: loaderLabels(loaders), // display names (ADR-0034 D2)
-            href: fileHref(row.source, row.slug, primary),
+            href: primary.file.href,
+            kind: primary.kind,
           }
         : null,
     notesMd: overrides?.notes_md ?? null,
@@ -538,6 +688,59 @@ export function getProjectDetail(slug: string): Promise<ProjectDetail | null> {
   })();
 }
 
+/**
+ * The canonical slug an old (folded) slug now points at, or `null` (ADR-0037 D4): a
+ * `project_redirects` row (anon RLS: visible-or-admin, so a draft/hidden target reads as no
+ * row) followed by the canonical row's live slug from `projects_public` (the view gates
+ * published + not hidden a second time; a target that is not visible → `null` → 404, never a
+ * redirect to a page that would 404). Two small reads, both on the anon client.
+ */
+async function fetchProjectRedirect(oldSlug: string): Promise<string | null> {
+  const client = createAnonClient();
+  const { data: redirect, error } = await client
+    .from('project_redirects')
+    .select('project_id')
+    .eq('old_slug', oldSlug)
+    .maybeSingle();
+  if (error) throw new Error(`lib/data/projects: redirect read failed — ${error.message}`);
+  if (redirect === null) return null;
+  const { data: target, error: targetError } = await client
+    .from('projects_public')
+    .select('slug')
+    .eq('id', redirect.project_id)
+    .maybeSingle();
+  if (targetError)
+    throw new Error(`lib/data/projects: redirect target read failed — ${targetError.message}`);
+  return target?.slug ?? null;
+}
+
+/** What `/projects/[slug]` should do (ADR-0037 D4): render, redirect, or `notFound()`. */
+export type ProjectPageResolution =
+  { kind: 'detail'; detail: ProjectDetail } | { kind: 'redirect'; slug: string } | null;
+
+/**
+ * `/projects/[slug]` resolution (ADR-0037 D4; 02 §2.3 "Not found"): a live `projects.slug`
+ * always wins (`getProjectDetail` first); otherwise a `project_redirects` row whose canonical
+ * project is visible → `{kind:'redirect', slug}` and the page issues
+ * `permanentRedirect('/projects/<slug>')` — from BOTH `generateMetadata` and the page body,
+ * since metadata runs first; nothing → `null` → `notFound()`. The redirect read is cached under
+ * `projects` + `project:<old slug>` (the fold's action revalidates `project:<redirect_slug>`).
+ * A slug that is the live slug of nothing and redirects to itself cannot occur (the fold never
+ * writes a redirect for a slug a live row holds), and malformed slugs short-circuit.
+ */
+export async function resolveProjectPage(slug: string): Promise<ProjectPageResolution> {
+  if (!SLUG_RE.test(slug)) return null;
+  const detail = await getProjectDetail(slug);
+  if (detail !== null) return { kind: 'detail', detail };
+  const target = await unstable_cache(
+    () => fetchProjectRedirect(slug),
+    ['data-projects-redirect', slug],
+    { revalidate: REVALIDATE_S, tags: [TAG_PROJECTS, projectTag(slug)] },
+  )();
+  if (target === null || target === slug) return null;
+  return { kind: 'redirect', slug: target };
+}
+
 // ---- / (home) — 02 §2.1 #1/#2 ----------------------------------------------------------------
 
 /**
@@ -555,12 +758,13 @@ export type HomeFeatured = {
 };
 
 type HomeRow = ListRow &
-  Pick<ProjectsPublicRow, 'id' | 'gallery'> & {
+  Pick<ProjectsPublicRow, 'id' | 'gallery' | 'external_id'> & {
     project_overrides: { featured: boolean; featured_order: number | null } | null;
+    project_links: PlatformLink[];
   };
 
 const HOME_SELECT =
-  'slug, title, description, icon_url, project_type, source, loaders, game_versions, downloads_total, external_updated_at, published_at, id, gallery, project_overrides ( featured, featured_order )';
+  'slug, title, description, icon_url, project_type, source, loaders, game_versions, downloads_total, external_updated_at, published_at, is_exclusive, id, gallery, external_id, project_overrides ( featured, featured_order ), project_links ( platform, url )';
 
 async function fetchHomeFeatured(): Promise<HomeFeatured> {
   const client = createAnonClient();
@@ -578,6 +782,8 @@ async function fetchHomeFeatured(): Promise<HomeFeatured> {
         downloadsTotal: item.downloadsTotal,
         id: row.id,
         source: row.source,
+        externalId: row.external_id,
+        links: row.project_links,
         gallery: row.gallery,
         item,
       },
@@ -587,25 +793,32 @@ async function fetchHomeFeatured(): Promise<HomeFeatured> {
   const { hero: heroRow, next } = selectFeatured(candidates);
   if (heroRow === null) return { hero: null, screenshot: null, featured: [] };
 
-  // Hero DOWNLOAD (02 §2.1 #1): synced → Modrinth project URL; exclusive → the direct download
-  // of the latest version's primary file (route S1.3; href fixed now). A published exclusive
-  // always has one (04 publishProject precondition); if the invariant is ever broken the button
-  // degrades to the project page rather than a dead link.
-  let downloadHref = modrinthProjectUrl(heroRow.slug);
-  let downloadKind: 'direct' | 'modrinth' = 'modrinth';
-  if (heroRow.source === 'odsens') {
+  // Hero DOWNLOAD (02 §2.1 #1 as amended by ADR-0037 D6) — the same rule as the GET IT primary
+  // (`pickPrimaryFile`): the hosted primary of the newest version with a hosted file, on any
+  // source (`direct`, `/api/download/<id>`); else the project's Modrinth home (`modrinth`);
+  // neither → `downloadKind: null` and the project page: the hero renders no DOWNLOAD and fires
+  // no `download` event (a broken publish invariant, 04 — the GET IT panel degrades the same way).
+  const { data: versionRows, error: versionsError } = await client
+    .from('project_versions')
+    .select(
+      'id, version_number, name, changelog_md, game_versions, loaders, date_published, project_files ( id, filename, size_bytes, sha512, url, storage_path, primary )',
+    )
+    .eq('project_id', heroRow.id);
+  if (versionsError)
+    throw new Error(`lib/data/projects: hero versions read failed — ${versionsError.message}`);
+  const heroHome = modrinthHome(heroRow.source, heroRow.externalId, heroRow.links);
+  const heroPrimary = pickPrimaryFile(versionRows satisfies RawVersion[], {
+    modrinthHomeUrl: heroHome,
+    exclusive: heroRow.item.exclusive,
+  });
+  let downloadHref = `/projects/${heroRow.slug}`;
+  let downloadKind: FileKind | null = null;
+  if (heroPrimary?.kind === 'direct') {
     downloadKind = 'direct';
-    downloadHref = `/projects/${heroRow.slug}`;
-    const { data: versionRows, error: versionsError } = await client
-      .from('project_versions')
-      .select(
-        'id, version_number, name, changelog_md, game_versions, loaders, date_published, project_files ( id, filename, size_bytes, sha512, url, storage_path, primary )',
-      )
-      .eq('project_id', heroRow.id);
-    if (versionsError)
-      throw new Error(`lib/data/projects: hero versions read failed — ${versionsError.message}`);
-    const primary = latestPrimaryFile(versionRows satisfies RawVersion[]);
-    if (primary !== null) downloadHref = `/api/download/${primary.id}`;
+    downloadHref = heroPrimary.file.href;
+  } else if (heroHome !== null) {
+    downloadKind = 'modrinth';
+    downloadHref = heroHome;
   }
 
   const heroItem = heroRow.item;

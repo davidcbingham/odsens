@@ -26,6 +26,13 @@
  * helpers, `createDownloadUrl` (60 s signed URL, `download: filename`) and
  * `resolveDownloadable` (generic file-id → bucket/path/filename/counter — INV-56; kind
  * `project_file` now, `skin` S1.7, `workroom_file` S2.3). Skins/art builders land in S1.7.
+ *
+ * S1.5a (ADR-0037 D5(d)): `resolveDownloadable` serves ANY `project_files` row with a
+ * `storage_path` on a published, non-hidden project regardless of `projects.source` — a hosted
+ * file on a Modrinth-first project is the same download as one on an exclusive (the S1.3 code
+ * never checked `source`; the contract now says so). CDN-only rows (`storage_path IS NULL`,
+ * `url` set) are still never proxied (01 INV-55). RPC `record_download` counts `downloads_direct`
+ * on any project. The `Downloadable` shape is unchanged (ADR-0027 D5 stays deferred to S1.7).
  */
 import 'server-only';
 import sharp from 'sharp';
@@ -424,9 +431,10 @@ export type Downloadable = {
 /**
  * Resolves a file id to its bucket + path + counter, generically over kinds (01 INV-56 — the
  * route is not project-hardwired; bucket and owner scope come from data). Kind `project_file`:
- * the row must have `storage_path` (synced Modrinth files have `url` and are never proxied),
- * its project `status='published'` and not override-hidden. Anything else → null (the route
- * answers 404 — never 403, drafts are not revealed; 04 §2.3 D2).
+ * the row must have `storage_path` (CDN-only rows have `url` and are never proxied — INV-55),
+ * its project `status='published'` and not override-hidden; the project's `source` is NOT a
+ * condition (ADR-0037 D5(d): hosted files on any source are served and counted). Anything else
+ * → null (the route answers 404 — never 403, drafts are not revealed; 04 §2.3 D2).
  */
 export async function resolveDownloadable(id: string): Promise<Downloadable | null> {
   const admin = createAdminClient();

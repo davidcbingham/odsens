@@ -50,7 +50,7 @@ Handle availability is checked via RPC **`check_handle(p_handle text) returns te
 | project_type | enum `mod|datapack|resourcepack|plugin` | mapped from Modrinth `project_type` + loaders (Modrinth calls datapacks "mod" w/ loader `datapack`, plugins "mod" w/ `paper|spigot|bukkit…`) |
 | title, description | text | short description |
 | body_md | text | markdown |
-| icon_url | text null | Modrinth CDN URL — the full-size original behind Modrinth's resized `…_96.webp` icon (`resolveIconUrl`, ADR-0034 D4) — or Storage path for exclusives |
+| icon_url | text null | Modrinth CDN URL — the full-size original behind Modrinth's resized `…_96.webp` icon (`resolveIconUrl`, ADR-0034 D4) — or a Storage path (`project-media/…`) on **any** source: a hosted icon wins, the sync leaves a Storage-path value alone (ADR-0037 D2/D5) |
 | gallery | jsonb | `[{url, title, description, ordering, featured}]` — `url` is Modrinth's `raw_url` (full-size) when present, else its `url` (ADR-0034 D4) |
 | categories | text[] | Modrinth categories |
 | loaders | text[] | `fabric, neoforge, forge, paper, datapack, minecraft…` |
@@ -59,7 +59,7 @@ Handle availability is checked via RPC **`check_handle(p_handle text) returns te
 | source_url, issues_url, discord_url | text null | |
 | downloads_modrinth | int default 0 | sync |
 | downloads_curseforge | int default 0 | sync (matched via `project_links`) |
-| downloads_direct | int default 0 | counted by our download route (exclusives) |
+| downloads_direct | int default 0 | counted by our download route — hosted files on any source (ADR-0037 D5); carried across a fold (`fold_project`, ADR-0037 D3) |
 | followers | int default 0 | Modrinth |
 | published_at, external_updated_at | timestamptz null | |
 | status | enum `draft|published|hidden` default published | exclusives start `draft`; sync rows `published` |
@@ -85,14 +85,15 @@ Generated/derived: `downloads_total = modrinth + curseforge + direct` (view colu
 | id uuid PK; version_id FK cascade | |
 | filename text; size_bytes bigint; sha512 text null | |
 | url text null | Modrinth CDN (synced) |
-| storage_path text null | Storage `project-files/{project}/{version}/{filename}` (exclusives) |
+| storage_path text null | Storage `project-files/{project}/{version}/{filename}` — any source (a hosted file on a synced project is served through the download route and is the primary download; a row may carry both `url` and `storage_path` when the same bytes live in both homes — sha512 pairing, ADR-0037 D2/D5) |
 | primary bool | |
-| download_count int default 0 | direct downloads (exclusives) |
+| download_count int default 0 | direct downloads of this hosted row — any source (ADR-0037 D5) |
 
-**`project_links`** — cross-posting map, maintained by Oliver in admin (or auto-matched by slug/title)
+**`project_links`** — cross-posting map, maintained by Oliver in admin (`linkProjectListing` / `unlinkProjectListing`; `/admin/projects` suggests a slug/title match, nothing links automatically — ADR-0037 D1/D8)
 | col | notes |
 |---|---|
-| project_id FK; platform enum `modrinth|curseforge`; external_id text; url text; downloads int; synced_at | PK (project_id, platform) |
+| project_id FK; platform enum `modrinth|curseforge`; external_id text; url text; downloads int; synced_at | PK (project_id, platform); unique `project_links_platform_external_id_key (platform, external_id)` — a listing links to one project (ADR-0037 D1) |
+| `modrinth` rows | an odsens-canonical project's Modrinth listing (`external_id` = the Modrinth project id, `url = modrinthListingUrl(external_id)`, `downloads` → `projects.downloads_modrinth`); `syncModrinth` syncs that listing's versions **into** the linked project instead of creating a row (adoption on `project_versions.external_id`, ADR-0037 D2); a `source='modrinth'` row is its own listing and never carries a `modrinth` link; linking a listing the sync already imported folds the duplicate (`fold_project`, §2.11) |
 
 **`project_overrides`** — Oliver's curation on top of any project (mostly synced ones)
 | col | notes |
@@ -105,7 +106,14 @@ Generated/derived: `downloads_total = modrinth + curseforge + direct` (view colu
 | notes_md text null | site-only write-up appended under About |
 | comments_enabled bool default true | |
 
-**`project_downloads`** — raw log for exclusive direct downloads (for stats + abuse checks); `project_id, file_id, ip_hash, ua_hash, created_at`. Written only by RPC **`record_download(p_file_id, p_ip_hash, p_ua_hash)`** (one transaction: `project_files.download_count+1`, `projects.downloads_direct+1`, insert log row; `security definer`, service role only). `ip_hash = HMAC-SHA256(HASH_SECRET, ip|utcDay)`. Aggregated nightly into `stats_daily`; rows purged after 90 days by RPC `purge_project_downloads(90)`. Analytics only — the download route's 30 / min per `ip_hash` limit counts `rate_limit_hits`, never this table (ADR-0002 A4; §2.10; the earlier "rate-limit source" wording here predated A4 — prose fix 2026-08-27).
+**`project_downloads`** — raw log for direct downloads of hosted files, any source (ADR-0037 D5; for stats + abuse checks; re-parented by `fold_project`); `project_id, file_id, ip_hash, ua_hash, created_at`. Written only by RPC **`record_download(p_file_id, p_ip_hash, p_ua_hash)`** (one transaction: `project_files.download_count+1`, `projects.downloads_direct+1`, insert log row; `security definer`, service role only). `ip_hash = HMAC-SHA256(HASH_SECRET, ip|utcDay)`. Aggregated nightly into `stats_daily`; rows purged after 90 days by RPC `purge_project_downloads(90)`. Analytics only — the download route's 30 / min per `ip_hash` limit counts `rate_limit_hits`, never this table (ADR-0002 A4; §2.10; the earlier "rate-limit source" wording here predated A4 — prose fix 2026-08-27).
+
+**`project_redirects`** — a folded duplicate's slug keeps resolving (ADR-0037 D4)
+| col | notes |
+|---|---|
+| old_slug citext PK | the slug of the `source='modrinth'` row removed by `fold_project` |
+| project_id uuid not null FK → projects on delete cascade | the canonical project; `/projects/<old_slug>` → `permanentRedirect` to its slug from both `generateMetadata` and the page (`resolveProjectPage`); a live `projects.slug` always wins; `createExclusiveProject` / `updateExclusiveProject` refuse a slug present here (`conflict`); never in the sitemap |
+| created_at timestamptz not null default now() | index `project_redirects_project_id_idx (project_id)`; written only by `fold_project` (`on conflict (old_slug) do update set project_id`) |
 
 ### 2.3 Videos (synced)
 **`videos`** — `id uuid; youtube_id text unique; title; description; thumbnail_url; published_at; duration_seconds; is_short bool; view_count; like_count; synced_at; hidden bool` (hidden set by Oliver). Shorts detection: duration ≤ 60s or `#shorts` — Data API has no flag; refine at build.
@@ -185,13 +193,14 @@ Rules: **an admin is auto-added as `moderator` to every workroom** (visible in t
 | `check_handle(text)` | RPC, security definer | authenticated | handle available / taken / reserved / invalid (reserved = `is_reserved_handle()` — ADR-0020) |
 | `is_reserved_handle(text)` | helper, pure SQL (`immutable`, invoker rights, no table access) | anon, authenticated, service_role; called by `check_handle` and by the `profiles_guard` trigger | the 04 H3 reserved list in SQL once (22 entries, case-insensitive; `lib/validation/handle.ts` `RESERVED_HANDLES` mirrors it — T-ACT-7 parity); binds the owner's direct first-handle write and, with `is_banned`, every own-row write of a banned account (42501) — ADR-0020 |
 | `project_is_visible(uuid)` | helper, plpgsql `security definer` `stable` (`search_path = public`) | anon, authenticated, service_role; called only by the S1.2 SELECT policies (projects, project_versions, project_files, project_links, project_overrides) | the §4 visibility predicate (`status='published'` and not `overrides.hidden`) in SQL once for the policy layer — mutually-referencing inline policies recurse (42P17); the view `projects_public` inlines the same predicate — ADR-0022 |
-| `record_download(file_id, ip_hash, ua_hash)` | RPC, security definer | service role | exclusive-file counters + `project_downloads` log |
+| `record_download(file_id, ip_hash, ua_hash)` | RPC, security definer | service role | hosted-file counters (any source — ADR-0037 D5) + `project_downloads` log |
 | `record_skin_download(skin_id)` | RPC, security definer | service role | `skins.downloads + 1` |
 | `rate_limit_ok(scope, key, max, window)` | RPC | service role | SQL rate limiting over `rate_limit_hits` only (A4) |
 | `purge_project_downloads(days)`, `purge_rate_limit_hits(days)` | RPC | service role | nightly housekeeping |
 | `comment_target_visible(target_type, target_id)` | helper, security definer, stable | anon, authenticated, service_role; called by the `comments` SELECT policy, `can_comment`, `comments_public` and `moderator_thread` | the one v1 target-visibility predicate: `project` → `project_is_visible()`, every other type → false until its thread opens (ADR-0002 C21) — ADR-0028 D4 |
 | `can_comment(target_type, target_id)` | helper, security definer | authenticated (inside policies) | comment/like/report insert precondition |
 | `moderator_thread(target_type, target_id)` | RPC, security definer | authenticated; raises unless `is_moderator()` (ADR-0002 A2) | held/hidden/reported rows + `is_first_comment`, `report_count` for the mods-only thread view |
+| `fold_project(p_duplicate_id, p_canonical_id) returns jsonb` | RPC, plpgsql `security definer` `volatile` (`search_path = public`) | service role only (`revoke all … from public, anon, authenticated, service_role; grant execute … to service_role`); invoked by `linkProjectListing`, never by a job | one transaction (ADR-0037 D3): preconditions raise (both rows exist and differ; duplicate `source='modrinth'`; canonical `source='odsens'`); merge same-numbered versions (the duplicate's `external_id` + sync-owned columns onto the canonical version, files moved, a CDN-only sha512-duplicate file dropped after the canonical row gains its `url`, the duplicate version deleted — the order forced by the non-deferrable `project_versions_external_id_key`); re-parent the other versions (`primary` per home, canonical wins), `project_links` (canonical wins per platform; a moved `curseforge` link sets `downloads_curseforge`), `comments` (likes/reports ride), `project_downloads` (+ `downloads_direct` added); merge `project_overrides` (canonical non-default wins, `extra_gallery` appended); insert `project_redirects`; delete the duplicate `projects` row. Returns `{versions_moved, versions_merged, files_moved, files_deduped, comments_moved, downloads_moved, downloads_direct_moved, links_moved, redirect_slug}`. The one recorded exception to "never delete synced rows" |
 | `is_moderator()`, `is_admin()` | helpers | policies | role checks on `profiles.role` |
 | `comments_set_status()` | trigger BEFORE INSERT on `comments` | — | authoritative held/published status (recomputed for JWT callers; service/no-JWT sessions keep the given status — seed and tests) |
 | `comments_guard()` | trigger BEFORE UPDATE on `comments` | — | the §4 column rules for JWT callers (author body edits ≤ 15 min; author may set `deleted` only; `like_count`/`author_id`/`target_*`/`parent_id`/`created_at` immutable; moderators change status and get `moderated_by/at` stamped); nested-trigger writes pass (`pg_trigger_depth() > 1`) — ADR-0028 D3/D4 |
@@ -222,6 +231,7 @@ Uploads go through server routes/actions (validate type/size, generate paths, wr
 | profiles | own row (full); admin does **not** select other rows via RLS (admin client in actions — ADR-0002 #70) | trigger only | own row: `avatar_path` + first handle (only if null→value) — not a reserved handle, and not while banned (`profiles_guard` + `is_reserved_handle()`, 42501 — ADR-0020); renames + `handle_changed_at`, `role`, `is_banned`, `comment_count`, `email_hash` = admin (own row) / service only; **other users' rows: service (admin actions) only** — an admin JWT cannot reach them (select is own-row, so its update filters to 0 rows — ADR-0015) | service (admin actions) only — an admin JWT cannot delete other rows (ADR-0015) |
 | projects / versions / files / links / overrides | all where `status='published'` and not `overrides.hidden` (enforced via the definer helper `project_is_visible()` — inline cross-referencing policies recurse, ADR-0022); admin sees all | admin (exclusives) / service role (sync) | same | admin |
 | project_downloads | admin | service role (RPC `record_download`) | service role | admin / service (purge) |
+| project_redirects | all where `project_is_visible(project_id)`; admin all (policy `project_redirects_select_visible_or_admin` — reveals no draft/hidden target; ADR-0037 D4) | service role only (RPC `fold_project`; no JWT write policy) | service role only | service role only (FK cascade from `projects`) |
 | mentions | published to all; admin all (drafts/suggested/hidden) | admin / service (v1.5 suggested) | admin | admin |
 | videos, skins, art | published to all; admin all | admin/service | admin | admin |
 | site_settings | admin (public read via view `site_settings_public`) | service role (seeded) | admin | service only |
@@ -236,14 +246,14 @@ Uploads go through server routes/actions (validate type/size, generate paths, wr
 | notification_recipients | admin (`address` masked in the app; Discord recipient `address` = webhook URL) | service role | service/admin | admin |
 | notification_matrix | admin | admin | admin (`enabled`) | service only |
 | rate_limit_hits | **service role only** (all other roles denied on every op) | service role | service role | service role (purge) |
-Role checks via a `is_moderator()` / `is_admin()` SQL helper reading `profiles.role`. Sensitive mutations (moderate, ban, settings) go through Server Actions that re-check role server-side in addition to RLS. Action-level roles (ADR-0002 C7): content curation, sync, mentions, uploads, skins/art, settings = **admin**; comment moderation, ban, handle rename = **moderator**. RPC grants: `check_handle` → authenticated; `record_download`, `record_skin_download`, `purge_*`, `rate_limit_ok` → service role only; `can_comment` → authenticated; `moderator_thread` → authenticated, allowed only when `is_moderator()` (A2). The full expected matrix is `docs/build/05-test-plan.md` §7.1 (T-RLS); this table is the source it follows.
+Role checks via a `is_moderator()` / `is_admin()` SQL helper reading `profiles.role`. Sensitive mutations (moderate, ban, settings) go through Server Actions that re-check role server-side in addition to RLS. Action-level roles (ADR-0002 C7): content curation, sync, mentions, uploads, skins/art, settings = **admin**; comment moderation, ban, handle rename = **moderator**. RPC grants: `check_handle` → authenticated; `record_download`, `record_skin_download`, `purge_*`, `rate_limit_ok`, `fold_project` (ADR-0037 D3) → service role only; `can_comment` → authenticated; `moderator_thread` → authenticated, allowed only when `is_moderator()` (A2). The full expected matrix is `docs/build/05-test-plan.md` §7.1 (T-RLS); this table is the source it follows.
 
 ---
 
 ## 5. Sync design
 | Job | Cadence | Source → tables | Notes |
 |---|---|---|---|
-| **Modrinth** | hourly (Vercel Cron) + manual button | `GET /v2/user/OddSense/projects` → `projects`; per project `GET /v2/project/{id}` (gallery, body, license) and `GET /v2/project/{id}/version` → `project_versions`, `project_files` | Upsert by (source, external_id). Map `project_type`: `mod`+loader `datapack`→datapack; `mod`+paper/spigot/bukkit/purpur/folia/velocity/bungeecord→plugin; `resourcepack`→resourcepack; else mod. Respect 300 req/min; send `User-Agent`. New projects default `published`; deleted-upstream → mark `hidden`, never delete. |
+| **Modrinth** | hourly (Vercel Cron) + manual button | `GET /v2/user/OddSense/projects` → `projects`; per project `GET /v2/project/{id}` (gallery, body, license) and `GET /v2/project/{id}/version` → `project_versions`, `project_files` | Upsert by (source, external_id). Map `project_type`: `mod`+loader `datapack`→datapack; `mod`+paper/spigot/bukkit/purpur/folia/velocity/bungeecord→plugin; `resourcepack`→resourcepack; else mod. Respect 300 req/min; send `User-Agent`. New projects default `published`; deleted-upstream → mark `hidden`, never delete. **Adoption (ADR-0037 D2):** a listing linked from an odsens row (`project_links` `modrinth`) never creates a row — the job writes only the link's `downloads/url/synced_at` and `projects.downloads_modrinth` and syncs the versions **into** the linked project, keyed on `project_versions.external_id` globally (a version row follows its listing; a same-numbered hosted version adopts the Modrinth id and keeps its hosted files; sha512-equal files pair up on one row; the odsens row's metadata is Oliver's); a slug collision with another row keeps the stored slug / inserts as `p-<id>`; a Storage-path icon is kept; a duplicate row whose listing is linked elsewhere is hidden. |
 | **CurseForge** | hourly | For each `project_links` row with platform curseforge: `GET /v1/mods/{id}` → `downloadCount` → `projects.downloads_curseforge`, `project_links.downloads` | Discovery of CF ids: admin enters CF project id/URL once (or `GET /v1/mods/search?gameId=432&authorId=…` at build if the API allows by author). |
 | **YouTube** | hourly | RSS (`feeds/videos.xml?channel_id=`) for cheap new-video detection; Data API `search`/`playlistItems` on uploads playlist + `videos` for stats/duration | Upsert by `youtube_id`. Data API budget: ~few hundred units/day. |
 | **Mentions refresh** | hourly | YouTube `videos` for `mentions.external_id` → `view_count` | v1.5 adds `search` → suggested queue |
@@ -261,6 +271,7 @@ Every run writes a `sync_runs` row; failures don't touch existing data. Public p
 - **Exclusive download:** `/api/download/[fileId]` (GET only) → resolve id (project file → kind `project_file`; skin → kind `skin`; else 404) → verify published → rate limit (30 / min per `ip_hash`) → RPC `record_download` (counters + `project_downloads` log) or `record_skin_download` → 302 to short-lived signed Storage URL (skins: public bucket URL).
 - **Add exclusive project (admin):** form (Modrinth-shaped) → server action creates `projects(source=odsens, status=draft)` → uploads via `project-media`/`project-files` → publish toggle.
 - **Curate synced project (admin):** upsert `project_overrides` (featured/hidden/extra gallery/notes).
+- **Link a listing (admin):** `linkProjectListing` on `/admin/projects/[id]` — paste a Modrinth URL / slug / id (or a CurseForge id / URL) → the adapter resolves the listing (`getProject` / `getMod`) → `project_links` row + platform count written **first** → if the sync had already imported that listing as its own `projects` row, RPC `fold_project(duplicate, canonical)` merges it (versions, files, links, comments, download log, overrides; a `project_redirects` row; the duplicate row deleted) → the listing's versions arrive on the next `syncModrinth` run (adoption, §5). `unlinkProjectListing` un-adopts the hosted versions (`external_id = NULL`, one per `version_number`), deletes the link row and zeroes the platform count — nothing else deletes a synced row (ADR-0037 D1/D3/D4).
 
 ---
 
@@ -268,5 +279,5 @@ Every run writes a `sync_runs` row; failures don't touch existing data. Public p
 - ~~Handle heuristic~~ decided: structural only. ~~Comment limits~~ decided: 1000 chars, 1 link, 15-min edit window, auto-hold ≥3 reports, manual CF ids.
 - ~~Ko-fi tip → supporters linking (Q33)~~ decided: email-hash match → `@handle` in message → unlinked (§2.8).
 - ~~Whether report threshold auto-hold (N=3) is wanted~~ decided: yes, N=3 (Q33–40).
-- ~~CurseForge id discovery~~ decided: manual entry (`setProjectLink`).
+- ~~CurseForge id discovery~~ decided: manual entry (`linkProjectListing`, the `curseforge` case — was `setProjectLink`, ADR-0037 D1).
 - Build-time defaults settled by ADR-0002 (2026-08-17): `rate_limit_hits` + `rate_limit_ok`, views `comments_public`/`site_settings_public`, `comments_set_status()`, `can_comment()`, `handle_changed_at`, `owner_profile_id`, HMAC `HASH_SECRET`, comments v1 on projects only, admin/moderator action split (C7, [DAVID]-flagged). Amendment A (2026-08-17): `moderator_thread` RPC (A2), `site_settings_public.moderation_mode` (A3), `rate_limit_ok` counts only `rate_limit_hits` (A4), `email_hash` set by `/auth/callback` with `HASH_SECRET` required from S1.1 (A14).

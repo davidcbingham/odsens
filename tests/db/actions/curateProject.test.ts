@@ -1,6 +1,6 @@
 /**
- * tests/db/actions/curateProject.test.ts — T-ACT-40 (05 §7.2; 04 §1.4 `curateProject`;
- * ADR-0002 C7 / A11 / C10; migrations 20260827090200/90300).
+ * tests/db/actions/curateProject.test.ts — T-ACT-40 + T-ACT-84 (05 §7.2; 04 §1.4 `curateProject`;
+ * ADR-0002 C7 / A11 / C10; ADR-0037 D5(e) the stored-entry rule; migrations 20260827090200/90300).
  *
  * Auth matrix: anon `unauthenticated` · user D `forbidden` · banned D `forbidden` (the seed banned
  * account has role `user`, so `requireRole`'s rank check answers) · **mod D `forbidden`** (ADR-0002
@@ -11,12 +11,15 @@
  * The per-project shape upserts `project_overrides` partially (absent fields keep stored values),
  * revalidates `projects` + `project:<slug>` and logs the SC-24 keys-only audit line; `hidden=true`
  * removes the row from `projects_public`. The batch `reorder` shape revalidates `projects` exactly
- * once (ADR-0002 A11). `extra_gallery`: a foreign path fails the schema prefix rule; a well-formed
- * own path still fails the HEAD check while bucket `project-media` does not exist (S1.3 —
- * ADR-0002 C10), both as `validation`.
+ * once (ADR-0002 A11). `extra_gallery`: a NEW foreign path fails the folder rule (applied in the
+ * action since ADR-0037 D5(e) — it needs the stored row); a well-formed own path whose object was
+ * never uploaded fails the HEAD check, both as `validation`. T-ACT-84 (D5(e)): an entry whose
+ * `path` is already stored on the row skips the folder rule (a folded duplicate's entries live under
+ * the old folder) but is still HEAD-checked; new entries are folder-checked as before. Objects for
+ * the HEAD checks are placed through the service client (`uploadFixture`) and removed in `afterAll`.
  */
 import { randomUUID } from 'node:crypto';
-import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { curateProject } from '@/lib/actions/projects';
 import type { CurateProjectInput } from '@/lib/actions/projects.schema';
 import { expectFail, expectOk } from '@/tests/helpers/actionResult';
@@ -25,6 +28,7 @@ import { callAction, setupActionMocks } from '@/tests/helpers/callAction';
 import { expectInternal, withDbFault } from '@/tests/helpers/dbFault';
 import { cleanupFactories, makeProject } from '@/tests/helpers/factories';
 import { spyLog, spyRevalidateTag, type LogSpy } from '@/tests/helpers/spies';
+import { removeObjects, uploadFixture } from '@/tests/helpers/storage';
 
 setupActionMocks();
 
@@ -262,13 +266,6 @@ describe('T-ACT-40 curateProject', () => {
       },
     },
     {
-      name: "extra_gallery foreign path (another project's folder)",
-      input: {
-        project_id: randomUUID(),
-        extra_gallery: [{ path: `project-media/${randomUUID()}/gallery/pic.png`, ordering: 0 }],
-      },
-    },
-    {
       name: 'reorder 100 entries',
       input: {
         reorder: Array.from({ length: 100 }, (_, i) => ({
@@ -279,6 +276,28 @@ describe('T-ACT-40 curateProject', () => {
     },
   ])('T-ACT-40 $name → validation', async ({ input }) => {
     expectFail(await callAction(curateProject, input, { role: 'admin' }), 'validation');
+  });
+
+  it("T-ACT-40 a NEW path in another project's folder → validation naming the entry (the folder rule, in the action since ADR-0037 D5(e))", async () => {
+    const projectId = await makeProject();
+    const error = expectFail(
+      await callAction(
+        curateProject,
+        {
+          project_id: projectId,
+          extra_gallery: [{ path: `project-media/${randomUUID()}/gallery/pic.png`, ordering: 0 }],
+        },
+        { role: 'admin' },
+      ),
+      'validation',
+    );
+    expect(error.field).toBe('extra_gallery');
+    expect(error.issues).toEqual([
+      {
+        path: 'extra_gallery.0.path',
+        message: "That image isn't in this project's gallery folder.",
+      },
+    ]);
   });
 
   it("T-ACT-40 a well-formed own path still fails the HEAD check while `project-media` doesn't exist (S1.3 — ADR-0002 C10)", async () => {
@@ -294,6 +313,98 @@ describe('T-ACT-40 curateProject', () => {
       ),
       'validation',
     );
+    expect(error.field).toBe('extra_gallery');
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-84 — the stored-entry rule (ADR-0037 D5(e)): an entry already on the row skips the folder
+// check (a folded duplicate's objects stay under the old folder); the HEAD check still runs
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-84 curateProject extra_gallery stored-entry rule', () => {
+  let projectId = '';
+  /** The folded duplicate's id — the folder its gallery objects still live under. */
+  const foldedId = randomUUID();
+  let storedPath = '';
+  let ownPath = '';
+  const objects: string[] = [];
+
+  beforeAll(async () => {
+    projectId = await makeProject();
+    storedPath = `project-media/${foldedId}/gallery/folded.png`;
+    ownPath = `project-media/${projectId}/gallery/new.png`;
+    for (const path of [storedPath, ownPath]) {
+      const objectPath = path.replace(/^project-media\//, '');
+      await uploadFixture('project-media', objectPath, 'images/avatar-600.png');
+      objects.push(objectPath);
+    }
+    // The row as the fold leaves it (D3 (f): the duplicate's entries appended verbatim).
+    const { error } = await service
+      .from('project_overrides')
+      .insert({ project_id: projectId, extra_gallery: [{ path: storedPath, ordering: 1 }] });
+    if (error) throw new Error(`arrange: project_overrides insert failed: ${error.message}`);
+  });
+
+  afterAll(async () => {
+    await removeObjects('project-media', objects);
+  });
+
+  it('T-ACT-84 a stored entry under the old folder + a new own-folder entry → ok, both kept', async () => {
+    const data = expectOk(
+      await callAction(
+        curateProject,
+        {
+          project_id: projectId,
+          extra_gallery: [
+            { path: storedPath, title: 'Kept', ordering: 1 },
+            { path: ownPath, ordering: 2 },
+          ],
+        },
+        { role: 'admin' },
+      ),
+    );
+    if (!('override' in data)) throw new Error('expected the per-project {override} payload');
+    expect(data.override.extra_gallery).toEqual([
+      { path: storedPath, title: 'Kept', ordering: 1 },
+      { path: ownPath, ordering: 2 },
+    ]);
+  });
+
+  it('T-ACT-84 a NEW entry under the old folder (not stored) → validation — the exemption is per stored path, not per folder', async () => {
+    const error = expectFail(
+      await callAction(
+        curateProject,
+        {
+          project_id: projectId,
+          extra_gallery: [
+            { path: storedPath, ordering: 1 },
+            { path: `project-media/${foldedId}/gallery/other.png`, ordering: 2 },
+          ],
+        },
+        { role: 'admin' },
+      ),
+      'validation',
+    );
+    expect(error.field).toBe('extra_gallery');
+    expect(error.issues).toEqual([
+      {
+        path: 'extra_gallery.1.path',
+        message: "That image isn't in this project's gallery folder.",
+      },
+    ]);
+  });
+
+  it("T-ACT-84 a stored entry whose object is gone → validation 'That image hasn't been uploaded.' (the HEAD check still runs)", async () => {
+    await removeObjects('project-media', [storedPath.replace(/^project-media\//, '')]);
+    const error = expectFail(
+      await callAction(
+        curateProject,
+        { project_id: projectId, extra_gallery: [{ path: storedPath, ordering: 1 }] },
+        { role: 'admin' },
+      ),
+      'validation',
+    );
+    expect(error.message).toBe("That image hasn't been uploaded.");
     expect(error.field).toBe('extra_gallery');
   });
 });

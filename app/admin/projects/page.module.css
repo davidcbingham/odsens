@@ -75,3 +75,14 @@
   font-weight: 500;
   font-size: var(--text-ui);
 }
+
+/* S1.5a match note under a synced row's name (ADR-0037 D8; 00 S1.5a.AC7): the Admin field
+   helper-text recipe (12px mute-dim) with the ghost "Link it" link inline. */
+.admin-projects-match {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-8);
+  color: var(--mute-dim);
+  font-size: var(--text-label-sm);
+}

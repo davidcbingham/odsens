@@ -20,8 +20,9 @@ import { Toggle } from '@/components/primitives/Toggle';
 import { TypeBadge } from '@/components/primitives/TypeBadge';
 import {
   curateProject,
+  linkProjectListing,
   publishProject,
-  setProjectLink,
+  unlinkProjectListing,
   updateExclusiveProject,
 } from '@/lib/actions/projects';
 import type { ActionError } from '@/lib/actions/result';
@@ -31,19 +32,31 @@ import { adminProjectStatus, getAdminProject, listAdminProjectVersions } from '@
 import { parseGalleryEntries, resolveMediaUrl } from '@/lib/data/projects';
 import { formatDate } from '@/lib/format/date';
 import { formatCount } from '@/lib/format/number';
+import { modrinthListingUrl } from '@/lib/format/project';
 import { formatFileSize } from '@/lib/format/size';
 import styles from './page.module.css';
 
 /**
  * `/admin/projects/[id]` — S1.2 curate view for synced projects + the S1.3 exclusive editor,
  * branched on `projects.source` (02 §1.3 row; ADR-0002 A11 keeps feature / hide / reorder on
- * `/admin/projects`). Synced (`modrinth`): overrides, notes, comments toggle, CF id, extra
- * gallery — now with the S1.3 `UploadWell` under the gallery list (ADR-0002 C10). Exclusive
- * (`odsens`): publish controls (`publishProject`, ADR-0002 #65 preconditions / #38 no draft
- * previews), the real-columns details form (`updateExclusiveProject` — slug draft-only), icon +
+ * `/admin/projects`). Synced (`modrinth`): overrides, notes, comments toggle, the LISTINGS
+ * fields, icon well, extra gallery (ADR-0002 C10) and versions & files. Exclusive (`odsens`):
+ * publish controls (`publishProject`, ADR-0002 #65 preconditions / #38 no draft previews), the
+ * real-columns details form (`updateExclusiveProject` — slug draft-only), LISTINGS, icon +
  * gallery uploads (`uploadProjectMedia`) and versions & files (`uploadProjectFile`,
  * `ProjectFileWell` — ADR-0026 partial unique). Server Component (03 C-16); the upload wells are
  * the page's only client islands (03 C-16a `UploadWell`, C-17 exception 4 — the signed-URL PUT).
+ *
+ * S1.5a (ADR-0037 D5/D8; 00 S1.5a.AC1/AC4/AC8): the LISTINGS section holds the "Modrinth
+ * listing (URL, slug or id)" `Field` beside "CurseForge id or URL" — both on ONE recipe: a Link
+ * `Button` → `linkProjectListing({platform})` and, once linked, the link's URL +
+ * `formatCount(downloads)` with a Remove `Button` → `unlinkProjectListing({platform})`. On a
+ * `source='modrinth'` row the Modrinth field is read-only (`modrinthListingUrl(external_id)`, no
+ * buttons — the row IS its listing) while the CurseForge field keeps its controls. `?listing=<id>`
+ * (the `/admin/projects` match note's ghost link) prefills the Modrinth field on `odsens` rows —
+ * nothing links until Link is pressed. The icon / gallery / `ProjectFileWell` wells render on
+ * synced rows too (uploads accept every source — D5); the publish controls stay `odsens`-only
+ * (a synced row's durable hide is `project_overrides.hidden`).
  * Dynamic + session-backed under the `app/admin/layout.tsx` gate (01 INV-31); reads are
  * `lib/data/admin.ts` `getAdminProject` / `listAdminProjectVersions` on the request-cookie client
  * (01 INV-12/INV-15; ADR-0022) — unknown id (or a row RLS hides from a moderator, 05
@@ -126,8 +139,26 @@ function projectTypeValue(value: FormDataEntryValue | null): ProjectTypeValue | 
     : undefined;
 }
 
-/** The error round-trip query (`form` names the form, `field` the input, `error` the message). */
-type FormName = 'overrides' | 'link' | 'publish' | 'details';
+/**
+ * The error round-trip query (`form` names the form, `field` the input, `error` the message).
+ * `link` = the CurseForge listing form (its S1.2 name), `link-modrinth` = the Modrinth one; the
+ * Remove buttons report on the same form as their field (ADR-0037 D8 "errors surface on the
+ * field via the page's PRG `?form=link…` mechanism").
+ */
+type FormName = 'overrides' | 'link' | 'link-modrinth' | 'publish' | 'details';
+
+type LinkPlatform = 'modrinth' | 'curseforge';
+
+const LINK_FORM: Record<LinkPlatform, FormName> = { modrinth: 'link-modrinth', curseforge: 'link' };
+
+/** The two fields need distinct ids (`field-<name>`) so each `<label for>` binds its own input. */
+const LINK_FIELD: Record<LinkPlatform, string> = {
+  modrinth: 'modrinth_ref',
+  curseforge: 'curseforge_ref',
+};
+
+/** The `?listing=` prefill is a suggestion only: capped to the field's `maxLength`. */
+const LISTING_REF_MAX = 300;
 
 function withError(base: string, form: FormName, error: ActionError): string {
   const query = new URLSearchParams({ form, error: error.message });
@@ -162,12 +193,18 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   const project = await getAdminProject(id);
   if (!project) notFound();
   const exclusive = project.source === 'odsens';
-  const versions = exclusive ? await listAdminProjectVersions(id) : [];
+  // Versions & files render on every source (ADR-0037 D5 — the file well lives on synced rows too).
+  const versions = await listAdminProjectVersions(id);
 
   const base = `/admin/projects/${id}`;
   const override = project.override;
   const commentsEnabled = override?.commentsEnabled ?? true;
-  const link = project.curseforgeLink;
+  const links: Record<LinkPlatform, typeof project.curseforgeLink> = {
+    modrinth: project.modrinthLink,
+    curseforge: project.curseforgeLink,
+  };
+  // `?listing=<modrinth id>` from the list page's match note (ADR-0037 D8) — odsens rows only.
+  const listingPrefill = exclusive ? queryValue(query.listing)?.slice(0, LISTING_REF_MAX) : null;
 
   // ---- Error round-trip (see header) ---------------------------------------------------------
   const errorForm = queryValue(query.form);
@@ -187,7 +224,9 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
       : null;
   const OVERRIDE_FIELDS = ['title_override', 'description_override', 'notes_md'];
   const overridesFormError = formLevelError('overrides', OVERRIDE_FIELDS);
-  const linkError = errorForm === 'link' && errorMessage !== null ? errorMessage : undefined;
+  // Every link/unlink error lands on its platform's field (the one input each form has).
+  const linkError = (platform: LinkPlatform): string | undefined =>
+    errorForm === LINK_FORM[platform] && errorMessage !== null ? errorMessage : undefined;
   // `project_type` has no inline slot (`Select` carries no error prop) — it lands form-level.
   const DETAILS_FIELDS = [
     'slug',
@@ -218,14 +257,22 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
     redirect(result.ok ? base : withError(base, 'overrides', result.error));
   }
 
-  async function saveLink(formData: FormData): Promise<void> {
+  // Bound per platform (`.bind` — the `setStatus` precedent): one form per field. An empty ref
+  // is sent as-is so the action's own words come back on the field (04 SC-02 — zod is the gate).
+  async function linkListing(platform: LinkPlatform, formData: FormData): Promise<void> {
     'use server';
-    const result = await setProjectLink({
+    const result = await linkProjectListing({
       project_id: id,
-      platform: 'curseforge',
-      ref: orNull(formData.get('ref')),
+      platform,
+      ref: orNull(formData.get(LINK_FIELD[platform])) ?? '',
     });
-    redirect(result.ok ? base : withError(base, 'link', result.error));
+    redirect(result.ok ? base : withError(base, LINK_FORM[platform], result.error));
+  }
+
+  async function unlinkListing(platform: LinkPlatform): Promise<void> {
+    'use server';
+    const result = await unlinkProjectListing({ project_id: id, platform });
+    redirect(result.ok ? base : withError(base, LINK_FORM[platform], result.error));
   }
 
   // PRG for the comments Toggle too (the list page's `curateAndRefresh` rationale): tag-only
@@ -301,6 +348,11 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   const adminOnly = (control: ReactNode): ReactNode =>
     canCurate ? control : <span title={ADMIN_ONLY_TITLE}>{control}</span>;
 
+  /** The listing `Field`s follow the same moderator recipe as the buttons and wells (ADR-0037 D8,
+   *  03 §2.10): `disabled` + `title="Admin only"` on the input itself (`Field` has no title prop). */
+  const listingInputProps = (extra: { readOnly?: boolean } = {}) =>
+    canCurate ? extra : { ...extra, title: ADMIN_ONLY_TITLE };
+
   // Comments live on `project_overrides` for every project (synced AND exclusive), so the toggle
   // renders on both branches.
   const commentsToggle = (
@@ -334,6 +386,204 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         Off closes the thread. Old comments stay.
       </p>
     </div>
+  );
+
+  // ---- Shared sections (both branches — ADR-0037 D5/D8) --------------------------------------
+
+  /** The linked row under a field: URL + `formatCount(downloads)` + Remove (ADR-0037 D8). */
+  const linkedRow = (platform: LinkPlatform) => {
+    const link = links[platform];
+    if (link === null) return null;
+    return (
+      <div className={styles['admin-project-linked']}>
+        <a href={link.url} rel="noopener" className={styles['admin-project-linked-url']}>
+          {link.url}
+        </a>
+        <span className={styles['admin-project-linked-count']}>
+          {`${formatCount(link.downloads)} downloads`}
+        </span>
+        <form action={unlinkListing.bind(null, platform)}>
+          {saveButton(`unlink-${platform}`, 'Remove', 'ghost')}
+        </form>
+      </div>
+    );
+  };
+
+  const modrinthListing = exclusive ? (
+    <div className={styles['admin-project-listing']}>
+      <form action={linkListing.bind(null, 'modrinth')} className={styles['admin-project-form']}>
+        <Field
+          label="Modrinth listing (URL, slug or id)"
+          name={LINK_FIELD.modrinth}
+          defaultValue={listingPrefill ?? links.modrinth?.url ?? ''}
+          maxLength={LISTING_REF_MAX}
+          helper="Versions arrive on the next sync."
+          error={linkError('modrinth')}
+          disabled={!canCurate}
+          inputProps={listingInputProps()}
+        />
+        <div className={styles['admin-project-actions']}>
+          {saveButton('link-modrinth', 'Link', 'secondary')}
+        </div>
+      </form>
+      {linkedRow('modrinth')}
+    </div>
+  ) : (
+    // A synced row IS its listing (ADR-0037 D1): read-only, no buttons, built from the id
+    // (ADR-0034 D1 — our slug may be normalised).
+    <div className={styles['admin-project-listing']}>
+      <Field
+        label="Modrinth listing (URL, slug or id)"
+        name={LINK_FIELD.modrinth}
+        defaultValue={project.externalId !== null ? modrinthListingUrl(project.externalId) : ''}
+        helper="Synced from Modrinth — this is the project's home listing."
+        disabled={!canCurate}
+        inputProps={listingInputProps({ readOnly: true })}
+      />
+    </div>
+  );
+
+  const curseforgeListing = (
+    <div className={styles['admin-project-listing']}>
+      <form action={linkListing.bind(null, 'curseforge')} className={styles['admin-project-form']}>
+        <Field
+          label="CurseForge id or URL"
+          name={LINK_FIELD.curseforge}
+          defaultValue={links.curseforge?.externalId ?? ''}
+          maxLength={LISTING_REF_MAX}
+          helper="Digits or the project URL."
+          error={linkError('curseforge')}
+          disabled={!canCurate}
+          inputProps={listingInputProps()}
+        />
+        <div className={styles['admin-project-actions']}>
+          {saveButton('link-curseforge', 'Link', 'secondary')}
+        </div>
+      </form>
+      {linkedRow('curseforge')}
+    </div>
+  );
+
+  const listingsSection = (
+    <section
+      className={styles['admin-project-section']}
+      aria-labelledby={sectionTitleId('LISTINGS')}
+    >
+      <h2 id={sectionTitleId('LISTINGS')} className={styles['admin-project-heading']}>
+        LISTINGS
+      </h2>
+      <p className={styles['admin-project-helper']}>
+        Where else this project lives. A linked project shows no ONLY ON ODSENS badge.
+      </p>
+      <div className={styles['admin-project-listings']}>
+        {modrinthListing}
+        {curseforgeListing}
+      </div>
+    </section>
+  );
+
+  const iconSection = (
+    <section className={styles['admin-project-section']} aria-labelledby={sectionTitleId('ICON')}>
+      <h2 id={sectionTitleId('ICON')} className={styles['admin-project-heading']}>
+        ICON
+      </h2>
+      {project.iconUrl !== null ? (
+        <div className={styles['admin-project-icon']}>
+          <Image
+            src={resolveMediaUrl(project.iconUrl)}
+            alt={`${project.title} icon`}
+            width={96}
+            height={96}
+            className={styles['admin-project-icon-img']}
+          />
+        </div>
+      ) : (
+        <p className={styles['admin-project-empty']}>No icon yet.</p>
+      )}
+      {adminOnly(
+        <UploadWell
+          kind="project-media"
+          targetIds={{ project_id: id, kind: 'icon' }}
+          action={uploadProjectMediaAction}
+          disabled={!canCurate}
+        />,
+      )}
+      <p className={styles['admin-project-helper']}>
+        {exclusive
+          ? 'Square, 64 to 1024 pixels. Publish needs one.'
+          : 'Square, 64 to 1024 pixels. An uploaded icon stays through syncs.'}
+      </p>
+    </section>
+  );
+
+  const versionsSection = (
+    <section
+      className={styles['admin-project-section']}
+      aria-labelledby={sectionTitleId('VERSIONS & FILES')}
+    >
+      <h2 id={sectionTitleId('VERSIONS & FILES')} className={styles['admin-project-heading']}>
+        VERSIONS &amp; FILES
+      </h2>
+      {versions.length > 0 ? (
+        <ul className={styles['admin-project-versions']}>
+          {versions.map((version) => (
+            <li key={version.id} className={styles['admin-project-version']}>
+              <div className={styles['admin-project-version-head']}>
+                <span className={styles['admin-project-version-number']}>
+                  v{version.versionNumber}
+                </span>
+                {version.name !== null && version.name !== '' ? (
+                  <span className={styles['admin-project-version-name']}>{version.name}</span>
+                ) : null}
+              </div>
+              <p className={styles['admin-project-version-meta']}>
+                {[
+                  version.versionType,
+                  version.gameVersions.join(', '),
+                  version.loaders.join(', '),
+                  formatDate(version.datePublished),
+                ]
+                  .filter((part) => part !== '')
+                  .join(' · ')}
+              </p>
+              <ul className={styles['admin-project-files']}>
+                {version.files.map((file) => (
+                  <li key={file.id} className={styles['admin-project-file']}>
+                    <span className={styles['admin-project-file-name']}>{file.filename}</span>
+                    <span className={styles['admin-project-file-size']}>
+                      {formatFileSize(file.sizeBytes)}
+                    </span>
+                    {file.sha512 !== null ? (
+                      <span className={styles['admin-project-file-hash']} title={file.sha512}>
+                        {`${file.sha512.slice(0, 16)}…`}
+                      </span>
+                    ) : null}
+                    {file.primary ? (
+                      <span className={styles['admin-project-file-primary']}>PRIMARY</span>
+                    ) : null}
+                    {/* The word IS the home (03 C-26): hosted here, or on the Modrinth CDN. */}
+                    <span className={styles['admin-project-file-home']}>
+                      {file.kind === 'direct' ? 'odsens' : 'Modrinth'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={styles['admin-project-empty']}>No versions yet.</p>
+      )}
+      <h3 className={styles['admin-project-subheading']}>Add a version or file</h3>
+      <p className={styles['admin-project-helper']}>
+        {exclusive
+          ? 'Same version number = new file on that version. New number = new version.'
+          : 'Same version number as a Modrinth release = a hosted file on that release. New number = new version.'}
+      </p>
+      {adminOnly(
+        <ProjectFileWell projectId={id} action={uploadProjectFileAction} disabled={!canCurate} />,
+      )}
+    </section>
   );
 
   // ---- EXCLUSIVE branch (`source='odsens'` — the S1.3 editor) --------------------------------
@@ -529,38 +779,9 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           </form>
         </section>
 
-        <section
-          className={styles['admin-project-section']}
-          aria-labelledby={sectionTitleId('ICON')}
-        >
-          <h2 id={sectionTitleId('ICON')} className={styles['admin-project-heading']}>
-            ICON
-          </h2>
-          {project.iconUrl !== null ? (
-            <div className={styles['admin-project-icon']}>
-              <Image
-                src={resolveMediaUrl(project.iconUrl)}
-                alt={`${project.title} icon`}
-                width={96}
-                height={96}
-                className={styles['admin-project-icon-img']}
-              />
-            </div>
-          ) : (
-            <p className={styles['admin-project-empty']}>No icon yet.</p>
-          )}
-          {adminOnly(
-            <UploadWell
-              kind="project-media"
-              targetIds={{ project_id: id, kind: 'icon' }}
-              action={uploadProjectMediaAction}
-              disabled={!canCurate}
-            />,
-          )}
-          <p className={styles['admin-project-helper']}>
-            Square, 64 to 1024 pixels. Publish needs one.
-          </p>
-        </section>
+        {listingsSection}
+
+        {iconSection}
 
         <section
           className={styles['admin-project-section']}
@@ -594,71 +815,7 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           )}
         </section>
 
-        <section
-          className={styles['admin-project-section']}
-          aria-labelledby={sectionTitleId('VERSIONS & FILES')}
-        >
-          <h2 id={sectionTitleId('VERSIONS & FILES')} className={styles['admin-project-heading']}>
-            VERSIONS &amp; FILES
-          </h2>
-          {versions.length > 0 ? (
-            <ul className={styles['admin-project-versions']}>
-              {versions.map((version) => (
-                <li key={version.id} className={styles['admin-project-version']}>
-                  <div className={styles['admin-project-version-head']}>
-                    <span className={styles['admin-project-version-number']}>
-                      v{version.versionNumber}
-                    </span>
-                    {version.name !== null && version.name !== '' ? (
-                      <span className={styles['admin-project-version-name']}>{version.name}</span>
-                    ) : null}
-                  </div>
-                  <p className={styles['admin-project-version-meta']}>
-                    {[
-                      version.versionType,
-                      version.gameVersions.join(', '),
-                      version.loaders.join(', '),
-                      formatDate(version.datePublished),
-                    ]
-                      .filter((part) => part !== '')
-                      .join(' · ')}
-                  </p>
-                  <ul className={styles['admin-project-files']}>
-                    {version.files.map((file) => (
-                      <li key={file.id} className={styles['admin-project-file']}>
-                        <span className={styles['admin-project-file-name']}>{file.filename}</span>
-                        <span className={styles['admin-project-file-size']}>
-                          {formatFileSize(file.sizeBytes)}
-                        </span>
-                        {file.sha512 !== null ? (
-                          <span className={styles['admin-project-file-hash']} title={file.sha512}>
-                            {`${file.sha512.slice(0, 16)}…`}
-                          </span>
-                        ) : null}
-                        {file.primary ? (
-                          <span className={styles['admin-project-file-primary']}>PRIMARY</span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className={styles['admin-project-empty']}>No versions yet.</p>
-          )}
-          <h3 className={styles['admin-project-subheading']}>Add a version or file</h3>
-          <p className={styles['admin-project-helper']}>
-            Same version number = new file on that version. New number = new version.
-          </p>
-          {adminOnly(
-            <ProjectFileWell
-              projectId={id}
-              action={uploadProjectFileAction}
-              disabled={!canCurate}
-            />,
-          )}
-        </section>
+        {versionsSection}
       </div>
     );
   }
@@ -735,32 +892,9 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         {commentsToggle}
       </section>
 
-      <section
-        className={styles['admin-project-section']}
-        aria-labelledby={sectionTitleId('CURSEFORGE')}
-      >
-        <h2 id={sectionTitleId('CURSEFORGE')} className={styles['admin-project-heading']}>
-          CURSEFORGE
-        </h2>
-        <form action={saveLink} className={styles['admin-project-form']}>
-          <Field
-            label="CurseForge id or URL"
-            name="ref"
-            defaultValue={link?.externalId ?? ''}
-            maxLength={300}
-            helper={
-              link
-                ? `Linked. ${formatCount(link.downloads)} downloads counted.`
-                : 'Digits or the project URL. Empty removes the link.'
-            }
-            error={linkError}
-            disabled={!canCurate}
-          />
-          <div className={styles['admin-project-actions']}>
-            {saveButton('link', 'Save link', 'secondary')}
-          </div>
-        </form>
-      </section>
+      {listingsSection}
+
+      {iconSection}
 
       <section
         className={styles['admin-project-section']}
@@ -796,6 +930,8 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
           Images upload to the project&apos;s own gallery folder.
         </p>
       </section>
+
+      {versionsSection}
     </div>
   );
 }

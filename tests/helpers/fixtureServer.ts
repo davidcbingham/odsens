@@ -1,6 +1,10 @@
 /**
- * tests/helpers/fixtureServer.ts — e2e fixture server on :4010 (ADR-0002 #73; 05 §4 CI-5; ADR-0030 D8).
+ * tests/helpers/fixtureServer.ts — e2e fixture server on :4010 (ADR-0002 #73; 05 §4 CI-5; ADR-0030 D8;
+ * ADR-0037 D10).
  * GET/HEAD `/<source>/<path>` → `tests/fixtures/<source>/<path>`; JSON/XML/HTML content types; 404 otherwise.
+ *   A GET whose resolved path is a directory or does not exist is served from `<path>.json` when that
+ *   file exists (S1.5a, D10: `GET /modrinth/project/sd000101` → `project/sd000101.json`, beside the
+ *   `project/sd000101/version` alias directory — the adapter's `GET /project/{id}`).
  * POST (S1.5, D8 — the request body is read and discarded, never stored or logged):
  *   `POST /discord/webhooks/<id>/<token>` → `tests/fixtures/discord/webhooks/<id>.json` (200; unknown id → 404)
  *   `POST /resend/emails`                 → `tests/fixtures/resend/send-ok.json` (200)
@@ -47,6 +51,21 @@ export function resolveFixturePath(urlPath: string): string | null {
   const resolved = path.resolve(FIXTURE_ROOT, ...parts);
   if (!resolved.startsWith(FIXTURE_ROOT + path.sep)) return null;
   return resolved;
+}
+
+/** ADR-0037 D10: a missing file or a directory falls back to `<path>.json` when that is a file. */
+export async function withJsonFallback(file: string): Promise<string> {
+  try {
+    if ((await stat(file)).isFile()) return file;
+  } catch {
+    // missing — try the .json twin
+  }
+  try {
+    if ((await stat(`${file}.json`)).isFile()) return `${file}.json`;
+  } catch {
+    // no twin either — the caller answers 404
+  }
+  return file;
 }
 
 /** Resolve a POST request path to its D8 fixture file; `null` when the path is not a POST route (→ 405). */
@@ -107,7 +126,7 @@ export function startFixtureServer(port: number = DEFAULT_FIXTURE_PORT): Promise
       sendText(404, 'not found');
       return;
     }
-    await serveFile(file);
+    await serveFile(await withJsonFallback(file));
   });
   server = s;
   return new Promise((resolve, reject) => {

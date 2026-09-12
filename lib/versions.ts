@@ -1,10 +1,12 @@
 /**
- * lib/versions.ts — game-version grouping + versions-table ordering (03 V-01; 02 §2.2 `version`
- * param; 05 T-UNIT-39, T-UNIT-30; registry Modules `versions.ts`).
+ * lib/versions.ts — game-version grouping + versions-table ordering + the primary-download rule
+ * (03 V-01; 02 §2.2 `version` param; 05 T-UNIT-39, T-UNIT-30, T-UNIT-49; ADR-0037 D6; registry
+ * Modules `versions.ts`).
  *
  * Plain, client-safe module — no zod, no server imports: `ProjectGrid`/`FilterBar` (client
- * islands) group and match versions client-side over the ISR-fetched list (ADR-0002 A7), and
- * the server `VersionsTable` uses the same ordering helpers.
+ * islands) group and match versions client-side over the ISR-fetched list (ADR-0002 A7), the
+ * server `VersionsTable` uses the same ordering helpers, and `lib/data/projects.ts` picks the
+ * GET IT / hero primary with `selectPrimaryFile`.
  *
  * 03 V-01, verbatim rule: "Group `game_versions` by `major.minor` and label `major.minor.x`
  * (`1.21.1`, `1.21.4` → `1.21.x`); snapshots (`24w10a`, `1.21-pre1`) grouped under `snapshots`;
@@ -128,12 +130,51 @@ export function formatVersionList(gameVersions: readonly string[]): string {
 
 // ---- VERSIONS & FILES ordering — 05 T-UNIT-30 ("versionsTable sort", registered here) ----
 
-export type SortableFile = { primary: boolean };
+/**
+ * Where a file's bytes live (ADR-0037 D6): `direct` = hosted in our Storage (`storage_path`
+ * set, served by `/api/download/<id>`); `modrinth` = CDN-only (`project_files.url`). The same
+ * two words are the `TrackedLink` `download.source` values (04 §5.6).
+ */
+export type FileKind = 'direct' | 'modrinth';
+
+export type SortableFile = { primary: boolean; kind: FileKind };
 export type SortableVersion = { datePublished: string; files: readonly SortableFile[] };
 
-/** Files with `primary: true` first, otherwise in their given order (stable). */
-export function primaryFirst<F extends SortableFile>(files: readonly F[]): F[] {
-  return [...files].sort((a, b) => Number(b.primary) - Number(a.primary));
+/** ADR-0037 D6 rank: hosted primary → hosted → CDN primary → CDN. */
+function fileRank(file: SortableFile): number {
+  return (file.kind === 'direct' ? 0 : 2) + (file.primary ? 0 : 1);
+}
+
+/**
+ * ADR-0037 D6 file order within a version — hosted primary, then hosted, then CDN primary,
+ * then CDN; stable inside each rank (files in their given order). Replaces S1.2's
+ * `primaryFirst` (05 T-UNIT-30 amended): a version that lives in two homes lists the file we
+ * serve before the mirror on the Modrinth CDN.
+ */
+export function hostedFirst<F extends SortableFile>(files: readonly F[]): F[] {
+  return [...files].sort((a, b) => fileRank(a) - fileRank(b));
+}
+
+/**
+ * The primary download (ADR-0037 D6; 02 §2.1 #1, §2.3 rail): the hosted primary file of the
+ * NEWEST version that has a hosted file — "the hosted file is always the primary": an older
+ * hosted release beats a newer CDN-only one (which the versions table still lists). Within
+ * that version `hostedFirst` order applies, so a hosted `primary: true` wins and a hosted
+ * version whose flag was never set still yields its first hosted file. `null` when no version
+ * carries a hosted file — the caller then falls back to the project's Modrinth home, or
+ * renders no panel (05 T-UNIT-49).
+ */
+export function selectPrimaryFile<V extends SortableVersion>(
+  versions: readonly V[],
+): V['files'][number] | null {
+  const newestFirst = [...versions].sort(
+    (a, b) => toTime(b.datePublished) - toTime(a.datePublished),
+  );
+  for (const version of newestFirst) {
+    const hosted = hostedFirst(version.files).find((file) => file.kind === 'direct');
+    if (hosted !== undefined) return hosted;
+  }
+  return null;
 }
 
 /** True when a version's changelog should show the "Changes ▾" expander (03 `ChangelogExpander`). */
@@ -142,13 +183,14 @@ export function hasChangelog(changelogMd: string | null | undefined): boolean {
 }
 
 /**
- * The `VersionsTable` order (05 T-UNIT-30): versions by `date_published` desc (newest first),
- * files within each version primary-first. Pure — returns new arrays, never mutates.
+ * The `VersionsTable` order (05 T-UNIT-30, amended by ADR-0037 D6): versions by
+ * `date_published` desc (newest first), files within each version `hostedFirst`. Pure —
+ * returns new arrays, never mutates.
  */
 export function sortVersionsForTable<V extends SortableVersion>(versions: readonly V[]): V[] {
   return [...versions]
     .sort((a, b) => toTime(b.datePublished) - toTime(a.datePublished))
-    .map((version) => ({ ...version, files: primaryFirst(version.files) }) as V);
+    .map((version) => ({ ...version, files: hostedFirst(version.files) }) as V);
 }
 
 function toTime(value: string): number {

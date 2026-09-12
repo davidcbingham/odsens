@@ -1,6 +1,7 @@
 /**
- * tests/db/routes/download.test.ts — T-ACT-43 / T-ACT-44 for `/api/download/[fileId]`
- * (05 §7.2; 04 §2.3 D1–D7; 01 INV-55/INV-56; ADR-0002 C13 / C14 / C17). Handlers are imported from
+ * tests/db/routes/download.test.ts — T-ACT-43 / T-ACT-44 + the route clause of T-ACT-83 for
+ * `/api/download/[fileId]` (05 §7.2; 04 §2.3 D1–D7; 01 INV-55/INV-56; ADR-0002 C13 / C14 / C17;
+ * ADR-0037 D5(d) — a hosted file on ANY source is served and counted). Handlers are imported from
  * the route file and invoked directly with `{ params: Promise.resolve({ fileId }) }` — the route
  * reads no cookies; identity is `x-forwarded-for` + `user-agent`, hashed via lib/hash.ts (the same
  * `HASH_SECRET` from `.env.test` computes the expected hashes here).
@@ -15,7 +16,9 @@
  * `download_count` 7, `projects` …0103 `downloads_direct` 7 — SEED-5), so the T-ACT-43 block
  * restores them before T-ACT-44 asserts 7→8, and afterAll restores both counters, deletes this
  * file's `project_downloads` rows (matched by our ip hashes) and clears our `rate_limit_hits`
- * (H-1). Factory rows for the draft / override-hidden 404 cells; seed rows otherwise read-only.
+ * (H-1). Factory rows for the draft / override-hidden 404 cells and for the T-ACT-83 Modrinth-first
+ * project (its object is placed with `uploadFixture` and removed in afterAll); seed rows otherwise
+ * read-only.
  */
 import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
@@ -31,6 +34,7 @@ import { withDbFault } from '@/tests/helpers/dbFault';
 import { cleanupFactories, makeFile, makeProject, makeVersion } from '@/tests/helpers/factories';
 import { SEED_FILES, SEED_PROJECTS, SEED_VERSIONS, seedId } from '@/tests/helpers/seedIds';
 import { spyLog } from '@/tests/helpers/spies';
+import { removeObjects, uploadFixture } from '@/tests/helpers/storage';
 
 /** Flipped by the T-ACT-44 signed-URL-failure row only; read inside the hoisted mock factory. */
 const signedUrlFailure = vi.hoisted(() => ({ active: false }));
@@ -66,6 +70,7 @@ const IP_REAL = '203.0.113.47'; // T-ACT-43 x-real-ip fallback
 const IP_BLANK_HOP = '203.0.113.48'; // T-ACT-43 blank first x-forwarded-for hop
 const IP_LOOPBACK = '127.0.0.1'; // T-ACT-43 no client-ip header at all (the loopback marker)
 const IP_FAULT = '203.0.113.49'; // T-ACT-44 RPC faults
+const IP_83 = '203.0.113.50'; // T-ACT-83 hosted file on a Modrinth-first project
 const TEST_IPS = [
   IP_43,
   IP_44,
@@ -75,7 +80,11 @@ const TEST_IPS = [
   IP_BLANK_HOP,
   IP_LOOPBACK,
   IP_FAULT,
+  IP_83,
 ] as const;
+
+/** Objects this file placed in `project-files` (object paths, no bucket prefix) — removed in afterAll. */
+const placedObjects: string[] = [];
 
 /** SEED-5: …0501 download_count 7 and …0103 downloads_direct 7 — the restore target (H-1). */
 const SEED_DOWNLOAD_COUNT = 7;
@@ -144,6 +153,7 @@ async function resetSeedDownloadState(): Promise<void> {
 afterAll(async () => {
   await resetSeedDownloadState();
   for (const ip of TEST_IPS) await clearRateLimitHits('download', ipHash(ip));
+  await removeObjects('project-files', placedObjects);
   await cleanupFactories();
 });
 
@@ -421,5 +431,58 @@ describe('T-ACT-44 /api/download/[fileId] side effects', () => {
       (entry) => (entry as { msg?: string }).msg === 'route_unhandled',
     ) as { action?: string } | undefined;
     expect(line?.action).toBe('download');
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-83 — a hosted file on a Modrinth-first project is served like any other (ADR-0037 D5(d)):
+// `resolveDownloadable` has no `source` condition; `record_download` counts `downloads_direct`
+// ---------------------------------------------------------------------------------------------
+describe("T-ACT-83 /api/download/[fileId] on a source='modrinth' project", () => {
+  it('T-ACT-83 hosted file on a published Modrinth-first project → 302 signed URL, download_count 0→1, downloads_direct 0→1, one hashed log row', async () => {
+    const projectId = await makeProject({
+      source: 'modrinth',
+      external_id: `t_${randomUUID()}`,
+      status: 'published',
+    });
+    const versionId = await makeVersion({
+      project_id: projectId,
+      external_id: `t_v_${projectId.replace(/-/g, '').slice(0, 8)}`,
+    });
+    const objectPath = `${projectId}/${versionId}/pack.zip`;
+    await uploadFixture('project-files', objectPath, 'files/pack.zip', {
+      contentType: 'application/zip',
+    });
+    placedObjects.push(objectPath);
+    const fileId = await makeFile({
+      version_id: versionId,
+      filename: 'pack.zip',
+      storage_path: `project-files/${objectPath}`,
+    });
+
+    const res = await get(fileId, IP_83);
+    expect(res.status).toBe(302);
+    const location = new URL(res.headers.get('location') ?? '');
+    expect(location.pathname).toContain(`/storage/v1/object/sign/project-files/${objectPath}`);
+    expect(location.searchParams.get('download')).toBe('pack.zip');
+
+    const file = await service
+      .from('project_files')
+      .select('download_count')
+      .eq('id', fileId)
+      .single();
+    expect(file.data?.download_count).toBe(1);
+    const project = await service
+      .from('projects')
+      .select('downloads_direct')
+      .eq('id', projectId)
+      .single();
+    expect(project.data?.downloads_direct).toBe(1);
+    const { data: rows, error } = await service
+      .from('project_downloads')
+      .select('project_id, ip_hash')
+      .eq('file_id', fileId);
+    expect(error).toBeNull();
+    expect(rows).toEqual([{ project_id: projectId, ip_hash: ipHash(IP_83) }]);
   });
 });
