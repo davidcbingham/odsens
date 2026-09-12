@@ -103,6 +103,7 @@ Generated/derived: `downloads_total = modrinth + curseforge + direct` (view colu
 | hidden bool | hide a synced project from the site |
 | title_override, description_override text null | |
 | extra_gallery jsonb | additional images (Storage) |
+| gallery_overrides jsonb | per-image curation of the synced gallery — `[{url, hidden?, title?}]` keyed by `projects.gallery[].url`; default `'[]'`; applied on every public read by `mergeGallery` (ADR-0038 D3) |
 | notes_md text null | site-only write-up appended under About |
 | comments_enabled bool default true | |
 
@@ -270,7 +271,7 @@ Every run writes a `sync_runs` row; failures don't touch existing data. Public p
 - **Comment:** Server Action: check auth + not banned + comments enabled → sanitize/limits → `rate_limit_ok` → compute status per moderation mode → insert (trigger `comments_set_status()` recomputes; row returned as stored) → `notification_events(comment.new|comment.held)` → revalidate `project:<slug>`.
 - **Exclusive download:** `/api/download/[fileId]` (GET only) → resolve id (project file → kind `project_file`; skin → kind `skin`; else 404) → verify published → rate limit (30 / min per `ip_hash`) → RPC `record_download` (counters + `project_downloads` log) or `record_skin_download` → 302 to short-lived signed Storage URL (skins: public bucket URL).
 - **Add exclusive project (admin):** form (Modrinth-shaped) → server action creates `projects(source=odsens, status=draft)` → uploads via `project-media`/`project-files` → publish toggle.
-- **Curate synced project (admin):** upsert `project_overrides` (featured/hidden/extra gallery/notes).
+- **Curate synced project (admin):** upsert `project_overrides` (featured/hidden/extra gallery/notes; per-image hide/rename of the synced gallery in `gallery_overrides` — ADR-0038 D3; an uploaded extra dropped from `extra_gallery` has its Storage object removed).
 - **Link a listing (admin):** `linkProjectListing` on `/admin/projects/[id]` — paste a Modrinth URL / slug / id (or a CurseForge id / URL) → the adapter resolves the listing (`getProject` / `getMod`) → `project_links` row + platform count written **first** → if the sync had already imported that listing as its own `projects` row, RPC `fold_project(duplicate, canonical)` merges it (versions, files, links, comments, download log, overrides; a `project_redirects` row; the duplicate row deleted) → the listing's versions arrive on the next `syncModrinth` run (adoption, §5). `unlinkProjectListing` un-adopts the hosted versions (`external_id = NULL`, one per `version_number`), deletes the link row and zeroes the platform count — nothing else deletes a synced row (ADR-0037 D1/D3/D4).
 
 ---

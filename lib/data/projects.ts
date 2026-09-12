@@ -43,7 +43,7 @@ import type { ProjectListItem } from '@/components/projects/ProjectGrid';
 import type { ProjectVersion, VersionFile } from '@/components/projects/VersionsTable';
 import { env } from '@/lib/env';
 import { createAnonClient } from '@/lib/supabase/anon';
-import type { Database } from '@/lib/supabase/types';
+import type { Database, Json } from '@/lib/supabase/types';
 import { SLUG_RE } from '@/lib/validation/slug';
 import { loaderLabel, loaderLabels } from '@/lib/format/loader';
 import { modrinthListingUrl } from '@/lib/format/project';
@@ -164,6 +164,51 @@ export type GalleryEntry = {
   featured: boolean;
 };
 
+/** One `project_overrides.gallery_overrides` entry — ADR-0038 D3 (hide / rename a synced image). */
+export type GalleryOverrideEntry = { url: string; hidden: boolean; title: string | null };
+
+/** Tolerant parse of the `gallery_overrides` jsonb (malformed entries dropped). */
+export function parseGalleryOverrides(json: unknown): GalleryOverrideEntry[] {
+  if (!Array.isArray(json)) return [];
+  const entries: GalleryOverrideEntry[] = [];
+  for (const item of json) {
+    if (typeof item !== 'object' || item === null) continue;
+    const record = item as Record<string, unknown>;
+    if (typeof record['url'] !== 'string' || record['url'] === '') continue;
+    entries.push({
+      url: record['url'],
+      hidden: record['hidden'] === true,
+      title: typeof record['title'] === 'string' && record['title'] !== '' ? record['title'] : null,
+    });
+  }
+  return entries;
+}
+
+/**
+ * ADR-0038 D3: apply Oliver's per-image curation to the SYNCED gallery entries — a hidden image
+ * is dropped, an overridden title replaces the Modrinth caption. Keyed by the stored url (the
+ * value before `resolveMediaUrl`, which is the url itself for CDN images).
+ */
+export function applyGalleryOverrides(
+  entries: readonly GalleryEntry[],
+  overrides: unknown,
+): GalleryEntry[] {
+  const parsed = parseGalleryOverrides(overrides);
+  if (parsed.length === 0) return [...entries];
+  const byUrl = new Map(parsed.map((entry) => [entry.url, entry]));
+  const out: GalleryEntry[] = [];
+  for (const entry of entries) {
+    const override = byUrl.get(entry.url);
+    if (override?.hidden) continue;
+    out.push(
+      override?.title !== null && override?.title !== undefined
+        ? { ...entry, title: override.title }
+        : entry,
+    );
+  }
+  return out;
+}
+
 /**
  * Narrows a `gallery`/`extra_gallery` JSON value (04 §3.1 shape `[{url,title,description,
  * ordering,featured}]`; `extra_gallery` uses `path` instead of `url`) into typed entries.
@@ -194,10 +239,16 @@ export function parseGalleryEntries(json: unknown): GalleryEntry[] {
  * entries before extras on ties (stable sort). Output is the `Gallery` prop shape — `alt` is
  * mandatory (03), so untitled images fall back to "<title> screenshot N".
  */
-export function mergeGallery(base: unknown, extra: unknown, projectTitle: string): GalleryImage[] {
-  const entries = [...parseGalleryEntries(base), ...parseGalleryEntries(extra)].sort(
-    (a, b) => Number(b.featured) - Number(a.featured) || a.ordering - b.ordering,
-  );
+export function mergeGallery(
+  base: unknown,
+  extra: unknown,
+  projectTitle: string,
+  overrides: unknown = null,
+): GalleryImage[] {
+  const entries = [
+    ...applyGalleryOverrides(parseGalleryEntries(base), overrides),
+    ...parseGalleryEntries(extra),
+  ].sort((a, b) => Number(b.featured) - Number(a.featured) || a.ordering - b.ordering);
   return entries.map((entry, index) => ({
     url: entry.url,
     alt: entry.title ?? `${projectTitle} screenshot ${index + 1}`,
@@ -585,7 +636,7 @@ export type ProjectDetail = {
 };
 
 const DETAIL_SELECT =
-  'id, slug, title, description, body_md, icon_url, project_type, source, external_id, is_exclusive, gallery, categories, loaders, game_versions, license, source_url, issues_url, discord_url, followers, downloads_modrinth, downloads_curseforge, downloads_direct, downloads_total, published_at, external_updated_at, updated_at, project_versions ( id, version_number, name, changelog_md, game_versions, loaders, date_published, project_files ( id, filename, size_bytes, sha512, url, storage_path, primary ) ), project_links ( platform, url, downloads ), project_overrides ( notes_md, comments_enabled, extra_gallery )';
+  'id, slug, title, description, body_md, icon_url, project_type, source, external_id, is_exclusive, gallery, categories, loaders, game_versions, license, source_url, issues_url, discord_url, followers, downloads_modrinth, downloads_curseforge, downloads_direct, downloads_total, published_at, external_updated_at, updated_at, project_versions ( id, version_number, name, changelog_md, game_versions, loaders, date_published, project_files ( id, filename, size_bytes, sha512, url, storage_path, primary ) ), project_links ( platform, url, downloads ), project_overrides ( notes_md, comments_enabled, extra_gallery, gallery_overrides )';
 
 async function fetchProjectDetail(slug: string): Promise<ProjectDetail | null> {
   const { data, error } = await createAnonClient()
@@ -607,9 +658,17 @@ async function fetchProjectDetail(slug: string): Promise<ProjectDetail | null> {
 
   const source = row.source;
   const overrides = row.project_overrides;
-  const gallery = mergeGallery(row.gallery, overrides?.extra_gallery ?? null, row.title);
+  const gallery = mergeGallery(
+    row.gallery,
+    overrides?.extra_gallery ?? null,
+    row.title,
+    overrides?.gallery_overrides ?? null,
+  );
   const featuredEntry = [
-    ...parseGalleryEntries(row.gallery),
+    ...applyGalleryOverrides(
+      parseGalleryEntries(row.gallery),
+      overrides?.gallery_overrides ?? null,
+    ),
     ...parseGalleryEntries(overrides?.extra_gallery ?? null),
   ].find((entry) => entry.featured);
   const versions: RawVersion[] = row.project_versions;
@@ -759,12 +818,16 @@ export type HomeFeatured = {
 
 type HomeRow = ListRow &
   Pick<ProjectsPublicRow, 'id' | 'gallery' | 'external_id'> & {
-    project_overrides: { featured: boolean; featured_order: number | null } | null;
+    project_overrides: {
+      featured: boolean;
+      featured_order: number | null;
+      gallery_overrides: Json | null;
+    } | null;
     project_links: PlatformLink[];
   };
 
 const HOME_SELECT =
-  'slug, title, description, icon_url, project_type, source, loaders, game_versions, downloads_total, external_updated_at, published_at, is_exclusive, id, gallery, external_id, project_overrides ( featured, featured_order ), project_links ( platform, url )';
+  'slug, title, description, icon_url, project_type, source, loaders, game_versions, downloads_total, external_updated_at, published_at, is_exclusive, id, gallery, external_id, project_overrides ( featured, featured_order, gallery_overrides ), project_links ( platform, url )';
 
 async function fetchHomeFeatured(): Promise<HomeFeatured> {
   const client = createAnonClient();
@@ -785,6 +848,7 @@ async function fetchHomeFeatured(): Promise<HomeFeatured> {
         externalId: row.external_id,
         links: row.project_links,
         gallery: row.gallery,
+        galleryOverrides: row.project_overrides?.gallery_overrides ?? null,
         item,
       },
     ];
@@ -822,7 +886,7 @@ async function fetchHomeFeatured(): Promise<HomeFeatured> {
   }
 
   const heroItem = heroRow.item;
-  const heroGallery = mergeGallery(heroRow.gallery, null, heroItem.title);
+  const heroGallery = mergeGallery(heroRow.gallery, null, heroItem.title, heroRow.galleryOverrides);
   return {
     hero: {
       slug: heroItem.slug,

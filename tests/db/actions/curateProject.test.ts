@@ -28,7 +28,7 @@ import { callAction, setupActionMocks } from '@/tests/helpers/callAction';
 import { expectInternal, withDbFault } from '@/tests/helpers/dbFault';
 import { cleanupFactories, makeProject } from '@/tests/helpers/factories';
 import { spyLog, spyRevalidateTag, type LogSpy } from '@/tests/helpers/spies';
-import { removeObjects, uploadFixture } from '@/tests/helpers/storage';
+import { listObjects, removeObjects, uploadFixture } from '@/tests/helpers/storage';
 
 setupActionMocks();
 
@@ -460,4 +460,114 @@ describe('T-ACT-40 curateProject DB faults', () => {
       expect(tags.calls).toEqual([]);
     },
   );
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-85 — ADR-0038 D3: per-image curation of a synced gallery (`gallery_overrides`) and the
+// Storage side of removing an uploaded extra (a dropped `extra_gallery` path deletes its object).
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-85 curateProject gallery curation (ADR-0038 D3)', () => {
+  let projectId = '';
+  let keptPath = '';
+  let droppedPath = '';
+  const objects: string[] = [];
+
+  beforeAll(async () => {
+    projectId = await makeProject({ source: 'modrinth', status: 'published' });
+    keptPath = `project-media/${projectId}/gallery/kept.png`;
+    droppedPath = `project-media/${projectId}/gallery/dropped.png`;
+    for (const path of [keptPath, droppedPath]) {
+      const objectPath = path.replace(/^project-media\//, '');
+      await uploadFixture('project-media', objectPath, 'images/avatar-600.png');
+      objects.push(objectPath);
+    }
+    const { error } = await service.from('project_overrides').upsert(
+      {
+        project_id: projectId,
+        extra_gallery: [
+          { path: keptPath, ordering: 0 },
+          { path: droppedPath, ordering: 1, title: 'Going' },
+        ],
+      },
+      { onConflict: 'project_id' },
+    );
+    if (error) throw new Error(`arrange: project_overrides upsert failed: ${error.message}`);
+  });
+
+  afterAll(async () => {
+    await removeObjects('project-media', objects);
+  });
+
+  it('T-ACT-85 gallery_overrides: hide + rename entries land on the row, absent fields keep their values', async () => {
+    const overrides = [
+      { url: 'https://cdn.modrinth.com/data/t/images/one.png', hidden: true },
+      { url: 'https://cdn.modrinth.com/data/t/images/two.png', title: 'Renamed', hidden: false },
+    ];
+    expectOk(
+      await callAction(
+        curateProject,
+        { project_id: projectId, gallery_overrides: overrides },
+        { role: 'admin' },
+      ),
+    );
+    const { data } = await service
+      .from('project_overrides')
+      .select('gallery_overrides, extra_gallery')
+      .eq('project_id', projectId)
+      .single();
+    expect(data?.gallery_overrides).toEqual(overrides);
+    expect(data?.extra_gallery).toHaveLength(2); // untouched by a gallery_overrides-only call
+  });
+
+  it('T-ACT-85 gallery_overrides: a non-url entry or more than 40 entries → validation', async () => {
+    expectFail(
+      await callAction(
+        curateProject,
+        { project_id: projectId, gallery_overrides: [{ url: 'not a url' }] },
+        { role: 'admin' },
+      ),
+      'validation',
+    );
+    expectFail(
+      await callAction(
+        curateProject,
+        {
+          project_id: projectId,
+          gallery_overrides: Array.from({ length: 41 }, (_, i) => ({
+            url: `https://cdn.modrinth.com/data/t/images/${String(i)}.png`,
+          })),
+        },
+        { role: 'admin' },
+      ),
+      'validation',
+    );
+  });
+
+  it('T-ACT-85 dropping an extra_gallery entry deletes its Storage object; the kept one stays', async () => {
+    const before = await listObjects('project-media', `${projectId}/gallery`);
+    expect(before.sort()).toEqual([
+      `${projectId}/gallery/dropped.png`,
+      `${projectId}/gallery/kept.png`,
+    ]);
+
+    expectOk(
+      await callAction(
+        curateProject,
+        {
+          project_id: projectId,
+          extra_gallery: [{ path: keptPath, ordering: 0, title: 'Kept' }],
+        },
+        { role: 'admin' },
+      ),
+    );
+
+    const { data } = await service
+      .from('project_overrides')
+      .select('extra_gallery')
+      .eq('project_id', projectId)
+      .single();
+    expect(data?.extra_gallery).toEqual([{ path: keptPath, ordering: 0, title: 'Kept' }]);
+    const after = await listObjects('project-media', `${projectId}/gallery`);
+    expect(after).toEqual([`${projectId}/gallery/kept.png`]);
+  });
 });

@@ -39,7 +39,7 @@ export function Nav() {
     <header className={styles.nav}>
       <nav aria-label="Main" className={styles['nav-inner']}>
         <Link href="/" aria-label="odsens home" className={styles['nav-home']}>
-          <Avatar src="/brand/avatar-80.png" alt="OddSense" size={40} />
+          <Avatar src="/brand/avatar-80.png" alt="OddSense" size={40} frame="none" />
           <span className={styles['nav-wordmark']}>ODSENS</span>
         </Link>
 
