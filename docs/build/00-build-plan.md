@@ -1,6 +1,6 @@
 # Build Plan
 Slice-by-slice contract for building odsens.com v1 (S0–S1.10) with Phase 2 stubs: scope, acceptance criteria, tests, gates, demo, and the global rules every PR follows.
-Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0006 (2026-08-17) — amended by ADR-0009, ADR-0010, ADR-0011, ADR-0012 (2026-08-20) — amended by ADR-0014 (2026-08-20) — amended by ADR-0015, ADR-0016 (2026-08-20) — amended by ADR-0018 (2026-08-21) — amended by ADR-0017 (2026-08-21) — amended by ADR-0019 (2026-08-21) — amended by ADR-0020 (2026-08-21) — amended by ADR-0021 (2026-08-27) — amended by ADR-0022 (2026-08-27) — amended by ADR-0023 (2026-08-27) — amended by ADR-0024, ADR-0025 (2026-08-27) — amended by ADR-0026 (2026-08-27) — amended by ADR-0027 (2026-08-27) — amended by ADR-0028 (2026-09-03) — amended by ADR-0029, ADR-0030 (2026-09-03) — amended by ADR-0036 (2026-09-11) — amended by ADR-0037 (2026-09-11) — amended by ADR-0038 (2026-09-12)
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0006 (2026-08-17) — amended by ADR-0009, ADR-0010, ADR-0011, ADR-0012 (2026-08-20) — amended by ADR-0014 (2026-08-20) — amended by ADR-0015, ADR-0016 (2026-08-20) — amended by ADR-0018 (2026-08-21) — amended by ADR-0017 (2026-08-21) — amended by ADR-0019 (2026-08-21) — amended by ADR-0020 (2026-08-21) — amended by ADR-0021 (2026-08-27) — amended by ADR-0022 (2026-08-27) — amended by ADR-0023 (2026-08-27) — amended by ADR-0024, ADR-0025 (2026-08-27) — amended by ADR-0026 (2026-08-27) — amended by ADR-0027 (2026-08-27) — amended by ADR-0028 (2026-09-03) — amended by ADR-0029, ADR-0030 (2026-09-03) — amended by ADR-0036 (2026-09-11) — amended by ADR-0037 (2026-09-11) — amended by ADR-0038 (2026-09-12) — amended by ADR-0039 (2026-09-12)
 Binding decisions: `06-decisions/ADR-0001-engineering-spec-baseline.md` (baseline) · `06-decisions/ADR-0002-spec-reconciliation.md` (contradictions C1–C22 + OPEN defaults 13–80 + Amendment A A1–A18 — every slice below is aligned to it).
 
 Sources this doc is derived from (it re-decides nothing): `docs/build/_registry.md` (IDs — used verbatim), `docs/spec.md`, `docs/questions.md`, `docs/data-model.md`, `docs/notifications.md`, `docs/framework-decision.md`, `docs/analytics-options.md`, `DESIGN.md` v1.3, `docs/skill-handoffs.md`, `.claude/skills/*/SKILL.md`, `.claude/agents/*.md`, `docs/dev-tooling.md`, `.env.example`, `supabase/config.toml`.
@@ -95,7 +95,8 @@ docs/spec.md revision log · docs/questions.md · DESIGN.md changelog (if any)
 | S1.4 | `v0.5` |
 | S1.5 | `v0.6` |
 | S1.5a | `v0.6.1` (inserted — ADR-0036) |
-| S1.5b | `v0.6.2` (inserted — ADR-0036) |
+| S1.5c | `v0.6.2` (inserted — ADR-0039; built before S1.5b) |
+| S1.5b | `v0.6.3` (inserted — ADR-0036; tag moved by ADR-0039) |
 | S1.6 | `v0.7` |
 | S1.7 | `v0.8` |
 | S1.8 | `v0.9` |
@@ -138,6 +139,7 @@ Tags are annotated (`git tag -a v0.n -m "S1.x <name>"`) on the merge commit on `
 | S1.4 | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | S1.5 | ✔ | ✔ (emails + settings) | ✔ | ✔ | ✔ | ✔ | ✔ |
 | S1.5a (ADR-0036) | ✔ | ✔ | ✔ | ✔ (uploads on synced rows, link URLs) | ✔ | ✔ (fold RPC) | ✔ |
+| S1.5c (ADR-0039) | ✔ | ✔ (v1.10: sidebar, dialog, toolbar) | ✔ (islands, bundle) | ✔ (Preview sanitize) | ✔ (no contract change) | ✔ (no schema) | ✔ |
 | S1.5b (ADR-0036) | ✔ | ✔ | ✔ | ✔ (Ko-fi iframe) | ✔ | ✔ | ✔ |
 | S1.6 | ✔ | ✔ | ✔ | ✔ (embeds) | ✔ | ✔ | ✔ |
 | S1.7 | ✔ | ✔ | ✔ | ✔ (uploads) | ✔ | ✔ | ✔ |
@@ -524,9 +526,52 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 
 ---
 
+### S1.5c — Project editor v2
+
+*(Inserted 2026-09-12 by ADR-0039 after Oliver's second use — built before S1.5b so Oliver keeps adding content while the rest of the plan proceeds. Tag `v0.6.2`.)*
+
+**Goal:** the project editor stops being one long scroll: a sidebar shows one section at a time, an unsaved-changes dot and a leave dialog protect edits, and the description / notes fields get a Markdown toolbar with a live Preview that matches the public page.
+
+**Depends on:** S1.3 (the editor), fix pass 3 (ADR-0038 — `?saved=` toast, GALLERY rows), S1.5a (LISTINGS section).
+
+**Scope IN** (contract in ADR-0039 D2–D5)
+- **Sections + sidebar.** `/admin/projects/[id]?section=<general|description|gallery|versions|listings|publish>` renders one section at a time (default `general`; unknown → `general`; a synced row lists the sections it has). Sidebar = the §9 admin sidebar recipe at ≥900px (220px, gold left bar on the active item); below 900px a horizontally scrollable chip row above the editor. Every PRG redirect keeps `?section=` so a save lands on the same section with the "Saved." toast. The page stays a Server Component; the forms stay `<form action>` server functions (03 C-17). `/admin/projects/new` is unchanged.
+- **Unsaved-changes guard.** Client island `EditorSections` wraps the active section: `formIsDirty(initial, current)` (`lib/forms/dirty.ts`, pure) on `input` / `change` → an 8px gold dot after the active item's label + visually-hidden "Unsaved changes" + the `beforeunload` prompt; a sidebar click while dirty opens `Dialog` ("Unsaved changes" / "You changed something here and didn't save." — **Stay** primary + Esc, **Leave anyway** ghost → navigates); submitting a form clears it; uploads never count as unsaved.
+- **Markdown editor.** Client island `MarkdownEditor` for `body_md` (odsens description) and `notes_md` (synced notes): toolbar H1 H2 H3 · B I S `</>` · bullet, numbered, quote · link, image, YouTube; Ctrl/Cmd+B/I; Write / Preview `Toggle`; commands through the pure `applyMarkdownCommand()` (`lib/markdown/edit.ts`); Preview renders through the site's own `renderMarkdown()` (the `server-only` marker leaves `lib/markdown.ts`; 01 INV-65 amended — `MarkdownEditor` is the one client importer). Stored value = plain Markdown; sanitize schema unchanged.
+- **Design.** DESIGN.md v1.10 §11.3 #20 "Admin — Project editor v2" (sidebar / chip row / `Dialog` / toolbar / Preview pane recipes and voice pinned in ADR-0039 D5) — written in Session A by the design-fidelity skill, or derived from a Claude Design pass if Oliver runs one first (`design/claude-design-export/pass-4/`, `docs/design-process.md`).
+
+**Scope OUT**
+- Autosave or drafts of unsaved text; a WYSIWYG editor; image upload from the toolbar (the Gallery section uploads; the image button inserts a URL); YouTube embeds in Markdown (S1.6 decides); the Markdown editor on `/admin/projects/new` (later); any server-contract or schema change.
+
+**Spec traceability:** `docs/spec.md` §11 admin; `DESIGN.md` §9 Admin, §5 Admin field, §11.1 Toast, v1.10 (this slice); `docs/questions.md` "Oliver's second-use list (2026-09-12)" items 6–7.
+
+**Engineering docs implemented:** 02 §1.3 `/admin/projects/[id]` (`?section=`); 03 §2 `EditorSections`, `Dialog`, `MarkdownEditor` (+ §1.4 island list at Session A), §2.10; 01 INV-65 (amended); 05 §8 row S1.5c.
+
+**Acceptance criteria**
+1. S1.5c.AC1 — The sidebar lists the sections the project has; exactly one section renders at a time; `?section=` deep-links and survives reload; every save lands back on the same section with the "Saved." toast.
+2. S1.5c.AC2 — Editing any field marks the active section unsaved (gold dot + "Unsaved changes" for screen readers); saving clears it; an upload does not set it.
+3. S1.5c.AC3 — Leaving a dirty section through the sidebar opens the dialog; Stay (and Esc) keeps the edits in place; Leave anyway discards them and navigates; closing the tab or reloading while dirty prompts the browser's `beforeunload`.
+4. S1.5c.AC4 — Every toolbar button inserts or wraps the right Markdown at the caret / selection; Ctrl/Cmd+B and +I match the buttons; Preview shows the text rendered exactly as the public page renders it (same renderer, same sanitize schema); the stored value is plain Markdown.
+5. S1.5c.AC5 — At 390px the section chips scroll horizontally and the toolbar wraps; nothing overflows; axe zero serious/critical at 1280 + 390 on every section, as admin and as moderator.
+6. S1.5c.AC6 — Moderators can move between sections but every field, toolbar button and Save is disabled, never hidden (03 §2.10).
+7. S1.5c.AC7 — The synced (Modrinth) editor gets the same sidebar with its own sections (overrides, notes, gallery, versions, listings) and the same guard and toolbar behaviour.
+
+**Tests required:** assigned in 05 §8 row S1.5c at Session A (H-13): T-UNIT for `applyMarkdownCommand` and `formIsDirty`; T-E2E for sections + deep link + PRG, the dirty dot, the dialog both ways, `beforeunload`, toolbar insertions, Preview parity, phone chip row, axe (admin + moderator); T-E2E-35/42/51/53/54 amended in place where they open the editor.
+
+**Gates required:** all seven; `frontend-reviewer` focus: island boundaries (props in, server functions only) and the admin-route bundle delta; `design-fidelity-reviewer` focus: DESIGN.md v1.10; `security-reviewer` focus: Preview sanitize parity, toolbar inserts text only.
+
+**Demo script**
+1. Open a project → the sidebar → Description → type a line → the gold dot appears → click Gallery → the dialog → Stay → Save → "Saved.", dot gone.
+2. Description again → select a word → B → H2 on a line → bullet list → Preview → Write → Save → the public page shows it the same way.
+3. Phone width: the section chips scroll; the toolbar wraps.
+
+**Risks / unknowns:** admin-route bundle growth from the client renderer (admin only, accepted); `beforeunload` behaviour differs per browser (assert the handler, not the native prompt); every editor e2e gains a `?section=`.
+
+---
+
 ### S1.5b — Support page
 
-*(Inserted 2026-09-11 by ADR-0036 — the public Support half of S1.9, pulled ahead of Videos. Tag `v0.6.2`.)*
+*(Inserted 2026-09-11 by ADR-0036 — the public Support half of S1.9, pulled ahead of Videos. Tag `v0.6.3` — was `v0.6.2` until ADR-0039 inserted S1.5c ahead of it.)*
 
 **Goal:** Ko-fi live on the site — the public `/support` page and the site-wide floating support button — now that `site_settings.kofi_page` is set (S1.5); stats stay in S1.9.
 
@@ -851,6 +896,7 @@ Rule: a cron route ships in the same slice as its job; `vercel.json` never lists
 | S1.4 | `comments` (+ view `comments_public`, trigger `comments_set_status()`, helper `can_comment()`), `comment_likes`, `comment_reports`, `notification_events` |
 | S1.5 | `notification_recipients` (+ unique index), `notification_matrix` (seeded) |
 | S1.5a | `project_redirects` (+ index `project_redirects_project_id_idx`, RLS select visible-or-admin); unique index `project_links_platform_external_id_key (platform, external_id)`; view `projects_public` += trailing `is_exclusive`; RPC `fold_project(uuid, uuid)` (service-role only) — migrations `20260911120000…120300`, one concern each (ADR-0037 D9); `project_links` `modrinth` rows in use (ADR-0036) |
+| S1.5c | none (ADR-0039 — UI only) |
 | S1.5b | none (ADR-0036) |
 | S1.6 | `videos` |
 | S1.7 | `skins`, `art`, RPC `record_skin_download`; buckets `skins`, `art` |
@@ -866,6 +912,7 @@ Rule: every table gets RLS + policies in the migration that creates it (`supabas
 |---|---|---|
 | S0 | all five present (`/projects`, `/videos`, `/skins`, `/art`, `/seen-on`) + gold Support button (`/support`); each is a placeholder page (title + "Not yet. Soon.") until its slice ships (ADR-0002 C20; 00-O-8 DECIDED) | Privacy, How comments work (404 until S1.1) |
 | S1.2 | Projects | Projects |
+| S1.5c | — (admin editor only — ADR-0039) | — |
 | S1.5b | Support (gold button → real `/support`; moved from S1.9 — ADR-0036) | Support |
 | S1.6 | Videos | — |
 | S1.7 | Skins, Art | — |
@@ -942,6 +989,7 @@ IDs are `00-O-n` (cite as "00 §5 00-O-n"). Rows marked DECIDED were settled by 
 | 2026-09-11 | v1.0 | ADR-0036 | Build order after Oliver's first use: inserted **S1.5a Cross-posted projects** (`v0.6.1`) and **S1.5b Support page** (`v0.6.2`, the public half of S1.9) between S1.5 and S1.6; S1.9 narrowed to Stats + `sign_in`; §1.4/§1.7/§4.1/§4.2/§4.3 rows; 02/03 slice cells; `START-BUILD.md` current position |
 | 2026-09-11 | v1.0 | ADR-0037 | S1.5a cross-posted projects contract: `linkProjectListing` / `unlinkProjectListing` replace `setProjectLink` (§S1.2 names); sync adoption into a linked canonical row; RPC `fold_project` (the one J-D exception) + `project_redirects`; uploads and `publishProject` for every `source`; hosted-first primary download (`selectPrimaryFile`); `projects_public.is_exclusive` — §S1.5a Scope IN pins, §4.2 row |
 | 2026-09-12 | v1.0 | ADR-0038 | Fix pass 3 after Oliver's second use (no slice): "Saved." toast after every admin save; the crown site mark unframed; gallery curation in the editor (thumbnails, names, Hide/Show for Modrinth images, Delete for uploaded ones — `project_overrides.gallery_overrides`); Vercel Web Analytics mounted now (§S1.10 keeps the verification + Speed Insights); the editor redesign (section sidebar, unsaved indicator + modal, Markdown toolbar + Preview) deferred to its own slice before S1.5b |
+| 2026-09-12 | v1.0 | ADR-0039 | **S1.5c — Project editor v2** inserted before S1.5b (tag `v0.6.2`; S1.5b → `v0.6.3`): one section at a time via a sidebar (`?section=`), unsaved-changes dot + leave dialog, Markdown toolbar + Preview on description/notes (the site renderer client-side on the admin route — 01 INV-65 amended); §1 tag table + gate matrix, §2 section, §4 rows |
 
 ---
 
