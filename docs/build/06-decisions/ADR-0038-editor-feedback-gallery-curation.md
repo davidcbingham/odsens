@@ -1,7 +1,7 @@
 # ADR-0038 — Fix pass 3 after Oliver's second use: editor feedback, gallery curation, unframed crown, analytics early
 
 ## Status
-Proposed
+Accepted (2026-09-12 — fix pass 3 merge, PR #19)
 
 ## Date
 2026-09-12
