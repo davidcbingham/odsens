@@ -519,11 +519,19 @@ describe('T-ACT-85 curateProject gallery curation (ADR-0038 D3)', () => {
     expect(data?.extra_gallery).toHaveLength(2); // untouched by a gallery_overrides-only call
   });
 
-  it('T-ACT-85 gallery_overrides: a non-url entry or more than 40 entries → validation', async () => {
+  it('T-ACT-85 gallery_overrides: a non-url or http entry, or more than 40 entries → validation', async () => {
     expectFail(
       await callAction(
         curateProject,
         { project_id: projectId, gallery_overrides: [{ url: 'not a url' }] },
+        { role: 'admin' },
+      ),
+      'validation',
+    );
+    expectFail(
+      await callAction(
+        curateProject,
+        { project_id: projectId, gallery_overrides: [{ url: 'http://cdn.modrinth.com/x.png' }] },
         { role: 'admin' },
       ),
       'validation',
