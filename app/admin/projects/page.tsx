@@ -170,7 +170,7 @@ export default async function AdminProjectsPage() {
           <span className={styles['admin-projects-slug']}>{project.slug}</span>
           {match !== undefined ? (
             <span className={styles['admin-projects-match']}>
-              <span>{`Looks like the same project as ${match.odsensTitle} —`}</span>
+              <span>{`Looks like the same project as ${match.odsensTitle}\u00A0—`}</span>
               <Button
                 variant="ghost"
                 size="sm"
