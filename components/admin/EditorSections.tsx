@@ -31,10 +31,10 @@ import styles from './EditorSections.module.css';
  * first upload creates through `router.refresh()`), and re-bases a tracked form only while the
  * island is clean AND the form's FIELD SET changed since its snapshot (rows an upload added are
  * not an edit) — never on a value change alone, so a script-committed edit whose announcement
- * follows a focus move (the Markdown toolbar) is still caught (ADR-0040 D10). A `submit` on a tracked form
- * re-bases THAT form on the values being saved and recomputes — an edit pending in another form of
- * the section (Listings has two) keeps the island unsaved (the PRG round trip re-renders the
- * section; `key={section}` on the page remounts the island on a section change — ADR-0040 D6). `dirty` lives in state (the dot, `data-dirty`) AND a ref (the window / document
+ * follows a focus move (the Markdown toolbar) is still caught (ADR-0040 D10). A `submit` on a tracked form marks
+ * the island clean at once and re-bases that form on the values being saved (the PRG round trip
+ * re-renders the section; `key={section}` on the page remounts the island on a section change —
+ * ADR-0040 D6). `dirty` lives in state (the dot, `data-dirty`) AND a ref (the window / document
  * listeners read the ref). Edits that React commits by property assignment announce themselves
  * as native events (the Markdown editor's toolbar → `input`, `Select` → `change`; ADR-0040 D9).
  *
@@ -155,7 +155,7 @@ export function EditorSections({ sections, active, children }: EditorSectionsPro
       const form = event.target;
       if (!(form instanceof HTMLFormElement) || !snapshots.has(form)) return;
       snapshots.set(form, snapshotForm(form));
-      recompute();
+      setDirtyState(false);
     };
     root.addEventListener('focusin', onFocus);
     root.addEventListener('input', onEdit);

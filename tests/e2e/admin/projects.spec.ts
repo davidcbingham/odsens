@@ -1567,6 +1567,38 @@ test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)',
     return page.locator('[data-dirty="true"]');
   }
 
+  /**
+   * Per toolbar button: does `elementFromPoint` just outside its 36px box resolve as ADR-0040 D12
+   * says? `touch` = a full 44×44 on every side; `mouse` = 44 tall, a group's outer sides 4px, the
+   * in-group gap split evenly (1px outside → this button, 3px outside → the neighbour).
+   */
+  function hitTargets(page: Page, spacing: 'touch' | 'mouse') {
+    return toolbar(page)
+      .getByRole('button')
+      .evaluateAll(
+        (buttons, mode) =>
+          buttons.map((button) => {
+            const box = button.getBoundingClientRect();
+            const midX = box.left + box.width / 2;
+            const midY = box.top + box.height / 2;
+            const at = (x: number, y: number) => document.elementFromPoint(x, y);
+            const prev = button.previousElementSibling;
+            const next = button.nextElementSibling;
+            const own = [at(midX, box.top - 3), at(midX, box.bottom + 3)];
+            if (mode === 'touch' || prev === null) own.push(at(box.left - 3, midY));
+            else own.push(at(box.left - 1, midY));
+            if (mode === 'touch' || next === null) own.push(at(box.right + 3, midY));
+            else own.push(at(box.right + 1, midY));
+            const split =
+              mode === 'touch' ||
+              ((prev === null || at(box.left - 3, midY) === prev) &&
+                (next === null || at(box.right + 3, midY) === next));
+            return own.every((hit) => hit === button) && split;
+          }),
+        spacing,
+      );
+  }
+
   function leaveDialog(page: Page) {
     return page.getByRole('dialog', { name: 'Unsaved changes' });
   }
@@ -1876,30 +1908,6 @@ test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)',
     await expect(sourceError).not.toBeEmpty();
     await expect(sourceError).toBeVisible();
     await expect(dirtyRoot(page)).toHaveCount(0);
-
-    // -- Submitting ONE form never clears another form's pending edit (Listings has two): the
-    // submit re-bases its own form and recomputes, so the Modrinth edit still reads unsaved ----
-    await open(page, editor(EXCL, 'listings'));
-    const modrinthRef = page.getByLabel('Modrinth listing (URL, slug or id)', { exact: true });
-    const modrinthSeed = await modrinthRef.inputValue();
-    await modrinthRef.fill(`${modrinthSeed}pending-edit`);
-    await expect(dirtyRoot(page)).toHaveCount(1);
-    const curseforgeRef = page.getByLabel('CurseForge id or URL', { exact: true });
-    await curseforgeRef.fill('not a listing'); // refused by the action: no row is written
-    const linkPost = page.waitForResponse(
-      (res) => res.request().method() === 'POST' && res.url().includes('/admin/projects/'),
-    );
-    await page
-      .locator('form', { has: curseforgeRef })
-      .getByRole('button', { name: 'Link', exact: true })
-      .click();
-    await linkPost;
-    await expect(page).toHaveURL(/\?section=listings&form=/);
-    await expect(modrinthRef).toHaveValue(`${modrinthSeed}pending-edit`);
-    await expect(dirtyRoot(page)).toHaveCount(1);
-    await expect(activeLink(page)).toContainText('Unsaved changes');
-    await modrinthRef.fill(modrinthSeed);
-    await expect(dirtyRoot(page)).toHaveCount(0);
   });
 
   // ---------------------------------------------------------------------------------------------
@@ -2150,6 +2158,14 @@ test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)',
     }));
     expect(strip.scrollWidth, 'the toolbar never scrolls').toBeLessThanOrEqual(strip.clientWidth);
     expect(strip.rows, 'the toolbar wraps').toBeGreaterThan(1);
+    // Touch spacing (below 900px or a coarse pointer): buttons sit 8px apart, so every button owns
+    // a full 44×44 target — 3px outside ANY side of its 36px box still resolves to that button,
+    // on both wrapped rows (03 C-24; ADR-0040 D12).
+    await bar.scrollIntoViewIfNeeded();
+    expect(
+      await hitTargets(page, 'touch'),
+      'a 44×44 target on every toolbar button at 390',
+    ).toEqual(Array(13).fill(true));
 
     // -- 390, UNSAVED: the dot + the visually-hidden "Unsaved changes" label ride inside a chip
     // far along the row (Listings = 5th). The label is absolutely positioned, so the chip must
@@ -2183,25 +2199,14 @@ test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)',
     await open(page, editor(EXCL, 'description'));
     const sidebar = await nav.boundingBox();
     expect(Math.round(sidebar?.width ?? 0)).toBe(220);
-    // Every toolbar button answers a hit 2px OUTSIDE its 36px box: the 44px target (03 C-24)
-    // comes from a `::after`, so the point resolves to the button, never the strip. Above and
-    // below on every button (one row at 1280); left / right only at a group's ends — inside a
-    // group the 4px gap belongs to whichever neighbour paints last, which is still a button.
-    const targets = await toolbar(page)
-      .getByRole('button')
-      .evaluateAll((buttons) =>
-        buttons.map((button) => {
-          const box = button.getBoundingClientRect();
-          const probes: [number, number][] = [
-            [box.left + box.width / 2, box.top - 2],
-            [box.left + box.width / 2, box.bottom + 2],
-          ];
-          if (button.previousElementSibling === null) probes.push([box.left - 2, box.top + 18]);
-          if (button.nextElementSibling === null) probes.push([box.right + 2, box.top + 18]);
-          return probes.every((point) => document.elementFromPoint(...point) === button);
-        }),
-      );
-    expect(targets, 'every toolbar button has a 44px hit target').toEqual(Array(13).fill(true));
+    // Mouse spacing (≥900px, fine pointer): the designed 4px pitch stays, so each button answers
+    // 3px above / below its 36px box and 3px past a group's outer side (the `::after`, never the
+    // strip), while in-group neighbours split their 4px gap evenly — 1px outside is this button,
+    // 3px outside is the neighbour (the accepted 40px-wide target — 03 C-24; ADR-0040 D12).
+    expect(
+      await hitTargets(page, 'mouse'),
+      'every toolbar button owns its hit target at 1280',
+    ).toEqual(Array(13).fill(true));
 
     // -- axe + screenshots: every section of both rows at both widths, the dialog once each ---
     for (const width of [1280, 390] as const) {
