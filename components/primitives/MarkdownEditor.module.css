@@ -74,8 +74,9 @@
 }
 
 /* 2px `--line` divider centred in the 18px gap before every group but the first: a flex item
-   pulled left by half the gap + 1px and pushed back by the same amount (4px margin + 4px gap), so
-   the group's own box is unchanged and the rule paints in the gap. */
+   pulled left by half the gap + 1px and pushed back by the same amount (4px margin + the group's
+   4px gap — on touch the gap is 8px, so the margin drops to 0 below), so the group's own box is
+   unchanged and the rule paints in the gap. */
 .mde-group + .mde-group::before {
   content: '';
   flex: none;
@@ -127,6 +128,10 @@
 @media (max-width: 899px), (pointer: coarse) {
   .mde-group {
     gap: var(--space-8);
+  }
+
+  .mde-group + .mde-group::before {
+    margin-right: 0;
   }
 
   .mde-button::after {

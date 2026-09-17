@@ -11,7 +11,9 @@
 }
 
 /* Phone / tablet: one scrolling row. The padding keeps the 3px gold focus ring (globals
-   `:focus-visible`, 2px offset) inside the scroll box; no ancestor clips. */
+   `:focus-visible`, 2px offset) inside the scroll box; no ancestor clips. A scroll container adds
+   no end padding after overflowing content, so the LAST chip carries its own 8px (below) — without
+   it the row ends flush and that chip's ring is cut on the right (03 C-25). */
 .editor-sections-nav {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -27,6 +29,10 @@
   padding: 0;
   list-style: none;
   white-space: nowrap;
+}
+
+.editor-sections-list > li:last-child {
+  padding-inline-end: var(--space-8);
 }
 
 /* Chip (DESIGN.md §5 filter bar): 2px --line-soft, 3px radius, 13px 700, 44px target (03 C-24). */
@@ -105,6 +111,10 @@
     gap: 0;
     padding: var(--space-8) 0;
     white-space: normal;
+  }
+
+  .editor-sections-list > li:last-child {
+    padding-inline-end: 0;
   }
 
   .editor-sections-link {

@@ -2158,6 +2158,18 @@ test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)',
     }));
     expect(strip.scrollWidth, 'the toolbar never scrolls').toBeLessThanOrEqual(strip.clientWidth);
     expect(strip.rows, 'the toolbar wraps').toBeGreaterThan(1);
+    // Wrapped rows start on the same x: on touch the group gap is 8px, so the separator's
+    // push-back margin is 0 — otherwise every group after the first sits 4px right.
+    const rowStarts = await bar.evaluate((el) => {
+      const firstByRow = new Map<number, number>();
+      for (const button of Array.from(el.querySelectorAll('button'))) {
+        const box = button.getBoundingClientRect();
+        const row = Math.round(box.top);
+        firstByRow.set(row, Math.min(firstByRow.get(row) ?? Infinity, Math.round(box.left)));
+      }
+      return [...firstByRow.values()];
+    });
+    expect(new Set(rowStarts).size, 'wrapped toolbar rows start on the same x').toBe(1);
     // Touch spacing (below 900px or a coarse pointer): buttons sit 8px apart, so every button owns
     // a full 44×44 target — 3px outside ANY side of its 36px box still resolves to that button,
     // on both wrapped rows (03 C-24; ADR-0040 D12).
@@ -2182,6 +2194,14 @@ test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)',
     // of a late section is scrolled into view on mount.
     await open(page, editor(EXCL, 'publish'));
     await expect.poll(activeChipInView, { message: 'the Publish chip is in view' }).toBe(true);
+    // The LAST chip's focus ring (3px + 2px offset, 03 C-25) needs 5px between the chip and the
+    // row's clip edge at the scrolled end — the row adds no end padding of its own.
+    await nav.getByRole('link', { name: 'Publish' }).focus();
+    const ringRoom = await nav.evaluate((el) => {
+      const chip = el.querySelector('li:last-child a');
+      return chip ? el.getBoundingClientRect().right - chip.getBoundingClientRect().right : -1;
+    });
+    expect(ringRoom, "room for the last chip's focus ring").toBeGreaterThanOrEqual(5);
     await open(page, editor(EXCL, 'listings'));
     await expect.poll(activeChipInView, { message: 'the Listings chip is in view' }).toBe(true);
     const curseforge = page.getByLabel('CurseForge id or URL');
