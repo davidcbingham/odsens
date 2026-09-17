@@ -37,7 +37,8 @@ import styles from './MarkdownEditor.module.css';
  * `Markdown` CSS module — same renderer, same sanitize schema, so admin preview = public page
  * (ADR-0039 D4; `lib/markdown.ts` is client-safe since ADR-0040 D1). Disabled (moderators):
  * textarea + toolbar disabled ("Admin only"), the Preview toggle stays usable (ADR-0040 D5).
- * The caller wraps the whole control in its `adminOnly()` span.
+ * The caller does NOT wrap the control in its `adminOnly()` span: the textarea and the toolbar
+ * buttons carry the title themselves, and a wrapper would label the live Preview toggle too.
  */
 export type MarkdownEditorProps = {
   label: string;
