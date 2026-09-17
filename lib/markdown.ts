@@ -1,8 +1,12 @@
 /**
  * lib/markdown.ts — the ONE markdown renderer (01 INV-65 / INV-86; ADR-0002 A12 + #34;
- * 03 §2.2 `Markdown`; 05 T-UNIT-14). Server-only: the `Markdown` Server Component
- * (components/primitives/Markdown.tsx) is a thin wrapper over `renderMarkdown()` and imports
- * nothing from these packages, so they never enter a client bundle (03 C-18).
+ * 03 §2.2 `Markdown`; 05 T-UNIT-14). Client-safe since S1.5c (ADR-0039 D4 / ADR-0040 D1): the
+ * renderer has no server dependency — it reads only `publicEnv` (01 INV-87) — so the module has
+ * two importers: the `Markdown` Server Component (components/primitives/Markdown.tsx, a thin
+ * wrapper over `renderMarkdown()`) and the `MarkdownEditor` client island (its Preview pane,
+ * so admin preview and the public page share one renderer + one sanitize schema). Both import
+ * nothing from these packages themselves: react-markdown / remark-gfm / rehype-sanitize enter
+ * no other client file (03 C-18; the eslint fence keeps it so).
  *
  * Rules implemented here, all asserted by T-UNIT-14:
  *  - raw HTML is skipped (`skipHtml: true`; `rehype-raw` is banned everywhere — INV-65/INV-86),
@@ -23,7 +27,6 @@
  *  - a `> NOTE:` blockquote maps to `NoteCallout` (DESIGN.md §6.3 "note callout with a
  *    Silkscreen NOTE tag"), with the `NOTE:` prefix stripped from the body.
  */
-import 'server-only';
 import { createElement, type ReactElement, type ReactNode, type ComponentProps } from 'react';
 import Markdown, { type Components, type ExtraProps } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -31,13 +34,13 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import Image from 'next/image';
 import { Icon } from '@/components/primitives/Icon';
 import { NoteCallout } from '@/components/primitives/NoteCallout';
-import { env } from '@/lib/env';
+import { publicEnv } from '@/lib/env/public';
 
 export type MarkdownVariant = 'about' | 'changelog' | 'note';
 
 // ---- image host allowlist — 01 INV-54 / ADR-0002 #34 (five hosts, verbatim) ----
 
-const SUPABASE_HOST = new URL(env.NEXT_PUBLIC_SUPABASE_URL).hostname;
+const SUPABASE_HOST = new URL(publicEnv.NEXT_PUBLIC_SUPABASE_URL).hostname;
 
 /** The 01 INV-54 hosts: Supabase project host + the four CDN hosts. Widening needs an ADR. */
 export const MARKDOWN_IMAGE_HOSTS: readonly string[] = [

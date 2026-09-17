@@ -23,13 +23,20 @@ export const ICON_NAMES = [
   'diamond',
   'triangle',
   'circle',
+  // S1.5c Markdown toolbar glyphs (ADR-0040 D2; DESIGN.md v1.10 §11.3 #20)
+  'list',
+  'list-ordered',
+  'quote',
+  'link',
+  'image',
+  'video',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
 
 export type IconProps = {
   name: IconName;
-  size?: 16 | 20 | 24;
+  size?: 16 | 18 | 20 | 24;
   title?: string;
   className?: string;
 };
@@ -57,6 +64,23 @@ const GLYPHS: Record<IconName, Glyph> = {
   diamond: { paths: ['M12 3l9 9-9 9-9-9z'], filled: true },
   triangle: { paths: ['M12 4l9 16H3z'], filled: true },
   circle: { paths: ['M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18z'], filled: true },
+  // ---- S1.5c Markdown toolbar (ADR-0040 D2): same 24 grid, 2px stroke, square caps ----
+  list: { paths: ['M4 6h.01', 'M9 6h11', 'M4 12h.01', 'M9 12h11', 'M4 18h.01', 'M9 18h11'] },
+  'list-ordered': {
+    paths: [
+      'M6 9V3L4 5',
+      'M4 15a2 2 0 1 1 4 0c0 .6-.5 1-1 1.5L4 21h4',
+      'M11 6h9',
+      'M11 12h9',
+      'M11 18h9',
+    ],
+  },
+  quote: {
+    paths: ['M4 6h6v6H4z', 'M10 12v3a3 3 0 0 1-3 3', 'M14 6h6v6h-6z', 'M20 12v3a3 3 0 0 1-3 3'],
+  },
+  link: { paths: ['M9 17H7A5 5 0 0 1 7 7h2', 'M15 7h2a5 5 0 1 1 0 10h-2', 'M8 12h8'] },
+  image: { paths: ['M3 5h18v14H3z', 'M3 16l5-5 4 4 3-3 6 6', 'M16 9h.01'] },
+  video: { paths: ['M3 6h13v12H3z', 'M16 10l5-3v10l-5-3'] },
 };
 
 export function Icon({ name, size = 24, title, className }: IconProps) {

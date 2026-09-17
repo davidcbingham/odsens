@@ -52,7 +52,8 @@ import styles from './page.module.css';
  *    S1.5a (ADR-0037 D8; 00 S1.5a.AC7): under a `source='modrinth'` row's name, when an `odsens`
  *    row shares its `projectMatchKey` (slug or title — `suggestMatches`, pure), the helper-voice
  *    note "Looks like the same project as <title> —" with a ghost "Link it" link to
- *    `/admin/projects/<odsens id>?listing=<external_id>` (the editor prefills its Modrinth
+ *    `/admin/projects/<odsens id>?section=listings&listing=<external_id>` (the editor opens its
+ *    Listings section — S1.5c, ADR-0039 D2 — and prefills its Modrinth
  *    field). A suggestion only — nothing links automatically.
  * 2. FEATURED ORDER — `ReorderableList` of the featured projects; one completed reorder =
  *    ONE `curateProject` call with the batch shape `{reorder: [{project_id, featured_order}]}`
@@ -181,7 +182,7 @@ export default async function AdminProjectsPage({ searchParams }: PageProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                href={`/admin/projects/${match.odsensId}?listing=${encodeURIComponent(match.externalId)}`}
+                href={`/admin/projects/${match.odsensId}?section=listings&listing=${encodeURIComponent(match.externalId)}`}
               >
                 Link it
               </Button>

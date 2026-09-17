@@ -173,7 +173,7 @@ export type SuggestMatchRow = {
 
 /** One `/admin/projects` match note: the `odsens` twin of a `source='modrinth'` row (ADR-0037 D8). */
 export type SuggestedMatch = {
-  /** The `odsens` row the note points at (`/admin/projects/<odsensId>?listing=<externalId>`). */
+  /** The `odsens` row the note points at (`/admin/projects/<odsensId>?section=listings&listing=<externalId>` — ADR-0040 D8). */
   odsensId: string;
   odsensTitle: string;
   /** The synced row's Modrinth listing id — what the editor's Modrinth field is prefilled with. */
