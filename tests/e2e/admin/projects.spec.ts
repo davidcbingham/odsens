@@ -1567,6 +1567,38 @@ test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)',
     return page.locator('[data-dirty="true"]');
   }
 
+  /**
+   * Per toolbar button: does `elementFromPoint` just outside its 36px box resolve as ADR-0040 D12
+   * says? `touch` = a full 44×44 on every side; `mouse` = 44 tall, a group's outer sides 4px, the
+   * in-group gap split evenly (1px outside → this button, 3px outside → the neighbour).
+   */
+  function hitTargets(page: Page, spacing: 'touch' | 'mouse') {
+    return toolbar(page)
+      .getByRole('button')
+      .evaluateAll(
+        (buttons, mode) =>
+          buttons.map((button) => {
+            const box = button.getBoundingClientRect();
+            const midX = box.left + box.width / 2;
+            const midY = box.top + box.height / 2;
+            const at = (x: number, y: number) => document.elementFromPoint(x, y);
+            const prev = button.previousElementSibling;
+            const next = button.nextElementSibling;
+            const own = [at(midX, box.top - 3), at(midX, box.bottom + 3)];
+            if (mode === 'touch' || prev === null) own.push(at(box.left - 3, midY));
+            else own.push(at(box.left - 1, midY));
+            if (mode === 'touch' || next === null) own.push(at(box.right + 3, midY));
+            else own.push(at(box.right + 1, midY));
+            const split =
+              mode === 'touch' ||
+              ((prev === null || at(box.left - 3, midY) === prev) &&
+                (next === null || at(box.right + 3, midY) === next));
+            return own.every((hit) => hit === button) && split;
+          }),
+        spacing,
+      );
+  }
+
   function leaveDialog(page: Page) {
     return page.getByRole('dialog', { name: 'Unsaved changes' });
   }
@@ -2126,31 +2158,75 @@ test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)',
     }));
     expect(strip.scrollWidth, 'the toolbar never scrolls').toBeLessThanOrEqual(strip.clientWidth);
     expect(strip.rows, 'the toolbar wraps').toBeGreaterThan(1);
+    // Wrapped rows start on the same x: on touch the group gap is 8px, so the separator's
+    // push-back margin is 0 — otherwise every group after the first sits 4px right.
+    const rowStarts = await bar.evaluate((el) => {
+      const firstByRow = new Map<number, number>();
+      for (const button of Array.from(el.querySelectorAll('button'))) {
+        const box = button.getBoundingClientRect();
+        const row = Math.round(box.top);
+        firstByRow.set(row, Math.min(firstByRow.get(row) ?? Infinity, Math.round(box.left)));
+      }
+      return [...firstByRow.values()];
+    });
+    expect(new Set(rowStarts).size, 'wrapped toolbar rows start on the same x').toBe(1);
+    // Touch spacing (below 900px or a coarse pointer): buttons sit 8px apart, so every button owns
+    // a full 44×44 target — 3px outside ANY side of its 36px box still resolves to that button,
+    // on both wrapped rows (03 C-24; ADR-0040 D12).
+    await bar.scrollIntoViewIfNeeded();
+    expect(
+      await hitTargets(page, 'touch'),
+      'a 44×44 target on every toolbar button at 390',
+    ).toEqual(Array(13).fill(true));
+
+    // -- 390, UNSAVED: the dot + the visually-hidden "Unsaved changes" label ride inside a chip
+    // far along the row (Listings = 5th). The label is absolutely positioned, so the chip must
+    // be its containing block or it escapes the scrolling row and widens the page (AC5).
+    const activeChipInView = () =>
+      nav.evaluate((el) => {
+        const chip = el.querySelector('a[aria-current="page"]');
+        if (!chip) return false;
+        const row = el.getBoundingClientRect();
+        const box = chip.getBoundingClientRect();
+        return box.left >= row.left && box.right <= row.right;
+      });
+    // The island remounts per section, so the row would start at its left edge: the active chip
+    // of a late section is scrolled into view on mount.
+    await open(page, editor(EXCL, 'publish'));
+    await expect.poll(activeChipInView, { message: 'the Publish chip is in view' }).toBe(true);
+    // The LAST chip's focus ring (3px + 2px offset, 03 C-25) needs 5px between the chip and the
+    // row's clip edge at the scrolled end — the row adds no end padding of its own.
+    await nav.getByRole('link', { name: 'Publish' }).focus();
+    const ringRoom = await nav.evaluate((el) => {
+      const chip = el.querySelector('li:last-child a');
+      return chip ? el.getBoundingClientRect().right - chip.getBoundingClientRect().right : -1;
+    });
+    expect(ringRoom, "room for the last chip's focus ring").toBeGreaterThanOrEqual(5);
+    await open(page, editor(EXCL, 'listings'));
+    await expect.poll(activeChipInView, { message: 'the Listings chip is in view' }).toBe(true);
+    const curseforge = page.getByLabel('CurseForge id or URL');
+    const curseforgeSeed = await curseforge.inputValue();
+    await curseforge.fill(`${curseforgeSeed}9`);
+    await expect(dirtyRoot(page)).toHaveCount(1);
+    await expect(activeLink(page)).toContainText('Unsaved changes');
+    const dirtyPageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(dirtyPageWidth, 'no horizontal page overflow while unsaved').toBeLessThanOrEqual(390);
+    await curseforge.fill(curseforgeSeed);
+    await expect(dirtyRoot(page)).toHaveCount(0);
 
     // -- 1280: the 220px sidebar column beside the section ----------------------------------
     await page.setViewportSize({ width: 1280, height: 800 });
     await open(page, editor(EXCL, 'description'));
     const sidebar = await nav.boundingBox();
     expect(Math.round(sidebar?.width ?? 0)).toBe(220);
-    // Every toolbar button answers a hit 2px OUTSIDE its 36px box: the 44px target (03 C-24)
-    // comes from a `::after`, so the point resolves to the button, never the strip. Above and
-    // below on every button (one row at 1280); left / right only at a group's ends — inside a
-    // group the 4px gap belongs to whichever neighbour paints last, which is still a button.
-    const targets = await toolbar(page)
-      .getByRole('button')
-      .evaluateAll((buttons) =>
-        buttons.map((button) => {
-          const box = button.getBoundingClientRect();
-          const probes: [number, number][] = [
-            [box.left + box.width / 2, box.top - 2],
-            [box.left + box.width / 2, box.bottom + 2],
-          ];
-          if (button.previousElementSibling === null) probes.push([box.left - 2, box.top + 18]);
-          if (button.nextElementSibling === null) probes.push([box.right + 2, box.top + 18]);
-          return probes.every((point) => document.elementFromPoint(...point) === button);
-        }),
-      );
-    expect(targets, 'every toolbar button has a 44px hit target').toEqual(Array(13).fill(true));
+    // Mouse spacing (≥900px, fine pointer): the designed 4px pitch stays, so each button answers
+    // 3px above / below its 36px box and 3px past a group's outer side (the `::after`, never the
+    // strip), while in-group neighbours split their 4px gap evenly — 1px outside is this button,
+    // 3px outside is the neighbour (the accepted 40px-wide target — 03 C-24; ADR-0040 D12).
+    expect(
+      await hitTargets(page, 'mouse'),
+      'every toolbar button owns its hit target at 1280',
+    ).toEqual(Array(13).fill(true));
 
     // -- axe + screenshots: every section of both rows at both widths, the dialog once each ---
     for (const width of [1280, 390] as const) {

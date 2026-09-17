@@ -53,12 +53,13 @@
    in the gap to its LEFT (below); the box is grown by `--space-8` (the 3px ring + 2px offset, 03
    C-25, stays unclipped) and `overflow: clip`ped, so a separator that would lead a wrapped row
    falls outside the box and is never drawn — the rule only ever sits between two groups on one
-   row (DESIGN v1.10 §11.3 #20 "between each of the four groups"). Net layout unchanged. */
+   row (DESIGN v1.10 §11.3 #20 "between each of the four groups"). Net layout unchanged. Wrapped
+   rows sit 8px apart so the 44px targets of two rows never share a pixel. */
 .mde-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-4) var(--space-18);
+  gap: var(--space-8) var(--space-18);
   min-width: 0;
   margin: calc(-1 * var(--space-8));
   padding: var(--space-8);
@@ -73,8 +74,9 @@
 }
 
 /* 2px `--line` divider centred in the 18px gap before every group but the first: a flex item
-   pulled left by half the gap + 1px and pushed back by the same amount (4px margin + 4px gap), so
-   the group's own box is unchanged and the rule paints in the gap. */
+   pulled left by half the gap + 1px and pushed back by the same amount (4px margin + the group's
+   4px gap — on touch the gap is 8px, so the margin drops to 0 below), so the group's own box is
+   unchanged and the rule paints in the gap. */
 .mde-group + .mde-group::before {
   content: '';
   flex: none;
@@ -85,9 +87,13 @@
 }
 
 /* 36px square ghost button: transparent, hover `--slab-raised`, radius 0. The VISUAL is 36px
-   (DESIGN v1.10 §11.3 #20); the hit target is 44×44 through the `::after` below (03 C-24 — the
-   pseudo-element route the rule names), which reaches 4px past every edge into the 4px gaps and
-   the toolbar's 8px padding, so nothing is clipped and the layout is unchanged. */
+   (DESIGN v1.10 §11.3 #20); the hit target grows through the `::after` below (03 C-24 — the
+   pseudo-element route the rule names) into the gaps and the toolbar's 8px padding, so nothing
+   is clipped. Two targets never overlap (an overlap belongs to neither, WCAG "target"):
+   - touch (below 900px or a coarse pointer): buttons sit 8px apart and every target is 44×44;
+   - mouse at ≥900px: the designed 4px pitch stays, so in-group neighbours split the gap — 2px
+     each — for a 40px-wide, 44px-tall target; a group's outer sides still reach the full 4px.
+     The accepted C-24 exception (ADR-0040 D12 — David, 2026-09-17). */
 .mde-button {
   position: relative;
   display: inline-grid;
@@ -108,7 +114,29 @@
 .mde-button::after {
   content: '';
   position: absolute;
-  inset: calc(-1 * var(--space-4));
+  inset: calc(-1 * var(--space-4)) calc(var(--space-4) / -2);
+}
+
+.mde-button:first-child::after {
+  left: calc(-1 * var(--space-4));
+}
+
+.mde-button:last-child::after {
+  right: calc(-1 * var(--space-4));
+}
+
+@media (max-width: 899px), (pointer: coarse) {
+  .mde-group {
+    gap: var(--space-8);
+  }
+
+  .mde-group + .mde-group::before {
+    margin-right: 0;
+  }
+
+  .mde-button::after {
+    inset: calc(-1 * var(--space-4));
+  }
 }
 
 .mde-button:hover:not(:disabled) {

@@ -307,6 +307,8 @@ export const TEXT_PAIRS = [
   ['white', 'alert'],
   ['chalk', 'slab-raised'],
   ['chalk', 'slab-sunk'],
+  ['mute', 'slab-sunk'],
+  ['mute-dim', 'slab-sunk'],
   ['danger', 'danger-wash'],
   ['danger', 'ink'],
 ];
@@ -315,6 +317,7 @@ export const TEXT_PAIRS = [
 export const UI_PAIRS = [
   ['indigo-lift', 'slab'],
   ['gold', 'slab'],
+  ['gold', 'gold-wash'],
   ['emerald', 'ink'],
 ];
 
