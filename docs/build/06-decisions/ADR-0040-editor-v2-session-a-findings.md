@@ -1,7 +1,7 @@
 # ADR-0040 — S1.5c Session A build findings
 
 ## Status
-Proposed
+Accepted (2026-09-18 — S1.5c merge, v0.6.2)
 
 ## Date
 2026-09-12
@@ -65,6 +65,7 @@ Kind: addition
 | `docs/build/03-components.md` | §2.10 `MarkdownEditor` row | states cell names the operable Preview and the missing wrapper title (D5); tokens cell lists every token the module uses (Session B) |
 | `docs/build/03-components.md` | §2.10 `EditorSections` row | DESIGN.md reference reads §6 #9; states cell names the `data-dirty="true"` hook (D6); a11y cell: the chip is the sr label's containing block and the active chip is brought into view on mount (D11); tokens cell lists every token the module uses (Session B) |
 | `docs/build/03-components.md` | §2.10 `MarkdownEditor` row, a11y cell | the hit-target sentence: 44×44 on touch, 40×44 in-group with a mouse at ≥900px (D12) |
+| `docs/build/03-components.md` | §1.1 C-24 | names its one exception: the `MarkdownEditor` toolbar, in-group with a mouse at ≥900px, 40×44 (D12) |
 | `docs/build/03-components.md` | Status line | `— amended by ADR-0040 (2026-09-12; S1.5c Session A: island-list paths, --scrim)` |
 | `docs/build/01-architecture.md` | INV-65 | S1.5c clause += "`lib/markdown.ts` reads `publicEnv` (ADR-0040 D1)"; the older sentence "`lib/markdown.ts` is server-only." now reads "was server-only until S1.5c" (Session B) |
 | `docs/build/01-architecture.md` | INV-66 | the `lib/markdown.ts` parenthetical: "the site renderer, client-safe since ADR-0040 D1 but for project text only" (D1) |
@@ -78,8 +79,8 @@ Kind: addition
 | `docs/build/05-test-plan.md` | Status line | `— amended by ADR-0040 (2026-09-12)` |
 | `docs/build/_registry.md` | Slice table row S1.5c; Modules line | `forms/dirty.ts` = `snapshotEntries, formIsDirty`; `markdown/edit.ts` = `applyMarkdownCommand, MARKDOWN_COMMANDS, commandTitle`; `markdown.ts` note (`publicEnv`, no `server-only`) (names ADR-0040) |
 | `docs/build/02-routes-and-pages.md` | §1.3 rows `/admin/projects` (match-note sentence) and `/admin/projects/[id]` (`?listing=` sentence); Status line | the ghost link carries `?section=listings&listing=<external_id>`; `?listing=` without `?section=` opens the Listings section on odsens rows (a synced row ignores it), an explicit `?section=` wins (ADR-0040 D8); Status `— amended by ADR-0040 (2026-09-12)` |
-| `DESIGN.md` | v1.10 §11.3 #20 | written in this PR per ADR-0039 D5; carries the six glyph names + `--scrim` (D2), the toolbar hit-target sentence (touch 44×44, mouse 40×44 in-group — D12), the chip hover border, and "the active chip … is scrolled into view when the section opens" (D11) |
-| `docs/build/00-build-plan.md` | S1.5c "Tests required" | the amended-in-place list names T-E2E-34 too |
+| `DESIGN.md` | v1.10 header line; §11.3 #20 | the header line names ADR-0040 D11 / D12; #20 is written in this PR per ADR-0039 D5; carries the six glyph names + `--scrim` (D2), the toolbar hit-target sentence (touch 44×44, mouse 40×44 in-group — D12), the chip hover border, and "the active chip … is scrolled into view when the section opens" (D11) |
+| `docs/build/00-build-plan.md` | S1.5c "Tests required"; Status line | the amended-in-place list names T-E2E-34 too; Status `— amended by ADR-0040 (2026-09-17…)` |
 | `scripts/check-test-ids.mjs` | `SHIPPED_SLICES` | += `'S1.5c'` (the comment cites ADR-0040) |
 | `eslint.config.mjs` | `no-restricted-imports` fences | `@/lib/markdown` restricted in `components/**` and the three browser-client seams; an allow block for `components/primitives/Markdown.tsx` + `MarkdownEditor.tsx` (D4, Session B) |
 | `scripts/contrast.mjs` | `TEXT_PAIRS` / `UI_PAIRS` | += `mute` and `mute-dim` on `slab-sunk` (toolbar label, PREVIEW eyebrow), `gold` on `gold-wash` (the unsaved dot on the active chip) — gated by `pnpm lint` (Session B) |
