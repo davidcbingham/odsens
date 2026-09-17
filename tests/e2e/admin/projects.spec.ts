@@ -1442,7 +1442,8 @@ test.describe('editor feedback + gallery curation (T-E2E-54)', () => {
  *  - T-E2E-55: sections + the unsaved guard, both branches — the sidebar lists six sections on
  *    the exclusive and five (no Publish) on the synced `…0102`; only the active section's
  *    headings are in the DOM; `?section=gallery` survives a reload; `?section=nope` renders
- *    General without touching the URL; Save lands on `?section=general&saved=saved` (captured
+ *    General without touching the URL; `?listing=<id>` alone opens Listings with the field
+ *    prefilled and `?section=general&listing=` still renders General (ADR-0040 D8); Save lands on `?section=general&saved=saved` (captured
  *    from `history.replaceState` — `SavedToast` strips `saved` at once) then the "Saved." toast;
  *    picking another Type in the themed `Select` (no other edit) sets `data-dirty="true"` and
  *    picking the seed value back clears it (ADR-0040 D9); typing sets `data-dirty="true"` + the
@@ -1465,7 +1466,8 @@ test.describe('editor feedback + gallery curation (T-E2E-54)', () => {
  *    restored by typing the seed body back and saving.
  *  - T-E2E-57: at 390 the section nav is a one-row chip strip that scrolls (`scrollWidth >
  *    clientWidth`, no page overflow) and the toolbar wraps inside the well; at 1280 the nav is
- *    the 220px sidebar column; `expectNoSeriousA11y` at 1280 AND 390 on every section of both
+ *    the 220px sidebar column and every toolbar button answers `elementFromPoint` 2px outside
+ *    its 36px box (the 44px `::after` target, 03 C-24); `expectNoSeriousA11y` at 1280 AND 390 on every section of both
  *    rows as admin (with `admin-project-<section>` / `admin-project-synced-<section>` screenshots
  *    and the open dialog once per width) and again as moderator, whose textarea, toolbar and Save
  *    are disabled "Admin only" while the Preview switch still flips and the section links still
@@ -1511,6 +1513,9 @@ test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)',
     'YouTube',
   ];
   const DIALOG_BODY = "You changed something here and didn't save.";
+  /** The `/admin/projects` match note's `?listing=` value — a Modrinth id, nothing links. */
+  const LISTING_PREFILL = 'sd000199';
+  const LISTING_FIELD = 'Modrinth listing (URL, slug or id)';
   /** A Title edit the action trims away — the form is dirty, the stored row stays the seed. */
   const TITLE_EDIT = 'Seed Exclusive Pack ';
 
@@ -1694,6 +1699,16 @@ test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)',
     await expect(activeLink(page)).toHaveText('General');
     await expectOnlySection(page, 'odsens', 'general');
     await expect(page).toHaveURL(editor(EXCL, 'nope'));
+
+    // -- `?listing=` with no `?section=` opens Listings with the prefill (ADR-0040 D8); an
+    // explicit `?section=` wins over it -------------------------------------------------------
+    await open(page, `${editor(EXCL)}?listing=${LISTING_PREFILL}`);
+    await expect(activeLink(page)).toHaveText('Listings');
+    await expectOnlySection(page, 'odsens', 'listings');
+    await expect(page.getByLabel(LISTING_FIELD, { exact: true })).toHaveValue(LISTING_PREFILL);
+    await open(page, `${editor(EXCL, 'general')}&listing=${LISTING_PREFILL}`);
+    await expect(activeLink(page)).toHaveText('General');
+    await expectOnlySection(page, 'odsens', 'general');
 
     // -- Clean: no dot, no `data-dirty`, `beforeunload` passes ---------------------------------
     await open(page, editor(EXCL, 'general'));
@@ -2117,6 +2132,25 @@ test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)',
     await open(page, editor(EXCL, 'description'));
     const sidebar = await nav.boundingBox();
     expect(Math.round(sidebar?.width ?? 0)).toBe(220);
+    // Every toolbar button answers a hit 2px OUTSIDE its 36px box: the 44px target (03 C-24)
+    // comes from a `::after`, so the point resolves to the button, never the strip. Above and
+    // below on every button (one row at 1280); left / right only at a group's ends — inside a
+    // group the 4px gap belongs to whichever neighbour paints last, which is still a button.
+    const targets = await toolbar(page)
+      .getByRole('button')
+      .evaluateAll((buttons) =>
+        buttons.map((button) => {
+          const box = button.getBoundingClientRect();
+          const probes: [number, number][] = [
+            [box.left + box.width / 2, box.top - 2],
+            [box.left + box.width / 2, box.bottom + 2],
+          ];
+          if (button.previousElementSibling === null) probes.push([box.left - 2, box.top + 18]);
+          if (button.nextElementSibling === null) probes.push([box.right + 2, box.top + 18]);
+          return probes.every((point) => document.elementFromPoint(...point) === button);
+        }),
+      );
+    expect(targets, 'every toolbar button has a 44px hit target').toEqual(Array(13).fill(true));
 
     // -- axe + screenshots: every section of both rows at both widths, the dialog once each ---
     for (const width of [1280, 390] as const) {

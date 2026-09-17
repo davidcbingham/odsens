@@ -84,8 +84,12 @@
   background: var(--line);
 }
 
-/* 36px square ghost button: transparent, hover `--slab-raised`, radius 0 */
+/* 36px square ghost button: transparent, hover `--slab-raised`, radius 0. The VISUAL is 36px
+   (DESIGN v1.10 §11.3 #20); the hit target is 44×44 through the `::after` below (03 C-24 — the
+   pseudo-element route the rule names), which reaches 4px past every edge into the 4px gaps and
+   the toolbar's 8px padding, so nothing is clipped and the layout is unchanged. */
 .mde-button {
+  position: relative;
   display: inline-grid;
   place-items: center;
   flex: none;
@@ -99,6 +103,12 @@
   color: var(--chalk);
   cursor: pointer;
   transition: background-color var(--dur-fast) ease-out;
+}
+
+.mde-button::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--space-4));
 }
 
 .mde-button:hover:not(:disabled) {
