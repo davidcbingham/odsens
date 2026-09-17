@@ -1876,6 +1876,30 @@ test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)',
     await expect(sourceError).not.toBeEmpty();
     await expect(sourceError).toBeVisible();
     await expect(dirtyRoot(page)).toHaveCount(0);
+
+    // -- Submitting ONE form never clears another form's pending edit (Listings has two): the
+    // submit re-bases its own form and recomputes, so the Modrinth edit still reads unsaved ----
+    await open(page, editor(EXCL, 'listings'));
+    const modrinthRef = page.getByLabel('Modrinth listing (URL, slug or id)', { exact: true });
+    const modrinthSeed = await modrinthRef.inputValue();
+    await modrinthRef.fill(`${modrinthSeed}pending-edit`);
+    await expect(dirtyRoot(page)).toHaveCount(1);
+    const curseforgeRef = page.getByLabel('CurseForge id or URL', { exact: true });
+    await curseforgeRef.fill('not a listing'); // refused by the action: no row is written
+    const linkPost = page.waitForResponse(
+      (res) => res.request().method() === 'POST' && res.url().includes('/admin/projects/'),
+    );
+    await page
+      .locator('form', { has: curseforgeRef })
+      .getByRole('button', { name: 'Link', exact: true })
+      .click();
+    await linkPost;
+    await expect(page).toHaveURL(/\?section=listings&form=/);
+    await expect(modrinthRef).toHaveValue(`${modrinthSeed}pending-edit`);
+    await expect(dirtyRoot(page)).toHaveCount(1);
+    await expect(activeLink(page)).toContainText('Unsaved changes');
+    await modrinthRef.fill(modrinthSeed);
+    await expect(dirtyRoot(page)).toHaveCount(0);
   });
 
   // ---------------------------------------------------------------------------------------------
@@ -2126,6 +2150,33 @@ test.describe('editor v2 — sections, guard, Markdown editor (T-E2E-55/56/57)',
     }));
     expect(strip.scrollWidth, 'the toolbar never scrolls').toBeLessThanOrEqual(strip.clientWidth);
     expect(strip.rows, 'the toolbar wraps').toBeGreaterThan(1);
+
+    // -- 390, UNSAVED: the dot + the visually-hidden "Unsaved changes" label ride inside a chip
+    // far along the row (Listings = 5th). The label is absolutely positioned, so the chip must
+    // be its containing block or it escapes the scrolling row and widens the page (AC5).
+    const activeChipInView = () =>
+      nav.evaluate((el) => {
+        const chip = el.querySelector('a[aria-current="page"]');
+        if (!chip) return false;
+        const row = el.getBoundingClientRect();
+        const box = chip.getBoundingClientRect();
+        return box.left >= row.left && box.right <= row.right;
+      });
+    // The island remounts per section, so the row would start at its left edge: the active chip
+    // of a late section is scrolled into view on mount.
+    await open(page, editor(EXCL, 'publish'));
+    await expect.poll(activeChipInView, { message: 'the Publish chip is in view' }).toBe(true);
+    await open(page, editor(EXCL, 'listings'));
+    await expect.poll(activeChipInView, { message: 'the Listings chip is in view' }).toBe(true);
+    const curseforge = page.getByLabel('CurseForge id or URL');
+    const curseforgeSeed = await curseforge.inputValue();
+    await curseforge.fill(`${curseforgeSeed}9`);
+    await expect(dirtyRoot(page)).toHaveCount(1);
+    await expect(activeLink(page)).toContainText('Unsaved changes');
+    const dirtyPageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(dirtyPageWidth, 'no horizontal page overflow while unsaved').toBeLessThanOrEqual(390);
+    await curseforge.fill(curseforgeSeed);
+    await expect(dirtyRoot(page)).toHaveCount(0);
 
     // -- 1280: the 220px sidebar column beside the section ----------------------------------
     await page.setViewportSize({ width: 1280, height: 800 });

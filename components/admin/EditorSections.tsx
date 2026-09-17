@@ -31,10 +31,10 @@ import styles from './EditorSections.module.css';
  * first upload creates through `router.refresh()`), and re-bases a tracked form only while the
  * island is clean AND the form's FIELD SET changed since its snapshot (rows an upload added are
  * not an edit) — never on a value change alone, so a script-committed edit whose announcement
- * follows a focus move (the Markdown toolbar) is still caught (ADR-0040 D10). A `submit` on a tracked form marks
- * the island clean at once and re-bases that form on the values being saved (the PRG round trip
- * re-renders the section; `key={section}` on the page remounts the island on a section change —
- * ADR-0040 D6). `dirty` lives in state (the dot, `data-dirty`) AND a ref (the window / document
+ * follows a focus move (the Markdown toolbar) is still caught (ADR-0040 D10). A `submit` on a tracked form
+ * re-bases THAT form on the values being saved and recomputes — an edit pending in another form of
+ * the section (Listings has two) keeps the island unsaved (the PRG round trip re-renders the
+ * section; `key={section}` on the page remounts the island on a section change — ADR-0040 D6). `dirty` lives in state (the dot, `data-dirty`) AND a ref (the window / document
  * listeners read the ref). Edits that React commits by property assignment announce themselves
  * as native events (the Markdown editor's toolbar → `input`, `Select` → `change`; ADR-0040 D9).
  *
@@ -92,6 +92,7 @@ function guardedHref(event: MouseEvent): string | null {
 
 export function EditorSections({ sections, active, children }: EditorSectionsProps) {
   const router = useRouter();
+  const navRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const snapshotsRef = useRef<Map<HTMLFormElement, FormSnapshot>>(new Map());
   const dirtyRef = useRef(false);
@@ -154,7 +155,7 @@ export function EditorSections({ sections, active, children }: EditorSectionsPro
       const form = event.target;
       if (!(form instanceof HTMLFormElement) || !snapshots.has(form)) return;
       snapshots.set(form, snapshotForm(form));
-      setDirtyState(false);
+      recompute();
     };
     root.addEventListener('focusin', onFocus);
     root.addEventListener('input', onEdit);
@@ -167,6 +168,20 @@ export function EditorSections({ sections, active, children }: EditorSectionsPro
       root.removeEventListener('submit', onSubmit);
     };
   }, [setDirtyState]);
+
+  // Phone chip row: the island remounts per section (ADR-0040 D6), so the row starts at its left
+  // edge and a late active chip (Listings, Publish) would sit off-screen. `scrollLeft` is set
+  // directly — `scrollIntoView` could scroll the page too. A no-op at ≥900px (nothing scrolls).
+  useEffect(() => {
+    const nav = navRef.current;
+    const link = nav?.querySelector('a[aria-current="page"]');
+    if (!nav || !link) return;
+    const row = nav.getBoundingClientRect();
+    const chip = link.getBoundingClientRect();
+    const inset = 8; // the row's own padding (`--space-8`), so the focus ring stays unclipped
+    if (chip.right > row.right - inset) nav.scrollLeft += chip.right - (row.right - inset);
+    else if (chip.left < row.left + inset) nav.scrollLeft -= row.left + inset - chip.left;
+  }, [active]);
 
   // The browser's own prompt on close / reload while dirty (S1.5c.AC3).
   useEffect(() => {
@@ -205,22 +220,22 @@ export function EditorSections({ sections, active, children }: EditorSectionsPro
   }, [pendingHref, router, setDirtyState]);
 
   return (
-    <div className={styles.root} data-dirty={dirty ? 'true' : undefined}>
-      <nav aria-label="Sections" className={styles.nav}>
-        <ul className={styles.list}>
+    <div className={styles['editor-sections']} data-dirty={dirty ? 'true' : undefined}>
+      <nav ref={navRef} aria-label="Sections" className={styles['editor-sections-nav']}>
+        <ul className={styles['editor-sections-list']}>
           {sections.map((section) => {
             const isActive = section.id === active;
             return (
               <li key={section.id}>
                 <Link
                   href={section.href}
-                  className={styles.link}
+                  className={styles['editor-sections-link']}
                   aria-current={isActive ? 'page' : undefined}
                 >
                   <span>{section.label}</span>
                   {isActive && dirty ? (
                     <>
-                      <span className={styles.dot} aria-hidden="true" />
+                      <span className={styles['editor-sections-dot']} aria-hidden="true" />
                       <span className="visually-hidden">Unsaved changes</span>
                     </>
                   ) : null}
@@ -230,7 +245,7 @@ export function EditorSections({ sections, active, children }: EditorSectionsPro
           })}
         </ul>
       </nav>
-      <div ref={contentRef} className={styles.content}>
+      <div ref={contentRef} className={styles['editor-sections-content']}>
         {children}
       </div>
       <Dialog

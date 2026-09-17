@@ -1144,8 +1144,8 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
   );
 
   // `description` — the `MarkdownEditor` (ADR-0039 D4) on `body_md` (odsens) or `notes_md`
-  // (synced); moderators get it disabled inside the `adminOnly` span (03 §2.10; the Preview
-  // toggle stays usable — ADR-0040 D5).
+  // (synced); moderators get it disabled, "Admin only" on its textarea and toolbar buttons
+  // (03 §2.10), with no `adminOnly` span around it: the Preview toggle stays usable — ADR-0040 D5.
   const descriptionSection = exclusive ? (
     <section
       className={styles['admin-project-section']}
@@ -1155,18 +1155,16 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         DESCRIPTION
       </h2>
       <form action={saveBody} className={styles['admin-project-form']}>
-        {adminOnly(
-          <MarkdownEditor
-            label="Body"
-            name="body_md"
-            defaultValue={project.bodyMd}
-            maxLength={65536}
-            helper="Markdown. The About tab on the public page."
-            error={fieldError('details', 'body_md')}
-            disabled={!canCurate}
-            variant="about"
-          />,
-        )}
+        <MarkdownEditor
+          label="Body"
+          name="body_md"
+          defaultValue={project.bodyMd}
+          maxLength={65536}
+          helper="Markdown. The About tab on the public page."
+          error={fieldError('details', 'body_md')}
+          disabled={!canCurate}
+          variant="about"
+        />
         {detailsFormError ? (
           <p role="alert" className={styles['admin-project-error']}>
             {detailsFormError}
@@ -1183,18 +1181,16 @@ export default async function AdminProjectPage({ params, searchParams }: PagePro
         NOTES
       </h2>
       <form action={saveNotes} className={styles['admin-project-form']}>
-        {adminOnly(
-          <MarkdownEditor
-            label="Notes"
-            name="notes_md"
-            defaultValue={override?.notesMd ?? ''}
-            maxLength={20000}
-            helper="Markdown. Shows under About as a note."
-            error={fieldError('overrides', 'notes_md')}
-            disabled={!canCurate}
-            variant="note"
-          />,
-        )}
+        <MarkdownEditor
+          label="Notes"
+          name="notes_md"
+          defaultValue={override?.notesMd ?? ''}
+          maxLength={20000}
+          helper="Markdown. Shows under About as a note."
+          error={fieldError('overrides', 'notes_md')}
+          disabled={!canCurate}
+          variant="note"
+        />
         {overridesFormError ? (
           <p role="alert" className={styles['admin-project-error']}>
             {overridesFormError}

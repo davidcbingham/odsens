@@ -556,7 +556,7 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 6. S1.5c.AC6 — Moderators can move between sections but every field, toolbar button and Save is disabled, never hidden (03 §2.10).
 7. S1.5c.AC7 — The synced (Modrinth) editor gets the same sidebar with its own sections (overrides, notes, gallery, versions, listings) and the same guard and toolbar behaviour.
 
-**Tests required:** assigned in 05 §8 row S1.5c at Session A (H-13): T-UNIT for `applyMarkdownCommand` and `formIsDirty`; T-E2E for sections + deep link + PRG, the dirty dot, the dialog both ways, `beforeunload`, toolbar insertions, Preview parity, phone chip row, axe (admin + moderator); T-E2E-35/42/51/53/54 amended in place where they open the editor.
+**Tests required:** assigned in 05 §8 row S1.5c at Session A (H-13): T-UNIT for `applyMarkdownCommand` and `formIsDirty`; T-E2E for sections + deep link + PRG, the dirty dot, the dialog both ways, `beforeunload`, toolbar insertions, Preview parity, phone chip row, axe (admin + moderator); T-E2E-34/35/42/51/53/54 amended in place where they open the editor.
 
 **Gates required:** all seven; `frontend-reviewer` focus: island boundaries (props in, server functions only) and the admin-route bundle delta; `design-fidelity-reviewer` focus: DESIGN.md v1.10; `security-reviewer` focus: Preview sanitize parity, toolbar inserts text only.
 

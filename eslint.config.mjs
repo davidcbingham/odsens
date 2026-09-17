@@ -292,6 +292,11 @@ const config = [
               name: '@/lib/env',
               message: 'Client code imports publicEnv from @/lib/env/public (01 INV-87).',
             },
+            {
+              name: '@/lib/markdown',
+              message:
+                'Comments are plain text — linkify() from @/lib/validation/comment (01 INV-66/INV-86).',
+            },
             { name: 'react-markdown', message: 'Only lib/markdown.ts (01 INV-86).' },
             { name: 'remark-gfm', message: 'Only lib/markdown.ts (01 INV-86).' },
             { name: 'rehype-sanitize', message: 'Only lib/markdown.ts (01 INV-86).' },
@@ -327,6 +332,45 @@ const config = [
       'components/comments/CommentThread.tsx',
       'components/primitives/GoogleSignInButton.tsx',
     ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: '@/lib/supabase/admin', message: '01 INV-14/INV-84.' },
+            {
+              name: '@/lib/supabase/server',
+              message: 'components/** never import the cookie server client (01 INV-85).',
+            },
+            {
+              name: '@/lib/supabase/client',
+              message:
+                'Browser client only in ViewerProvider, CommentThread, GoogleSignInButton (01 INV-85).',
+            },
+            { name: '@supabase/supabase-js', message: '01 INV-13/INV-85.' },
+            { name: '@supabase/ssr', message: '01 INV-13/INV-85.' },
+            {
+              name: '@/lib/env',
+              message: 'components import publicEnv from @/lib/env/public (01 INV-87).',
+            },
+            {
+              name: '@/lib/markdown',
+              message:
+                'Only components/primitives/Markdown.tsx and MarkdownEditor.tsx (01 INV-86, ADR-0040 D4).',
+            },
+            { name: 'react-markdown', message: 'Only lib/markdown.ts (01 INV-86).' },
+            { name: 'remark-gfm', message: 'Only lib/markdown.ts (01 INV-86).' },
+            { name: 'rehype-sanitize', message: 'Only lib/markdown.ts (01 INV-86).' },
+            { name: 'rehype-raw', message: 'rehype-raw is banned everywhere (01 INV-65/INV-86).' },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // INV-86 (ADR-0040 D4): the two components that may import @/lib/markdown — the `Markdown` Server
+    // Component and `MarkdownEditor` (the Preview; the one client importer). Same fence otherwise.
+    files: ['components/primitives/Markdown.tsx', 'components/primitives/MarkdownEditor.tsx'],
     rules: {
       'no-restricted-imports': [
         'error',

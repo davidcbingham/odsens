@@ -3,7 +3,7 @@
    Tokens only (03 C-08). Mobile-first: the chip row; the 220px sidebar from 900px (the
    `AdminShell.module.css` breakpoint). */
 
-.root {
+.editor-sections {
   display: flex;
   flex-direction: column;
   gap: var(--space-24);
@@ -12,7 +12,7 @@
 
 /* Phone / tablet: one scrolling row. The padding keeps the 3px gold focus ring (globals
    `:focus-visible`, 2px offset) inside the scroll box; no ancestor clips. */
-.nav {
+.editor-sections-nav {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   min-width: 0;
@@ -20,7 +20,7 @@
   padding: var(--space-8);
 }
 
-.list {
+.editor-sections-list {
   display: flex;
   gap: var(--space-8);
   margin: 0;
@@ -30,7 +30,11 @@
 }
 
 /* Chip (DESIGN.md §5 filter bar): 2px --line-soft, 3px radius, 13px 700, 44px target (03 C-24). */
-.link {
+.editor-sections-link {
+  /* Containing block for the visually-hidden "Unsaved changes" label: without it the absolutely
+     positioned span resolves against the viewport, escapes the scrolling row and widens the page
+     at 390 (00 S1.5c.AC5). */
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -51,19 +55,19 @@
     color var(--dur-fast) ease-out;
 }
 
-.link:hover {
+.editor-sections-link:hover {
   border-color: var(--indigo-lift);
 }
 
 /* Active chip: gold wash fill, bright-gold text (the §5 resource-pack badge pairing). */
-.link[aria-current='page'] {
+.editor-sections-link[aria-current='page'] {
   background: var(--gold-wash);
   border-color: var(--gold-wash);
   color: var(--gold-bright);
 }
 
 /* Unsaved dot — 8px --gold square after the active label; the sr text says the words (03 C-26). */
-.dot {
+.editor-sections-dot {
   display: inline-block;
   flex: none;
   width: var(--space-8);
@@ -73,7 +77,7 @@
   border-radius: 0;
 }
 
-.content {
+.editor-sections-content {
   display: flex;
   flex-direction: column;
   gap: var(--space-40);
@@ -82,13 +86,13 @@
 
 /* Desktop: 220px sidebar beside the section (DESIGN.md §6 #9; `.admin-nav-link` mirrored). */
 @media (min-width: 900px) {
-  .root {
+  .editor-sections {
     display: grid;
     grid-template-columns: 220px minmax(0, 1fr);
     gap: var(--space-32);
   }
 
-  .nav {
+  .editor-sections-nav {
     overflow: visible;
     margin: 0;
     padding: 0;
@@ -96,14 +100,14 @@
     border-right: 2px solid var(--line-soft);
   }
 
-  .list {
+  .editor-sections-list {
     flex-direction: column;
     gap: 0;
     padding: var(--space-8) 0;
     white-space: normal;
   }
 
-  .link {
+  .editor-sections-link {
     display: flex;
     justify-content: flex-start;
     padding: var(--space-12) var(--space-16);
@@ -115,12 +119,12 @@
     transition: background-color var(--dur-fast) ease-out;
   }
 
-  .link:hover {
+  .editor-sections-link:hover {
     border-color: transparent;
     background: var(--slab);
   }
 
-  .link[aria-current='page'] {
+  .editor-sections-link[aria-current='page'] {
     font-weight: 700;
     color: var(--chalk);
     background: var(--slab);
