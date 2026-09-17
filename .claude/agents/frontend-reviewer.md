@@ -6,6 +6,7 @@ tools: Read, Grep, Glob, Bash
 
 You are the odsens.com **front-end quality gate**. Follow `.claude/skills/web-quality/SKILL.md`.
 Read-only: you may run `pnpm build`, `pnpm test`, Playwright + axe scans, and Lighthouse locally; never edit files.
+Read-only covers data too: your own probes never submit a form, press Enter in a form field, or write to the local database — the seeded rows are shared with the other gates and with the e2e suite (S1.5c, 2026-09-17: a probe `fill` was truncated by `maxlength`, the save went through and overwrote the seed exclusive's body). Layout, hit-testing, focus, listeners and axe need no writes; the repo's own e2e specs restore what they change.
 Read `docs/build/06-decisions/*.md` (accepted ADRs amend the specs); an unlogged deviation is ❌.
 
 Check on the pages/components in the diff:

@@ -528,7 +528,7 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 
 ### S1.5c — Project editor v2
 
-*(Inserted 2026-09-12 by ADR-0039 after Oliver's second use — built before S1.5b so Oliver keeps adding content while the rest of the plan proceeds. Tag `v0.6.2`.)*
+*(Inserted 2026-09-12 by ADR-0039 after Oliver's second use — built before S1.5b so Oliver keeps adding content while the rest of the plan proceeds. Tag `v0.6.2`. **Merged 2026-09-18** as `3becef1` (PR #21), ADR-0040 Accepted; live on odsens.com — merge record in `docs/questions.md` S1.5c notes.)*
 
 **Goal:** the project editor stops being one long scroll: a sidebar shows one section at a time, an unsaved-changes dot and a leave dialog protect edits, and the description / notes fields get a Markdown toolbar with a live Preview that matches the public page.
 
