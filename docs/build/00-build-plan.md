@@ -589,7 +589,7 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 **Spec traceability / Engineering docs implemented:** as listed under S1.9 for `/support`, `FloatingSupportButton`, `TipPanel`, 04 §5.6 `tip_click`, §5.7 (Ko-fi), 01 §20; 02 §8 row S1.5b; 05 §8 row S1.5b.
 
 **Acceptance criteria** (renumbered from S1.9 — text unchanged)
-1. S1.5b.AC1 — = S1.9.AC4 (`/support` picker, iframe mount, empty `kofi_page` state, `revalidateTag('settings')` after a Settings edit — T-E2E-11).
+1. S1.5b.AC1 — = S1.9.AC4 as amended by ADR-0042 (`/support` one TIP ON KO-FI button — no amount picker — the card ⇄ iframe swap, empty `kofi_page` state, `revalidateTag('settings')` after a Settings edit — T-E2E-11).
 2. S1.5b.AC2 — = S1.9.AC5 (leaderboard empty state).
 3. S1.5b.AC3 — = S1.9.AC6 (`FloatingSupportButton` behaviour).
 4. S1.5b.AC4 — = S1.9.AC7 (`TipPanel` links; Home compact panel always rendered).
@@ -600,9 +600,9 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 
 **Gates required:** all seven; `security-reviewer` focus: Ko-fi iframe CSP; `frontend-reviewer` focus: floating button scroll listener perf.
 
-**Demo script:** `/support` → pick $3 → CONTINUE ON KO-FI → panel opens (stop before paying); scroll a project page down/up → floating button hides/returns.
+**Demo script:** `/support` → TIP ON KO-FI → Ko-fi's panel replaces the gold card (stop before paying) → ← Back (ADR-0042 — was "pick $3 → CONTINUE ON KO-FI"); scroll a project page down/up → floating button hides/returns.
 
-**Risks / unknowns:** Ko-fi preset-amount behaviour unverified (`docs/design-review.md` #13 — verify once the page is live; ADR-0002 #50).
+**Risks / unknowns:** none open — Ko-fi's preset-amount behaviour (`docs/design-review.md` #13; ADR-0002 #50) was verified on the live page 2026-09-18: there is none, so the amount picker was removed (ADR-0042 D1).
 
 ---
 
@@ -780,7 +780,7 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 5. S1.9.AC5 *(moved to S1.5b.AC2 — ADR-0036)* — Leaderboard block renders the empty state "NOBODY YET / Be first." + the how-to line from §12.4; no amounts, no rows.
 6. S1.9.AC6 *(moved to S1.5b.AC3 — ADR-0036)* — `FloatingSupportButton` on every public page except `/support`; absent on `/welcome` and under `/admin/*` (02 RP-15); hides on scroll-down, returns on scroll-up; phone = 52 px gold square with heart; links to `/support`; 44 px+ target; `prefers-reduced-motion` drops the transform.
 7. S1.9.AC7 *(moved to S1.5b.AC4 — ADR-0036)* — `TipPanel` on project detail and the Home compact panel (new here) link to `/support` (copy from §7 voice, no begging); the Home panel is always rendered (02 §2.1 item 4).
-8. S1.9.AC8 *(the `tip_click` clause moved to S1.5b.AC6 — ADR-0036)* — Custom events fire (`track` calls observed with `@vercel/analytics` stubbed): `download {project, source, from}` on a download button, `tip_click {amount?, from}` on the picker button, `video_play {youtube_id, kind}` on a facade click, `sign_in {from}` on Sign in; payload keys exactly as ADR-0002 C12 / 04 §5.6; nothing else is accepted by `trackEvent`; no PII in payloads (T-UNIT-38 + custom-events smoke inside T-E2E-16/31/6/49).
+8. S1.9.AC8 *(the `tip_click` clause moved to S1.5b.AC6 — ADR-0036)* — Custom events fire (`track` calls observed with `@vercel/analytics` stubbed): `download {project, source, from}` on a download button, `tip_click {amount?, from}` on the TIP ON KO-FI button (ADR-0042 — was "the picker button"; no emitter sends `amount` now), `video_play {youtube_id, kind}` on a facade click, `sign_in {from}` on Sign in; payload keys exactly as ADR-0002 C12 / 04 §5.6; nothing else is accepted by `trackEvent`; no PII in payloads (T-UNIT-38 + custom-events smoke inside T-E2E-16/31/6/49).
 9. S1.9.AC9 — RLS: `stats_daily` admin-read, service-role write.
 10. S1.9.AC10 *(the `/support` clause moved to S1.5b.AC6 — ADR-0036)* — axe zero serious/critical on `/support`, `/admin/stats` at 1280 + 390; chart has a text alternative (table or `aria-label` summary).
 11. S1.9.AC11 *(moved to S1.5b.AC5 — ADR-0036)* — `FloatingSupportButton` e2e (T-E2E-49 — 05's current text must be rewritten to this behaviour, DESIGN.md §5 / 03 `FloatingSupportButton` / 04 §5.6 `from:'floating'`; see §7 Review notes): present on `/` and a project detail, absent on `/support`, `/welcome`, `/admin/*`; hides on scroll-down and returns on scroll-up; 52 px square at 390; `TipPanel` on detail and the Home compact panel link to `/support` (always rendered; only `/support` reacts to an empty `kofi_page`, 04 §5.7).
@@ -792,10 +792,10 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 **Demo script**
 1. Hit `/api/cron/stats-snapshot` twice → `/admin/stats` shows tiles + chart.
 2. Resize to 390 → 15 bars + label.
-3. *(moved to S1.5b — ADR-0036)* `/support` → pick $3 → CONTINUE ON KO-FI → overlay opens (stop before paying).
+3. *(moved to S1.5b — ADR-0036; the picker and CONTINUE were replaced by one TIP ON KO-FI button — ADR-0042, see §S1.5b Demo script)* `/support` → pick $3 → CONTINUE ON KO-FI → overlay opens (stop before paying).
 4. *(moved to S1.5b — ADR-0036)* Scroll a project page down/up → floating button hides/returns.
 
-**Risks / unknowns:** *(Ko-fi items moved to S1.5b — ADR-0036; the page name `odsens` is set since 2026-09-11)* Ko-fi account/page not yet created (setup to-do; `KOFI_PAGE=oddsense` unconfirmed) — build against a test page name and record; Ko-fi preset-amount behaviour unverified (`docs/design-review.md` #13; verify the amount param once the account exists — ADR-0002 #50); first days of `stats_daily` have no deltas (tiles show `0` + "No data yet.", ADR-0002 #29).
+**Risks / unknowns:** *(Ko-fi items moved to S1.5b — ADR-0036; the page name `odsens` is set since 2026-09-11)* Ko-fi account/page not yet created (setup to-do; `KOFI_PAGE=oddsense` unconfirmed) — build against a test page name and record; Ko-fi preset-amount behaviour unverified (`docs/design-review.md` #13; verify the amount param once the account exists — ADR-0002 #50) *(verified 2026-09-18: no such parameter — ADR-0042 D1)*; first days of `stats_daily` have no deltas (tiles show `0` + "No data yet.", ADR-0002 #29).
 
 ---
 
@@ -946,7 +946,7 @@ IDs are `00-O-n` (cite as "00 §5 00-O-n"). Rows marked DECIDED were settled by 
 | 00-O-16 | Self-serve account deletion + cascade (`deleteAccount`; data-model §4 profiles delete = admin only). | `deleteAccount` (onboarded user, 1 / day): comments → `status='deleted'` (slots stay), own `comment_likes`/`comment_reports` removed, avatar object removed, `auth.admin.deleteUser` (cascades `profiles`); revalidates content tags. Data-model §4 delete row amended by ADR-0002. | ADR-0002 #28 | DECIDED (ADR-0002 #28) |
 | 00-O-17 | Skin download counter (`skins.downloads` column exists; `skins` bucket is public-read). | Counter **is** in v1: DOWNLOAD PNG → `/api/download/[fileId]` kind `skin` → RPC `record_skin_download` increments `skins.downloads` (S1.7) — supersedes v0.2's "stays 0". | ADR-0002 C8 | DECIDED (ADR-0002 C8) |
 | 00-O-18 | `/admin/stats` tiles before the first `stats_daily` deltas exist. | Show `0` with the context text "No data yet."; never "—". | ADR-0002 #29 | DECIDED (ADR-0002 #29) |
-| 00-O-19 | Ko-fi page name source: env `KOFI_PAGE` vs `site_settings.kofi_page`. | DB wins: `/support` (ISR, tag `settings`) reads `site_settings.kofi_page` via view `site_settings_public` (the Home compact `TipPanel` is static and links to `/support`); env `KOFI_PAGE` seeds the S1.1 row only. CONTINUE ON KO-FI mounts the `KofiPanelSlot` iframe in place; "on Ko-fi ↗" ghost link opens the page. | ADR-0002 C19 | DECIDED (ADR-0002 C19) |
+| 00-O-19 | Ko-fi page name source: env `KOFI_PAGE` vs `site_settings.kofi_page`. | DB wins: `/support` (ISR, tag `settings`) reads `site_settings.kofi_page` via view `site_settings_public` (the Home compact `TipPanel` is static and links to `/support`); env `KOFI_PAGE` seeds the S1.1 row only. TIP ON KO-FI (was CONTINUE ON KO-FI — ADR-0042) swaps the card for the `KofiPanelSlot` iframe in place; "on Ko-fi ↗" ghost link opens the page. | ADR-0002 C19 | DECIDED (ADR-0002 C19) |
 | 00-O-20 | About page: `docs/spec.md` §5 lists "About — who OddSense is", but neither the registry route list nor DESIGN.md §6 has one. | Not a v1 route: the Home hero intro strip ("OddSense makes things for Minecraft", 02 §2.1) + footer dry line cover it; spec §5 About struck by the ADR-0002 PR (`keep-docs`). **[DAVID — confirmed 2026-08-17]** per ADR-0002 #30. | ADR-0002 #30 | DECIDED (ADR-0002 #30, David confirmed 2026-08-17) |
 | 00-O-21 | Env-required sets differed between 04 SC-16 and 01 §7. | Boot-required = the 8 names in S0.AC5; `SUPABASE_URL`/`SUPABASE_ANON_KEY` pair CLI-only; `CURSEFORGE_MEMBER` removed (unused in v1); everything else optional-with-degradation or required from its slice (registry Env line). | ADR-0002 #18 | DECIDED (ADR-0002 #18) |
 | 00-O-22 | Analytics event set and payload keys. | Four names only in v1: `download {project, source, from}` · `tip_click {amount?, from}` · `video_play {youtube_id, kind}` · `sign_in {from}`; no `external_out`. | ADR-0002 C12 | DECIDED (ADR-0002 C12) |
