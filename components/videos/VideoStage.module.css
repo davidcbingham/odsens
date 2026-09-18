@@ -79,7 +79,12 @@
 
 .video-stage-watch:hover {
   text-decoration: underline;
+  text-decoration-thickness: 2px;
   text-underline-offset: 3px;
+}
+
+.video-stage-watch:active {
+  color: var(--gold);
 }
 
 .video-stage-blurb {
