@@ -3389,14 +3389,31 @@ test.describe('admin settings (T-E2E-37)', () => {
     const proceed = page.getByRole('button', { name: 'CONTINUE ON KO-FI', exact: true });
     const radios = page.getByRole('radiogroup', { name: 'Amount' }).getByRole('radio');
 
+    /**
+     * `revalidateTag('settings', 'max')` is stale-while-revalidate: the first request after a save
+     * can still serve the old page while the entry regenerates — re-navigate until it holds.
+     */
+    async function expectSupport(assert: () => Promise<void>): Promise<void> {
+      await expect(async () => {
+        await page.goto('/support');
+        await assert();
+      }).toPass({ timeout: 20_000, intervals: [400, 800, 1_600] });
+    }
+
     await setKofiPage('oddsense-e2e');
-    await page.goto('/support');
-    await expect(out).toHaveAttribute('href', 'https://ko-fi.com/oddsense-e2e');
+    await expectSupport(async () => {
+      await expect(out).toHaveAttribute('href', 'https://ko-fi.com/oddsense-e2e', {
+        timeout: 1_000,
+      });
+    });
 
     await setKofiPage('');
     expect((await readSettings()).kofi_page ?? '').toBe('');
-    await page.goto('/support');
-    await expect(page.getByText('Tips open soon.', { exact: true })).toBeVisible();
+    await expectSupport(async () => {
+      await expect(page.getByText('Tips open soon.', { exact: true })).toBeVisible({
+        timeout: 1_000,
+      });
+    });
     await expect(proceed).toBeDisabled();
     await expect(radios).toHaveCount(4);
     for (const radio of await radios.all()) await expect(radio).toBeDisabled();
@@ -3411,8 +3428,9 @@ test.describe('admin settings (T-E2E-37)', () => {
 
     await setKofiPage('oddsense');
     expect((await readSettings()).kofi_page).toBe('oddsense');
-    await page.goto('/support');
-    await expect(proceed).toBeEnabled();
+    await expectSupport(async () => {
+      await expect(proceed).toBeEnabled({ timeout: 1_000 });
+    });
     await expect(out).toHaveAttribute('href', 'https://ko-fi.com/oddsense');
     await expect(page.getByText('Tips open soon.')).toHaveCount(0);
   });
