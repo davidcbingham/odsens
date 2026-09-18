@@ -77,11 +77,11 @@ export { syncStatusFixtures, type SyncStatusFixture } from './syncStatus';
 export { notificationMatrixFixtures, type NotificationMatrixFixture } from './notificationMatrix';
 // ---- S1.5b Support ----
 export {
-  amountPickerFixtures,
+  kofiCardFixtures,
   kofiPanelSlotFixtures,
   leaderboardFixtures,
   floatingSupportButtonFixtures,
-  type AmountPickerFixture,
+  type KofiCardFixture,
   type KofiPanelSlotFixture,
   type LeaderboardFixture,
   type FloatingSupportButtonFixture,

@@ -1,5 +1,5 @@
-/* /support skeleton — same 720px column as the page; the slab and the dashed slot keep the real
-   edges (KofiPanelSlot idle: 2px dashed --line-strong on --slab-sunk, min-height 180). */
+/* /support skeleton — same 720px column as the page; two slab shells with the real edges (the
+   KofiCard slab and "What it pays for"). */
 .loading {
   display: flex;
   flex-direction: column;
@@ -29,18 +29,6 @@
   background: var(--slab);
   outline: 2px solid var(--line-soft);
   overflow: hidden;
-}
-
-.loading-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-12);
-}
-
-.loading-slot {
-  min-height: 180px;
-  background: var(--slab-sunk);
-  border: 2px dashed var(--line-strong);
 }
 
 @media (max-width: 599px) {
