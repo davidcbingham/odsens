@@ -1,7 +1,7 @@
 # ADR-0042 — Support: one button, no amount picker
 
 ## Status
-Proposed
+Accepted (2026-09-18 — Support fix pass merge, PR #25; no tag)
 
 ## Date
 2026-09-18
