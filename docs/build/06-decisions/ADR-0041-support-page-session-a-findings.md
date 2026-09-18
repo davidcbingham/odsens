@@ -1,7 +1,7 @@
 # ADR-0041 — S1.5b Session A build findings
 
 ## Status
-Proposed
+Accepted (2026-09-18 — S1.5b merge, v0.6.3)
 
 ## Date
 2026-09-18
