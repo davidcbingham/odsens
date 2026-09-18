@@ -571,7 +571,7 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 
 ### S1.5b — Support page
 
-*(Inserted 2026-09-11 by ADR-0036 — the public Support half of S1.9, pulled ahead of Videos. Tag `v0.6.3` — was `v0.6.2` until ADR-0039 inserted S1.5c ahead of it.)*
+*(Inserted 2026-09-11 by ADR-0036 — the public Support half of S1.9, pulled ahead of Videos. Tag `v0.6.3` — was `v0.6.2` until ADR-0039 inserted S1.5c ahead of it. **Merged 2026-09-18** as `285fab6` (PR #23), ADR-0041 Accepted; live on odsens.com — merge record in `docs/questions.md` S1.5b notes.)*
 
 **Goal:** Ko-fi live on the site — the public `/support` page and the site-wide floating support button — now that `site_settings.kofi_page` is set (S1.5); stats stay in S1.9.
 
