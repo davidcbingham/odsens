@@ -9,8 +9,8 @@
  * `tests/fixtures/curseforge/*`; the local Supabase stack passes through. The second link's payload
  * is derived in memory — recorded fixtures are never hand-edited (F-6).
  *
- * T-ACT-71's youtube/mentions clauses land with those jobs (S1.6/S1.8); S1.2 scope is
- * "curseforge no-key" (05 §8 row S1.2).
+ * T-ACT-71's youtube clause lives in tests/db/jobs/syncYoutube.test.ts (S1.6); the mentions clause
+ * lands with S1.8. S1.2 scope is "curseforge no-key" (05 §8 row S1.2).
  *
  * S1.5 (T-ACT-74, 04 J-F, ADR-0030 D1): the last describe proves the `sync.failed` edge through the
  * shared runner for this job too — one event per failure episode (both links 404 → > 50 % → ok=false),

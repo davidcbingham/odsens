@@ -47,10 +47,14 @@ test.describe('http smoke', () => {
     expect(await res.json()).toMatchObject({ ok: false, error: { code: 'forbidden' } });
   });
 
-  test('T-E2E-46 cron routes (S1.2): no/wrong header → 401 JSON, no side effects; POST/HEAD → 405', async ({
+  test('T-E2E-46 cron routes (S1.2, S1.6): no/wrong header → 401 JSON, no side effects; POST/HEAD → 405', async ({
     request,
   }) => {
-    for (const path of ['/api/cron/sync-modrinth', '/api/cron/sync-curseforge']) {
+    for (const path of [
+      '/api/cron/sync-modrinth',
+      '/api/cron/sync-curseforge',
+      '/api/cron/sync-youtube', // S1.6 (04 §2.4; same SC-12 wrapper)
+    ]) {
       const bare = await request.get(path);
       expect(bare.status(), path).toBe(401);
       expect(await bare.json()).toMatchObject({

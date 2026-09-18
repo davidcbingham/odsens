@@ -1,0 +1,27 @@
+/* ShortsRow — DESIGN.md §11.5 (9:16 facades at 104px, gold duration chip, horizontal scroll on
+   phone); 03 §2.6 (tokens --gold + the facade's). Pass-3 artboard: flex row, gap 12. */
+.shorts-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+/* Ring room: the scroller clips, so it carries 8px of padding on every side (a 3px ring at 2px
+   offset needs 5) and takes the same back as negative margin — tiles stay on the page column. */
+.shorts-row-list {
+  display: flex;
+  gap: var(--space-12);
+  margin: calc(-1 * var(--space-8));
+  padding: var(--space-8);
+  overflow-x: auto;
+  list-style: none;
+  scroll-padding-inline: var(--space-8);
+  scroll-snap-type: x proximity;
+}
+
+.shorts-row-item {
+  flex: none;
+  width: 104px;
+  scroll-snap-align: start;
+}

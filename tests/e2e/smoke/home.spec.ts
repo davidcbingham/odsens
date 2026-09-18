@@ -3,18 +3,51 @@
  * S1.2: T-E2E-1 hero + featured, T-E2E-45b sitemap). Runs in `smoke-desktop` (1280) and
  * `smoke-phone` (390).
  *
- * T-E2E-1 S1.2 scope (05 §8 row: "hero + featured; IN THE WILD/videos rows land later"): the
- * IN THE WILD strip + ReachLine (S1.8), Latest videos facades (S1.6), the footer creators line
- * (S1.8), `FloatingSupportButton` (S1.9 — 03 Slice cell) and the 4-up `ExclusiveBadge` text
+ * T-E2E-1 by slice (05 §8): S1.2 "hero + featured", S1.6 "Latest videos" — its own test below.
+ * The IN THE WILD strip + ReachLine (S1.8), the footer creators line (S1.8),
+ * `FloatingSupportButton` (S1.9 — 03 Slice cell) and the 4-up `ExclusiveBadge` text
  * "ONLY ON ODSENS" (S1.3 — 03 `ProjectCard` "the `ExclusiveBadge` itself ships in S1.3") are NOT
  * asserted yet; their rows extend this spec in those slices. Seed truths (SEED-6): hero =
  * pixel-chameleon (featured_order 1), Featured 4-up = seed-exclusive-pack only (hero excluded,
- * 02 §2.1 — no back-fill).
+ * 02 §2.1 — no back-fill). SEED-11 (7 rows — ADR-0043 D8): the Home 2-up = `seedvid0001` +
+ * `seedvid0004`; `seedvid0002` is hidden (and the newest row overall), `seedvid0003` is a Short.
+ *
+ * T-E2E-1 Latest videos leg (00 S1.6.AC2 / AC6; 02 §2.1 #4; ADR-0041 D6; ADR-0043 D15): two
+ * facades and no `<iframe>`, ZERO requests to any YouTube / Google host — matched on
+ * `new URL(u).hostname`, never by substring: thumbnails are `/_next/image?url=https%3A%2F%2F
+ * i.ytimg.com…` on OUR host (01 INV-54) — the three RP-13 "Find me" links, exactly one compact
+ * `TipPanel` in the same row, columns side by side at 1280 and stacked at 390, gold focus rings,
+ * 44px targets, no horizontal overflow, axe, screenshot. The 0-videos column (§11.7 empty state)
+ * is asserted where `videos` is written: tests/e2e/admin/projects.spec.ts (T-E2E-47).
  */
 import { stat } from 'node:fs/promises';
 import { test, expect } from '../fixtures';
 import { expectNoSeriousA11y } from '../../helpers/axe';
 import { shoot } from '../../helpers/screenshots';
+import { SEED_VIDEOS } from '../../helpers/seedIds';
+
+/** Every host YouTube or Google could be reached on (AC2) — tested against the HOSTNAME only. */
+const GOOGLE_HOST =
+  /(^|\.)(youtube\.com|youtube-nocookie\.com|youtu\.be|ytimg\.com|ggpht\.com|google\.com|googleapis\.com|googlevideo\.com|googleusercontent\.com|gstatic\.com|doubleclick\.net)$/;
+
+function googleHostRequests(requests: string[]): string[] {
+  return requests.filter((url) => {
+    try {
+      return GOOGLE_HOST.test(new URL(url).hostname);
+    } catch {
+      return false;
+    }
+  });
+}
+
+const GOLD = 'rgb(255, 198, 31)'; // --gold
+
+/** 02 RP-13 — the "Find me" links, in order. */
+const FIND_ME_LINKS = [
+  { name: 'Modrinth', href: 'https://modrinth.com/user/OddSense/mods' },
+  { name: 'CurseForge', href: 'https://www.curseforge.com/members/oddsense/projects' },
+  { name: 'YouTube', href: 'https://www.youtube.com/@OdSens' },
+];
 
 const NAV_ORDER = ['Projects', 'Videos', 'Skins', 'Art', 'Seen on'];
 const SUPPORT_TEXT = /♥\s*SUPPORT/;
@@ -167,6 +200,135 @@ test.describe('home', () => {
     ]);
 
     await expectNoSeriousA11y(page);
+  });
+
+  test('T-E2E-1 Latest videos (S1.6): two facades = seedvid0001 + seedvid0004, zero iframe, zero Google-host requests, Find me links, one compact TipPanel in the row, axe', async ({
+    page,
+    requests,
+  }) => {
+    const isPhone = (page.viewportSize()?.width ?? 1280) < 900;
+    const response = await page.goto('/', { waitUntil: 'networkidle' });
+    expect(response?.status()).toBe(200);
+    expect(await response?.text()).not.toContain('<iframe');
+
+    // Videos column: h2 + the channel link (external, new tab) + the two newest visible long videos.
+    const latest = page.locator('section', {
+      has: page.getByRole('heading', { level: 2, name: 'LATEST VIDEOS' }),
+    });
+    await expect(latest).toHaveCount(1);
+    const channel = latest.getByRole('link', { name: /@OdSens on YouTube/ });
+    await expect(channel).toHaveAttribute('href', 'https://www.youtube.com/@OdSens');
+    await expect(channel).toHaveAttribute('target', '_blank');
+    await expect(channel).toHaveAttribute('rel', /noopener/);
+
+    const cards = latest.locator('article[data-variant="home"]');
+    await expect(cards).toHaveCount(2);
+    await expect(cards.nth(0).getByRole('heading', { level: 3 })).toHaveText('Seed Long Video One');
+    await expect(cards.nth(1).getByRole('heading', { level: 3 })).toHaveText(
+      'Seed Long Video Four',
+    );
+    // Every card is a facade button — the only interactive element in it (03 `VideoCard`).
+    const facades = latest.getByRole('button', { name: /^Play / });
+    await expect(facades).toHaveCount(2);
+    await expect(facades.nth(0)).toHaveAccessibleName(/^Play Seed Long Video One/);
+    await expect(facades.nth(1)).toHaveAccessibleName(/^Play Seed Long Video Four/);
+    await expect(cards.locator('a')).toHaveCount(0);
+    // Thumbnails ride `next/image` on OUR host (01 INV-54) — never a raw ytimg URL.
+    const thumbs = await latest
+      .locator('img')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('src') ?? ''));
+    expect(thumbs).toHaveLength(2);
+    for (const [i, id] of [SEED_VIDEOS.long.youtubeId, SEED_VIDEOS.long4.youtubeId].entries()) {
+      expect(thumbs[i]).toMatch(/^\/_next\/image\?/);
+      expect(decodeURIComponent(thumbs[i] ?? '')).toContain(`/vi/${id}/`);
+    }
+    // AC6 / AC7 / AC5: the hidden row (newest overall) and the Short are nowhere on Home.
+    const html = await page.content();
+    expect(html).not.toContain(SEED_VIDEOS.hiddenLong.youtubeId);
+    expect(html).not.toContain(SEED_VIDEOS.short.youtubeId);
+    await expect(page.getByText(/Seed Long Video Two|Seed Short/)).toHaveCount(0);
+
+    // AC2: nothing is an iframe, and nothing went to a YouTube / Google host (hostname match).
+    await expect(page.locator('iframe')).toHaveCount(0);
+    expect(googleHostRequests(requests)).toEqual([]);
+
+    // Side column: FIND ME — the three RP-13 links, in order, each a new tab with its mark.
+    const find = page.locator('section', {
+      has: page.getByRole('heading', { level: 2, name: 'FIND ME' }),
+    });
+    await expect(find).toHaveCount(1);
+    const findLinks = find.getByRole('link');
+    await expect(findLinks).toHaveCount(FIND_ME_LINKS.length);
+    for (const [i, link] of FIND_ME_LINKS.entries()) {
+      const row = findLinks.nth(i);
+      await expect(row).toHaveAccessibleName(new RegExp(`${link.name}.*opens in new tab`));
+      await expect(row).toHaveAttribute('href', link.href);
+      await expect(row).toHaveAttribute('target', '_blank');
+      await expect(row).toHaveAttribute('rel', /noopener/);
+      await expect(row.getByRole('img', { name: link.name })).toHaveCount(1);
+      const box = await row.boundingBox();
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
+    // The footer column stays (02 RP-13): same three hrefs there.
+    const footerHrefs = await page
+      .getByRole('contentinfo')
+      .locator('a[target="_blank"]')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+    expect(footerHrefs).toEqual(FIND_ME_LINKS.map((link) => link.href));
+
+    // Exactly ONE compact TipPanel on `/` (00 S1.5b.AC4; T-E2E-49), in this row, under Find me.
+    const tip = page.locator('aside[aria-label="Support"][data-compact]');
+    await expect(tip).toHaveCount(1);
+    await expect(tip.locator('a[data-variant="gold-ink"]')).toHaveAttribute('href', '/support');
+    const row = latest.locator('xpath=..');
+    await expect(row.locator('aside[aria-label="Support"][data-compact]')).toHaveCount(1);
+    await expect(row.getByRole('heading', { level: 2, name: 'FIND ME' })).toHaveCount(1);
+
+    // Layout: videos | (Find me over the panel) at 1280; one column in DOM order below 900.
+    const latestBox = await latest.boundingBox();
+    const findBox = await find.boundingBox();
+    const tipBox = await tip.boundingBox();
+    expect(latestBox && findBox && tipBox).toBeTruthy();
+    if (latestBox && findBox && tipBox) {
+      expect(tipBox.y).toBeGreaterThanOrEqual(findBox.y + findBox.height);
+      expect(Math.round(tipBox.x)).toBe(Math.round(findBox.x));
+      expect(Math.round(tipBox.width)).toBe(Math.round(findBox.width));
+      if (isPhone) {
+        expect(findBox.y).toBeGreaterThanOrEqual(latestBox.y + latestBox.height);
+        expect(Math.round(findBox.x)).toBe(Math.round(latestBox.x));
+        // DESIGN.md §3: 24px page gutter on phones, both sides.
+        expect(Math.round(latestBox.x)).toBe(24);
+        expect(Math.round(latestBox.width)).toBe((page.viewportSize()?.width ?? 390) - 48);
+      } else {
+        expect(findBox.x).toBeGreaterThanOrEqual(latestBox.x + latestBox.width);
+        expect(Math.round(findBox.y)).toBe(Math.round(latestBox.y));
+      }
+    }
+    // The channel link is a 44px target at both widths.
+    const channelBox = await channel.boundingBox();
+    expect(channelBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+    // No horizontal page overflow (PR #21 lesson).
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBe(0);
+
+    // Nothing takes focus on first render; the gold 3px ring shows on the channel link, on a
+    // Find me row (its slab edge is an outline too — the ring must win) and on a facade.
+    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+    for (const target of [channel, findLinks.first(), facades.first()]) {
+      await target.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      await expect(target).toBeFocused();
+      await expect(target).toHaveCSS('outline-color', GOLD);
+      await expect(target).toHaveCSS('outline-width', '3px');
+      await expect(target).toHaveCSS('outline-style', 'solid');
+    }
+
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'home-latest-videos');
   });
 
   test('T-E2E-45b /sitemap.xml → 200, lists /projects + published slugs, no noindexed URLs', async ({

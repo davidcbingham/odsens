@@ -1,0 +1,86 @@
+/* UpNextList — DESIGN.md §6.4 / §11.1 (132px thumbs; the selected row keeps the --indigo-lift
+   outline); 03 §2.6 (tokens --slab --slab-raised --indigo-lift --mute-dim); pass-3 facade artboard
+   (rows: gap 12, padding 8, title 15px 700, meta 13px). */
+.up-next-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.up-next-list-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The 2px edge is an inset shadow, not an outline: the gold focus ring is the outline and must
+   stay whole on a selected row (selected + focused shows both, one inside the other). */
+.up-next-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+  padding: var(--space-8);
+  background: var(--slab);
+  box-shadow: inset 0 0 0 2px var(--line);
+  color: var(--chalk);
+  text-decoration: none;
+  transition:
+    background-color var(--dur-fast) ease-out,
+    box-shadow var(--dur-fast) ease-out;
+}
+
+.up-next-list-row:hover {
+  background: var(--slab-raised);
+}
+
+/* --mute-dim on --slab-raised is 4.1:1 — the hovered row's meta steps up to --mute (6.2:1). */
+.up-next-list-row:hover .up-next-list-meta {
+  color: var(--mute);
+}
+
+.up-next-list-row[aria-current='true'] {
+  box-shadow: inset 0 0 0 2px var(--indigo-lift);
+  color: var(--white);
+}
+
+/* DESIGN.md §6.4: 132px thumbs at every width (never shrunk on phones). */
+.up-next-list-thumb {
+  flex: none;
+  width: 132px;
+}
+
+.up-next-list-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* Two line boxes, always: a one-line title and a fallback-font wrap take the same height. */
+.up-next-list-title {
+  display: -webkit-box;
+  min-height: calc(2 * 1.35em);
+  overflow: hidden;
+  font-size: var(--text-ui);
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.up-next-list-meta {
+  overflow: hidden;
+  font-size: var(--text-label);
+  line-height: 1.35;
+  color: var(--mute-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

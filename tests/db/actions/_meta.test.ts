@@ -1,7 +1,8 @@
 /**
  * tests/db/actions/_meta.test.ts — T-ACT-0 (05 §7.2) for every S1.1 action exported from
  * lib/actions/accounts.ts (`checkHandle`, `completeOnboarding`, `updateProfile`, `deleteAccount`) and,
- * since S1.4, the eight comment actions of lib/actions/comments.ts.
+ * since S1.4, the eight comment actions of lib/actions/comments.ts; S1.5 the three settings actions;
+ * S1.6 `updateVideo` (lib/actions/videos.ts — 04 §1.8; its DB-fault arms live in updateVideo.test.ts).
  *
  * (1) result shape + never throws: `@/lib/supabase/admin` is mocked to THROW in this file (a switch —
  *     see `adminMode`), so the first service-role touch inside each action (the rate limiter / the
@@ -12,10 +13,11 @@
  *     `issues[]` (not `unauthenticated`), and `fetch` is never called.
  * (3) role re-check: the S1.4 `requireRole` actions (`moderateComment`, `banUser`, `renameUserHandle`,
  *     the moderator path of `deleteComment`) and the S1.5 settings actions (`updateSettings`,
- *     `testDiscordWebhook`, `setUserRole` — lib/actions/settings.ts, admin-only) called as `user` WITH
+ *     `testDiscordWebhook`, `setUserRole` — lib/actions/settings.ts, admin-only) and S1.6's
+ *     `updateVideo` (lib/actions/videos.ts, admin-only) called as `user` WITH
  *     the admin client mocked to succeed (the switch flipped to the real client) still answer
  *     `forbidden`; accounts.ts has no `requireRole` (S1.1), and every `requireRole` call site in
- *     comments.ts / settings.ts has its SC-24 `logAdmin` twin.
+ *     comments.ts / settings.ts / videos.ts has its SC-24 `logAdmin` twin.
  * (4) every `error.code` asserted across tests/db/{actions,routes,proxy} is a member of the 04 §7 union.
  */
 import fs from 'node:fs';
@@ -44,6 +46,8 @@ import type {
   TestDiscordWebhookInput,
   UpdateSettingsInput,
 } from '@/lib/actions/settings.schema';
+import * as videos from '@/lib/actions/videos';
+import type { UpdateVideoInput } from '@/lib/actions/videos.schema';
 import { freeHandle, readProfile } from '@/tests/helpers/arrange';
 import { ACTION_ERROR_CODES, expectFail, expectResultShape } from '@/tests/helpers/actionResult';
 import { asRole, SEED_ROLE_IDS } from '@/tests/helpers/asRole';
@@ -55,7 +59,7 @@ import {
   makeUser,
   restoreSeedCommentCounts,
 } from '@/tests/helpers/factories';
-import { SEED_COMMENTS, SEED_PROJECTS, SEED_USERS } from '@/tests/helpers/seedIds';
+import { SEED_COMMENTS, SEED_PROJECTS, SEED_USERS, SEED_VIDEOS } from '@/tests/helpers/seedIds';
 import { spyLog, type LogSpy } from '@/tests/helpers/spies';
 
 /** `throw` = the DB-outage fault injection of (1); `real` = the working service client for (3). */
@@ -90,6 +94,23 @@ const {
 const { updateSettings, testDiscordWebhook, setUserRole } = settings;
 
 const S15_ACTIONS = ['setUserRole', 'testDiscordWebhook', 'updateSettings'] as const;
+
+const { updateVideo } = videos;
+
+const S16_VIDEO_ACTIONS = ['updateVideo'] as const;
+
+/** SEED-11 `seedvid0001` — visible, long, no override; every case below must leave it that way (05 H-1). */
+const SEED_VIDEO = SEED_VIDEOS.long.youtubeId;
+
+async function readSeedVideo(): Promise<unknown> {
+  const { data } = await service
+    .from('videos')
+    .select('hidden, is_short, is_short_override')
+    .eq('youtube_id', SEED_VIDEO)
+    .single();
+  return data;
+}
+const SEED_VIDEO_TRUTH = { hidden: false, is_short: false, is_short_override: null };
 
 /** A well-formed webhook URL — no request ever leaves in this file (auth or the outage stop it first). */
 const WEBHOOK = 'https://discord.com/api/webhooks/123/t_metatoken';
@@ -321,6 +342,18 @@ describe('T-ACT-0 (1) S1.5 settings actions return internal on a service outage,
   });
 });
 
+describe('T-ACT-0 (1) S1.6 updateVideo returns internal on a service outage, nothing written', () => {
+  it('T-ACT-0 updateVideo: the videos read needs the service client → internal, seedvid0001 untouched', async () => {
+    const res = await callAction(
+      updateVideo,
+      { youtube_id: SEED_VIDEO, hidden: true },
+      { role: 'admin' },
+    );
+    expectInternal(res, 'updateVideo');
+    expect(await readSeedVideo()).toEqual(SEED_VIDEO_TRUTH);
+  });
+});
+
 describe('T-ACT-0 (2) zod validation runs before auth and before any DB call', () => {
   const invalid: Array<{
     name: string;
@@ -509,6 +542,26 @@ describe('T-ACT-0 (2) zod validation runs before auth and before any DB call', (
         callAction(setUserRole, { handle: '@seed_user', role: 'moderator' }, { role: 'anon' }),
       path: 'handle',
     },
+    {
+      name: 'updateVideo: neither hidden nor is_short',
+      call: () => callAction(updateVideo, { youtube_id: SEED_VIDEO }, { role: 'anon' }),
+      path: 'hidden',
+    },
+    {
+      name: 'updateVideo: youtube_id is not 11 URL-safe characters',
+      call: () => callAction(updateVideo, { youtube_id: 'nope', hidden: true }, { role: 'anon' }),
+      path: 'youtube_id',
+    },
+    {
+      name: 'updateVideo: is_short outside true / false / null',
+      call: () =>
+        callAction(
+          updateVideo,
+          { youtube_id: SEED_VIDEO, is_short: 'auto' } as unknown as UpdateVideoInput,
+          { role: 'anon' },
+        ),
+      path: 'is_short',
+    },
   ];
 
   it.each(invalid)('T-ACT-0 $name → validation, no network call', async ({ call, path: p }) => {
@@ -563,6 +616,16 @@ describe('T-ACT-0 (3) role re-check', () => {
     expect(requireRoleCalls).toHaveLength(3);
     expect(source.includes("requireRole('moderator')")).toBe(false);
     expect(auditCalls.sort()).toEqual([...S15_ACTIONS]);
+  });
+
+  it('T-ACT-0 S1.6 lib/actions/videos.ts exports exactly updateVideo; its requireRole call site has its SC-24 logAdmin twin', () => {
+    expect(Object.keys(videos).sort()).toEqual([...S16_VIDEO_ACTIONS]);
+    const source = fs.readFileSync(path.join(REPO_ROOT, 'lib', 'actions', 'videos.ts'), 'utf8');
+    const requireRoleCalls = source.match(/await requireRole\('admin'\)/g) ?? [];
+    const auditCalls = [...source.matchAll(/logAdmin\(\s*'(\w+)'/g)].map((m) => m[1] ?? '');
+    expect(requireRoleCalls).toHaveLength(1);
+    expect(source.includes("requireRole('moderator')")).toBe(false);
+    expect(auditCalls.sort()).toEqual([...S16_VIDEO_ACTIONS]);
   });
 
   describe('T-ACT-0 requireRole actions as `user` with the admin client mocked to SUCCEED → forbidden', () => {
@@ -620,6 +683,11 @@ describe('T-ACT-0 (3) role re-check', () => {
         call: () =>
           callAction(setUserRole, { handle: 'seed_user', role: 'moderator' }, { role: 'user' }),
       },
+      {
+        name: 'updateVideo',
+        call: () =>
+          callAction(updateVideo, { youtube_id: SEED_VIDEO, hidden: true }, { role: 'user' }),
+      },
     ];
 
     it.each(roleChecks)('T-ACT-0 $name → forbidden', async ({ call }) => {
@@ -644,6 +712,7 @@ describe('T-ACT-0 (3) role re-check', () => {
         .eq('id', 1)
         .single();
       expect(row?.moderation_mode).toBe('auto');
+      expect(await readSeedVideo()).toEqual(SEED_VIDEO_TRUTH);
     });
   });
 });

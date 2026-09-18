@@ -3,7 +3,8 @@
  * reference rows by constant. Scheme: `00000000-0000-4000-8000-00000000<gg><nn>` (the last block is
  * 12 hex chars — 8 zeros + group + index — so it is a valid v4-shaped uuid); groups
  * `00`=users, `01`=projects, `02`=comments, `03`=mentions, `04`=versions, `05`=files, `06`=skins,
- * `07`=art, `08`=sync_runs (SEED-12 extends the scheme — see the seed.sql SEED-12 header).
+ * `07`=art, `08`=sync_runs (SEED-12 extends the scheme — see the seed.sql SEED-12 header),
+ * `09`=videos (SEED-11, S1.6 — ADR-0043 D8; see the seed.sql SEED-11 header).
  * The rows themselves arrive with their slices (SEED-3 users in S1.1, SEED-4.. later); the constants
  * are stable from S0.
  */
@@ -16,7 +17,8 @@ export type SeedGroup =
   | 'files'
   | 'skins'
   | 'art'
-  | 'sync_runs';
+  | 'sync_runs'
+  | 'videos';
 
 export const SEED_GROUP_CODE: Readonly<Record<SeedGroup, string>> = {
   users: '00',
@@ -28,6 +30,7 @@ export const SEED_GROUP_CODE: Readonly<Record<SeedGroup, string>> = {
   skins: '06',
   art: '07',
   sync_runs: '08',
+  videos: '09',
 };
 
 const SEED_UUID_PREFIX = '00000000-0000-4000-8000-00000000';
@@ -102,4 +105,21 @@ export const SEED_SYNC_RUNS = {
   modrinth: seedId('sync_runs', 1),
   curseforge: seedId('sync_runs', 2),
   youtube: seedId('sync_runs', 3),
+} as const;
+
+/**
+ * SEED-11 — videos (S1.6; 7 rows — ADR-0043 D8). `youtubeId` is the natural key actions and tests
+ * use (`updateVideoInput`, 04 §1.8; T-ACT-68, T-E2E-6); `id` is the row uuid (S1.9 per-video stats).
+ * Newest first by `published_at`: hiddenLong · long · short · long4 · long5 · long6 · long7.
+ * On seed: Home 2-up = long + long4 · Up next (UP_NEXT_COUNT 4) = long, long4, long5, long6 ·
+ * MORE VIDEOS grid = long7 · ShortsRow = short.
+ */
+export const SEED_VIDEOS = {
+  long: { id: seedId('videos', 1), youtubeId: 'seedvid0001' }, // 600 s — newest VISIBLE long (hero)
+  hiddenLong: { id: seedId('videos', 2), youtubeId: 'seedvid0002' }, // 480 s, hidden true — newest row overall
+  short: { id: seedId('videos', 3), youtubeId: 'seedvid0003' }, // 45 s, is_short true
+  long4: { id: seedId('videos', 4), youtubeId: 'seedvid0004' }, // 724 s — second Home card
+  long5: { id: seedId('videos', 5), youtubeId: 'seedvid0005' }, // 3723 s, two-line title
+  long6: { id: seedId('videos', 6), youtubeId: 'seedvid0006' }, // 185 s, description NULL (no blurb)
+  long7: { id: seedId('videos', 7), youtubeId: 'seedvid0007' }, // 61 s — oldest; the one grid card
 } as const;

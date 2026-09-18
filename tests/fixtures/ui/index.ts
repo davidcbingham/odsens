@@ -86,3 +86,18 @@ export {
   type LeaderboardFixture,
   type FloatingSupportButtonFixture,
 } from './support';
+// ---- S1.6 Videos ----
+export {
+  videoFacadeFixtures,
+  videoFacadeLiveStates,
+  upNextListFixtures,
+  shortsRowFixtures,
+  videoCardFixtures,
+  videoStageFixtures,
+  type VideoFacadeFixture,
+  type VideoFacadeLiveState,
+  type UpNextListFixture,
+  type ShortsRowFixture,
+  type VideoCardFixture,
+  type VideoStageFixture,
+} from './videos';

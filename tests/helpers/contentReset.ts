@@ -9,7 +9,13 @@
  *   afterAll(async () => { await restoreContentTables(snap); });
  *
  * `restoreContentTables` removes rows that did not exist at snapshot time (children first, FK order)
- * and upserts every snapshot row back, so seed values (SEED-4..6, SEED-12) survive byte-for-byte.
+ * and upserts every snapshot row back, so seed values (SEED-4..6, SEED-11, SEED-12) survive
+ * byte-for-byte.
+ *
+ * S1.6 adds `videos` to the same snapshot (no `videosReset.ts`): a `syncYoutube` run
+ * inserts fixture rows no factory tracks and rewrites seed rows (T-ACT-53/71/74, the cron route,
+ * `triggerSync`), and `updateVideo` flips seed `seedvid0001` (T-ACT-68). The e2e build prerenders
+ * `/videos` and Home from the DB as the db lane left it, so every such file restores (H-1).
  * Service-role client only (arranging state, 05 §1.3 `asRole('service')`).
  *
  * S1.5 adds the settings tables' documented shape as constants + a constant-based restore (no
@@ -32,6 +38,7 @@ const TABLES = [
   'project_links',
   'project_overrides',
   'sync_runs',
+  'videos',
 ] as const;
 
 type ContentTable = (typeof TABLES)[number];
@@ -46,6 +53,7 @@ const PK: Record<ContentTable, string[]> = {
   project_links: ['project_id', 'platform'],
   project_overrides: ['project_id'],
   sync_runs: ['id'],
+  videos: ['id'],
 };
 
 /** Generated columns cannot be written back (`projects.search` is GENERATED ALWAYS … STORED). */
@@ -61,6 +69,7 @@ const CHILD_FIRST: ContentTable[] = [
   'project_overrides',
   'sync_runs',
   'projects',
+  'videos', // no FK in or out (data-model §2.3) — order is free
 ];
 
 function pkKey(table: ContentTable, row: Row): string {

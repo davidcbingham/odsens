@@ -45,10 +45,18 @@
  *    branches), T-E2E-56 (the Markdown editor: toolbar, shortcuts, Preview parity with the
  *    public page, stored value plain Markdown) and T-E2E-57 (phone chip row + toolbar wrap,
  *    axe at 1280 + 390 on every section as admin and moderator, screenshots per section).
+ *  - S1.6 (same file, same reason — ADR-0043 D9 / D11): T-E2E-42's `/admin` leg now waits for the
+ *    VIDEOS list (`Table`, Hidden + Short toggles) before axe + the shot, pristine seed first; the
+ *    final describe holds T-E2E-47 — the moderator's disabled toggles (no POST), then the admin
+ *    hides every visible video THROUGH the `/admin` Hidden toggles (`updateVideo` →
+ *    `revalidateTag('videos')`), polls `/videos` and `/` to the §11.7 empty state, un-hides exactly
+ *    those rows and polls both pages back. No service-side delete; the service client only
+ *    repairs a failed run in `afterAll`.
  *
  * Seed truths: SEED-4..6 (3 published projects; overrides featured 1 = pixel-chameleon,
  * 2 = seed-exclusive-pack; CF link 900001 on pixel-chameleon), SEED-12 (one ok run per source),
- * SEED-9 (the held `…0203` by seed_user2, the hidden + reported `…0204`).
+ * SEED-9 (the held `…0203` by seed_user2, the hidden + reported `…0204`), SEED-11 (7 videos:
+ * `seedvid0002` hidden, `seedvid0003` the one Short, no overrides).
  */
 import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
@@ -81,7 +89,7 @@ import { fixturePath, loadFixture } from '../../helpers/fixtures';
 import { loginAs, logout } from '../../helpers/loginAs';
 import { shoot } from '../../helpers/screenshots';
 import { listObjects, removeObjects } from '../../helpers/storage';
-import { SEED_COMMENTS, SEED_PROJECTS, SEED_USERS } from '../../helpers/seedIds';
+import { SEED_COMMENTS, SEED_PROJECTS, SEED_USERS, SEED_VIDEOS } from '../../helpers/seedIds';
 import { repairThreadCache } from '../../helpers/threadCache';
 
 test.describe.configure({ mode: 'serial' });
@@ -179,6 +187,13 @@ test('T-E2E-42 admin routes: axe zero serious/critical + 1280 screenshots (/admi
 
   await page.goto('/admin');
   await expect(page.getByRole('heading', { name: 'SYNC' })).toBeVisible();
+  // S1.6 (05 T-E2E-42; ADR-0043 D11): checked and shot WITH the videos list — all 7 seed rows
+  // (the admin reads the hidden one too), a Hidden and a Short toggle on each.
+  const videoList = page.locator('section', {
+    has: page.getByRole('heading', { level: 2, name: /^VIDEOS/ }),
+  });
+  await expect(videoList.locator('tbody tr')).toHaveCount(7);
+  await expect(videoList.getByRole('switch')).toHaveCount(14);
   await expectNoSeriousA11y(page);
   await shoot(page, 'admin-dashboard');
 
@@ -3430,5 +3445,337 @@ test.describe('admin settings (T-E2E-37)', () => {
     });
     await expect(out).toHaveAttribute('href', 'https://ko-fi.com/oddsense');
     await expect(page.getByText('Tips open soon.')).toHaveCount(0);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-E2E-47 (S1.6; 00 S1.6.AC7 + AC8; recipe per ADR-0043 D9) — the `/admin` videos list and the
+// public empty state. A service-side truncate never revalidates the ISR pages (FLK-4 forbids
+// waiting the 600 s out), so the empty state is reached the way Oliver would reach it: the admin
+// hides every visible video through the `/admin` Hidden toggles — each flip is ONE `updateVideo`
+// call → `revalidateTag('videos')` — and the pages are polled (re-navigation, never a sleep). The
+// page logic keys on zero VISIBLE rows; the literally empty list is the unit arm
+// `splitVideos([])` (tests/unit/videos.test.ts). Un-hides exactly the rows it hid — the seed's
+// own hidden row `seedvid0002` stays hidden — and polls both pages back to seed truth.
+// `mutatesSeed`, restored: through the same action on the happy path; `afterAll` repairs a failed
+// run (service client for the rows — cleanup only — then the app's own revalidation for the ISR
+// entries, the `repairThreadCache` reasoning: `next start` keeps them on disk for the next run).
+// ---------------------------------------------------------------------------------------------
+test.describe('videos on /admin + the public empty state (S1.6 — ADR-0043 D9)', () => {
+  const HIDDEN_SEED = SEED_VIDEOS.hiddenLong.youtubeId; // seedvid0002 — hidden on seed, stays so
+  const SHORT_SEED = SEED_VIDEOS.short.youtubeId; // seedvid0003 — the one `is_short` row
+  const SEED_VIDEO_IDS: readonly string[] = Object.values(SEED_VIDEOS).map((v) => v.youtubeId);
+  const CHANNEL = 'https://www.youtube.com/@OdSens';
+  const EMPTY_TITLE = 'NO VIDEOS YET';
+  const EMPTY_LINE = "They'll show up here when they exist.";
+
+  type VideoRow = {
+    youtube_id: string;
+    title: string;
+    hidden: boolean;
+    is_short: boolean;
+    is_short_override: boolean | null;
+  };
+
+  /** Set once the admin test has un-hidden everything AND seen both pages back on seed truth. */
+  let restoredThroughApp = false;
+  /** Set when the admin test starts flipping — until then the caches were never touched. */
+  let mutated = false;
+
+  function service() {
+    return loose(asRole('service'));
+  }
+
+  /** Every seed video, newest first (the `/admin` list order). */
+  async function readVideos(): Promise<VideoRow[]> {
+    const { data, error } = await service()
+      .from('videos')
+      .select('youtube_id, title, hidden, is_short, is_short_override')
+      .in('youtube_id', [...SEED_VIDEO_IDS])
+      .order('published_at', { ascending: false });
+    expect(error).toBeNull();
+    return (data ?? []) as VideoRow[];
+  }
+
+  function videoList(page: Page) {
+    return page.locator('section', {
+      has: page.getByRole('heading', { level: 2, name: /^VIDEOS/ }),
+    });
+  }
+
+  /** One Hidden flip = one `updateVideo` call + PRG; waits until the re-render shows `want`. */
+  async function setHidden(page: Page, title: string, want: boolean): Promise<void> {
+    await page.goto('/admin');
+    const { input, label } = toggleFor(page, `Hide ${title}`);
+    if (want) await expect(input).not.toBeChecked();
+    else await expect(input).toBeChecked();
+    await label.click();
+    if (want) await expect(input).toBeChecked({ timeout: 10_000 });
+    else await expect(input).not.toBeChecked({ timeout: 10_000 });
+  }
+
+  /**
+   * Two more `revalidateTag('videos')` calls that leave seed truth behind: the Short override ON
+   * and back to "Auto" on the hidden seed row (hidden → the public pages never show it either
+   * way; `is_short: null` hands `seedvid0002` back to the heuristic = false, override NULL).
+   */
+  async function nudgeVideosTag(page: Page, hiddenTitle: string): Promise<void> {
+    await page.goto('/admin');
+    const short = toggleFor(page, `Mark ${hiddenTitle} as a Short`);
+    const auto = videoList(page).getByRole('button', { name: /^Auto/ });
+    await expect(short.input).not.toBeChecked();
+    await expect(auto).toHaveCount(0);
+    await short.label.click();
+    await expect(short.input).toBeChecked({ timeout: 10_000 });
+    await expect(auto).toHaveCount(1);
+    await page.goto('/admin');
+    await auto.click();
+    await expect(short.input).not.toBeChecked({ timeout: 10_000 });
+    await expect(auto).toHaveCount(0);
+  }
+
+  /**
+   * `expectAtUrl` with the `repairThreadCache` cycle: `revalidateTag(…, 'max')` is
+   * stale-while-revalidate twice over (the page entry AND the `unstable_cache` data entry —
+   * tests/helpers/threadCache.ts), so the regeneration after the LAST flip can bake the previous
+   * list for another 600 s. When the re-navigation poll runs dry, revalidate again through the
+   * app (`nudgeVideosTag`) and poll again — never a fixed sleep (FLK-4).
+   */
+  async function expectVideosAtUrl(
+    page: Page,
+    url: string,
+    hiddenTitle: string,
+    assert: () => Promise<void>,
+  ): Promise<void> {
+    for (let cycle = 0; ; cycle += 1) {
+      try {
+        await expect(async () => {
+          await page.goto(url);
+          await assert();
+        }).toPass({ timeout: 8_000, intervals: [400, 800, 1_600] });
+        return;
+      } catch (error) {
+        if (cycle === 3) throw error;
+        await nudgeVideosTag(page, hiddenTitle);
+      }
+    }
+  }
+
+  /** `/videos` on seed truth: hero = seedvid0001, 4 Up next rows, the one grid card, the one Short. */
+  async function expectSeedVideosPage(page: Page): Promise<void> {
+    const quick = { timeout: 1_000 };
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('VIDEOS', quick);
+    await expect(page.getByRole('heading', { name: EMPTY_TITLE })).toHaveCount(0, quick);
+    await expect(
+      page.getByRole('button', { name: /^Play Seed Long Video One/ }).first(),
+    ).toBeVisible(quick);
+    const more = page.locator('section[aria-labelledby="section-title-more-videos"]');
+    await expect(more.getByRole('heading', { level: 3 })).toHaveText(
+      'Seed Long Video Seven',
+      quick,
+    );
+    await expect(page.getByRole('button', { name: /^Play Seed Short: Pipe Bonk/ })).toHaveCount(
+      1,
+      quick,
+    );
+    for (const title of ['Seed Long Video Four', 'Seed Long Video Six']) {
+      await expect(page.getByText(title, { exact: true }).first()).toBeVisible(quick);
+    }
+    expect(await page.content()).not.toContain(HIDDEN_SEED);
+    await expect(page.locator('iframe')).toHaveCount(0);
+  }
+
+  /** Home on seed truth: the 2-up = seedvid0001 + seedvid0004. */
+  async function expectSeedHome(page: Page): Promise<void> {
+    const latest = page.locator('section[aria-labelledby="latest-videos"]');
+    const cards = latest.locator('article[data-variant="home"]');
+    await expect(cards).toHaveCount(2, { timeout: 1_000 });
+    await expect(cards.nth(0).getByRole('heading', { level: 3 })).toHaveText(
+      'Seed Long Video One',
+      { timeout: 1_000 },
+    );
+    await expect(cards.nth(1).getByRole('heading', { level: 3 })).toHaveText(
+      'Seed Long Video Four',
+      { timeout: 1_000 },
+    );
+    expect(await page.content()).not.toContain(HIDDEN_SEED);
+  }
+
+  test.beforeAll(() => {
+    loadEnvTest();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    if (!mutated || restoredThroughApp) return;
+    // A failed run. Rows first (service client — cleanup only): SEED-11 truth is `seedvid0002`
+    // hidden, `seedvid0003` the one Short, no override anywhere.
+    for (const youtubeId of SEED_VIDEO_IDS) {
+      const { error } = await service()
+        .from('videos')
+        .update({
+          hidden: youtubeId === HIDDEN_SEED,
+          is_short: youtubeId === SHORT_SEED,
+          is_short_override: null,
+        })
+        .eq('youtube_id', youtubeId);
+      expect(error).toBeNull();
+    }
+    // Then the ISR entries, through the app's own revalidation (a service write revalidates
+    // nothing), in a fresh admin context since afterAll has no page.
+    const hiddenTitle = (await readVideos()).find((v) => v.youtube_id === HIDDEN_SEED)?.title ?? '';
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    try {
+      await loginAs(page, 'admin');
+      await nudgeVideosTag(page, hiddenTitle);
+      await expectVideosAtUrl(page, '/videos', hiddenTitle, () => expectSeedVideosPage(page));
+      await expectVideosAtUrl(page, '/', hiddenTitle, () => expectSeedHome(page));
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('T-E2E-47 moderator: the /admin VIDEOS list shows Hidden + Short toggles disabled under title="Admin only"; a click sends no POST and writes nothing (AC7)', async ({
+    page,
+  }) => {
+    const before = await readVideos();
+    expect(before.map((v) => v.youtube_id).sort()).toEqual([...SEED_VIDEO_IDS].sort());
+    const visible = before.filter((v) => !v.hidden);
+    expect(visible).toHaveLength(6);
+
+    await loginAs(page, 'mod');
+    await page.goto('/admin');
+    const list = videoList(page);
+    await expect(list.getByRole('heading', { level: 2 })).toHaveText(/^VIDEOS/);
+
+    // The RLS-filtered read (05 T-RLS-49: a moderator never reads a hidden video): six LIVE rows,
+    // the hidden seed row is nowhere in the document.
+    await expect(list.locator('tbody tr')).toHaveCount(6);
+    await expect(list.getByText('LIVE', { exact: true })).toHaveCount(6);
+    await expect(list.getByText('HIDDEN', { exact: true })).toHaveCount(0);
+    expect(await page.content()).not.toContain(HIDDEN_SEED);
+
+    // Both toggles on every row: present, disabled, under title="Admin only" (03 §2.10) — never
+    // absent. No row carries an override on seed, so no "Auto" button renders.
+    for (const video of visible) {
+      for (const label of [`Hide ${video.title}`, `Mark ${video.title} as a Short`]) {
+        const { input, label: wrapper } = toggleFor(page, label);
+        await expect(input).toHaveCount(1);
+        await expect(input).toBeDisabled();
+        expect(
+          await wrapper.evaluate((el) => el.closest('[title="Admin only"]') !== null),
+          `${label} sits under title="${ADMIN_ONLY}"`,
+        ).toBe(true);
+      }
+    }
+    await expect(list.getByRole('button', { name: /^Auto/ })).toHaveCount(0);
+    const shortSeed = visible.find((v) => v.youtube_id === SHORT_SEED);
+    await expect(toggleFor(page, `Mark ${shortSeed?.title ?? ''} as a Short`).input).toBeChecked();
+
+    // Clicking a disabled control issues no action call and no forbidden toast (02 §1.3). A
+    // server-action POST leaves in the click's own task, so two painted frames bound the wait;
+    // the stored rows are the second witness.
+    const posts: string[] = [];
+    page.on('request', (req) => {
+      if (req.method() === 'POST') posts.push(req.url());
+    });
+    const first = visible[0];
+    await toggleFor(page, `Hide ${first?.title ?? ''}`).label.click({ force: true });
+    await toggleFor(page, `Mark ${first?.title ?? ''} as a Short`).label.click({ force: true });
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }),
+    );
+    expect(posts, 'no server-action POST left the page').toEqual([]);
+    await expect(page.getByText('Not allowed.')).toHaveCount(0);
+    await expect(page.getByText('Saved.', { exact: true })).toHaveCount(0);
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0);
+    expect(await readVideos()).toEqual(before);
+  });
+
+  test('T-E2E-47 admin: hiding every visible video through the /admin Hidden toggles empties /videos and the Home column ("NO VIDEOS YET" + channel link, zero iframe — AC8); un-hiding restores both', async ({
+    page,
+  }) => {
+    // Twelve action round trips + four polled public pages (each may need a revalidation cycle).
+    test.setTimeout(240_000);
+    const seed = await readVideos();
+    const hiddenTitle = seed.find((v) => v.youtube_id === HIDDEN_SEED)?.title ?? '';
+    const toHide = seed.filter((v) => !v.hidden);
+    expect(toHide.map((v) => v.youtube_id)).not.toContain(HIDDEN_SEED);
+    expect(toHide).toHaveLength(6);
+
+    await loginAs(page, 'admin');
+    await page.goto('/admin');
+    const list = videoList(page);
+    // The admin reads every row: 7, one of them HIDDEN (seedvid0002, newest first → row 1).
+    await expect(list.locator('tbody tr')).toHaveCount(7);
+    await expect(list.getByText('7 TOTAL', { exact: true })).toBeVisible();
+    await expect(list.getByText('HIDDEN', { exact: true })).toHaveCount(1);
+    await expect(list.getByText('LIVE', { exact: true })).toHaveCount(6);
+    await expect(list.locator('tbody tr').first()).toContainText(hiddenTitle);
+
+    // -- Hide all six, one `updateVideo` each; the first flip also proves the "Saved." PRG -------
+    mutated = true;
+    for (const [i, video] of toHide.entries()) {
+      await setHidden(page, video.title, true);
+      if (i === 0) await expect(page.getByText('Saved.', { exact: true })).toBeVisible();
+    }
+    await expect(list.getByText('HIDDEN', { exact: true })).toHaveCount(7);
+    await expect(list.getByText('LIVE', { exact: true })).toHaveCount(0);
+    expect((await readVideos()).every((v) => v.hidden)).toBe(true);
+
+    // -- /videos: the §11.7 empty state, strings verbatim (03 G-05), channel link, no iframe -----
+    await expectVideosAtUrl(page, '/videos', hiddenTitle, async () => {
+      await expect(page.getByRole('heading', { level: 2, name: EMPTY_TITLE })).toBeVisible({
+        timeout: 1_000,
+      });
+    });
+    await expect(page).toHaveTitle('Videos — odsens');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('VIDEOS');
+    await expect(page.getByText(EMPTY_LINE, { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'The YouTube channel' })).toHaveAttribute(
+      'href',
+      CHANNEL,
+    );
+    await expect(page.locator('iframe')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Play / })).toHaveCount(0);
+    const emptyHtml = await page.content();
+    for (const youtubeId of SEED_VIDEO_IDS) expect(emptyHtml).not.toContain(youtubeId);
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'videos-empty');
+
+    // -- Home: the same empty state inside the Latest videos column; the side column still renders
+    const latest = page.locator('section[aria-labelledby="latest-videos"]');
+    await expectVideosAtUrl(page, '/', hiddenTitle, async () => {
+      await expect(latest.getByRole('heading', { level: 3, name: EMPTY_TITLE })).toBeVisible({
+        timeout: 1_000,
+      });
+    });
+    await expect(latest.getByText(EMPTY_LINE, { exact: true })).toBeVisible();
+    await expect(latest.getByRole('link', { name: 'The YouTube channel' })).toHaveAttribute(
+      'href',
+      CHANNEL,
+    );
+    await expect(latest.locator('article')).toHaveCount(0);
+    await expect(page.locator('iframe')).toHaveCount(0);
+    await expect(
+      page.getByRole('heading', { level: 2, name: 'FIND ME', exact: true }),
+    ).toBeVisible();
+    await expect(page.locator('aside[aria-label="Support"][data-compact]')).toHaveCount(1);
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'home-videos-empty');
+
+    // -- Un-hide exactly the rows this test hid (seedvid0002 stays hidden), same action ----------
+    for (const video of toHide) await setHidden(page, video.title, false);
+    await expect(list.getByText('HIDDEN', { exact: true })).toHaveCount(1);
+    await expect(list.getByText('LIVE', { exact: true })).toHaveCount(6);
+    expect(await readVideos()).toEqual(seed);
+
+    await expectVideosAtUrl(page, '/videos', hiddenTitle, () => expectSeedVideosPage(page));
+    await expectVideosAtUrl(page, '/', hiddenTitle, () => expectSeedHome(page));
+    expect(await readVideos()).toEqual(seed); // a nudge cycle leaves seed truth behind too
+    restoredThroughApp = true;
   });
 });

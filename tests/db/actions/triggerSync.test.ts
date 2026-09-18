@@ -2,8 +2,10 @@
  * tests/db/actions/triggerSync.test.ts — T-ACT-42 + the `triggerSync` clause of T-ACT-70
  * (05 §7.2; 04 §1.7, SC-13, SC-24; 01 INV-72; ADR-0002 C7 / C16; migration 20260827090400).
  * `mutatesSeed`: the admin run is a real `syncCurseforge` pass (no-change against the SEED-6
- * fixture-mirroring link, so only `synced_at` moves and one `sync_runs` row lands) — content
- * tables restore from a snapshot in `afterAll` (05 H-1).
+ * fixture-mirroring link, so only `synced_at` moves and one `sync_runs` row lands) and, from S1.6,
+ * a real `syncYoutube` pass with `full:true` (the fixture channel's 19 mapped uploads land next to
+ * SEED-11) — content tables (`videos` + `sync_runs` included) restore from a snapshot in `afterAll`
+ * (05 H-1).
  *
  * Auth: admin A, **mod D `forbidden`**, user D `forbidden` (ADR-0002 C7), anon `unauthenticated`.
  * Input: `source` ∈ the five triggerable values — `notify`, `skins` (a `sync_runs` source with no
@@ -11,8 +13,10 @@
  * The admin call runs the job function directly (adapter `fetch` mocked to fixtures — never the
  * HTTP route, 01 INV-72), returns the `JobSummary` as `data`, writes `sync_runs`, and logs the
  * SC-24 audit line. An open run (5 min old) → D `conflict` "Already running." with no second row
- * (T-ACT-70; the job/route sides live in tests/db/jobs/). `youtube`/`mentions`/`stats` are enum-
- * valid but their jobs land in S1.6/S1.8/S1.9 — until then the action answers `upstream_error`.
+ * (T-ACT-70; the job/route sides live in tests/db/jobs/). `youtube` runs `syncYoutube` since S1.6
+ * (`full:true` reaches the job as the uploads-playlist walk — 04 §3.3 step 3; `spyFetch` keys are the
+ * real request prefixes, never the bare `YOUTUBE_API_BASE`). `mentions`/`stats` are
+ * enum-valid but their jobs land in S1.8/S1.9 — until then the action answers `upstream_error`.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { triggerSync } from '@/lib/actions/admin';
@@ -34,6 +38,10 @@ const service = asRole('service');
 
 const CF_BASE = process.env.CURSEFORGE_API_BASE ?? '';
 const MOD_URL = `${CF_BASE}/mods/900001`;
+const RSS_BASE = process.env.YOUTUBE_RSS_BASE ?? '';
+const YT_API_BASE = process.env.YOUTUBE_API_BASE ?? '';
+const YT_VIDEOS_URL = `${YT_API_BASE}/videos`;
+const YT_PLAYLIST_URL = `${YT_API_BASE}/playlistItems`;
 
 let snapshot: ContentSnapshot;
 
@@ -87,12 +95,98 @@ describe('T-ACT-42 triggerSync', () => {
     expectFail(await callAction(triggerSync, input, { role: 'admin' }), 'validation');
   });
 
-  it('T-ACT-42 full:true for youtube passes the schema (S1.6 lands syncYoutube — upstream_error until then)', async () => {
-    const error = expectFail(
-      await callAction(triggerSync, { source: 'youtube', full: true }, { role: 'admin' }),
-      'upstream_error',
-    );
-    expect(error.message).toBe("That sync isn't built yet.");
+  it.each(['mentions', 'stats'] as const)(
+    "T-ACT-42 source '%s' passes the schema but its job is not built yet (S1.8 / S1.9) → upstream_error, no sync_runs row",
+    async (source) => {
+      const before = await syncRunCount(source);
+      const error = expectFail(
+        await callAction(triggerSync, { source }, { role: 'admin' }),
+        'upstream_error',
+      );
+      expect(error.message).toBe("That sync isn't built yet.");
+      expect(await syncRunCount(source)).toBe(before);
+    },
+  );
+
+  it('T-ACT-42 full:true for youtube runs syncYoutube directly with the playlist walk → {ok:true, data:<JobSummary>}, sync_runs written, SC-24', async () => {
+    const before = await syncRunCount('youtube');
+    const fetchSpy = spyFetch({
+      [RSS_BASE]: 'youtube/rss.xml',
+      [YT_VIDEOS_URL]: 'youtube/videos-list.json',
+      [YT_PLAYLIST_URL]: 'youtube/playlist-items.json',
+    });
+    const logs = spyLog();
+    try {
+      const summary = expectOk(
+        await callAction(triggerSync, { source: 'youtube', full: true }, { role: 'admin' }),
+      );
+      expect(summary.ok).toBe(true);
+      expect(summary.source).toBe('youtube');
+      expect(typeof summary.run_id).toBe('string');
+      expect(typeof summary.ms).toBe('number');
+      // `full` reached the job: the walk ran before videos.list and every mapped upload landed.
+      expect(summary.full).toBe(true);
+      expect(summary.walked).toBe(21);
+      expect(summary.items).toBe(19);
+      expect(fetchSpy.calls.map((url) => url.split('?')[0])).toEqual([
+        RSS_BASE,
+        YT_PLAYLIST_URL,
+        YT_VIDEOS_URL,
+      ]);
+
+      // The job function ran in-process (01 INV-72 — no request to the cron route).
+      expect(fetchSpy.calls.some((url) => url.includes('/api/cron/'))).toBe(false);
+      expect(await syncRunCount('youtube')).toBe(before + 1);
+      const { data: run, error } = await service
+        .from('sync_runs')
+        .select('source, finished_at, ok, items')
+        .eq('id', summary.run_id)
+        .single();
+      expect(error).toBeNull();
+      expect(run?.source).toBe('youtube');
+      expect(run?.finished_at).not.toBeNull();
+      expect(run?.ok).toBe(true);
+      expect(run?.items).toBe(19);
+
+      // SC-24: keys only — `full` is named, its value is not logged.
+      const adminLines = (logs.lines as Array<Record<string, unknown>>).filter(
+        (line) => line.msg === 'admin',
+      );
+      expect(adminLines).toHaveLength(1);
+      const line = adminLines[0] as { action: string; meta: Record<string, unknown> };
+      expect(line.action).toBe('triggerSync');
+      expect(line.meta.target_id).toBe(summary.run_id);
+      expect(line.meta.fields).toEqual(['source', 'full']);
+    } finally {
+      logs.restore();
+      fetchSpy.restore();
+    }
+  });
+
+  it("T-ACT-70 open youtube run (5 min old) → conflict 'Already running.', no second row, no upstream request", async () => {
+    const lockId = await makeSyncRun({
+      source: 'youtube',
+      started_at: new Date(Date.now() - 5 * 60_000).toISOString(),
+      finished_at: null,
+    });
+    const withLock = await syncRunCount('youtube');
+    const fetchSpy = spyFetch({ [RSS_BASE]: 'youtube/rss.xml' });
+    try {
+      const error = expectFail(
+        await callAction(triggerSync, { source: 'youtube' }, { role: 'admin' }),
+        'conflict',
+      );
+      expect(error.message).toBe('Already running.');
+      expect(await syncRunCount('youtube')).toBe(withLock);
+      expect(fetchSpy.calls).toEqual([]);
+    } finally {
+      fetchSpy.restore();
+      // Close the arranged row so it cannot hold the lock for a later test in this file.
+      await service
+        .from('sync_runs')
+        .update({ finished_at: new Date().toISOString(), ok: true })
+        .eq('id', lockId);
+    }
   });
 
   it('T-ACT-42 admin runs the job function directly → {ok:true, data:<JobSummary>}, sync_runs written, SC-24', async () => {

@@ -11,8 +11,8 @@
  * `sync_runs` rows but no `ok = true` run finished inside `STALE_WINDOW_HOURS` is stale → one
  * `sync.stale` event `{subject_type:'sync_source', subject_id: syncSourceSubjectId(source),
  * payload:{source, last_ok_at, hours_since_ok}}`, deduped on a `sync.stale` event for that subject
- * younger than the window. A source with no `sync_runs` row at all is never stale (`youtube` on
- * production until S1.6). `stats` / `notify` / `skins` are not in the set.
+ * younger than the window. A source with no `sync_runs` row at all is never stale (e.g. a source
+ * before its first run). `stats` / `notify` / `skins` are not in the set.
  *
  * F1 — events with no recipient row, younger than `FANOUT_WINDOW_DAYS`, oldest first, `FANOUT_BATCH`
  * per tick (the anti-join is PostgREST's embedded-null filter — `notification_recipients=is.null`

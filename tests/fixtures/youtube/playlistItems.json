@@ -1,0 +1,199 @@
+{
+  "kind": "youtube#playlistItemListResponse",
+  "etag": "etag-playlist-items",
+  "items": [
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00001",
+      "id": "pli-fixvid00001",
+      "contentDetails": {
+        "videoId": "fixvid00001",
+        "videoPublishedAt": "2026-05-30T15:00:07Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00002",
+      "id": "pli-fixvid00002",
+      "contentDetails": {
+        "videoId": "fixvid00002",
+        "videoPublishedAt": "2026-05-23T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00003",
+      "id": "pli-fixvid00003",
+      "contentDetails": {
+        "videoId": "fixvid00003",
+        "videoPublishedAt": "2026-05-16T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00004",
+      "id": "pli-fixvid00004",
+      "contentDetails": {
+        "videoId": "fixvid00004",
+        "videoPublishedAt": "2026-05-09T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00005",
+      "id": "pli-fixvid00005",
+      "contentDetails": {
+        "videoId": "fixvid00005",
+        "videoPublishedAt": "2026-05-02T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00006",
+      "id": "pli-fixvid00006",
+      "contentDetails": {
+        "videoId": "fixvid00006",
+        "videoPublishedAt": "2026-04-25T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00007",
+      "id": "pli-fixvid00007",
+      "contentDetails": {
+        "videoId": "fixvid00007",
+        "videoPublishedAt": "2026-04-18T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00008",
+      "id": "pli-fixvid00008",
+      "contentDetails": {
+        "videoId": "fixvid00008",
+        "videoPublishedAt": "2026-04-11T18:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00009",
+      "id": "pli-fixvid00009",
+      "contentDetails": {
+        "videoId": "fixvid00009",
+        "videoPublishedAt": "2026-04-10T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00010",
+      "id": "pli-fixvid00010",
+      "contentDetails": {
+        "videoId": "fixvid00010",
+        "videoPublishedAt": "2026-04-04T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00011",
+      "id": "pli-fixvid00011",
+      "contentDetails": {
+        "videoId": "fixvid00011",
+        "videoPublishedAt": "2026-03-28T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00012",
+      "id": "pli-fixvid00012",
+      "contentDetails": {
+        "videoId": "fixvid00012",
+        "videoPublishedAt": "2026-03-21T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00013",
+      "id": "pli-fixvid00013",
+      "contentDetails": {
+        "videoId": "fixvid00013",
+        "videoPublishedAt": "2026-03-14T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00014",
+      "id": "pli-fixvid00014",
+      "contentDetails": {
+        "videoId": "fixvid00014",
+        "videoPublishedAt": "2026-03-07T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00015",
+      "id": "pli-fixvid00015",
+      "contentDetails": {
+        "videoId": "fixvid00015",
+        "videoPublishedAt": "2026-02-28T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00016",
+      "id": "pli-fixvid00016",
+      "contentDetails": {
+        "videoId": "fixvid00016",
+        "videoPublishedAt": "2026-02-21T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00017",
+      "id": "pli-fixvid00017",
+      "contentDetails": {
+        "videoId": "fixvid00017",
+        "videoPublishedAt": "2026-02-14T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00018",
+      "id": "pli-fixvid00018",
+      "contentDetails": {
+        "videoId": "fixvid00018",
+        "videoPublishedAt": "2026-02-07T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00019",
+      "id": "pli-fixvid00019",
+      "contentDetails": {
+        "videoId": "fixvid00019",
+        "videoPublishedAt": "2026-01-31T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00020",
+      "id": "pli-fixvid00020",
+      "contentDetails": {
+        "videoId": "fixvid00020",
+        "videoPublishedAt": "2026-01-24T15:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "etag-pli-fixvid00021",
+      "id": "pli-fixvid00021",
+      "contentDetails": {
+        "videoId": "fixvid00021",
+        "videoPublishedAt": "2026-01-17T15:00:00Z"
+      }
+    }
+  ],
+  "pageInfo": {
+    "totalResults": 21,
+    "resultsPerPage": 50
+  }
+}

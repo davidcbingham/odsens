@@ -1,0 +1,210 @@
+/* VideoFacade — DESIGN.md §11.1 Video facade (thumbnail + scrim, indigo play block with a white
+   triangle and a 5px 5px 0 shadow, duration chip, CLICK TO LOAD YOUTUBE chip), §11.5 Shorts (9:16,
+   gold duration chip), §12.7 #58 sizes 88 / 44 / 56 (ADR-0043 D7); 03 §2.6 (tokens --scrim-35
+   --indigo --indigo-hover --indigo-deep --white --ink --line --gold --gold-ink --font-pixel). */
+.video-facade {
+  position: relative;
+  display: block;
+  width: 100%;
+  /* The fixed aspect box (00 S1.6.AC10): the thumbnail, the button and the iframe all fill it. */
+  aspect-ratio: 16 / 9;
+  background: var(--slab-sunk);
+  outline: 2px solid var(--line-soft);
+  /* 03 O-19: the hint chip keys on the facade's own rendered width, whatever the viewport. */
+  container-type: inline-size;
+  --play: 88px;
+  --tri-side: 28px;
+  --tri-half: 18px;
+  --tri-nudge: 6px;
+  --chip-inset: var(--space-12);
+}
+
+.video-facade[data-variant='short'] {
+  aspect-ratio: 9 / 16;
+}
+
+.video-facade[data-variant='short'],
+.video-facade[data-variant='card'] {
+  --play: 56px;
+  --tri-side: 18px;
+  --tri-half: 12px;
+  --tri-nudge: 4px;
+}
+
+.video-facade[data-variant='upnext'] {
+  --play: 44px;
+  --tri-side: 14px;
+  --tri-half: 9px;
+  --tri-nudge: 3px;
+}
+
+.video-facade[data-variant='short'] {
+  --chip-inset: var(--space-4);
+}
+
+/* ADR-0043 D22: a 44px block centred on the 132 x 74 thumb leaves 15px under it, so the Up next
+   chip sits flush in the corner, one 11px line + 2px padding tall, with no outline of its own (the
+   thumb's outline frames it) — it never touches the square or the triangle, h:mm:ss included. */
+.video-facade[data-variant='upnext'] {
+  --chip-inset: 0;
+}
+
+/* The clip lives on the image wrapper, NOT on the root: the root carries the button's gold focus
+   ring, and `overflow: hidden` there would cut it off. */
+.video-facade-media {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+}
+
+.video-facade-media img {
+  /* hqdefault thumbnails are 4:3 with letterbox bars (04 §3.3) — cover crops them; a Short takes
+     the centre of the frame. */
+  object-fit: cover;
+}
+
+.video-facade-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim-35);
+}
+
+/* The whole box is the target, so the 3px gold ring (2px offset) draws AROUND the thumbnail on the
+   dark page — never over arbitrary image colours. */
+.video-facade-button,
+.video-facade-cover {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.video-facade-button {
+  cursor: pointer;
+}
+
+.video-facade-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--play);
+  height: var(--play);
+  background: var(--indigo);
+  box-shadow: 5px 5px 0 var(--indigo-deep);
+  transform: translate(-50%, -50%);
+  transition: background-color var(--dur-fast) ease-out;
+}
+
+.video-facade-button:hover .video-facade-play {
+  background: var(--indigo-hover);
+}
+
+.video-facade-triangle {
+  display: block;
+  width: 0;
+  height: 0;
+  margin-left: var(--tri-nudge);
+  border-style: solid;
+  border-width: var(--tri-half) 0 var(--tri-half) var(--tri-side);
+  border-color: transparent transparent transparent var(--white);
+}
+
+/* Chips: hint bottom-left, duration bottom-right, ONE row — the hint never wraps (a second line
+   climbs into the play block's 5px shadow on a card). */
+.video-facade-chips {
+  position: absolute;
+  right: var(--chip-inset);
+  bottom: var(--chip-inset);
+  left: var(--chip-inset);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-8);
+  text-align: left;
+  pointer-events: none;
+}
+
+/* Both chips are flex boxes so the 11px label sets the height (its own 1.2 line box + the 4px
+   padding = 21px). As plain inline wrappers they inherited the body line box and stood 34px tall —
+   enough to reach the 88px play block's shadow on the 312px phone hero. */
+.video-facade-hint {
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding: var(--space-4) var(--space-8);
+  background: var(--ink);
+  color: var(--chalk);
+  white-space: nowrap;
+}
+
+.video-facade-duration {
+  display: flex;
+  flex: none;
+  align-items: center;
+  margin-inline-start: auto;
+  padding: var(--space-4) var(--space-8);
+  background: var(--ink);
+  color: var(--white);
+  outline: 2px solid var(--line);
+  outline-offset: -2px;
+  white-space: nowrap;
+}
+
+.video-facade[data-variant='upnext'] .video-facade-duration,
+.video-facade[data-variant='short'] .video-facade-duration {
+  padding: calc(var(--space-4) / 2) var(--space-4);
+}
+
+.video-facade[data-variant='upnext'] .video-facade-duration {
+  outline: 0;
+}
+
+.video-facade[data-variant='upnext'] .video-facade-duration > * {
+  line-height: 1;
+}
+
+/* §11.5: the Short's chip is gold, top-left (the 56px block leaves no clean bottom corner). */
+.video-facade[data-variant='short'] .video-facade-chips {
+  top: var(--chip-inset);
+  bottom: auto;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.video-facade[data-variant='short'] .video-facade-duration {
+  margin-inline-start: 0;
+  background: var(--gold);
+  color: var(--gold-ink);
+  outline: 0;
+}
+
+/* 03 O-19: the hint is not shown on a facade too narrow for it — Up next 132, Shorts 104, and any
+   card under 312px: the chip is 204px wide at 11px Silkscreen, so one row of hint + 8px gap + the
+   widest duration chip (h:mm:ss, 75px) inside the two 12px insets needs 311px. Below that it
+   would wrap and cover the 56px play block (Home cards at 600-700 / 900-1150, the /videos 3-up at
+   900). The 360px phone hero is 312px wide and keeps it. */
+@container (max-width: 311px) {
+  .video-facade-hint {
+    display: none;
+  }
+}
+
+.video-facade-frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}

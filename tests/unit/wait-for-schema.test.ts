@@ -223,6 +223,7 @@ describe('parseMigrations (T-UNIT-46)', () => {
       'comment_likes',
       'comment_reports',
       'notification_events',
+      'videos', // S1.6 — supabase/migrations/20260918120000_videos.sql
     ]) {
       expect(real.relations, relation).toContain(relation);
     }

@@ -9,9 +9,11 @@ import { trackEvent, type TrackEventName, type TrackProps } from '@/lib/analytic
  * Renders a plain `<a>`; fires `trackEvent(event, props)` on click — the ONLY network a client
  * island may start (01 INV-09) — and nothing else (no preventDefault, the navigation proceeds).
  * Payload values come typed from `lib/analytics.ts` `TrackProps` (04 §5.6 owns the shapes;
- * never a handle, id of a person, email or URL). S1.2 wires only `download`
- * (`{ project, source, from }`); `tip_click` / `video_play` / `sign_in` land in their own
- * slices (ADR-0002 A10). `target="_blank"` adds `rel="noopener noreferrer"` + sr
+ * never a handle, id of a person, email or URL). S1.2 wired `download`
+ * (`{ project, source, from }`); `tip_click` rides this link too (`TipPanel`,
+ * `FloatingSupportButton`). `video_play` (`VideoFacade`, S1.6) and `sign_in`
+ * (`GoogleSignInButton`) are not link clicks — those islands call `trackEvent` themselves
+ * (ADR-0002 A10). `target="_blank"` adds `rel="noopener noreferrer"` + sr
  * "(opens in new tab)".
  *
  * `data-variant` is an additive pass-through onto the `<a>` (03 C-10 variants-as-attributes) for
