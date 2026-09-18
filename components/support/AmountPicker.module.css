@@ -149,9 +149,11 @@
     padding-inline: var(--space-12);
   }
 
-  /* The note takes its own row on phones, so the "on Ko-fi" link never re-wraps when the webfont
-     swaps in (at 390px the two fit on one row in Space Grotesk but not in the fallback — CLS). */
-  .amount-picker-note {
+  /* The note and the "Tips open soon." line take their own row on phones, so nothing beside or
+     after them re-wraps when the webfont swaps in (at ~387–436px they fit next to the button in
+     Space Grotesk but not in the fallback — CLS). */
+  .amount-picker-note,
+  .amount-picker-soon {
     flex: 1 0 100%;
   }
 }
