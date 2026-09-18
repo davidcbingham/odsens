@@ -159,6 +159,10 @@ test.describe('FloatingSupportButton + TipPanel (T-E2E-49)', () => {
       const box = await fsb(page).boundingBox();
       expect(Math.round(box?.width ?? 0)).toBe(52);
       expect(Math.round(box?.height ?? 0)).toBe(52);
+      // Same 24px inset as desktop — only the shape changes on phones (DESIGN.md §5).
+      const viewport = page.viewportSize() ?? { width: 390, height: 844 };
+      expect(Math.round(viewport.width - ((box?.x ?? 0) + (box?.width ?? 0)))).toBe(24);
+      expect(Math.round(viewport.height - ((box?.y ?? 0) + (box?.height ?? 0)))).toBe(24);
       const word = fsb(page).locator('span', { hasText: 'SUPPORT' });
       const wordBox = await word.boundingBox();
       expect(wordBox?.width ?? 0).toBeLessThanOrEqual(1);

@@ -53,12 +53,8 @@
   transform: translate(2px, 2px);
 }
 
+/* Phones keep the 24px inset — only the shape changes (DESIGN.md §5). */
 @media (max-width: 599px) {
-  .floating-support {
-    right: var(--space-16);
-    bottom: var(--space-16);
-  }
-
   .floating-support-link {
     width: 52px;
     height: 52px;

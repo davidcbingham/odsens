@@ -114,6 +114,10 @@ test.describe('support', () => {
     // Other: the typed value stays on the page — the event says 'other'.
     await group.getByRole('radio', { name: 'Other' }).click();
     await page.getByLabel('Amount in dollars').fill('7');
+    // Field draws its focus ring on the well — ink on the gold slab, never gold on gold (ADR-0041 D5).
+    const well = page.getByLabel('Amount in dollars').locator('xpath=..');
+    await expect(well).toHaveCSS('outline-style', 'solid');
+    await expect(well).toHaveCSS('outline-color', 'rgb(13, 19, 27)');
     await proceed.click();
     await expect.poll(() => va.events().length).toBe(2);
     expect(va.events()[1]).toEqual({
