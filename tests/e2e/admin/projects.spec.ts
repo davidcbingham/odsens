@@ -3366,4 +3366,54 @@ test.describe('admin settings (T-E2E-37)', () => {
     await saveAndWait(page);
     expect((await readSettings()).kofi_page).toBe('oddsense');
   });
+
+  // ---------------------------------------------------------------------------------------------
+  // T-E2E-11 (Settings leg; 00 S1.5b.AC1; 04 §5.7) — `/support` follows `site_settings.kofi_page`
+  // through `revalidateTag('settings')`: a new name moves the ghost link; an EMPTY name closes tips
+  // ("Tips open soon.", picker + CONTINUE disabled, no ghost link, no slot); restoring reopens them.
+  // Lives here because it writes `site_settings` (the T-E2E-35 serial-file reason); the public
+  // page's own assertions are tests/e2e/smoke/support.spec.ts.
+  // ---------------------------------------------------------------------------------------------
+  test('T-E2E-11 Settings → /support: renamed page moves the link; empty page → "Tips open soon." + disabled picker; restore reopens', async ({
+    page,
+  }) => {
+    await loginAs(page, 'admin');
+
+    async function setKofiPage(value: string): Promise<void> {
+      await page.goto('/admin/settings');
+      await page.getByLabel('Page name').fill(value);
+      await saveAndWait(page);
+    }
+
+    const out = page.getByRole('link', { name: /on Ko-fi/ });
+    const proceed = page.getByRole('button', { name: 'CONTINUE ON KO-FI', exact: true });
+    const radios = page.getByRole('radiogroup', { name: 'Amount' }).getByRole('radio');
+
+    await setKofiPage('oddsense-e2e');
+    await page.goto('/support');
+    await expect(out).toHaveAttribute('href', 'https://ko-fi.com/oddsense-e2e');
+
+    await setKofiPage('');
+    expect((await readSettings()).kofi_page ?? '').toBe('');
+    await page.goto('/support');
+    await expect(page.getByText('Tips open soon.', { exact: true })).toBeVisible();
+    await expect(proceed).toBeDisabled();
+    await expect(radios).toHaveCount(4);
+    for (const radio of await radios.all()) await expect(radio).toBeDisabled();
+    await expect(out).toHaveCount(0);
+    await expect(page.getByText('KO-FI PANEL LOADS HERE')).toHaveCount(0);
+    await expect(page.locator('iframe')).toHaveCount(0);
+    // The rest of the page is unchanged: pays-for + the empty leaderboard still render.
+    await expect(page.getByRole('heading', { name: 'What it pays for' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'NOBODY YET' })).toBeVisible();
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'support-tips-closed');
+
+    await setKofiPage('oddsense');
+    expect((await readSettings()).kofi_page).toBe('oddsense');
+    await page.goto('/support');
+    await expect(proceed).toBeEnabled();
+    await expect(out).toHaveAttribute('href', 'https://ko-fi.com/oddsense');
+    await expect(page.getByText('Tips open soon.')).toHaveCount(0);
+  });
 });

@@ -1,18 +1,18 @@
-import { Button } from '@/components/primitives/Button';
+import { TrackedLink } from '@/components/primitives/TrackedLink';
 import styles from './TipPanel.module.css';
 
 /**
  * TipPanel — DESIGN.md §6 #1 "compact gold tip panel" / §6 #3 rail "gold tip panel", §11.4;
- * 03 §2.3 `TipPanel` row ("gold hatched slab (`--gold` + `--hatch`), `--gold-ink` text, one dry
- * line, `Button variant="gold-ink"` → `/support`. No begging copy (§7)"). Server Component.
+ * 03 §2.3 `TipPanel` row ("gold hatched slab (`--gold` + `--hatch`), `--gold-ink` text, one plain
+ * line, gold-ink button → `/support`. No begging copy (§7)"). Server Component — static: it never
+ * reads `kofi_page` (only `/support` reacts to an empty page name, 04 §5.7).
  *
- * S1.2 renders the placeholder slab pointing at `/support` (00 S1.2: "`TipPanel` **placeholder
- * slab pointing at `/support`** until S1.9"); S1.9 lands the final §7-voice copy and swaps the
- * link to `TrackedLink event="tip_click"` `{ from: 'tip-panel' }` — only `download` is wired in
- * S1.2 (ADR-0002 A10), so this is a plain `Button` link for now. The line is the plain
- * "Support OddSense on Ko-fi." — the pass-3 slogan came out at Oliver's request (2026-09-11,
- * ADR-0035 D5; provisional until S1.9's final copy). `compact` = the Home variant (§6 #1),
- * `data-compact` flag (03 C-14).
+ * The line is the plain "Support OddSense on Ko-fi." (ADR-0035 D5 — the pass-3 slogan came out at
+ * Oliver's request; 03 fixes it as the final copy). S1.5b swaps the plain `Button` link for a
+ * `TrackedLink event="tip_click"` `{ from: 'tip-panel' }` (04 §5.6 — no `amount`): the gold-ink
+ * button look lives in this module's CSS and the `<a>` carries `data-variant="gold-ink"` (03 §2.3
+ * Tests cell; the 05 e2e locator) — the `GetItPanel` pattern. `compact` = the Home variant
+ * (§6 #1), `data-compact` flag (03 C-14).
  */
 export type TipPanelProps = {
   compact?: boolean;
@@ -24,9 +24,15 @@ export function TipPanel({ compact = false, className }: TipPanelProps) {
   return (
     <aside aria-label="Support" className={classes} {...(compact ? { 'data-compact': '' } : {})}>
       <p className={styles['tip-panel-line']}>Support OddSense on Ko-fi.</p>
-      <Button variant="gold-ink" href="/support">
+      <TrackedLink
+        event="tip_click"
+        props={{ from: 'tip-panel' }}
+        href="/support"
+        className={styles['tip-panel-button']}
+        data-variant="gold-ink"
+      >
         Tip a dollar
-      </Button>
+      </TrackedLink>
     </aside>
   );
 }

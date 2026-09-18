@@ -40,6 +40,10 @@ import { GetItPanel } from '@/components/projects/GetItPanel';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ProjectGrid } from '@/components/projects/ProjectGrid';
 import { TipPanel } from '@/components/projects/TipPanel';
+import { AmountPicker } from '@/components/support/AmountPicker';
+import { KofiPanelSlot } from '@/components/support/KofiPanelSlot';
+import { Leaderboard } from '@/components/support/Leaderboard';
+import { FloatingSupportButton } from '@/components/layout/FloatingSupportButton';
 import { VersionsTable } from '@/components/projects/VersionsTable';
 import { ViewerProvider } from '@/components/accounts/ViewerProvider';
 import { ProfileMenu } from '@/components/accounts/ProfileMenu';
@@ -109,6 +113,10 @@ import {
   trackedLinkFixtures,
   typeBadgeFixtures,
   versionsTableFixtures,
+  amountPickerFixtures,
+  kofiPanelSlotFixtures,
+  leaderboardFixtures,
+  floatingSupportButtonFixtures,
 } from '@/tests/fixtures/ui';
 import styles from './page.module.css';
 
@@ -677,6 +685,37 @@ export default function ComponentsPreviewPage() {
                     Moderators table — server-rendered on /admin/settings.
                   </p>
                 </NotificationMatrix>
+              </Specimen>
+            ))}
+          </div>
+        </Area>
+
+        <Area id="area-support" title="SUPPORT">
+          <div className={styles['preview-group']} data-wide="">
+            {amountPickerFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="AmountPicker" label={label}>
+                {/* The open picker (chips, Other field, CONTINUE → Ko-fi iframe) lives on /support —
+                    the gallery never frames Ko-fi (01 INV-58). */}
+                <AmountPicker {...props} />
+              </Specimen>
+            ))}
+            {kofiPanelSlotFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="KofiPanelSlot" label={label}>
+                <KofiPanelSlot {...props} />
+              </Specimen>
+            ))}
+            {leaderboardFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="Leaderboard" label={label}>
+                <Leaderboard {...props} />
+              </Specimen>
+            ))}
+            {floatingSupportButtonFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="FloatingSupportButton" label={label}>
+                <p className={styles['preview-note']}>
+                  Fixed to the bottom-right of this page; scroll down and up to see it hide and
+                  return.
+                </p>
+                <FloatingSupportButton {...props} />
               </Specimen>
             ))}
           </div>

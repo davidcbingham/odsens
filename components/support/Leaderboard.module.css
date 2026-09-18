@@ -1,0 +1,29 @@
+/* Leaderboard — DESIGN.md §12.4 (pass-3 "Leaderboard empty state"); 03 §2.9
+   (tokens --gold --mute-dim --slab --line-soft). */
+.leaderboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.leaderboard-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-section-title);
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.leaderboard-empty {
+  align-items: center;
+  text-align: center;
+}
+
+.leaderboard-how-to {
+  margin: 0;
+  max-width: var(--measure-body);
+  font-size: var(--text-small);
+  line-height: 1.6;
+  color: var(--mute-dim);
+}

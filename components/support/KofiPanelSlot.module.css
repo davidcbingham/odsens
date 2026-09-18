@@ -1,0 +1,43 @@
+/* KofiPanelSlot — DESIGN.md §11.4 labelled dashed slot; 03 §2.9 (tokens --line-strong --font-pixel).
+   Heights per ADR-0002 #50: 712px desktop / 620px phone. */
+.kofi-slot {
+  background: var(--slab-sunk);
+  border: 2px dashed var(--line-strong);
+}
+
+.kofi-slot-idle {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-8);
+  min-height: 180px;
+  padding: var(--space-20);
+  text-align: center;
+}
+
+.kofi-slot-line {
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: 1.6;
+  color: var(--mute);
+}
+
+.kofi-slot[data-state='loaded'] {
+  border-style: solid;
+  border-color: var(--line-soft);
+}
+
+.kofi-slot-frame {
+  display: block;
+  width: 100%;
+  height: 712px;
+  border: 0;
+  /* Ko-fi's panel is light; the well behind it stays ours until it paints. */
+  background: var(--slab-sunk);
+}
+
+@media (max-width: 599px) {
+  .kofi-slot-frame {
+    height: 620px;
+  }
+}

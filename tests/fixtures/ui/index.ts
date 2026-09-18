@@ -75,3 +75,14 @@ export { reorderableListFixtures, type ReorderableListFixture } from './reordera
 export { syncStatusFixtures, type SyncStatusFixture } from './syncStatus';
 // ---- S1.5 Admin ----
 export { notificationMatrixFixtures, type NotificationMatrixFixture } from './notificationMatrix';
+// ---- S1.5b Support ----
+export {
+  amountPickerFixtures,
+  kofiPanelSlotFixtures,
+  leaderboardFixtures,
+  floatingSupportButtonFixtures,
+  type AmountPickerFixture,
+  type KofiPanelSlotFixture,
+  type LeaderboardFixture,
+  type FloatingSupportButtonFixture,
+} from './support';

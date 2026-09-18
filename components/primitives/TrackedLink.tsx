@@ -18,6 +18,8 @@ import { trackEvent, type TrackEventName, type TrackProps } from '@/lib/analytic
  * callers whose styled root IS the link: `GetItPanel`'s big download must carry
  * `data-variant="primary"` (03 §2.3 `GetItPanel` Tests cell; the 05 e2e locator). It is not in
  * 03's `TrackedLink` props cell — recorded as an S1.2 reconciliation for `spec-drift-reviewer`.
+ * S1.5b adds `'gold-ink'` (`TipPanel`'s button look, 03 §2.3 Tests cell) and an `aria-label`
+ * pass-through (`FloatingSupportButton`: "Support OddSense on Ko-fi", 03 §2.1) — ADR-0041 D3.
  */
 export type TrackedLinkProps<N extends TrackEventName = TrackEventName> = {
   event: N;
@@ -27,8 +29,9 @@ export type TrackedLinkProps<N extends TrackEventName = TrackEventName> = {
   className?: string;
   download?: boolean;
   target?: '_blank';
-  /** Set on the rendered `<a>` — the `GetItPanel` primary download (05 e2e locator). */
-  'data-variant'?: 'primary';
+  /** Set on the rendered `<a>` — `GetItPanel` primary download / `TipPanel` button (05 e2e locators). */
+  'data-variant'?: 'primary' | 'gold-ink';
+  'aria-label'?: string;
 };
 
 export function TrackedLink<N extends TrackEventName>({
@@ -40,6 +43,7 @@ export function TrackedLink<N extends TrackEventName>({
   download,
   target,
   'data-variant': dataVariant,
+  'aria-label': ariaLabel,
 }: TrackedLinkProps<N>) {
   const newTab = target === '_blank';
   return (
@@ -50,6 +54,7 @@ export function TrackedLink<N extends TrackEventName>({
       target={target}
       rel={newTab ? 'noopener noreferrer' : undefined}
       data-variant={dataVariant}
+      aria-label={ariaLabel}
       onClick={() => trackEvent(event, props)}
     >
       {children}
