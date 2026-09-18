@@ -3,7 +3,7 @@
  * `data/settings.ts`; ADR-0002 C6 / A3; 02 RP-23 tag `settings`): `comments_closed_default`
  * (the `/projects/[slug]` commentsEnabled rule, 02 §2.3), `owner_profile_id` (the CREATOR tag,
  * ADR-0002 #55 — `getOwnerProfileId()` per 04 §1.2), `moderation_mode` (the client
- * optimistic-insert rule, 03 §2.4) and `kofi_page` (S1.9 `/support`).
+ * optimistic-insert rule, 03 §2.4) and `kofi_page` (S1.5b `/support` — ADR-0036).
  *
  * Server-only; the cookie-less anon client (01 INV-15) — the view is readable by every role and
  * never carries the secret columns (05 T-RLS-132). Cached under tag `settings` with the pages'

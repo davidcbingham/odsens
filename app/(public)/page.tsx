@@ -3,6 +3,7 @@ import { Avatar } from '@/components/primitives/Avatar';
 import { Button } from '@/components/primitives/Button';
 import { FeaturedHero } from '@/components/projects/FeaturedHero';
 import { ProjectCard } from '@/components/projects/ProjectCard';
+import { TipPanel } from '@/components/projects/TipPanel';
 import { getHomeFeatured, isNewProject, listPublishedProjects } from '@/lib/data/projects';
 import styles from './page.module.css';
 
@@ -16,7 +17,8 @@ import styles from './page.module.css';
  * — `published_at` < 30 days, ADR-0002 #41 — so the clock never bakes into the data cache);
  * 2. Featured 4-up (`ProjectCard density="tight"`; next featured by `featured_order`, hero
  * excluded, NO back-fill when anything is featured); later slices append `InTheWildStrip`
- * (S1.8) and Latest videos + `TipPanel` (S1.6/S1.9). Empty state (0 published, pre-first-sync):
+ * (S1.8) and Latest videos + "Find me" (S1.6) beside the compact `TipPanel`, which S1.5b renders
+ * now in its own row — static, ALWAYS rendered, the empty Home included (02 §2.1 #4; 00 S1.5b.AC4). Empty state (0 published, pre-first-sync):
  * hero not rendered, intro strip renders alone, Featured hidden (02 §2.1 States; transient).
  *
  * Metadata per 02 RP-05: `title.absolute = 'odsens'`, canonical `/`; description + OG default
@@ -48,6 +50,7 @@ export default async function HomePage() {
           <Avatar src="/brand/avatar-80.png" alt="OddSense" size={56} />
           <p className={styles['home-intro-line']}>{INTRO_LINE}</p>
         </div>
+        <TipPanel compact className={styles['home-tip']} />
       </section>
     );
   }
@@ -81,6 +84,10 @@ export default async function HomePage() {
           </ul>
         </section>
       ) : null}
+      {/* 02 §2.1 #4 — S1.6 adds Latest videos + "Find me" to this row, beside the panel. */}
+      <div className={styles['home-support']}>
+        <TipPanel compact className={styles['home-tip']} />
+      </div>
     </div>
   );
 }

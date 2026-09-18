@@ -23,3 +23,49 @@
   padding: var(--space-16);
   gap: var(--space-8);
 }
+
+/* The gold-ink button look (DESIGN.md §11.4; same recipe as `Button variant="gold-ink"`) on the
+   `TrackedLink` `<a>` — the link must be the tracked element (04 §5.6). */
+.tip-panel-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-12) var(--space-20);
+  background: var(--gold-ink);
+  color: var(--gold);
+  box-shadow: 3px 3px 0 var(--gold-deep);
+  font-family: var(--font-display);
+  font-size: var(--text-small);
+  line-height: 1;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition:
+    transform var(--dur-fast) ease-out,
+    box-shadow var(--dur-fast) ease-out;
+}
+
+.tip-panel-button:hover {
+  box-shadow: 5px 5px 0 var(--gold-deep);
+  transform: translate(-2px, -2px);
+}
+
+.tip-panel-button:active {
+  box-shadow: none;
+  transform: translate(2px, 2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tip-panel-button,
+  .tip-panel-button:hover,
+  .tip-panel-button:active {
+    transform: none;
+    transition: box-shadow var(--dur-fast) ease-out;
+  }
+}
+
+/* The global gold focus ring disappears on a gold slab — ink here. */
+.tip-panel-button:focus-visible {
+  outline-color: var(--ink);
+}

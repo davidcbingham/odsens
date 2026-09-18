@@ -2,6 +2,7 @@
  * tests/e2e/smoke/placeholders.spec.ts — T-E2E-46 (placeholder-page part; 00 S0.AC1; ADR-0002 C20; 02 RP-16).
  * Each nav target is a placeholder (title + "Not yet. Soon.") until its slice replaces it.
  * S1.2 replaced `/projects` — its assertions live in tests/e2e/smoke/projects.spec.ts (T-E2E-2).
+ * S1.5b replaced `/support` — tests/e2e/smoke/support.spec.ts (T-E2E-11).
  */
 import { test, expect } from '../fixtures';
 import { expectNoSeriousA11y } from '../../helpers/axe';
@@ -12,7 +13,6 @@ const PLACEHOLDERS = [
   { path: '/skins', name: 'Skins', slug: 'skins' },
   { path: '/art', name: 'Art', slug: 'art' },
   { path: '/seen-on', name: 'Seen on', slug: 'seen-on' },
-  { path: '/support', name: 'Support', slug: 'support' },
 ] as const;
 
 for (const { path, name, slug } of PLACEHOLDERS) {
