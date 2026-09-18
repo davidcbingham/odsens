@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { AmountPicker } from '@/components/support/AmountPicker';
+import { KofiCard } from '@/components/support/KofiCard';
 import { Leaderboard } from '@/components/support/Leaderboard';
 import { getPublicSettings } from '@/lib/data/settings';
 import { normalizeKofiPage } from '@/lib/support';
@@ -11,9 +11,10 @@ import styles from './page.module.css';
  *
  * ISR 600 under tag `settings`: the one read is `site_settings_public.kofi_page` through
  * `getPublicSettings()` (ADR-0002 C19 — the DB is the source of truth; saving Admin → Settings
- * revalidates the tag). Empty page name → the picker renders disabled with "Tips open soon." and no
- * Ko-fi slot. DOM order: title + lead → `AmountPicker` (which mounts `KofiPanelSlot` under its
- * slab on CONTINUE — ADR-0041 D2) → "What it pays for" → `Leaderboard` (empty state in v1).
+ * revalidates the tag). Empty page name → the card's button is disabled with "Tips open soon." and
+ * there is no Ko-fi panel. DOM order: title + lead → `KofiCard` (whose TIP ON KO-FI button swaps the
+ * gold slab for `KofiPanelSlot` in place — ADR-0042 D2) → "What it pays for" → `Leaderboard`
+ * (empty state in v1).
  * `FloatingSupportButton` opts out of this route (02 RP-15).
  */
 export const revalidate = 600;
@@ -35,7 +36,7 @@ export default async function SupportPage() {
           Everything here is free. This is just if you feel like it.
         </p>
       </header>
-      <AmountPicker kofiPage={normalizeKofiPage(kofiPage)} />
+      <KofiCard kofiPage={normalizeKofiPage(kofiPage)} />
       <section aria-labelledby="what-it-pays-for" className={styles['support-pays']}>
         <h2 id="what-it-pays-for" className={styles['support-pays-title']}>
           What it pays for

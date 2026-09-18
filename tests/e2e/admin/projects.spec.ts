@@ -3370,11 +3370,11 @@ test.describe('admin settings (T-E2E-37)', () => {
   // ---------------------------------------------------------------------------------------------
   // T-E2E-11 (Settings leg; 00 S1.5b.AC1; 04 §5.7) — `/support` follows `site_settings.kofi_page`
   // through `revalidateTag('settings')`: a new name moves the ghost link; an EMPTY name closes tips
-  // ("Tips open soon.", picker + CONTINUE disabled, no ghost link, no slot); restoring reopens them.
+  // ("Tips open soon.", TIP ON KO-FI disabled, no ghost link, no panel); restoring reopens them.
   // Lives here because it writes `site_settings` (the T-E2E-35 serial-file reason); the public
   // page's own assertions are tests/e2e/smoke/support.spec.ts.
   // ---------------------------------------------------------------------------------------------
-  test('T-E2E-11 Settings → /support: renamed page moves the link; empty page → "Tips open soon." + disabled picker; restore reopens', async ({
+  test('T-E2E-11 Settings → /support: renamed page moves the link; empty page → "Tips open soon." + disabled button; restore reopens', async ({
     page,
   }) => {
     await loginAs(page, 'admin');
@@ -3386,8 +3386,7 @@ test.describe('admin settings (T-E2E-37)', () => {
     }
 
     const out = page.getByRole('link', { name: /on Ko-fi/ });
-    const proceed = page.getByRole('button', { name: 'CONTINUE ON KO-FI', exact: true });
-    const radios = page.getByRole('radiogroup', { name: 'Amount' }).getByRole('radio');
+    const proceed = page.getByRole('button', { name: 'TIP ON KO-FI', exact: true });
 
     /**
      * `revalidateTag('settings', 'max')` is stale-while-revalidate: the first request after a save
@@ -3415,8 +3414,6 @@ test.describe('admin settings (T-E2E-37)', () => {
       });
     });
     await expect(proceed).toBeDisabled();
-    await expect(radios).toHaveCount(4);
-    for (const radio of await radios.all()) await expect(radio).toBeDisabled();
     await expect(out).toHaveCount(0);
     await expect(page.getByText('KO-FI PANEL LOADS HERE')).toHaveCount(0);
     await expect(page.locator('iframe')).toHaveCount(0);
