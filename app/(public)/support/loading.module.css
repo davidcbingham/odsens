@@ -1,0 +1,47 @@
+/* /support skeleton — same 720px column as the page; the slab and the dashed slot keep the real
+   edges (KofiPanelSlot idle: 2px dashed --line-strong on --slab-sunk, min-height 180). */
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 720px;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: var(--space-48) var(--space-24) var(--space-80);
+}
+
+/* Shell widths are desktop lengths — never wider than the column on phones. */
+.loading > span,
+.loading-slab > span {
+  max-width: 100%;
+}
+
+.loading-slab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  max-width: 100%;
+  margin-top: var(--space-12);
+  padding: var(--space-24);
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  overflow: hidden;
+}
+
+.loading-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+}
+
+.loading-slot {
+  min-height: 180px;
+  background: var(--slab-sunk);
+  border: 2px dashed var(--line-strong);
+}
+
+@media (max-width: 599px) {
+  .loading {
+    padding: var(--space-32) var(--space-16) var(--space-56);
+  }
+}

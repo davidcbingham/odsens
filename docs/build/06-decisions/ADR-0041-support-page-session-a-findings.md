@@ -41,12 +41,14 @@ Kind: deviation
 ## Docs amended
 | Doc | Section | Change |
 |---|---|---|
-| `docs/build/00-build-plan.md` | §S1.5b Scope IN (CSP bullet), Tests required; §6 Changelog; Status line | D1, D8 (contains ADR-0041) |
-| `docs/build/02-routes-and-pages.md` | §2.1 item 4; §2.7 Data; Status line | D6, D5 (contains ADR-0041) |
+| `docs/build/00-build-plan.md` | §S1.5b Scope IN (CSP bullet), Tests required; §S1.9 AC4 (= S1.5b.AC1: "code rule, 01 INV-58" and "the line … `--gold-ink`"); §6 Changelog; Status line | D1, D5, D8 (contains ADR-0041) |
+| `docs/build/01-architecture.md` | §13 INV-58 Check cell (the grep now names `lib/support.ts`, the Settings prefix text and the render chain); Status line | D1 (contains ADR-0041) |
+| `docs/build/02-routes-and-pages.md` | §2.1 item 4 and States (empty Home = intro strip + compact `TipPanel`); §2.7 Data; Status line | D6, D5 (contains ADR-0041) |
 | `docs/build/03-components.md` | §2.1 `FloatingSupportButton`; §2.2 `TrackedLink` props; §2.3 `TipPanel`; §2.9 `AmountPicker`; Status line | D2, D3, D4 (contains ADR-0041) |
 | `docs/build/04-server-contracts.md` | §5.7 CONTINUE + Empty rows; Status line | D1, D5 (contains ADR-0041) |
-| `docs/build/05-test-plan.md` | §7 T-UNIT-54 (new), T-E2E-11; §8 row S1.5b; Status line | D8 (contains ADR-0041) |
+| `docs/build/05-test-plan.md` | §7 T-UNIT-54 (new), T-E2E-11, T-E2E-49 (`TipPanel` = `TrackedLink` `<a>`, on `/` always); §8 row S1.5b; Status line | D3, D8 (contains ADR-0041) |
 | `docs/build/_registry.md` | Modules (`lib/support.ts` exports), test helpers | D8 (contains ADR-0041) |
+| `scripts/check-test-ids.mjs` | `SHIPPED_SLICES` gains `S1.5b`; T-UNIT-54 required | D8 |
 | `docs/build/06-decisions/README.md` | §7 Index | new ADR-0041 row |
 | `docs/questions.md` | S1.5b build notes | Session A record |
 

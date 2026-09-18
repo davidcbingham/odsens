@@ -97,8 +97,13 @@
 }
 
 /* The global gold focus ring disappears on a gold slab — ink here. */
-.amount-picker-actions button:focus-visible,
-.amount-picker-other input:focus-visible {
+.amount-picker-actions button:focus-visible {
+  outline-color: var(--ink);
+}
+
+/* Field draws its ring on the well, not the input (Field.module.css) — recolour the well, and
+   out-rank Field's own :has() rule. */
+.amount-picker-slab .amount-picker-other div:has(> input:focus-visible) {
   outline-color: var(--ink);
 }
 
