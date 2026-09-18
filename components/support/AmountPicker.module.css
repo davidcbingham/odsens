@@ -148,4 +148,10 @@
     flex: 1 1 0;
     padding-inline: var(--space-12);
   }
+
+  /* The note takes its own row on phones, so the "on Ko-fi" link never re-wraps when the webfont
+     swaps in (at 390px the two fit on one row in Space Grotesk but not in the fallback — CLS). */
+  .amount-picker-note {
+    flex: 1 0 100%;
+  }
 }
