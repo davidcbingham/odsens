@@ -1,0 +1,131 @@
+/* KofiCard — DESIGN.md §6 #7, §11.4 (gold hatched slab that swaps for Ko-fi's panel — ADR-0042);
+   03 §2.9 (tokens --gold --gold-ink --gold-deep --ink --hatch --slab --line-soft --indigo-lift
+   --font-display). */
+.kofi-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.kofi-card-slab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-24);
+  background-color: var(--gold);
+  background-image: var(--hatch);
+  color: var(--gold-ink);
+  box-shadow: 6px 6px 0 var(--gold-deep);
+}
+
+.kofi-card-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-section-title);
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+}
+
+.kofi-card-line {
+  margin: 0;
+  max-width: 40ch;
+  font-size: var(--text-body-phone);
+  line-height: 1.6;
+  color: var(--gold-ink);
+}
+
+.kofi-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12) var(--space-16);
+}
+
+/* The global gold focus ring disappears on a gold slab — ink here (ADR-0041 D5). */
+.kofi-card-actions button:focus-visible {
+  outline-color: var(--ink);
+}
+
+.kofi-card-note,
+.kofi-card-soon {
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: 1.5;
+  color: var(--gold-ink);
+}
+
+.kofi-card-soon {
+  font-weight: 700;
+}
+
+.kofi-card-out {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--gold-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.kofi-card-out:hover {
+  text-decoration-thickness: 2px;
+}
+
+.kofi-card-actions .kofi-card-out:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* `panel`: the slab is gone — a bar on the dark frame, joined to KofiPanelSlot's 2px edge. */
+.kofi-card-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  padding: var(--space-4) var(--space-16);
+  background: var(--slab);
+  border: 2px solid var(--line-soft);
+  border-bottom: 0;
+}
+
+.kofi-card-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: var(--text-ui);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.kofi-card-back:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* On the dark bar the link is the standard ghost colour, and the global gold ring shows. */
+.kofi-card-bar .kofi-card-out {
+  color: var(--indigo-lift);
+}
+
+@media (max-width: 599px) {
+  .kofi-card-slab {
+    padding: var(--space-20);
+  }
+
+  /* The note and the "Tips open soon." line take their own row on phones, so nothing beside or
+     after them re-wraps when the webfont swaps in (at ~387–436px they fit next to the button in
+     Space Grotesk but not in the fallback — CLS). */
+  .kofi-card-note,
+  .kofi-card-soon {
+    flex: 1 0 100%;
+  }
+}

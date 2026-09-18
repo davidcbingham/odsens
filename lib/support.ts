@@ -1,11 +1,11 @@
 /**
  * lib/support.ts — the two Ko-fi URLs `/support` uses (04 §5.7; 01 INV-58; ADR-0002 C19, #50).
  *
- * Plain module (no directive): bundled into the `AmountPicker` / `KofiPanelSlot` client leaves.
+ * Plain module (no directive): bundled into the `KofiCard` / `KofiPanelSlot` client leaves.
  * The page name is `site_settings.kofi_page` (`[A-Za-z0-9_-]{1,40}` — `lib/actions/settings.schema.ts`),
- * encoded anyway so nothing typed in Settings can leave the path segment. The chosen amount is NOT
- * passed in v1 — Ko-fi documents no preset-amount parameter (04 §5.7; verify once the page is live,
- * then add `kofiUrl(page, amount)` + a T-UNIT here).
+ * encoded anyway so nothing typed in Settings can leave the path segment. There is no amount in
+ * either URL: Ko-fi's panel takes no preset-amount parameter (checked against the live panel —
+ * 04 §5.7, ADR-0042 D1), so the amount is chosen in Ko-fi and nowhere else.
  */
 
 const KOFI_ORIGIN = 'https://ko-fi.com';

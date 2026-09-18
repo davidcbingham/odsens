@@ -16,7 +16,7 @@ import styles from './Chip.module.css';
  * - `href` → `<a>` via next/link, `aria-current="true"` when selected (never `aria-pressed`
  *   on a link);
  * - `selected` without `href` → radio chip: `role="radio"` + `aria-checked`; the parent
- *   `role="radiogroup"` owns interaction (ReportPicker / AmountPicker slices);
+ *   `role="radiogroup"` owns interaction (ReportPicker slice);
  * - otherwise a plain `<span>`.
  */
 export type ChipProps = {

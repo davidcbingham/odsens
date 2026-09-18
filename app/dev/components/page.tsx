@@ -40,7 +40,7 @@ import { GetItPanel } from '@/components/projects/GetItPanel';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ProjectGrid } from '@/components/projects/ProjectGrid';
 import { TipPanel } from '@/components/projects/TipPanel';
-import { AmountPicker } from '@/components/support/AmountPicker';
+import { KofiCard } from '@/components/support/KofiCard';
 import { KofiPanelSlot } from '@/components/support/KofiPanelSlot';
 import { Leaderboard } from '@/components/support/Leaderboard';
 import { FloatingSupportButton } from '@/components/layout/FloatingSupportButton';
@@ -113,7 +113,7 @@ import {
   trackedLinkFixtures,
   typeBadgeFixtures,
   versionsTableFixtures,
-  amountPickerFixtures,
+  kofiCardFixtures,
   kofiPanelSlotFixtures,
   leaderboardFixtures,
   floatingSupportButtonFixtures,
@@ -692,11 +692,11 @@ export default function ComponentsPreviewPage() {
 
         <Area id="area-support" title="SUPPORT">
           <div className={styles['preview-group']} data-wide="">
-            {amountPickerFixtures.map(({ label, props }) => (
-              <Specimen key={label} name="AmountPicker" label={label}>
-                {/* The open picker (chips, Other field, CONTINUE → Ko-fi iframe) lives on /support —
-                    the gallery never frames Ko-fi (01 INV-58). */}
-                <AmountPicker {...props} />
+            {kofiCardFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="KofiCard" label={label}>
+                {/* The open card (TIP ON KO-FI → Ko-fi iframe in its place) lives on /support — the
+                    gallery never frames Ko-fi (01 INV-58). */}
+                <KofiCard {...props} />
               </Specimen>
             ))}
             {kofiPanelSlotFixtures.map(({ label, props }) => (

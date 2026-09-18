@@ -2,15 +2,15 @@
  * tests/e2e/smoke/support.spec.ts — T-E2E-11 (05 §7.2; 00 S1.5b.AC1/AC2/AC6; 02 §2.7; 03 §2.9;
  * 04 §5.6/§5.7; DESIGN.md §6 #7, §11.4, §12.4): the public `/support` page with SEED-1
  * `kofi_page = 'oddsense'`, at 1280 and 390.
- *  - title, one h1; `AmountPicker` radiogroup `$1 / $3 / $5 / Other`, `$3` preselected, arrow keys
- *    move the check; `KofiPanelSlot` idle (dashed slot, no Ko-fi iframe, nothing requested from
- *    ko-fi.com); "on Ko-fi ↗" ghost link; "What it pays for"; `Leaderboard` empty state + how-to
- *    line, no rows, no amounts; no begging copy; no `FloatingSupportButton` here (02 RP-15).
+ *  - title, one h1; `KofiCard` in its `card` state — one TIP ON KO-FI button, no amount picker of
+ *    ours (ADR-0042 D1), no Ko-fi iframe and nothing requested from ko-fi.com; "on Ko-fi ↗" ghost
+ *    link; "What it pays for"; `Leaderboard` empty state + how-to line, no rows, no amounts; no
+ *    begging copy; no `FloatingSupportButton` here (02 RP-15).
  *  - axe zero serious/critical + the screenshot, before the third-party frame exists.
- *  - $5 → CONTINUE ON KO-FI mounts `iframe[title="Ko-fi"]` IN PLACE (same tab, no popup; src host
- *    `ko-fi.com`, page `oddsense`, no amount parameter) and `tip_click {amount:5, from:'support'}`
- *    lands on the `window.va` stub; Other + a typed value → `{amount:'other'}` — the typed number
- *    is never sent (ADR-0002 A16).
+ *  - TIP ON KO-FI swaps the gold slab for `iframe[title="Ko-fi"]` IN PLACE (same tab, no popup; src
+ *    host `ko-fi.com`, page `oddsense`, no amount parameter) — one box, never both (ADR-0042 D2);
+ *    focus lands on "← Back"; `tip_click {from:'support'}` (no amount) lands on the `window.va`
+ *    stub; Back restores the card, focus returns to the button, and the frame is gone.
  * The empty-`kofi_page` state and the Settings → `revalidateTag('settings')` leg live in
  * tests/e2e/admin/projects.spec.ts (they write `site_settings`; the `admin` project is serial).
  * H-10: the iframe's own request to ko-fi.com is aborted by the shared context — only the element
@@ -25,7 +25,7 @@ const HOW_TO =
   'Tip on Ko-fi with the same email as your Google sign-in, or put your handle in the message.';
 
 test.describe('support', () => {
-  test('T-E2E-11 /support: picker, idle slot, ghost link, pays-for, empty leaderboard, axe; CONTINUE mounts the Ko-fi iframe in place + tip_click', async ({
+  test('T-E2E-11 /support: one-button card, ghost link, pays-for, empty leaderboard, axe; TIP ON KO-FI swaps the card for the Ko-fi iframe + tip_click; Back', async ({
     page,
     context,
     requests,
@@ -36,33 +36,19 @@ test.describe('support', () => {
     await expect(page).toHaveTitle('Support — odsens');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('SUPPORT');
 
-    // AmountPicker — $1 / $3 / $5 / Other, $3 preselected (00 O-8).
-    const group = page.getByRole('radiogroup', { name: 'Amount' });
-    const radios = group.getByRole('radio');
-    await expect(radios).toHaveText(['$1', '$3', '$5', 'Other']);
-    await expect(group.getByRole('radio', { checked: true })).toHaveText(['$3']);
-    for (const radio of await radios.all()) {
-      const box = await radio.boundingBox();
-      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
-      expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
-    }
-
-    // Arrow keys move and check (roving tabindex).
-    await group.getByRole('radio', { name: '$3' }).focus();
-    await page.keyboard.press('ArrowRight');
-    await expect(group.getByRole('radio', { checked: true })).toHaveText(['$5']);
-    await expect(group.getByRole('radio', { name: '$5' })).toBeFocused();
-    await page.keyboard.press('ArrowLeft');
-    await expect(group.getByRole('radio', { checked: true })).toHaveText(['$3']);
-
-    const proceed = page.getByRole('button', { name: 'CONTINUE ON KO-FI', exact: true });
-    await expect(proceed).toBeEnabled();
+    // KofiCard, `card` state — one button; the amount is chosen in Ko-fi, not here (ADR-0042 D1).
+    const card = page.locator('[data-state="card"]');
+    await expect(card.getByRole('heading', { name: 'BUY ME A BLOCK' })).toBeVisible();
+    await expect(card).toContainText('You pick the amount there.');
+    await expect(page.getByRole('radiogroup')).toHaveCount(0);
+    await expect(page.getByRole('radio')).toHaveCount(0);
+    const tip = page.getByRole('button', { name: 'TIP ON KO-FI', exact: true });
+    await expect(tip).toBeEnabled();
+    expect((await tip.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
     await expect(page.getByText('Tips open soon.')).toHaveCount(0);
 
-    // KofiPanelSlot idle: the dashed slot, no iframe, nothing asked of ko-fi.com yet.
-    const slot = page.locator('[data-state="idle"]', { hasText: 'KO-FI PANEL LOADS HERE' });
-    await expect(slot).toBeVisible();
-    await expect(slot).toContainText('Their look, our frame.');
+    // Nothing of Ko-fi's before the click: no slot, no iframe, nothing asked of ko-fi.com.
+    await expect(page.getByText('KO-FI PANEL LOADS HERE')).toHaveCount(0);
     await expect(page.locator('iframe')).toHaveCount(0);
     expect(requests.filter((url) => url.includes('ko-fi.com'))).toEqual([]);
 
@@ -94,11 +80,14 @@ test.describe('support', () => {
     await expectNoSeriousA11y(page);
     await shoot(page, 'support');
 
-    // $5 → CONTINUE mounts the iframe in place: same tab, no popup.
-    await group.getByRole('radio', { name: '$5' }).click();
-    await proceed.click();
+    // TIP ON KO-FI swaps the slab for the iframe in place: same tab, no popup, one box.
+    await tip.click();
     const frame = page.locator('iframe[title="Ko-fi"]');
     await expect(frame).toHaveCount(1);
+    await expect(page.locator('[data-state="card"]')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'BUY ME A BLOCK' })).toHaveCount(0);
+    const panel = page.getByRole('region', { name: 'Tip on Ko-fi' });
+    await expect(panel).toHaveAttribute('data-state', 'panel');
     const src = new URL((await frame.getAttribute('src')) ?? '');
     expect(src.origin).toBe('https://ko-fi.com');
     expect(src.pathname).toBe('/oddsense/');
@@ -109,21 +98,24 @@ test.describe('support', () => {
     const height = (await frame.boundingBox())?.height ?? 0;
     expect(Math.round(height)).toBe((page.viewportSize()?.width ?? 1280) < 600 ? 620 : 712);
     await expect.poll(() => va.events().length).toBe(1);
-    expect(va.events()[0]).toEqual({ name: 'tip_click', data: { amount: 5, from: 'support' } });
+    expect(va.events()[0]).toEqual({ name: 'tip_click', data: { from: 'support' } });
 
-    // Other: the typed value stays on the page — the event says 'other'.
-    await group.getByRole('radio', { name: 'Other' }).click();
-    await page.getByLabel('Amount in dollars').fill('7');
-    // Field draws its focus ring on the well — ink on the gold slab, never gold on gold (ADR-0041 D5).
-    const well = page.getByLabel('Amount in dollars').locator('xpath=..');
-    await expect(well).toHaveCSS('outline-style', 'solid');
-    await expect(well).toHaveCSS('outline-color', 'rgb(13, 19, 27)');
-    await proceed.click();
-    await expect.poll(() => va.events().length).toBe(2);
-    expect(va.events()[1]).toEqual({
-      name: 'tip_click',
-      data: { amount: 'other', from: 'support' },
-    });
-    expect(JSON.stringify(va.events())).not.toContain('7');
+    // The panel's bar: focus moved to Back; the ghost link is still the only way off the site.
+    const back = panel.getByRole('button', { name: 'Back' });
+    await expect(back).toBeFocused();
+    expect((await back.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    await expect(panel.getByRole('link', { name: /on Ko-fi/ })).toHaveAttribute(
+      'href',
+      'https://ko-fi.com/oddsense',
+    );
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'support-panel');
+
+    // Back restores the card, returns focus to the button and removes the frame; no second event.
+    await back.click();
+    await expect(page.locator('iframe')).toHaveCount(0);
+    await expect(page.locator('[data-state="card"]')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'TIP ON KO-FI', exact: true })).toBeFocused();
+    expect(va.events()).toHaveLength(1);
   });
 });

@@ -5,17 +5,18 @@ import { kofiEmbedUrl } from '@/lib/support';
 import styles from './KofiPanelSlot.module.css';
 
 /**
- * KofiPanelSlot — DESIGN.md §11.4 ("a labelled dashed slot shows where Ko-fi's own panel renders —
- * their look, inside our frame"), §12.7 C19; 03 §2.9 `KofiPanelSlot` row; 01 INV-58; 04 §5.7.
+ * KofiPanelSlot — DESIGN.md §11.4 v1.11 ("replaces the slab with Ko-fi's own panel — their look,
+ * inside our frame"; the dashed labelled slot "survives only as the component gallery's stand-in"),
+ * §12.7 C19; 03 §2.9 `KofiPanelSlot` row; 01 INV-58; 04 §5.7.
  * Client island (03 C-16a): the ONLY place a Ko-fi iframe may appear, and only once `loaded` —
- * click-to-load like every other embed, so nothing is fetched from Ko-fi before CONTINUE ON KO-FI.
- * `idle` = dashed slot + `PixelLabel` + one line; `loaded` = the iframe, 712px desktop / 620px
- * phone (ADR-0002 #50). `amount` is accepted for the day Ko-fi documents a preset-amount parameter
- * (04 §5.7) — it is not part of the URL in v1.
+ * click-to-load like every other embed, so nothing is fetched from Ko-fi before TIP ON KO-FI.
+ * `loaded` = the iframe, 712px desktop / 620px phone (ADR-0002 #50) — what `KofiCard` renders in
+ * place of its slab (ADR-0042 D2). `idle` = dashed slot + `PixelLabel` + one line — no page shows
+ * it any more; it stays for the `/dev/components` gallery, which never frames Ko-fi. There is no
+ * `amount`: Ko-fi's panel takes no preset (ADR-0042 D1).
  */
 export type KofiPanelSlotProps = {
   kofiPage: string;
-  amount: number | null;
   loaded: boolean;
 };
 

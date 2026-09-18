@@ -14,7 +14,7 @@ const LABEL: Record<(typeof VARIANTS)[number], string> = {
   secondary: 'See all',
   ghost: 'See the projects',
   gold: '♥ SUPPORT',
-  'gold-ink': 'CONTINUE ON KO-FI',
+  'gold-ink': 'TIP ON KO-FI',
 };
 
 export const buttonFixtures: ButtonFixture[] = [
