@@ -5,8 +5,9 @@ import { kofiEmbedUrl } from '@/lib/support';
 import styles from './KofiPanelSlot.module.css';
 
 /**
- * KofiPanelSlot — DESIGN.md §11.4 ("a labelled dashed slot shows where Ko-fi's own panel renders —
- * their look, inside our frame"), §12.7 C19; 03 §2.9 `KofiPanelSlot` row; 01 INV-58; 04 §5.7.
+ * KofiPanelSlot — DESIGN.md §11.4 v1.11 ("replaces the slab with Ko-fi's own panel — their look,
+ * inside our frame"; the dashed labelled slot "survives only as the component gallery's stand-in"),
+ * §12.7 C19; 03 §2.9 `KofiPanelSlot` row; 01 INV-58; 04 §5.7.
  * Client island (03 C-16a): the ONLY place a Ko-fi iframe may appear, and only once `loaded` —
  * click-to-load like every other embed, so nothing is fetched from Ko-fi before TIP ON KO-FI.
  * `loaded` = the iframe, 712px desktop / 620px phone (ADR-0002 #50) — what `KofiCard` renders in

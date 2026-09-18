@@ -2,7 +2,8 @@ import { Skeleton } from '@/components/layout/Skeleton';
 import styles from './loading.module.css';
 
 /**
- * `/support` loading state — panel + slot shells in the page's 720px column (02 §6, RP-10;
+ * `/support` loading state — card + pays-for slab shells in the page's 720px column (02 §6, RP-10;
+ * ADR-0042 D6;
  * 03 G-01; DESIGN.md §11.1 Skeleton): title + lead lines, the `KofiCard` slab (title, one line,
  * the button), then the "What it pays for" slab. ≤ one screenful (RP-24).
  */

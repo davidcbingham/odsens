@@ -367,7 +367,7 @@ Per-slice applicability: SM-01, 04, 10–14, 16, 20–30, 32 from S1.1 (SM-02/03
 | O-16 | `/projects` count-line copy | "<N> things. Some useful, some not." | DECIDED (ADR-0002 #39) |
 | O-17 | `/projects` `q`: client substring vs tsvector | Client substring in v1 (00 v0.2 agrees) | CLOSED |
 | O-18 | Synced file Download cell target | Modrinth CDN file URL (`project_files.url`); GET IT rail keeps the Modrinth project link | DECIDED (ADR-0002 #42) |
-| O-19 | Ko-fi page source | `site_settings.kofi_page` via view `site_settings_public`; `/support` carries tag `settings`; env `KOFI_PAGE` seeds only; CONTINUE mounts the iframe in place | DECIDED (ADR-0002 C19) |
+| O-19 | Ko-fi page source | `site_settings.kofi_page` via view `site_settings_public`; `/support` carries tag `settings`; env `KOFI_PAGE` seeds only; TIP ON KO-FI (was CONTINUE — ADR-0042) swaps the card for the iframe in place | DECIDED (ADR-0002 C19) |
 | O-20 | `comments_closed_default` toggle surface on `/admin/settings` | Build with the 03 V-03 label; DESIGN.md §12.7 line | DECIDED (ADR-0002 #43) |
 | O-21 | Middleware exceptions `/privacy`, `/how-comments-work` + anon redirects for `/welcome`, `/profile` vs 01 INV-30 | Keep as §3 M1/M5; 01 INV-30 amended in the ADR-0002 PR; encoded in 05 T-ACT-10 | DECIDED (ADR-0002) |
 
