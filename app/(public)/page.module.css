@@ -47,6 +47,18 @@
   flex: 1;
 }
 
+/* ---- Compact tip panel row (02 §2.1 #4; S1.6 adds Latest videos + Find me beside it) ---- */
+.home-support {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-40);
+}
+
+.home-tip {
+  width: 320px;
+  max-width: 100%;
+}
+
 /* ---- Empty state: intro strip alone (02 §2.1 States; transient, no design) ---- */
 .home-empty {
   display: flex;
@@ -97,6 +109,14 @@
 
   .home-featured-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-support {
+    padding: var(--space-24) var(--space-20);
+  }
+
+  .home-tip {
+    width: 100%;
   }
 
   .home-empty {

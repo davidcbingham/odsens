@@ -1,0 +1,146 @@
+/* AmountPicker — DESIGN.md §6 #7, §11.4 (gold hatched slab; checked amount = ink on gold);
+   03 §2.9 (tokens --gold --gold-ink --gold-deep --ink --hatch --font-display). */
+.amount-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+
+.amount-picker-slab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-24);
+  background-color: var(--gold);
+  background-image: var(--hatch);
+  color: var(--gold-ink);
+  box-shadow: 6px 6px 0 var(--gold-deep);
+}
+
+.amount-picker-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-section-title);
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+}
+
+.amount-picker-line {
+  margin: 0;
+  max-width: 40ch;
+  font-size: var(--text-body-phone);
+  line-height: 1.6;
+  color: var(--gold-ink);
+}
+
+.amount-picker-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+}
+
+.amount-picker-chip {
+  min-width: 64px;
+  min-height: 48px;
+  padding: var(--space-12) var(--space-20);
+  border: 0;
+  border-radius: 0;
+  outline: 2px solid var(--gold-ink);
+  outline-offset: -2px;
+  background: transparent;
+  color: var(--gold-ink);
+  font-family: var(--font-display);
+  font-size: var(--text-ui);
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) ease-out,
+    color var(--dur-fast) ease-out;
+}
+
+.amount-picker-chip[data-other] {
+  font-family: var(--font-body);
+  font-weight: 700;
+}
+
+.amount-picker-chip[aria-checked='true'] {
+  background: var(--ink);
+  color: var(--gold);
+  outline-color: var(--ink);
+}
+
+.amount-picker-chip:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.amount-picker-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* The Other amount: the shared Field, relabelled for the gold ground. */
+.amount-picker-other {
+  max-width: 220px;
+}
+
+.amount-picker-other label {
+  color: var(--gold-ink);
+}
+
+.amount-picker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12) var(--space-16);
+}
+
+/* The global gold focus ring disappears on a gold slab — ink here. */
+.amount-picker-actions button:focus-visible,
+.amount-picker-other input:focus-visible {
+  outline-color: var(--ink);
+}
+
+.amount-picker-note,
+.amount-picker-soon {
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: 1.5;
+  color: var(--gold-ink);
+}
+
+.amount-picker-soon {
+  font-weight: 700;
+}
+
+.amount-picker-out {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--gold-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.amount-picker-out:hover {
+  text-decoration-thickness: 2px;
+}
+
+.amount-picker-out:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+@media (max-width: 599px) {
+  .amount-picker-slab {
+    padding: var(--space-20);
+  }
+
+  .amount-picker-chip {
+    flex: 1 1 0;
+    padding-inline: var(--space-12);
+  }
+}

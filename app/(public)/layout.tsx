@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { SkipLink } from '@/components/layout/SkipLink';
 import { Nav } from '@/components/layout/Nav';
 import { Footer } from '@/components/layout/Footer';
+import { FloatingSupportButton } from '@/components/layout/FloatingSupportButton';
 import { ToastProvider } from '@/components/layout/Toast';
 import { ViewerProvider } from '@/components/accounts/ViewerProvider';
 import { Analytics } from '@vercel/analytics/next';
@@ -9,7 +10,9 @@ import { Analytics } from '@vercel/analytics/next';
 /**
  * (public) layout — the site chrome (ADR-0002 C5; 02 RP-09): SkipLink, Toast live region,
  * ViewerProvider (client session seam), Nav, <main id="main">, Footer.
- * FloatingSupportButton mounts here in S1.9; Vercel Analytics + Speed Insights in S1.10.
+ * `FloatingSupportButton` (S1.5b — ADR-0036; 02 RP-15: every public route except `/support`, which
+ * the button opts out of itself; `/welcome`, `/banned` and `/admin/*` live under other layouts).
+ * Speed Insights in S1.10.
  */
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
@@ -22,6 +25,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
             {children}
           </main>
           <Footer />
+          <FloatingSupportButton />
         </ViewerProvider>
       </ToastProvider>
       {/* Vercel Web Analytics — public routes only (01 INV-59; pulled forward from S1.10 by ADR-0038 D4). */}
