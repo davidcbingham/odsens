@@ -78,7 +78,7 @@ function validSource(): Record<string, string | undefined> {
     MODRINTH_API_BASE: 'http://127.0.0.1:4010/modrinth',
     CURSEFORGE_API_BASE: 'http://127.0.0.1:4010/curseforge',
     YOUTUBE_API_BASE: 'http://127.0.0.1:4010/youtube',
-    YOUTUBE_RSS_BASE: 'http://127.0.0.1:4010/youtube-rss',
+    YOUTUBE_RSS_BASE: 'http://127.0.0.1:4010/youtube/rss.xml',
     OEMBED_BASE: 'http://127.0.0.1:4010/oembed',
     DISCORD_API_BASE: 'http://127.0.0.1:4010/discord',
     RESEND_API_BASE: 'http://127.0.0.1:4010/resend',

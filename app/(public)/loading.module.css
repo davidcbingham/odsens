@@ -1,5 +1,9 @@
-/* Home skeleton shell — same gutters as the page (DESIGN.md §3). */
+/* Home skeleton shell — same gutters as the page (DESIGN.md §3). The shell holds a full viewport
+   (`100svh`): Home grew the Latest videos row in S1.6, and a shell shorter than the screen would
+   paint the footer in view and then push it down when the page lands (02 RP-24 holds — only
+   empty space grows). */
 .loading {
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
   gap: var(--space-40);

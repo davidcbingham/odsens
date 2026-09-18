@@ -1,0 +1,103 @@
+/* /videos — DESIGN.md §6.4, §3 page gutters (24 phone / 40 desktop, max content 1280), §6
+   breakpoints (600 / 900); pass-3 "Videos" 1280 (head: title + subline left, Subscribe right).
+   Stage internals live in VideoStage.module.css — this file is the page shell, the head and the
+   MORE VIDEOS grid (3 / 2 / 1-up, gap 20 — 03 §2.6 `VideoCard`). */
+.videos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-40);
+  max-width: var(--measure-page);
+  margin: 0 auto;
+  padding: var(--space-40);
+}
+
+.videos-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-24);
+  /* The head sits closer to the stage than the sections sit to each other (prototype 20 vs 40). */
+  margin-bottom: calc(-1 * var(--space-16));
+}
+
+.videos-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.videos-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-page-title);
+  font-weight: 400;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--white);
+}
+
+.videos-line {
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: 1.4;
+  color: var(--mute);
+}
+
+.videos-more {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  min-width: 0;
+}
+
+.videos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-20);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.videos-grid-item {
+  display: flex;
+  min-width: 0;
+}
+
+.videos-grid-item > * {
+  flex: 1;
+}
+
+@media (max-width: 899px) {
+  .videos-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .videos {
+    gap: var(--space-32);
+    padding: var(--space-24) var(--space-24) var(--space-40);
+  }
+
+  /* Title block over the button, always: side by side they fit in one font and not the other. */
+  .videos-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-16);
+    margin-bottom: calc(-1 * var(--space-8));
+  }
+
+  .videos-title {
+    font-size: var(--text-page-title-phone);
+  }
+
+  .videos-line {
+    font-size: var(--text-body-phone);
+  }
+
+  .videos-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,7 +1,8 @@
 /**
  * lib/data/admin.ts — read-side queries for the dynamic admin surfaces (02 §1.3 Data columns:
- * `/admin` = `sync_runs` (latest per source) + `projects` count where `status='draft'` (the
- * held-comments count is S1.4, the videos list S1.6 — the row's Slice cell); `/admin/projects` =
+ * `/admin` = `sync_runs` (latest per source — `DASHBOARD_SYNC_SOURCES`, YouTube since S1.6) +
+ * `projects` count where `status='draft'` + the S1.4 held-comments count + the S1.6 videos list
+ * (`listAdminVideos` — ADR-0002 #20, ADR-0043 D11; there is no `/admin/videos`); `/admin/projects` =
  * `projects` (all statuses) + `project_overrides` + `project_links` + `sync_runs`
  * (modrinth/curseforge); `/admin/projects/[id]` = the same, by id, plus the S1.3 exclusive-editor
  * columns and `project_versions` + `project_files` (`listAdminProjectVersions`); `/admin/settings`
@@ -470,6 +471,59 @@ export async function countDraftProjects(): Promise<number> {
   return count ?? 0;
 }
 
+// ---- /admin dashboard videos list (S1.6; 02 §1.3 `/admin` row; ADR-0002 #20; ADR-0043 D11) ----
+
+export type AdminVideoListItem = {
+  id: string;
+  /** The natural key `updateVideo` takes (04 §1.8 `updateVideoInput.youtube_id`). */
+  youtubeId: string;
+  title: string;
+  publishedAt: string;
+  /** Null on an RSS-only row (04 §3.3 — no `YOUTUBE_API_KEY`). */
+  durationSeconds: number | null;
+  hidden: boolean;
+  /** The EFFECTIVE flag every public reader filters on (= `override ?? heuristic`, ADR-0043 D1). */
+  isShort: boolean;
+  /** Oliver's override of the 04 §5.3 heuristic; null = the heuristic decides (ADR-0043 D1). */
+  isShortOverride: boolean | null;
+};
+
+/** Cap for the dashboard list — the channel has ~21 uploads (00 S1.6.AC1); engineering call. */
+export const ADMIN_VIDEOS_LIMIT = 200;
+
+/**
+ * The `/admin` videos list (02 §1.3 `/admin` Data cell: "`videos` … read newest first on the
+ * request-cookie client incl. `is_short_override`"). Newest first by `published_at` (the
+ * `videos_published_at_idx` order), long videos and Shorts together — the Short `Toggle` is a
+ * column of this list. RLS (05 T-RLS-48/49): an `admin` session reads every row incl. hidden; a
+ * `moderator` session gets the visible rows only, so every row a moderator sees reads LIVE — the
+ * read-only degradation 02 §1.3 accepts (the `countDraftProjects` / `listSyncStatus` precedent).
+ */
+export async function listAdminVideos(
+  limit: number = ADMIN_VIDEOS_LIMIT,
+): Promise<AdminVideoListItem[]> {
+  const db = await createServerClient();
+  const { data, error } = await db
+    .from('videos')
+    .select(
+      'id, youtube_id, title, published_at, duration_seconds, hidden, is_short, is_short_override',
+    )
+    .order('published_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`admin videos read failed: ${error.code}`);
+
+  return data.map((row) => ({
+    id: row.id,
+    youtubeId: row.youtube_id,
+    title: row.title,
+    publishedAt: row.published_at,
+    durationSeconds: row.duration_seconds,
+    hidden: row.hidden,
+    isShort: row.is_short,
+    isShortOverride: row.is_short_override,
+  }));
+}
+
 // ---- Sync status (`sync_runs`) ---------------------------------------------------------------
 
 /** 04 J-S staleness window: no `ok=true` run in the last 6 h ⇒ the source is stale. */
@@ -478,6 +532,15 @@ export const SYNC_STALE_WINDOW_MS = 6 * 60 * 60 * 1000;
 /** The sources `/admin/projects` shows (02 §1.3 Data cell: `sync_runs` (modrinth/curseforge)). */
 export const PROJECT_SYNC_SOURCES = ['modrinth', 'curseforge'] as const;
 export type ProjectSyncSource = (typeof PROJECT_SYNC_SOURCES)[number];
+
+/**
+ * The sources the `/admin` dashboard shows (02 §1.3 `/admin` Data cell: `sync_runs` (latest per
+ * source); 03 §2.10 `SyncStatus` Slice cell "S1.2 (Modrinth/CF) · S1.6 (YouTube) · S1.8"). YouTube
+ * joins here only — `/admin/projects` keeps `PROJECT_SYNC_SOURCES` (its Data cell names
+ * modrinth/curseforge).
+ */
+export const DASHBOARD_SYNC_SOURCES = ['modrinth', 'curseforge', 'youtube'] as const;
+export type DashboardSyncSource = (typeof DASHBOARD_SYNC_SOURCES)[number];
 
 export type AdminSyncSource<TSource extends string = string> = {
   source: TSource;

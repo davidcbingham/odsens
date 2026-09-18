@@ -19,6 +19,13 @@ import path from 'node:path';
  * `vitest run --coverage`, CI-3): the pure notify modules (`matrix.ts`, `constants.ts`, the deliverer
  * builders behind T-ADP-19) are unit-covered and the jobs/deliverers are db-covered, so neither lane
  * alone reaches the scope's real number. `pnpm test:db --coverage` still enforces COV-2 only.
+ *
+ * COV-5 (05 §6, enforced from S1.6): the GLOBAL number — `lib/**`, `app/api/**`, `emails/**` (plus
+ * `app/auth/**`, which COV-2 needs in `coverage.include`) — at 75 lines / 70 branches, read on the
+ * COMBINED run only for the COV-4 reason: neither lane alone loads every module (the unit lane never
+ * loads the actions / routes / jobs, the db lane never loads the pure helpers). `emails/**` joins
+ * `coverage.include` with it, so the templates and their previews count in the denominator. As wired
+ * at the S1.6 build pass (2026-09-18, combined run): 92.7 lines / 82.2 branches (90.0 statements).
  */
 const alias = { '@': path.resolve(import.meta.dirname) };
 
@@ -26,6 +33,8 @@ const alias = { '@': path.resolve(import.meta.dirname) };
 const COV_2 = { lines: 85, branches: 80 } as const;
 /** COV-4 (05 §6, enforced from S1.5): same numbers over `lib/jobs/**` and `lib/notify/**`, combined run only. */
 const COV_4 = { lines: 85, branches: 80 } as const;
+/** COV-5 (05 §6, enforced from S1.6): the global floor over everything in `coverage.include`, combined run only. */
+const COV_5 = { lines: 75, branches: 70 } as const;
 
 function selectedProjects(argv: readonly string[]): string[] {
   const selected: string[] = [];
@@ -54,7 +63,7 @@ export default defineConfig({
       provider: 'v8',
       reportsDirectory: './coverage',
       reporter: ['text-summary', 'lcov'],
-      include: ['lib/**', 'app/api/**', 'app/auth/**'],
+      include: ['lib/**', 'app/api/**', 'app/auth/**', 'emails/**'],
       ...(runIncludesDbProject(process.argv)
         ? {
             thresholds: {
@@ -62,7 +71,7 @@ export default defineConfig({
               'app/api/**': COV_2,
               'app/auth/**': COV_2,
               ...(runIsCombined(process.argv)
-                ? { 'lib/jobs/**': COV_4, 'lib/notify/**': COV_4 }
+                ? { ...COV_5, 'lib/jobs/**': COV_4, 'lib/notify/**': COV_4 }
                 : {}),
             },
           }

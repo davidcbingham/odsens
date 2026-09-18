@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { isVercel, nodeEnv } from '@/lib/env';
 import { SkipLink } from '@/components/layout/SkipLink';
 import { Nav } from '@/components/layout/Nav';
@@ -45,6 +45,11 @@ import { KofiPanelSlot } from '@/components/support/KofiPanelSlot';
 import { Leaderboard } from '@/components/support/Leaderboard';
 import { FloatingSupportButton } from '@/components/layout/FloatingSupportButton';
 import { VersionsTable } from '@/components/projects/VersionsTable';
+import { ShortsRow } from '@/components/videos/ShortsRow';
+import { UpNextList } from '@/components/videos/UpNextList';
+import { VideoCard } from '@/components/videos/VideoCard';
+import { VideoFacade } from '@/components/videos/VideoFacade';
+import { VideoStage } from '@/components/videos/VideoStage';
 import { ViewerProvider } from '@/components/accounts/ViewerProvider';
 import { ProfileMenu } from '@/components/accounts/ProfileMenu';
 import { HandleField } from '@/components/accounts/HandleField';
@@ -117,6 +122,12 @@ import {
   kofiPanelSlotFixtures,
   leaderboardFixtures,
   floatingSupportButtonFixtures,
+  videoFacadeFixtures,
+  videoFacadeLiveStates,
+  upNextListFixtures,
+  shortsRowFixtures,
+  videoCardFixtures,
+  videoStageFixtures,
 } from '@/tests/fixtures/ui';
 import styles from './page.module.css';
 
@@ -716,6 +727,52 @@ export default function ComponentsPreviewPage() {
                   return.
                 </p>
                 <FloatingSupportButton {...props} />
+              </Specimen>
+            ))}
+          </div>
+        </Area>
+
+        <Area id="area-videos" title="VIDEOS">
+          <div className={styles['preview-group']}>
+            {videoFacadeFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="VideoFacade" label={label}>
+                <VideoFacade {...props} />
+              </Specimen>
+            ))}
+            {videoFacadeLiveStates.map(({ label, note }) => (
+              <Specimen key={label} name="VideoFacade" label={label}>
+                {/* `loading` / `playing` need a live YouTube frame — the gallery never frames
+                    YouTube (01 INV-57; ADR-0014 live-state exception): described, not rendered.
+                    The `upnext` and `short` variants sit in the UpNextList / ShortsRow specimens
+                    below, at their real 132px / 104px widths. */}
+                <p className={styles['preview-note']}>{note}</p>
+              </Specimen>
+            ))}
+            {videoCardFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="VideoCard" label={label}>
+                <VideoCard {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {upNextListFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="UpNextList" label={label}>
+                <UpNextList {...props} />
+              </Specimen>
+            ))}
+            {shortsRowFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="ShortsRow" label={label}>
+                <ShortsRow {...props} />
+              </Specimen>
+            ))}
+            {videoStageFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="VideoStage" label={label}>
+                {/* Reads `?v=` from this page's URL (`/dev/components?v=gallery0003` selects the
+                    third video); its Up next rows rewrite it. */}
+                <Suspense fallback={null}>
+                  <VideoStage {...props} />
+                </Suspense>
               </Specimen>
             ))}
           </div>

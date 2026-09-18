@@ -1,7 +1,10 @@
 /**
- * lib/adapters/http.ts — `fetchJson` + `AdapterError`, the one HTTP path for every adapter
- * (04 SC-09 / SC-10; §4 adapter rules A1–A5; 05 T-ADP-1; registry Adapters: `http` (`fetchJson`);
- * ADR-0030 D6 — `method` / `body` for the S1.5 POST adapters).
+ * lib/adapters/http.ts — `fetchJson` / `fetchText` + `AdapterError`, the one HTTP path for every
+ * adapter (04 SC-09 / SC-10; §4 adapter rules A1–A5; 05 T-ADP-1; registry Adapters: `http`
+ * (`fetchJson`, `fetchText`); ADR-0030 D6 — `method` / `body` for the S1.5 POST adapters;
+ * ADR-0043 D3 — `fetchText`, the same loop for a non-JSON body: the YouTube RSS feed is Atom XML).
+ *
+ * Both exports run ONE request loop (`requestBody`) — everything below holds for either:
  *
  * - `AbortSignal.timeout(10000)` on every attempt (10 s — SC-09).
  * - Retries HTTP 429/5xx and network errors with backoff 1 s → 2 s → 4 s, honouring `Retry-After` /
@@ -12,15 +15,20 @@
  * - `method` defaults to GET. `method: 'POST'` sends `JSON.stringify(body)` with
  *   `Content-Type: application/json` (ADR-0030 D6). Request bodies are NEVER echoed into an error
  *   message, `AdapterError.body`, or any log line — only the redacted URL and the upstream body are.
- * - A 2xx with an empty body (Discord 204, or a bare `200`) resolves to `null` instead of a
- *   `parse_error`; callers that expect a body type it as `T | null` or validate the shape.
+ * - `fetchJson`: a 2xx with an empty body (Discord 204, or a bare `200`) resolves to `null` instead
+ *   of a `parse_error`; callers that expect a body type it as `T | null` or validate the shape.
+ * - `fetchText` (ADR-0043 D3): GET only; resolves to the 2xx body verbatim (an empty body is `''`)
+ *   and NEVER looks at the response `Content-Type` — the caller owns the parse and its
+ *   `parse_error` (the e2e fixture paths and `spyFetch` serve `rss.xml` with a JSON content type).
  * - Every request carries `User-Agent` = the caller's `ua` (= `env.MODRINTH_USER_AGENT`, SC-10 —
- *   also sent to CurseForge/YouTube/OG/Resend/Discord fetches) and `Accept: application/json`.
+ *   also sent to CurseForge/YouTube/OG/Resend/Discord fetches) and an `Accept` header:
+ *   `application/json` from `fetchJson`, the caller's `accept` (default any type) from `fetchText`.
  * - `fetch` is injectable: factories pass theirs down (SC-25) and unit tests use `mockFetch` (05 H-5).
  *   `onResponse` lets the Modrinth adapter watch quota headers (04 §4.1) and the Discord adapter read
  *   the final status without a second HTTP path.
- * - Error messages and bodies never carry secrets: key-like query params are redacted and request
- *   headers are never echoed (05 T-ADP-1 — no `key=` / `x-api-key` / `Authorization` values).
+ * - Error messages and bodies never carry secrets: key-like query params are redacted — in the URL
+ *   label, in a network-error string and in an echoed upstream body (before it is truncated) — and
+ *   request headers are never echoed (05 T-ADP-1 — no `key=` / `x-api-key` / `Authorization` values).
  */
 import 'server-only';
 
@@ -83,6 +91,15 @@ export type FetchJsonOptions = {
   onResponse?: (response: Response) => void;
 };
 
+/**
+ * `fetchText` options (ADR-0043 D3): the SC-09 knobs of `fetchJson` without `method` / `body` — a
+ * text read is always a GET.
+ */
+export type FetchTextOptions = Omit<FetchJsonOptions, 'method' | 'body'> & {
+  /** `Accept` request header. Defaults to any type — the body is returned verbatim either way. */
+  accept?: string;
+};
+
 /** `setTimeout` promise — fake-timer friendly; shared with the adapters' quota waits. */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -95,8 +112,12 @@ function defaultRetryOn(status: number): boolean {
   return status === 429 || status >= 500;
 }
 
-/** Redacts values of key-like query params so no URL secret reaches an error message (T-ADP-1). */
-function redactSecrets(text: string): string {
+/**
+ * Redacts values of key-like query params so no URL secret reaches an error message (T-ADP-1).
+ * Exported for the adapters that build their own `parse_error` label from a keyed URL (YouTube
+ * `key=` — 04 §4.3).
+ */
+export function redactSecrets(text: string): string {
   return text.replace(
     /([?&](?:api[-_]?key|key|token|secret|sig|authorization)=)[^&\s"']*/gi,
     '$1[redacted]',
@@ -123,13 +144,20 @@ function headerDelayMs(response: Response): number | null {
   return delay;
 }
 
+/** What the shared loop hands back on a 2xx: the raw body plus the pieces a parse error names. */
+type ReceivedBody = { status: number; text: string; label: string };
+
 /**
- * The SC-09 HTTP call. GET by default; `method: 'POST'` JSON-encodes `body` (ADR-0030 D6). Parses the
- * response as JSON; an empty 2xx body resolves to `null`. Throws `AdapterError` — callers map it to
- * `upstream_error` (actions) or `summary.errors[]` / `sync_runs.error` / recipient `error` (jobs)
- * per 04 §7. The request body never appears in the thrown error.
+ * The one SC-09 request loop behind `fetchJson` and `fetchText` (ADR-0043 D3): timeout per attempt,
+ * retry/backoff, `Retry-After` / `X-Ratelimit-Reset`, SC-10 User-Agent, `onResponse`, redaction.
+ * Resolves with the 2xx body as text — never inspects the response `Content-Type`; throws
+ * `AdapterError` on the final failure.
  */
-export async function fetchJson<T = unknown>(url: string, options: FetchJsonOptions): Promise<T> {
+async function requestBody(
+  url: string,
+  options: FetchJsonOptions,
+  accept: string,
+): Promise<ReceivedBody> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const retries = options.retries ?? DEFAULT_RETRIES;
   const retryOn = options.retryOn ?? defaultRetryOn;
@@ -141,7 +169,7 @@ export async function fetchJson<T = unknown>(url: string, options: FetchJsonOpti
   const hasBody = method === 'POST' && options.body !== undefined;
   const encodedBody = hasBody ? JSON.stringify(options.body) : undefined;
   const headers: Record<string, string> = {
-    Accept: 'application/json',
+    Accept: accept,
     ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
     ...options.headers,
     'User-Agent': options.ua,
@@ -173,21 +201,10 @@ export async function fetchJson<T = unknown>(url: string, options: FetchJsonOpti
 
     options.onResponse?.(response);
 
-    if (response.ok) {
-      const text = await response.text();
-      if (text.trim() === '') return null as T; // 204 / empty 2xx — nothing to parse
-      try {
-        return JSON.parse(text) as T;
-      } catch {
-        throw new AdapterError(`${label} → parse_error (invalid JSON)`, {
-          status: response.status,
-          code: 'parse_error',
-          body: text.slice(0, BODY_LIMIT),
-        });
-      }
-    }
+    if (response.ok) return { status: response.status, text: await response.text(), label };
 
-    const body = (await response.text().catch(() => '')).slice(0, BODY_LIMIT);
+    // Redacted BEFORE truncation: an upstream that echoes the request URL never leaks a key tail.
+    const body = redactSecrets(await response.text().catch(() => '')).slice(0, BODY_LIMIT);
     lastError = new AdapterError(`${label} → ${response.status}`, {
       status: response.status,
       code: 'http_error',
@@ -208,4 +225,36 @@ export async function fetchJson<T = unknown>(url: string, options: FetchJsonOpti
       body: '',
     })
   );
+}
+
+/**
+ * The SC-09 HTTP call. GET by default; `method: 'POST'` JSON-encodes `body` (ADR-0030 D6). Parses the
+ * response as JSON; an empty 2xx body resolves to `null`. Throws `AdapterError` — callers map it to
+ * `upstream_error` (actions) or `summary.errors[]` / `sync_runs.error` / recipient `error` (jobs)
+ * per 04 §7. The request body never appears in the thrown error.
+ */
+export async function fetchJson<T = unknown>(url: string, options: FetchJsonOptions): Promise<T> {
+  const { status, text, label } = await requestBody(url, options, 'application/json');
+  if (text.trim() === '') return null as T; // 204 / empty 2xx — nothing to parse
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new AdapterError(`${label} → parse_error (invalid JSON)`, {
+      status,
+      code: 'parse_error',
+      body: redactSecrets(text).slice(0, BODY_LIMIT),
+    });
+  }
+}
+
+/**
+ * The SC-09 HTTP call for a non-JSON body (ADR-0043 D3 — YouTube's Atom feed, 04 §4.3 `fetchRss`).
+ * GET only; same timeout / retry / backoff / User-Agent / redaction as `fetchJson` (one loop).
+ * Resolves with the 2xx body verbatim whatever `Content-Type` the server sent; the caller parses it
+ * and throws its own typed `parse_error`.
+ */
+export async function fetchText(url: string, options: FetchTextOptions): Promise<string> {
+  const { accept, ...rest } = options;
+  const { text } = await requestBody(url, { ...rest, method: 'GET' }, accept ?? '*/*');
+  return text;
 }
