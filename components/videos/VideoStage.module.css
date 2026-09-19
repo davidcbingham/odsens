@@ -1,0 +1,126 @@
+/* VideoStage — DESIGN.md §6.4 (big player, Bungee title, meta, blurb, Up next at right); pass-3
+   Videos 1280: grid 1.6fr / 1fr, gap 28, player column gap 14, title Bungee 24 lh 1.1, meta 14px
+   --mute, "Watch on YouTube" --indigo-lift 700, blurb 16px lh 1.7 max 64ch. ADR-0043 D4 / D12. */
+.video-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-28);
+}
+
+.video-stage-player {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+/* The text block always holds its tallest case — 2 title lines (lh 1.1) + the 44px meta row + 3
+   blurb lines (lh 1.7) + two gaps — so every selection, in either font, has the same height and a
+   swap the visitor did not start (a direct ?v= load) cannot move what follows. The spare room is
+   at the bottom of the block. */
+.video-stage-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+  min-height: calc(
+    2 * 1.1 * var(--text-video-title) + 44px + 3 * 1.7 * var(--text-body-phone) + 2 *
+      var(--space-12)
+  );
+  margin-top: var(--space-4);
+}
+
+.video-stage-title {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: var(--text-video-title);
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--white);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.video-stage-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.video-stage-stats {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-small);
+  line-height: 1.4;
+  color: var(--mute);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-stage-watch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--indigo-lift);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.video-stage-watch:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.video-stage-watch:active {
+  color: var(--gold);
+}
+
+.video-stage-blurb {
+  display: -webkit-box;
+  max-width: 64ch;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-body-phone);
+  line-height: 1.7;
+  color: var(--mute);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+@media (max-width: 899px) {
+  .video-stage {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-24);
+  }
+}
+
+/* Below 600px the meta line and the link never share a row: whether they fit depends on the font
+   that happens to be loaded, and a re-wrap on the webfont swap is a layout shift. */
+@media (max-width: 599px) {
+  /* The stacked meta adds its own line (lh 1.4) on top of the 44px link row. */
+  .video-stage-text {
+    min-height: calc(
+      2 * 1.1 * var(--text-video-title) + 1.4 * var(--text-small) + 44px + 3 * 1.7 *
+        var(--text-body-phone) + 2 * var(--space-12)
+    );
+  }
+
+  .video-stage-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+}

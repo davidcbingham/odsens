@@ -1,6 +1,7 @@
-/* Home — DESIGN.md §6.1 (hero band + FEATURED PROJECTS 4-up), §2 section title 26px gold,
-   §3 gutters/gap 20, §6 breakpoints (2-up tablet, 1-up phone); 02 §2.1. Empty state (02 §2.1
-   States): intro strip alone — reuses the S0 shell metrics. */
+/* Home — DESIGN.md §6.1 (hero band + FEATURED PROJECTS 4-up + LATEST VIDEOS 2-up beside FIND ME
+   and the compact gold tip panel), §2 section title 26px gold, §3 gutters/gaps, §6 breakpoints
+   (600 / 900: 2-up tablet, 1-up phone); 02 §2.1. Empty state (02 §2.1 States): intro strip +
+   compact tip panel — reuses the S0 shell metrics. */
 .home {
   max-width: var(--measure-page);
   margin: 0 auto;
@@ -24,7 +25,8 @@
 }
 
 /* Section title: 24–26px Bungee, gold (DESIGN.md §2). */
-.home-featured-title {
+.home-featured-title,
+.home-row-title {
   font-family: var(--font-display);
   font-size: var(--text-section-title);
   line-height: 1;
@@ -47,13 +49,141 @@
   flex: 1;
 }
 
-/* ---- Compact tip panel row (02 §2.1 #4; S1.6 adds Latest videos + Find me beside it) ---- */
-.home-support {
-  display: flex;
-  justify-content: flex-end;
+/* ---- Latest videos | Find me over the compact tip panel (02 §2.1 #4; ADR-0041 D6; pass-3
+   "Home desktop": 1.5fr 1fr, gap 32, column gap 18). No bottom rule: the footer draws its own
+   2px top line, a second one here would double it. ---- */
+.home-latest {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: var(--space-32);
+  align-items: start;
   padding: var(--space-40);
 }
 
+.home-videos,
+.home-side,
+.home-find {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-18);
+  min-width: 0;
+}
+
+/* One line, always: the title keeps its width and the link never wraps, so the row is the same
+   height in the fallback font and in the webfont. Below 600px it is a column (see below). */
+.home-videos-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  min-height: 44px;
+}
+
+.home-row-title {
+  white-space: nowrap;
+}
+
+/* Ghost link recipe (DESIGN.md §5 ghost: 700 15px `--indigo-lift`), 44px target. */
+.home-videos-channel {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--indigo-lift);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.home-videos-channel:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.home-videos-channel:active {
+  color: var(--gold);
+}
+
+.home-videos-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-18);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-videos-item {
+  display: flex;
+  min-width: 0;
+}
+
+/* FIND ME sits on the same line box as LATEST VIDEOS' 44px head row, so the two columns' first
+   slabs start level. */
+.home-find > .home-row-title {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.home-find-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Row slab: `--slab`, 2px `--line-soft` edge (DESIGN.md §3 card outlines), mark + word + the
+   external glyph at the far end — the `GetItPanel` row precedent. One nowrap line: the height
+   cannot change with the font. */
+.home-find-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: 44px;
+  padding: var(--space-16) var(--space-18);
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+  color: var(--chalk);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: outline-color var(--dur-fast) ease-out;
+}
+
+.home-find-row:hover {
+  outline-color: var(--indigo-lift);
+}
+
+/* The slab's edge is an `outline`, and so is the focus ring: say the ring out loud (0,2,0) so it
+   never depends on source order against `globals.css` (DESIGN.md §5: 3px `--gold`, 2px offset). */
+.home-find-row:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+  /* The ring lands at once — the hover edge's colour fade must not start it at `--line-soft`. */
+  transition: none;
+}
+
+.home-find-word {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-ui);
+  font-weight: 700;
+  text-overflow: ellipsis;
+}
+
+.home-find-glyph {
+  flex: none;
+  margin-left: auto;
+  color: var(--mute);
+}
+
+/* Empty Home only (02 §2.1 States): the panel alone keeps its S1.5b width. In the row above it
+   fills the side column (a stretched flex item — no class needed). */
 .home-tip {
   width: 320px;
   max-width: 100%;
@@ -90,10 +220,15 @@
   color: var(--chalk);
 }
 
-/* tablet 600–899 = 2-up (DESIGN.md §6 breakpoints) */
+/* tablet 600–899 = 2-up (DESIGN.md §6 breakpoints); the videos row becomes one column in DOM
+   order — two columns here would put the cards under 200px (cramped titles, no room for the facade chip). */
 @media (max-width: 899px) {
   .home-featured-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-latest {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -103,7 +238,8 @@
   }
 
   /* Pass-3 Home phone: section header Bungee 20px. */
-  .home-featured-title {
+  .home-featured-title,
+  .home-row-title {
     font-size: 20px;
   }
 
@@ -111,8 +247,20 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .home-support {
-    padding: var(--space-24) var(--space-20);
+  /* DESIGN.md §3 page gutter: 24 on phones. */
+  .home-latest {
+    padding: var(--space-24);
+  }
+
+  /* Title over link, always — never "it fits" (font-swap re-wrap at 360–430). */
+  .home-videos-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  .home-videos-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .home-tip {

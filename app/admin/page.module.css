@@ -1,6 +1,7 @@
-/* /admin dashboard — 02 §1.3 `/admin` row (S1.2: StatTile tiles + SyncStatus); DESIGN.md §6 #9
-   (admin: clarity over flair); §11.1 Stat tile grid is the parent's duty (03 §2.2). Tokens only
-   (03 C-08); the 220px track floor is a geometry number (03 §9 non-colour row). */
+/* /admin dashboard — 02 §1.3 `/admin` row (S1.2: StatTile tiles + SyncStatus; S1.6: the videos
+   list — ADR-0043 D11); DESIGN.md §6 #9 (admin: clarity over flair); §11.1 Stat tile grid is the
+   parent's duty (03 §2.2). Tokens only (03 C-08); the 220px track floor is a geometry number
+   (03 §9 non-colour row). */
 
 .admin-home {
   display: flex;
@@ -34,4 +35,49 @@
   font-size: var(--text-body);
   font-weight: 700;
   line-height: 1.2;
+}
+
+/* Heading + "N TOTAL" count on one baseline (the /admin/projects heading-row recipe). */
+.admin-home-heading-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-12);
+}
+
+/* Video cell: title over `youtube_id · length`, scannable at a glance (the /admin/projects
+   name-cell recipe). The floor keeps the title readable when the table scrolls sideways on a
+   phone — the scroll stays inside `Table`'s own wrapper, never the page (03 §2.2 `Table`). */
+.admin-home-video {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 180px;
+}
+
+.admin-home-video-title {
+  color: var(--chalk);
+  font-weight: 700;
+  font-size: var(--text-ui);
+}
+
+.admin-home-video-meta {
+  color: var(--mute-dim);
+  font-size: var(--text-label-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-home-video-date {
+  color: var(--mute);
+  font-size: var(--text-ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Short cell: the toggle, then "Auto" on override rows only. No wrap — the cell keeps one line so
+   a row's height does not change when an override appears; the gap leaves the toggle's 3px focus
+   ring (2px offset) clear of the button. */
+.admin-home-video-short {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
 }

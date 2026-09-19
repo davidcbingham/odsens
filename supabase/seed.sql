@@ -13,7 +13,7 @@
 --   SEED-8  art (2)                                       — arrives in S1.7
 --   SEED-9  comments (5) + comment_likes + comment_reports — S1.4 (below)
 --   SEED-10 mentions (2)                                  — arrives in S1.8
---   SEED-11 videos (3)                                    — arrives in S1.6
+--   SEED-11 videos (7)                                    — S1.6 (below; ADR-0043 D8)
 --   SEED-12 sync_runs (3) — S1.2 (below); stats_daily (6) — arrives in S1.9
 --   SEED-13 Storage objects — not SQL; uploaded by the e2e/db globalSetup (`uploadFixture`)
 --   SEED-14 this guard line (first line of the file) — present from S0
@@ -321,6 +321,64 @@ update public.profiles as p
     ('00000000-0000-4000-8000-000000000006'::uuid, 0)
   ) as v (id, comment_count)
  where p.id = v.id;
+
+-- =============================================================================================
+-- SEED-11 — videos (7) per 05 §3 as amended by ADR-0043 D8 (05's three rows + four older long ones,
+-- so AC4's Up next swap, AC5's grid and AC6's Home 2-up are provable on seed — T-E2E-6 / T-E2E-1 are
+-- smoke specs and may not mutate). Newest first:
+--   seedvid0002  long 480 s, HIDDEN — the newest row overall on purpose: a reader that forgets the
+--                hidden filter would put it in the big player / Home 2-up (T-RLS-49, T-E2E-6).
+--   seedvid0001  long 600 s — the newest VISIBLE long video (T-E2E-6 plays it; T-ACT-68 hides it and
+--                restores). Its multi-paragraph description feeds the hero blurb (first paragraph).
+--   seedvid0003  short 45 s, is_short true — dated between …0001 and …0004, so a reader that forgets
+--                the is_short filter would show it in the Home 2-up instead of …0004.
+--   seedvid0004..0007  long, visible, strictly older, distinct published_at. With UP_NEXT_COUNT = 4:
+--                Home 2-up = 0001 + 0004 · Up next = 0001, 0004, 0005, 0006 · MORE VIDEOS = 0007.
+--                …0004 is 724 s ("12:04" / "12 minutes 4 seconds", the 03 §2.6 sr example), …0005 is
+--                3723 s (the h:mm:ss arm, T-UNIT-12), …0006 has a NULL description (degraded-data
+--                arm: no blurb), …0007 is 61 s — one second past the 04 §5.3 Shorts threshold.
+-- Every date is a fixed literal older than 7 days at build time (2026-09-18), so `relativeTime`
+-- prints the absolute `formatDate` form and no screenshot depends on the clock. Thumbnails use the
+-- 04 §3.3 hqdefault shape on i.ytimg.com (01 INV-54 host; e2e never reaches it — next/image fetches
+-- server-side and tests/e2e/fixtures.ts fulfils it locally, H-10). `is_short_override` is NULL on
+-- every row (nothing is overridden on seed — ADR-0043 D1). youtube_id values are exactly 11 chars
+-- (`videos_youtube_id_format`; 04 §1.8 `updateVideoInput`). Fixed ids extend the seed uuid scheme
+-- with group 09 (videos); idempotent on id.
+-- =============================================================================================
+insert into public.videos (
+  id, youtube_id, title, description, thumbnail_url, published_at,
+  duration_seconds, is_short, is_short_override, view_count, like_count, synced_at, hidden
+) values
+  ('00000000-0000-4000-8000-000000000901', 'seedvid0001', 'Seed Long Video One',
+   E'I gave the mace a metal pipe sound and then could not stop swinging it.\n\nThis is the whole build, start to finish: the model swap, the sound file, and the part where I broke my own world twice.\n\nThe pack is on the projects page.',
+   'https://i.ytimg.com/vi/seedvid0001/hqdefault.jpg', '2026-09-01 12:00:00+00',
+   600, false, null, 12345, 321, '2026-09-17 12:00:00+00', false),
+  ('00000000-0000-4000-8000-000000000902', 'seedvid0002', 'Seed Long Video Two (hidden)',
+   'Hidden by the admin.',
+   'https://i.ytimg.com/vi/seedvid0002/hqdefault.jpg', '2026-09-08 12:00:00+00',
+   480, false, null, 999, 12, '2026-09-17 12:00:00+00', true),
+  ('00000000-0000-4000-8000-000000000903', 'seedvid0003', 'Seed Short: Pipe Bonk',
+   'A 45 second seed short.',
+   'https://i.ytimg.com/vi/seedvid0003/hqdefault.jpg', '2026-08-25 12:00:00+00',
+   45, true, null, 54321, 987, '2026-09-17 12:00:00+00', false),
+  ('00000000-0000-4000-8000-000000000904', 'seedvid0004', 'Seed Long Video Four',
+   E'A very small chameleon, a very large problem.\n\nSecond paragraph that the blurb never shows.',
+   'https://i.ytimg.com/vi/seedvid0004/hqdefault.jpg', '2026-08-15 12:00:00+00',
+   724, false, null, 8200, 210, '2026-09-17 12:00:00+00', false),
+  ('00000000-0000-4000-8000-000000000905', 'seedvid0005',
+   'Seed Long Video Five: The One With The Really Long Title That Has To Wrap Onto Two Lines',
+   'An hour of bad decisions, lightly edited.',
+   'https://i.ytimg.com/vi/seedvid0005/hqdefault.jpg', '2026-07-30 12:00:00+00',
+   3723, false, null, 4100, 95, '2026-09-17 12:00:00+00', false),
+  ('00000000-0000-4000-8000-000000000906', 'seedvid0006', 'Seed Long Video Six',
+   null,
+   'https://i.ytimg.com/vi/seedvid0006/hqdefault.jpg', '2026-07-04 12:00:00+00',
+   185, false, null, 2050, 40, '2026-09-17 12:00:00+00', false),
+  ('00000000-0000-4000-8000-000000000907', 'seedvid0007', 'Seed Long Video Seven',
+   'Sixty-one seconds. Not a short. Barely.',
+   'https://i.ytimg.com/vi/seedvid0007/hqdefault.jpg', '2026-06-12 12:00:00+00',
+   61, false, null, 1024, 16, '2026-09-17 12:00:00+00', false)
+on conflict (id) do nothing;
 
 -- =============================================================================================
 -- SEED-12 (S1.2 part) — sync_runs (3): one ok=true run per source (modrinth, curseforge, youtube)

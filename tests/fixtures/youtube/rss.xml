@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/" xmlns="http://www.w3.org/2005/Atom">
+ <link rel="self" href="http://www.youtube.com/feeds/videos.xml?channel_id=UCseedchannel000000000000"/>
+ <id>yt:channel:seedchannel000000000000</id>
+ <yt:channelId>seedchannel000000000000</yt:channelId>
+ <title>OdSens</title>
+ <link rel="alternate" href="https://www.youtube.com/channel/UCseedchannel000000000000"/>
+ <author>
+  <name>OdSens</name>
+  <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+ </author>
+ <published>2025-11-02T10:00:00+00:00</published>
+ <entry>
+  <id>yt:video:fixvid00001</id>
+  <yt:videoId>fixvid00001</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>I Rebuilt My Base &amp; Regretted It</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00001"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-05-30T15:00:07+00:00</published>
+  <updated>2026-05-30T15:00:07+00:00</updated>
+  <media:group>
+   <media:title>I Rebuilt My Base &amp; Regretted It</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00001?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00001/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Turns out a lava moat needs a plan.
+
+Mods used are listed on the site.
+Music: none, just vibes.</media:description>
+   <media:community>
+    <media:starRating count="2140" average="5.00" min="1" max="5"/>
+    <media:statistics views="48211"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00002</id>
+  <yt:videoId>fixvid00002</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>Metal Pipe Mace: the full showcase</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00002"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-05-23T15:00:00+00:00</published>
+  <updated>2026-05-23T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>Metal Pipe Mace: the full showcase</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00002?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00002/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Every sound the mace makes, ranked.</media:description>
+   <media:community>
+    <media:starRating count="1502" average="5.00" min="1" max="5"/>
+    <media:statistics views="30977"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00003</id>
+  <yt:videoId>fixvid00003</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>Pipe bonk</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00003"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-05-16T15:00:00+00:00</published>
+  <updated>2026-05-16T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>Pipe bonk</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00003?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i3.ytimg.com/vi/fixvid00003/hqdefault.jpg" width="480" height="360"/>
+   <media:description>One bonk. That is the video.</media:description>
+   <media:community>
+    <media:starRating count="9033" average="5.00" min="1" max="5"/>
+    <media:statistics views="120455"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00004</id>
+  <yt:videoId>fixvid00004</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>The allay did WHAT #shorts</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00004"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-05-09T15:00:00+00:00</published>
+  <updated>2026-05-09T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>The allay did WHAT #shorts</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00004?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00004/hqdefault.jpg" width="480" height="360"/>
+   <media:description>It took my diamonds and left.</media:description>
+   <media:community>
+    <media:starRating count="6120" average="5.00" min="1" max="5"/>
+    <media:statistics views="88410"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00005</id>
+  <yt:videoId>fixvid00005</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>Heavy Spear in 2 minutes</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00005"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-05-02T15:00:00+00:00</published>
+  <updated>2026-05-02T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>Heavy Spear in 2 minutes</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00005?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00005/hqdefault.jpg" width="480" height="360"/>
+   <media:description>A fast tour of the datapack.
+
+#Shorts #minecraft</media:description>
+   <media:community>
+    <media:starRating count="804" average="5.00" min="1" max="5"/>
+    <media:statistics views="15230"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00006</id>
+  <yt:videoId>fixvid00006</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>Pixel Chameleon devlog 3</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00006"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-04-25T15:00:00+00:00</published>
+  <updated>2026-04-25T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>Pixel Chameleon devlog 3</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00006?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00006/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Colour matching finally works.</media:description>
+   <media:community>
+    <media:starRating count="0" average="5.00" min="1" max="5"/>
+    <media:statistics views="0"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00007</id>
+  <yt:videoId>fixvid00007</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>Why my redstone door has a toll booth</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00007"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-04-18T15:00:00+00:00</published>
+  <updated>2026-04-18T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>Why my redstone door has a toll booth</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00007?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00007/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Likes are hidden on this one on purpose.</media:description>
+   <media:community>
+    <media:starRating count="0" average="5.00" min="1" max="5"/>
+    <media:statistics views="7044"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00008</id>
+  <yt:videoId>fixvid00008</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>LIVE: building the worst farm possible</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00008"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-04-11T18:00:00+00:00</published>
+  <updated>2026-04-11T18:00:00+00:00</updated>
+  <media:group>
+   <media:title>LIVE: building the worst farm possible</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00008?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00008/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Streaming right now. Bring bad ideas.</media:description>
+   <media:community>
+    <media:starRating count="40" average="5.00" min="1" max="5"/>
+    <media:statistics views="312"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00009</id>
+  <yt:videoId>fixvid00009</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>Premiere: Legacy Manhunts Reworked trailer</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00009"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-04-10T15:00:00+00:00</published>
+  <updated>2026-04-10T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>Premiere: Legacy Manhunts Reworked trailer</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00009?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00009/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Premieres soon.</media:description>
+   <media:community>
+    <media:starRating count="12" average="5.00" min="1" max="5"/>
+    <media:statistics views="0"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00010</id>
+  <yt:videoId>fixvid00010</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>100 days in a world with no chests</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00010"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-04-04T15:00:00+00:00</published>
+  <updated>2026-04-04T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>100 days in a world with no chests</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00010?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00010/hqdefault.jpg" width="480" height="360"/>
+   <media:description>It went about as well as you think.</media:description>
+   <media:community>
+    <media:starRating count="11872" average="5.00" min="1" max="5"/>
+    <media:statistics views="210340"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00011</id>
+  <yt:videoId>fixvid00011</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>Datapacks explained badly</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00011"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-03-28T15:00:00+00:00</published>
+  <updated>2026-03-28T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>Datapacks explained badly</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00011?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00011/hqdefault.jpg" width="480" height="360"/>
+   <media:description></media:description>
+   <media:community>
+    <media:starRating count="511" average="5.00" min="1" max="5"/>
+    <media:statistics views="9120"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00012</id>
+  <yt:videoId>fixvid00012</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>I let chat pick my texture pack</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00012"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-03-21T15:00:00+00:00</published>
+  <updated>2026-03-21T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>I let chat pick my texture pack</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00012?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00012/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Never again.</media:description>
+   <media:community>
+    <media:starRating count="977" average="5.00" min="1" max="5"/>
+    <media:statistics views="18400"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00013</id>
+  <yt:videoId>fixvid00013</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>The elytra course nobody finished</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00013"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-03-14T15:00:00+00:00</published>
+  <updated>2026-03-14T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>The elytra course nobody finished</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00013?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00013/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Including me.</media:description>
+   <media:community>
+    <media:starRating count="402" average="5.00" min="1" max="5"/>
+    <media:statistics views="6350"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00014</id>
+  <yt:videoId>fixvid00014</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>Building a castle out of mistakes</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00014"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-03-07T15:00:00+00:00</published>
+  <updated>2026-03-07T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>Building a castle out of mistakes</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00014?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00014/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Every block is a lesson.</media:description>
+   <media:community>
+    <media:starRating count="690" average="5.00" min="1" max="5"/>
+    <media:statistics views="12770"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:fixvid00015</id>
+  <yt:videoId>fixvid00015</yt:videoId>
+  <yt:channelId>UCseedchannel000000000000</yt:channelId>
+  <title>My plugin broke the server (sorry)</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=fixvid00015"/>
+  <author>
+   <name>OdSens</name>
+   <uri>https://www.youtube.com/channel/UCseedchannel000000000000</uri>
+  </author>
+  <published>2026-02-28T15:00:00+00:00</published>
+  <updated>2026-02-28T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>My plugin broke the server (sorry)</media:title>
+   <media:content url="https://www.youtube.com/v/fixvid00015?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/fixvid00015/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Patch notes in the description of the next one.</media:description>
+   <media:community>
+    <media:starRating count="350" average="5.00" min="1" max="5"/>
+    <media:statistics views="5480"/>
+   </media:community>
+  </media:group>
+ </entry>
+</feed>

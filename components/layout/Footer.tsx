@@ -11,6 +11,10 @@ import styles from './Footer.module.css';
  * "via `PlatformMark` + word") — mark without `withWord` so the slab keeps `role="img"
  * aria-label="<Platform>"` (03 §2.2 `PlatformMark` Tests cell) while the link text stays the
  * word, the `GetItPanel` rows precedent.
+ *
+ * `FIND_ME` is exported: Home's "Find me" column (02 §2.1 #4, S1.6 — inline in the route per
+ * 03 C-21) prints the same three RP-13 links, so the URLs live in ONE list. The footer column
+ * itself is unchanged.
  */
 export type FooterProps = Record<string, never>;
 
@@ -22,7 +26,11 @@ type FooterLink = {
   platform?: PlatformMarkPlatform;
 };
 
-const FIND_ME: FooterLink[] = [
+/** A "Find me" row — always external, always with its platform mark (02 RP-13). */
+export type FindMeLink = FooterLink & { external: true; platform: PlatformMarkPlatform };
+
+/** 02 RP-13 — the three places OddSense posts. Shared by this footer and Home (02 §2.1 #4). */
+export const FIND_ME: readonly FindMeLink[] = [
   {
     label: 'Modrinth',
     href: 'https://modrinth.com/user/OddSense/mods',
@@ -52,7 +60,7 @@ const SITE: FooterLink[] = [
   { label: 'Privacy', href: '/privacy' },
 ];
 
-function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) {
+function FooterColumn({ title, links }: { title: string; links: readonly FooterLink[] }) {
   return (
     <div className={styles['footer-column']}>
       <h2 className="visually-hidden">{title}</h2>

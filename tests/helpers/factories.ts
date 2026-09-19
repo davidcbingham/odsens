@@ -7,7 +7,8 @@
  * `makeSyncRun` (05 §8 row S1.2). S1.4: `makeComment` (+ `restoreSeedCommentCounts`, `trackComment`,
  * `purgeNotificationEvents`). S1.5: `makeNotificationEvent` / `makeRecipient` (+ `trackNotificationEvent`,
  * `trackRecipient`, `purgeNotificationRecipients`; `purgeNotificationEvents` now empties the recipients
- * queue first). Later content factories (`makeMention`…) stay stubs until their slice.
+ * queue first). S1.6: `makeVideo` (05 §8 row S1.6). Later content factories (`makeMention`…) stay
+ * stubs until their slice.
  *
  *   const id = await makeUser({ role: 'moderator' });          // handle `t_<8 hex>`, not banned
  *   const newbie = await makeUser({ handle: null });           // onboarding incomplete
@@ -19,6 +20,7 @@
  *   const versionId = await makeVersion({ project_id: draft });             // parents are explicit
  *   const fileId = await makeFile({ version_id: versionId });
  *   const runId = await makeSyncRun({ source: 'modrinth' });
+ *   const videoId = await makeVideo({ hidden: true });          // youtube_id `t_<8 hex>0` (11 chars)
  *   const eventId = await makeNotificationEvent({ kind: 'comment.held' }); // subject = SEED-9 …0201
  *   const rowId = await makeRecipient({ event_id: eventId, channel: 'discord', status: 'skipped', address: null });
  */
@@ -64,6 +66,25 @@ export type CommentOverrides = FactoryOverrides & {
   moderated_by?: string | null;
   moderated_at?: string | null;
   edited_at?: string | null;
+};
+/** S1.6 — `videos` columns (supabase/migrations/20260918120000_videos.sql). */
+export type VideoOverrides = FactoryOverrides & {
+  /** Default `t_<8 hex>0` — exactly 11 chars of `[A-Za-z0-9_-]` (`videos_youtube_id_format`). */
+  youtube_id?: string;
+  title?: string;
+  description?: string | null;
+  thumbnail_url?: string;
+  /** Default `2026-01-01T12:00:00Z` — older than every SEED-11 row, so a factory video never takes the hero / Home 2-up. */
+  published_at?: string;
+  duration_seconds?: number | null;
+  /** The effective flag every reader filters on; default false. */
+  is_short?: boolean;
+  /** Admin override (ADR-0043 D1); default NULL = the 04 §5.3 heuristic applies. */
+  is_short_override?: boolean | null;
+  view_count?: number | null;
+  like_count?: number | null;
+  synced_at?: string | null;
+  hidden?: boolean;
 };
 export type SyncRunOverrides = FactoryOverrides & {
   /** The 7 registry values (sync_runs_source_check). */
@@ -427,7 +448,46 @@ export async function restoreSeedCommentCounts(): Promise<void> {
 }
 
 export const makeMention: Factory = notYet('makeMention');
-export const makeVideo: Factory = notYet('makeVideo');
+
+const createdVideos: string[] = [];
+
+/** Older than every SEED-11 row: a factory video sorts last unless the test dates it. */
+const FACTORY_VIDEO_PUBLISHED_AT = '2026-01-01T12:00:00.000Z';
+
+/**
+ * The default `youtube_id` `makeVideo` gives the row with this `id`: `t_<8 hex>0` — the `t_` tag
+ * (05 §1.3) padded to the 11 chars `videos_youtube_id_format` / `updateVideoInput` (04 §1.8) require.
+ */
+export function factoryYoutubeId(id: string): string {
+  return `t_${shortTag(id)}0`;
+}
+
+/**
+ * S1.6: a `videos` row through the service client — a visible 300 s long video with the Data-API
+ * fields set (pass `null`s for the RSS-only shape, 04 §3.3) and no `is_short_override`
+ * (ADR-0043 D1). Returns the row `id`; its `youtube_id` is `factoryYoutubeId(id)` unless overridden.
+ */
+export const makeVideo: Factory<VideoOverrides> = async (overrides = {}) => {
+  const id = typeof overrides.id === 'string' ? overrides.id : randomUUID();
+  const tag = shortTag(id);
+  const youtubeId = factoryYoutubeId(id);
+  const row: Record<string, Json> = {
+    id,
+    youtube_id: youtubeId,
+    title: `t_${tag}`,
+    description: 't_ factory video',
+    thumbnail_url: `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`,
+    published_at: FACTORY_VIDEO_PUBLISHED_AT,
+    duration_seconds: 300,
+    is_short: false,
+    view_count: 0,
+    like_count: 0,
+    hidden: false,
+    ...defined(overrides),
+  };
+  return insertContentRow('makeVideo', 'videos', row, createdVideos, id);
+};
+
 export const makeSkin: Factory = notYet('makeSkin');
 export const makeArt: Factory = notYet('makeArt');
 
@@ -443,8 +503,8 @@ export const makeSyncRun: Factory<SyncRunOverrides> = async (overrides = {}) => 
 
 /**
  * Removes every row created by the factories in the current test file: content rows child-first
- * (recipients → events → comments → files → versions → projects → sync_runs; links/overrides a test
- * hung on a factory project fall to its FK cascade), then avatar objects under `avatars/<id>/`, then
+ * (recipients → events → comments → files → versions → projects → sync_runs → videos; links/overrides
+ * a test hung on a factory project fall to its FK cascade), then avatar objects under `avatars/<id>/`, then
  * the auth user (profiles cascade).
  * Safe to call when a test already deleted a row — 0 affected rows is a no-op, user "not found" is
  * ignored.
@@ -460,6 +520,7 @@ export const cleanupFactories: () => Promise<void> = async () => {
     ['project_versions', createdVersions],
     ['projects', createdProjects],
     ['sync_runs', createdSyncRuns],
+    ['videos', createdVideos],
   ];
   for (const [table, tracked] of contentTables) {
     const ids = tracked.splice(0, tracked.length);

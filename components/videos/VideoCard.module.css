@@ -1,0 +1,58 @@
+/* VideoCard — DESIGN.md §6.1 / §6.4 / §11.5; 03 §2.6 (tokens --slab --line-soft --indigo-lift
+   --chalk --mute-dim --font-display). Facade on top, title + meta under it. */
+.video-card {
+  display: flex;
+  flex-direction: column;
+  /* Fill the cell it is given (a grid track, or a flex row that would otherwise shrink-wrap it). */
+  width: 100%;
+  /* Shrink to the grid cell — a long unbroken title must not floor the card's width (390). */
+  min-width: 0;
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  transition: outline-color var(--dur-fast) ease-out;
+}
+
+.video-card:hover,
+.video-card:focus-within {
+  outline-color: var(--indigo-lift);
+}
+
+/* The card draws the edge: the facade's own 2px outline would sit on top of it and hide the
+   --indigo-lift hover colour on three sides. */
+.video-card > .video-card-facade {
+  outline: 0;
+}
+
+.video-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-16);
+}
+
+/* Two line boxes, always (03: "2-line clamp"): reserved so a font swap cannot move the meta. */
+.video-card-title {
+  display: -webkit-box;
+  min-height: calc(2 * 1.25em);
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: var(--text-video-card-title);
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--chalk);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.video-card-meta {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-label);
+  line-height: 1.35;
+  color: var(--mute-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
