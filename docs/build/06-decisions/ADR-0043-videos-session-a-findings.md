@@ -1,7 +1,7 @@
 # ADR-0043 — S1.6 Session A build findings
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-09-18
@@ -143,7 +143,7 @@ Kind: deviation
 | `docs/build/05-test-plan.md` | §7.3 T-ADP-1, T-ADP-9, T-ADP-13 | `fetchText` (D3); error body redacted before the cut, `thumbnail_url` / `subs` may be `null` (D17) |
 | `docs/build/05-test-plan.md` | §7.5 T-E2E-1, T-E2E-6, T-E2E-47, T-E2E-42 | which two videos + Find me / `TipPanel` (D8, D15); Up next swap + grid (D4, D8, D12); the hide-through-`/admin` recipe (D9); `/admin` with the videos list (D11) |
 | `docs/build/05-test-plan.md` | §8 row S1.6; §12 Review notes; Status line | += T-ACT-74, the amended-in-place list, SEED-11 7 rows, "built early: T-ADP-14, T-ADP-15 — still on row S1.8" (D17); top entry 2026-09-18 incl. the reconciliation sentence and the id-less test files; Status appended |
-| `docs/build/_registry.md` | Layout + Videos components; Adapters; Modules; Table registry | `Footer` += exported `FIND_ME` (D15); += `VideoStage`, sizes per D7, `upnext` presentational; `http` += `fetchText`, `redactSecrets`, `FetchTextOptions`, export list += `parseRss`, the youtube value exports (D3, D17); `videos.ts`, `format/duration.ts`, `data/videos.ts` `listVisibleVideos`, `data/admin.ts` `listAdminVideos` + `DASHBOARD_SYNC_SOURCES`, `actions/videos.schema.ts` (D11); `videos` `is_short_override` + id CHECK note (D1, D20) |
+| `docs/build/_registry.md` | Layout + Videos components; Adapters; Modules; Table registry | `Footer` += exported `FIND_ME` (D15); += `VideoStage` (+ `VideoStageView`, the same file's Suspense-fallback view), sizes per D7, `upnext` presentational; `http` += `fetchText`, `redactSecrets`, `FetchTextOptions`, export list += `parseRss`, the youtube value exports (D3, D17); `videos.ts`, `format/duration.ts`, `data/videos.ts` `listVisibleVideos`, `data/admin.ts` `listAdminVideos` + `DASHBOARD_SYNC_SOURCES`, `actions/videos.schema.ts` (D11); `videos` `is_short_override` + id CHECK note (D1, D20) |
 | `docs/build/03-components.md` | §2.6 `VideoFacade` row; §11 O-19 | hint chip "≥ 312px" (was 200) + one row, never wraps (D23); `upnext` duration chip flush, 15px, no outline (D22); `short` = `--gold` chip **top-left** per the pass-3 Shorts artboard (D25); `VideoStage` row: "does not scroll on selection" now cites `history.replaceState` (D24) |
 | `docs/build/03-components.md` · `00-build-plan.md` · `05-test-plan.md` · `06-decisions/README.md` | 03 §2.6 `VideoCard` row; 00 §S1.6 Scope IN Table bullet + §6 row; 05 §11 OPEN-19; README index row | "live videos excluded" qualified: never inserted by a keyed run; no-key exception (D2, D18) |
 | `scripts/check-test-ids.mjs` · `vitest.config.ts` | `SHIPPED_SLICES`; coverage thresholds | += `'S1.6'` (the 05 §8 row is enforced by lint); COV-5 global floor wired (item 16 — no deviation) |
