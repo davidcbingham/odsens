@@ -33,7 +33,7 @@ Supabase side (same time): Authentication → URL Configuration → Site URL `ht
 1. **APIs & Services → Library** → search "YouTube Data API v3" → **Enable**.
 2. **Credentials → Create credentials → API key** → name `odsens-youtube-server`.
 3. **Restrict the key:** API restrictions → *Restrict key* → YouTube Data API v3 only. Application restrictions → **None** (the key is only used server-side from Vercel; HTTP-referrer restriction would break server calls). Never ship it to the browser.
-4. Paste into `.env` as `YOUTUBE_API_KEY`. Channel ID is already there (`UCo3X_c7MqfC_ub-sMJZmmOA`).
+4. Paste into `.env` as `YOUTUBE_API_KEY`. Channel ID is already there (`UCR7s27wznG-Utxm1OLSvqow`).
 Quota: 10,000 units/day free; a channel-videos sync costs a few units — negligible.
 
 ## 4. Later, in Vercel
