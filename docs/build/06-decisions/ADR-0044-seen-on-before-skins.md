@@ -1,7 +1,7 @@
 # ADR-0044 — Build order: S1.8 Seen on before S1.7 Skins + Art
 
 ## Status
-Proposed
+Accepted (2026-09-19 — planning PR #30)
 
 ## Date
 2026-09-19
