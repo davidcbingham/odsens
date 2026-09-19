@@ -1,6 +1,6 @@
 # Build Plan
 Slice-by-slice contract for building odsens.com v1 (S0–S1.10) with Phase 2 stubs: scope, acceptance criteria, tests, gates, demo, and the global rules every PR follows.
-Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0006 (2026-08-17) — amended by ADR-0009, ADR-0010, ADR-0011, ADR-0012 (2026-08-20) — amended by ADR-0014 (2026-08-20) — amended by ADR-0015, ADR-0016 (2026-08-20) — amended by ADR-0018 (2026-08-21) — amended by ADR-0017 (2026-08-21) — amended by ADR-0019 (2026-08-21) — amended by ADR-0020 (2026-08-21) — amended by ADR-0021 (2026-08-27) — amended by ADR-0022 (2026-08-27) — amended by ADR-0023 (2026-08-27) — amended by ADR-0024, ADR-0025 (2026-08-27) — amended by ADR-0026 (2026-08-27) — amended by ADR-0027 (2026-08-27) — amended by ADR-0028 (2026-09-03) — amended by ADR-0029, ADR-0030 (2026-09-03) — amended by ADR-0036 (2026-09-11) — amended by ADR-0037 (2026-09-11) — amended by ADR-0038 (2026-09-12) — amended by ADR-0039 (2026-09-12) — amended by ADR-0040 (2026-09-17; S1.5c Tests required names T-E2E-34) — amended by ADR-0041 (2026-09-18; S1.5b scope CSP bullet, T-UNIT-54) — amended by ADR-0042 (2026-09-18; §S1.5b scope + S1.9 AC4 — no amount picker, `KofiCard`) — amended by ADR-0043 (2026-09-18; S1.6 Session A: §S1.6 Scope IN, AC3 / AC6 / AC7 / AC8 / AC11 glosses, Tests required, Demo, Risks; §S1.5c Scope OUT; §5 00-O-5)
+Status: **v1.0 — FROZEN 2026-08-17** (changes only via ADR + doc edit in the same PR; `spec-drift-reviewer` enforces) — amended by ADR-0006 (2026-08-17) — amended by ADR-0009, ADR-0010, ADR-0011, ADR-0012 (2026-08-20) — amended by ADR-0014 (2026-08-20) — amended by ADR-0015, ADR-0016 (2026-08-20) — amended by ADR-0018 (2026-08-21) — amended by ADR-0017 (2026-08-21) — amended by ADR-0019 (2026-08-21) — amended by ADR-0020 (2026-08-21) — amended by ADR-0021 (2026-08-27) — amended by ADR-0022 (2026-08-27) — amended by ADR-0023 (2026-08-27) — amended by ADR-0024, ADR-0025 (2026-08-27) — amended by ADR-0026 (2026-08-27) — amended by ADR-0027 (2026-08-27) — amended by ADR-0028 (2026-09-03) — amended by ADR-0029, ADR-0030 (2026-09-03) — amended by ADR-0036 (2026-09-11) — amended by ADR-0037 (2026-09-11) — amended by ADR-0038 (2026-09-12) — amended by ADR-0039 (2026-09-12) — amended by ADR-0040 (2026-09-17; S1.5c Tests required names T-E2E-34) — amended by ADR-0041 (2026-09-18; S1.5b scope CSP bullet, T-UNIT-54) — amended by ADR-0042 (2026-09-18; §S1.5b scope + S1.9 AC4 — no amount picker, `KofiCard`) — amended by ADR-0043 (2026-09-18; S1.6 Session A: §S1.6 Scope IN, AC3 / AC6 / AC7 / AC8 / AC11 glosses, Tests required, Demo, Risks; §S1.5c Scope OUT; §5 00-O-5) — amended by ADR-0044 (2026-09-19; build order: S1.8 — Seen on before S1.7 — Skins + Art; §1 tag table + gate matrix, §2 section order, §4 tables / sections rows)
 Binding decisions: `06-decisions/ADR-0001-engineering-spec-baseline.md` (baseline) · `06-decisions/ADR-0002-spec-reconciliation.md` (contradictions C1–C22 + OPEN defaults 13–80 + Amendment A A1–A18 — every slice below is aligned to it).
 
 Sources this doc is derived from (it re-decides nothing): `docs/build/_registry.md` (IDs — used verbatim), `docs/spec.md`, `docs/questions.md`, `docs/data-model.md`, `docs/notifications.md`, `docs/framework-decision.md`, `docs/analytics-options.md`, `DESIGN.md` v1.3, `docs/skill-handoffs.md`, `.claude/skills/*/SKILL.md`, `.claude/agents/*.md`, `docs/dev-tooling.md`, `.env.example`, `supabase/config.toml`.
@@ -98,8 +98,8 @@ docs/spec.md revision log · docs/questions.md · DESIGN.md changelog (if any)
 | S1.5c | `v0.6.2` (inserted — ADR-0039; built before S1.5b) |
 | S1.5b | `v0.6.3` (inserted — ADR-0036; tag moved by ADR-0039) |
 | S1.6 | `v0.7` |
-| S1.7 | `v0.8` |
-| S1.8 | `v0.9` |
+| S1.8 | `v0.8` (built before S1.7 — ADR-0044) |
+| S1.7 | `v0.9` (tag moved by ADR-0044) |
 | S1.9 | `v0.10` |
 | S1.10 | `v1.0.0` (launch) |
 | Phase 2 slices | `v1.<n>` per slice; `v2.0.0` when S2.1–S2.5 are all merged |
@@ -142,8 +142,8 @@ Tags are annotated (`git tag -a v0.n -m "S1.x <name>"`) on the merge commit on `
 | S1.5c (ADR-0039) | ✔ | ✔ (v1.10: sidebar, dialog, toolbar) | ✔ (islands, bundle) | ✔ (Preview sanitize) | ✔ (no contract change) | ✔ (no schema) | ✔ |
 | S1.5b (ADR-0036) | ✔ | ✔ | ✔ | ✔ (Ko-fi iframe) | ✔ | ✔ | ✔ |
 | S1.6 | ✔ | ✔ | ✔ | ✔ (embeds) | ✔ | ✔ | ✔ |
-| S1.7 | ✔ | ✔ | ✔ | ✔ (uploads) | ✔ | ✔ | ✔ |
 | S1.8 | ✔ | ✔ | ✔ | ✔ (admin, fetch) | ✔ | ✔ | ✔ |
+| S1.7 | ✔ | ✔ | ✔ | ✔ (uploads) | ✔ | ✔ | ✔ |
 | S1.9 | ✔ | ✔ | ✔ | ✔ (admin — Ko-fi iframe moved to S1.5b, ADR-0036) | ✔ | ✔ | ✔ |
 | S1.10 | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ (production URL) |
 
@@ -654,55 +654,9 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 
 ---
 
-### S1.7 — Skins + Art
-
-**Goal:** Oliver's skins (3D-rendered) and art (natural-aspect masonry) hosted on the site with admin add/edit and uploads.
-
-**Depends on:** S1.1, S1.3 (registry — ADR-0002 A17; `/api/download/[fileId]` + `lib/files.ts resolveDownloadable`, `UploadWell`, the two-phase upload pattern and `ExclusiveBadge` come from S1.3; `Table`/`Lightbox` from S1.2; see §7).
-
-**Scope IN**
-- Tables: `skins`, `art` (per `docs/data-model.md` §2.4); buckets `skins` (public-read; 64×64 PNG ≤64 KB textures; cached bust renders ≤512 KB), `art` (public-read; ≤10 MB); RLS published to all, admin all; storage policies service-role only (01 INV-33) — skin textures travel inline in the action (≤64 KB, 04 SC-18), art images use the 04 §1.4.5 two-phase signed-upload flow.
-- Actions (admin — ADR-0002 C7; 04 §1.5; `lib/actions/{skins,art}.ts`): `createSkin`, `updateSkin` (name, description_md, texture upload with 64×64 PNG validation, `model classic|slim`, `is_exclusive`, status, sort_order), `createArt`, `updateArt` (title, kind `avatar|thumbnail|icon|render|other`, image via two-phase, width/height computed server-side, year, credit, downloadable, status, sort_order).
-- Job: `renderSkinBust` (`lib/skins/render.ts`: `skinview3d` in headless WebGL via `gl` — ADR-0002 C22 / 00-O-14 DECIDED; native dependency → dependency ADR in this PR; on skin insert/update from the server action → `skins.render_bust_path`; fallback: client-side render cached on first view); `scripts/render-skins.mjs` for bulk (`add-content` use; idempotent — T-UNIT-45).
-- Public: `/skins` (§6.5: big live `SkinViewer3D` panel (client, lazy-loaded skinview3d) with spin / walk / front-back controls; 4-up `SkinCard` grid of rendered busts in 3:4 slots with the 64×64 source pinned small at integer scale `image-rendering: pixelated`; name + description + DOWNLOAD PNG + Slim toggle under the viewer; selected card `--indigo-lift` outline; `ExclusiveBadge` when `is_exclusive`; empty state §11.7); `/art` (§6.6: filter row all / avatars / thumbnails / icons; `ArtMasonry` column-flow, natural aspect, 18 px gutter, 4 cols desktop / 2 phone / 1 under 480; `ArtCard`; `Lightbox` with title, year, optional download; empty state).
-- Admin: `/admin/skins`, `/admin/art` (add/edit forms with `UploadWell`, `Table` with status pills, reorder; moderators read-only per 02 §1.3).
-- Skin DOWNLOAD PNG → `/api/download/[fileId]` with kind `skin` (`lib/files.ts resolveDownloadable`) → RPC `record_skin_download` increments `skins.downloads` → 302 to the public texture object with a download filename (ADR-0002 C8; 00-O-17 DECIDED); RPC `record_skin_download(uuid)` created here.
-
-**Scope OUT**
-- No comments on skins/art (ADR-0002 C21). No hero 3D skin on Home (design chose the featured-project hero; Q31). No stats (S1.9). No bulk `add-content` skill (S1.10 writes Oliver's skills).
-
-**Spec traceability:** `docs/spec.md` §5 Skins, Art, Admin Skins/Art; Q4, Q37; `docs/platform-audit.md` (skins, Mojang); `docs/data-model.md` §2.4, §3 (`skins`, `art`), §5 "Skin renders"; `DESIGN.md` §4 (pixelated), §6.5, §6.6, §10 (assets), §11.7.
-
-**Engineering docs implemented:** 01 §11 (uploads), §12 (download route kind `skin`); 02 §1.1 (`/skins`, `/art`), §1.3 (`/admin/skins`, `/admin/art`), §2.9 (kind `skin`), §8 row S1.7; 03 §2.7 (Skins/Art), `Lightbox` reuse (§2.3); 04 §1.4.5, §1.5 (`createSkin`/`updateSkin`, `createArt`/`updateArt`), §2.3 D2 (kind `skin`), §3.8 (`renderSkinBust`); 05 §8 row S1.7.
-
-**Acceptance criteria**
-1. S1.7.AC1 — Admin uploads a 64×64 PNG → skin created as draft; a 128×128 or JPEG is rejected with the plain error; publish → appears on `/skins`.
-2. S1.7.AC2 — `/skins` main panel is a live 3D model of the selected skin (skinview3d) — never a flat texture and never a profile picture; controls spin / walk / front-back work; `prefers-reduced-motion` stops idle spin.
-3. S1.7.AC3 — Grid slots show rendered busts (from `render_bust_path`, or client-render fallback if null) in 3:4 with the source PNG pinned small at integer scale with `image-rendering: pixelated`.
-4. S1.7.AC4 — DOWNLOAD PNG goes through `/api/download/[fileId]` kind `skin`: 302 to the public texture object with a download filename, `skins.downloads` +1 per request via `record_skin_download`, draft skin → 404, rate limit → 429 (ADR-0002 C8; T-ACT-76, T-RLS-129); Slim toggle switches the model.
-5. S1.7.AC5 — skinview3d is lazy-loaded (`/skins` first-load JS excludes it until the viewer mounts; `next build` route table + `frontend-reviewer`).
-6. S1.7.AC6 — `/art` masonry renders each image at natural aspect (`height:auto`, no crop); filter row filters by `kind`; lightbox shows title, year, download only when `downloadable`.
-7. S1.7.AC7 — Art upload >10 MB rejected with the number; accepted image records `width/height`.
-8. S1.7.AC8 — Empty states: "NO SKINS YET / Working on it. Check the projects meanwhile." and "NO ART HERE YET / Nothing in this filter. Try \"all\"."
-9. S1.7.AC9 — RLS: anon/user cannot mutate `skins`/`art`; drafts invisible publicly; no `insert` policy on `storage.objects` for `anon`/`authenticated` (uploads go through the actions; art via signed upload URLs minted server-side, 04 §1.4.5); `createSkin`/`createArt` as moderator → `forbidden` (T-ACT-57/60 mod = denied).
-10. S1.7.AC10 — `ExclusiveBadge` on exclusive skins; alt text on every skin/art image; axe zero serious/critical at 1280 + 390 on `/skins`, `/art`, admin forms.
-11. S1.7.AC11 — `scripts/render-skins.mjs` renders busts for all skins missing `render_bust_path` (idempotent — T-UNIT-45).
-
-**Tests required:** 05 §8 row S1.7 — T-RLS-53..62, 121..122, 129 (`record_skin_download`); T-ACT-56..61 (bust render, dimensions/type/size), 73 (art two-phase), 76 (skin download); T-UNIT-17 (all), 18 (`skin`, `art`), 19, 45 (`render-skins.mjs` idempotency); T-E2E-7, 8, 9, 38; seed SEED-7, 8, 13.
-
-**Gates required:** all seven; `security-reviewer` focus: uploads (images re-encode/type sniff); `frontend-reviewer` focus: lazy skinview3d bundle.
-
-**Demo script**
-1. `/admin/skins` → upload `assets/brand/skins/skin-*.png` (one) → publish.
-2. `/skins` → spin it, walk, flip; toggle Slim; DOWNLOAD PNG.
-3. `/admin/art` → upload two pieces of different aspect → publish.
-4. `/art` → masonry with natural sizes; filter avatars; open lightbox.
-
-**Risks / unknowns:** headless bust rendering on Vercel serverless (`gl` native dep — dependency ADR in this PR per ADR-0002 C22) — fallback is client render + cache; WebGL in Playwright CI (use software GL flag or assert fallback path); skinview3d bundle size (~150 KB gz) exceeds the 50 KB stop-and-ask threshold — pre-approved by `docs/framework-decision.md` (lazy-load); record it in the PR `## Bundle` section (§1.3).
-
----
-
 ### S1.8 — Seen on
+
+*(Build order changed 2026-09-19 by ADR-0044 — David: built **before** S1.7 — Skins + Art, straight after S1.6. Tag `v0.8`. The slice number records the original plan order, not build order — the §1 tag table and this section order are the build order (ADR-0039 D1's rule). Nothing else in this section changed.)*
 
 **Goal:** third-party coverage curated by Oliver — paste a URL, auto-fetch metadata, publish; shown on project detail, Home, and `/seen-on`, with hourly view-count refresh.
 
@@ -750,6 +704,56 @@ Rule: this plan **tightens** `build-phase` step 4 (which runs design-fidelity/fr
 5. Hide one → gone everywhere.
 
 **Risks / unknowns:** OG fetch against bot-blocking hosts (Reddit/TikTok may 403) — preview falls back to manual fields (title/creator editable in admin; note in 04); official platform marks (Q44) — neutral placeholder until supplied (ADR-0002 #25); drag-reorder a11y (provide move up/down buttons too — `frontend-reviewer`).
+
+---
+
+### S1.7 — Skins + Art
+
+*(Build order changed 2026-09-19 by ADR-0044: built **after** S1.8 — Seen on. Tag `v0.9`. Nothing else in this section changed.)*
+
+**Goal:** Oliver's skins (3D-rendered) and art (natural-aspect masonry) hosted on the site with admin add/edit and uploads.
+
+**Depends on:** S1.1, S1.3 (registry — ADR-0002 A17; `/api/download/[fileId]` + `lib/files.ts resolveDownloadable`, `UploadWell`, the two-phase upload pattern and `ExclusiveBadge` come from S1.3; `Table`/`Lightbox` from S1.2; see §7).
+
+**Scope IN**
+- Tables: `skins`, `art` (per `docs/data-model.md` §2.4); buckets `skins` (public-read; 64×64 PNG ≤64 KB textures; cached bust renders ≤512 KB), `art` (public-read; ≤10 MB); RLS published to all, admin all; storage policies service-role only (01 INV-33) — skin textures travel inline in the action (≤64 KB, 04 SC-18), art images use the 04 §1.4.5 two-phase signed-upload flow.
+- Actions (admin — ADR-0002 C7; 04 §1.5; `lib/actions/{skins,art}.ts`): `createSkin`, `updateSkin` (name, description_md, texture upload with 64×64 PNG validation, `model classic|slim`, `is_exclusive`, status, sort_order), `createArt`, `updateArt` (title, kind `avatar|thumbnail|icon|render|other`, image via two-phase, width/height computed server-side, year, credit, downloadable, status, sort_order).
+- Job: `renderSkinBust` (`lib/skins/render.ts`: `skinview3d` in headless WebGL via `gl` — ADR-0002 C22 / 00-O-14 DECIDED; native dependency → dependency ADR in this PR; on skin insert/update from the server action → `skins.render_bust_path`; fallback: client-side render cached on first view); `scripts/render-skins.mjs` for bulk (`add-content` use; idempotent — T-UNIT-45).
+- Public: `/skins` (§6.5: big live `SkinViewer3D` panel (client, lazy-loaded skinview3d) with spin / walk / front-back controls; 4-up `SkinCard` grid of rendered busts in 3:4 slots with the 64×64 source pinned small at integer scale `image-rendering: pixelated`; name + description + DOWNLOAD PNG + Slim toggle under the viewer; selected card `--indigo-lift` outline; `ExclusiveBadge` when `is_exclusive`; empty state §11.7); `/art` (§6.6: filter row all / avatars / thumbnails / icons; `ArtMasonry` column-flow, natural aspect, 18 px gutter, 4 cols desktop / 2 phone / 1 under 480; `ArtCard`; `Lightbox` with title, year, optional download; empty state).
+- Admin: `/admin/skins`, `/admin/art` (add/edit forms with `UploadWell`, `Table` with status pills, reorder; moderators read-only per 02 §1.3).
+- Skin DOWNLOAD PNG → `/api/download/[fileId]` with kind `skin` (`lib/files.ts resolveDownloadable`) → RPC `record_skin_download` increments `skins.downloads` → 302 to the public texture object with a download filename (ADR-0002 C8; 00-O-17 DECIDED); RPC `record_skin_download(uuid)` created here.
+
+**Scope OUT**
+- No comments on skins/art (ADR-0002 C21). No hero 3D skin on Home (design chose the featured-project hero; Q31). No stats (S1.9). No bulk `add-content` skill (S1.10 writes Oliver's skills).
+
+**Spec traceability:** `docs/spec.md` §5 Skins, Art, Admin Skins/Art; Q4, Q37; `docs/platform-audit.md` (skins, Mojang); `docs/data-model.md` §2.4, §3 (`skins`, `art`), §5 "Skin renders"; `DESIGN.md` §4 (pixelated), §6.5, §6.6, §10 (assets), §11.7.
+
+**Engineering docs implemented:** 01 §11 (uploads), §12 (download route kind `skin`); 02 §1.1 (`/skins`, `/art`), §1.3 (`/admin/skins`, `/admin/art`), §2.9 (kind `skin`), §8 row S1.7; 03 §2.7 (Skins/Art), `Lightbox` reuse (§2.3); 04 §1.4.5, §1.5 (`createSkin`/`updateSkin`, `createArt`/`updateArt`), §2.3 D2 (kind `skin`), §3.8 (`renderSkinBust`); 05 §8 row S1.7.
+
+**Acceptance criteria**
+1. S1.7.AC1 — Admin uploads a 64×64 PNG → skin created as draft; a 128×128 or JPEG is rejected with the plain error; publish → appears on `/skins`.
+2. S1.7.AC2 — `/skins` main panel is a live 3D model of the selected skin (skinview3d) — never a flat texture and never a profile picture; controls spin / walk / front-back work; `prefers-reduced-motion` stops idle spin.
+3. S1.7.AC3 — Grid slots show rendered busts (from `render_bust_path`, or client-render fallback if null) in 3:4 with the source PNG pinned small at integer scale with `image-rendering: pixelated`.
+4. S1.7.AC4 — DOWNLOAD PNG goes through `/api/download/[fileId]` kind `skin`: 302 to the public texture object with a download filename, `skins.downloads` +1 per request via `record_skin_download`, draft skin → 404, rate limit → 429 (ADR-0002 C8; T-ACT-76, T-RLS-129); Slim toggle switches the model.
+5. S1.7.AC5 — skinview3d is lazy-loaded (`/skins` first-load JS excludes it until the viewer mounts; `next build` route table + `frontend-reviewer`).
+6. S1.7.AC6 — `/art` masonry renders each image at natural aspect (`height:auto`, no crop); filter row filters by `kind`; lightbox shows title, year, download only when `downloadable`.
+7. S1.7.AC7 — Art upload >10 MB rejected with the number; accepted image records `width/height`.
+8. S1.7.AC8 — Empty states: "NO SKINS YET / Working on it. Check the projects meanwhile." and "NO ART HERE YET / Nothing in this filter. Try \"all\"."
+9. S1.7.AC9 — RLS: anon/user cannot mutate `skins`/`art`; drafts invisible publicly; no `insert` policy on `storage.objects` for `anon`/`authenticated` (uploads go through the actions; art via signed upload URLs minted server-side, 04 §1.4.5); `createSkin`/`createArt` as moderator → `forbidden` (T-ACT-57/60 mod = denied).
+10. S1.7.AC10 — `ExclusiveBadge` on exclusive skins; alt text on every skin/art image; axe zero serious/critical at 1280 + 390 on `/skins`, `/art`, admin forms.
+11. S1.7.AC11 — `scripts/render-skins.mjs` renders busts for all skins missing `render_bust_path` (idempotent — T-UNIT-45).
+
+**Tests required:** 05 §8 row S1.7 — T-RLS-53..62, 121..122, 129 (`record_skin_download`); T-ACT-56..61 (bust render, dimensions/type/size), 73 (art two-phase), 76 (skin download); T-UNIT-17 (all), 18 (`skin`, `art`), 19, 45 (`render-skins.mjs` idempotency); T-E2E-7, 8, 9, 38; seed SEED-7, 8, 13.
+
+**Gates required:** all seven; `security-reviewer` focus: uploads (images re-encode/type sniff); `frontend-reviewer` focus: lazy skinview3d bundle.
+
+**Demo script**
+1. `/admin/skins` → upload `assets/brand/skins/skin-*.png` (one) → publish.
+2. `/skins` → spin it, walk, flip; toggle Slim; DOWNLOAD PNG.
+3. `/admin/art` → upload two pieces of different aspect → publish.
+4. `/art` → masonry with natural sizes; filter avatars; open lightbox.
+
+**Risks / unknowns:** headless bust rendering on Vercel serverless (`gl` native dep — dependency ADR in this PR per ADR-0002 C22) — fallback is client render + cache; WebGL in Playwright CI (use software GL flag or assert fallback path); skinview3d bundle size (~150 KB gz) exceeds the 50 KB stop-and-ask threshold — pre-approved by `docs/framework-decision.md` (lazy-load); record it in the PR `## Bundle` section (§1.3).
 
 ---
 
@@ -900,8 +904,8 @@ Rule: a cron route ships in the same slice as its job; `vercel.json` never lists
 | S1.5c | none (ADR-0039 — UI only) |
 | S1.5b | none (ADR-0036) |
 | S1.6 | `videos` |
-| S1.7 | `skins`, `art`, RPC `record_skin_download`; buckets `skins`, `art` |
 | S1.8 | `mentions` |
+| S1.7 | `skins`, `art`, RPC `record_skin_download`; buckets `skins`, `art` |
 | S1.9 | `stats_daily` |
 | S1.10 | none |
 
@@ -916,8 +920,8 @@ Rule: every table gets RLS + policies in the migration that creates it (`supabas
 | S1.5c | — (admin editor only — ADR-0039) | — |
 | S1.5b | Support (gold button → real `/support`; moved from S1.9 — ADR-0036) | Support |
 | S1.6 | Videos | — |
-| S1.7 | Skins, Art | — |
 | S1.8 | Seen on | Seen on |
+| S1.7 | Skins, Art | — |
 | S1.9 | — (Support moved to S1.5b — ADR-0036) | — |
 | S2.2 | Commissions | Custom orders |
 
@@ -994,6 +998,7 @@ IDs are `00-O-n` (cite as "00 §5 00-O-n"). Rows marked DECIDED were settled by 
 | 2026-09-18 | v1.0 | ADR-0041 | S1.5b Session A findings: the Ko-fi `frame-src` entry stays site-wide (01 §20 unchanged) and "only on `/support`" is the INV-58 code rule — §S1.5b Scope IN reworded; Tests required gains T-UNIT-54; §S1.9 AC4 (= S1.5b.AC1) wording follows D1 + D5 (Session B, spec-drift gate) |
 | 2026-09-18 | v1.0 | ADR-0042 | Support fix pass after David's first use of the live page (no slice): the amount picker is removed — Ko-fi's panel takes no preset amount, so the choice contradicted the panel — `AmountPicker` → `KofiCard` (one TIP ON KO-FI button that swaps the gold slab for the Ko-fi panel, "← Back"); §S1.5b Scope IN, §S1.9 AC4 (= S1.5b.AC1) and S1.5b.AC6 reworded; DESIGN.md v1.11 |
 | 2026-09-18 | v1.0 | ADR-0043 | S1.6 Session A findings (D1–D15, D21–D24 from the build-pass self-review and local CI, D25 from the Session B spec-drift gate — a Short's gold duration chip sits top-left per the pass-3 artboard, a 03 edit only, plus the as-built reconciliation D17–D20 — adapter surface, `syncYoutube` write rules, `/videos` component details, `videos` constraints; here only the Risks line gains the no-key live row, D18): `videos.is_short_override`; `syncYoutube` gathers then writes (live uploads never stored by a keyed run, a failed list call writes nothing, `listVideos` returns a plain mapped list); `fetchText` + a hand-rolled Atom parser; new client island `VideoStage` owns `?v=`; `upnext` facades are presentational; `VideoCardData` declared in `lib/videos.ts`; play blocks follow DESIGN.md §12.7 (cards 56 px — 03 O-19 rewritten); SEED-11 = 7 rows; T-E2E-47 hides through `/admin` instead of truncating; T-ACT-74 youtube; `/admin` list = Hidden + Short + Auto + "Saved."; `/videos` composition; no YouTube embeds in Markdown; INV-58 Check cell; Home row wording — §S1.6 Scope IN, AC3 / AC6 / AC7 / AC8 / AC11 glosses, Tests required, Demo, Risks; §S1.5c Scope OUT; §5 00-O-5 |
+| 2026-09-19 | v1.0 | ADR-0044 | Build order (David, 2026-09-19): **S1.8 — Seen on is built before S1.7 — Skins + Art**. §1 tag table: S1.8 `v0.8`, S1.7 `v0.9`; §1 gate matrix, §4.2 tables and §4 sections / nav rows re-ordered; §2 the S1.8 section now sits before S1.7, each with a dated note. No scope, AC, test or dependency changed — S1.8 depends on S1.2 + S1.6 only, S1.7 on S1.1 + S1.3. |
 
 ---
 
