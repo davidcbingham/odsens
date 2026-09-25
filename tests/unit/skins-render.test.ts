@@ -39,7 +39,8 @@ import { REPO_ROOT } from '../helpers/envTest';
 
 // A render is 60–100 ms on the build Mac but 1.4–2 s on the shared CI runner under coverage
 // instrumentation: the four-render determinism case hit vitest's 5 s default there (5.7 s, PR #35
-// round 1). The elapsed-time contract stays the per-render bound asserted below, not this ceiling.
+// round 1; ADR-0048 D31). The elapsed-time contract stays the per-render bound asserted below,
+// not this ceiling.
 vi.setConfig({ testTimeout: 30_000 });
 
 const fixture = (name: string): Uint8Array =>

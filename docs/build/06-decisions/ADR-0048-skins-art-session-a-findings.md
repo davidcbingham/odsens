@@ -1,7 +1,7 @@
 # ADR-0048 — S1.7 Session A build findings
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-09-25

@@ -1,7 +1,7 @@
 # ADR-0047 — Skin bust renderer: a software rasterizer, no `gl`
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-09-25
