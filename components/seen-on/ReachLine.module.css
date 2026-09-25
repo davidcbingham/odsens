@@ -1,0 +1,18 @@
+/* ReachLine — DESIGN.md §12.1 Reach line; 03 §2.8 (tokens --emerald --font-pixel). One inline run
+   of 11px Silkscreen segments with ` · ` between; it wraps between segments, never inside one. */
+.reach-line {
+  margin: 0;
+  color: var(--emerald);
+}
+
+/* The separators are text nodes of the run, so the run is set like the labels it holds. */
+.reach-line-run {
+  font-family: var(--font-pixel);
+  font-size: var(--text-pixel-11);
+  line-height: 1.6;
+  letter-spacing: var(--track-pixel);
+}
+
+.reach-line-run > * {
+  white-space: nowrap;
+}

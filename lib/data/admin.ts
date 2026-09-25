@@ -12,7 +12,10 @@
  * `data/<area>.ts` — `admin` added 2026-08-27, registry add-first rule). S1.5a (ADR-0037 D8):
  * `listAdminProjects` carries `externalId` and the pure `suggestMatches` (the `/admin/projects`
  * "Looks like the same project" note — 00 S1.5a.AC7; 05 T-UNIT-50); `getAdminProject` carries
- * `externalId` + `modrinthLink` beside `curseforgeLink` from ONE `project_links` read.
+ * `externalId` + `modrinthLink` beside `curseforgeLink` from ONE `project_links` read. S1.8
+ * (ADR-0045): `/admin/mentions` = `mentions` (all statuses — `listAdminMentions`) +
+ * `projects_public` (the assign select — `listMentionProjectOptions`) + `sync_runs` (mentions —
+ * `MENTIONS_SYNC_SOURCES`); the block at the end of the file.
  *
  * The admin read seam is the REQUEST-COOKIE server client (`lib/supabase/server.ts`) under the
  * S1.2 RLS policies (ADR-0022 `project_is_visible() or is_admin()` arms) — admin routes are
@@ -873,3 +876,144 @@ export async function listModerators(): Promise<ModeratorRow[]> {
       a.handle.localeCompare(b.handle),
   );
 }
+
+// ---- /admin/mentions (S1.8; 02 §1.3 `/admin/mentions` row; 04 §1.6; ADR-0045) ----------------
+// ---- S1.8 block START ------------------------------------------------------------------------
+
+type MentionPlatform = Database['public']['Enums']['mention_platform'];
+type MentionStatus = Database['public']['Enums']['mention_status'];
+
+/**
+ * The one worded status per `/admin/mentions` row (DESIGN.md §12.2 "FEATURED / LIVE / HIDDEN
+ * worded tags"; 00 S1.8 Scope IN). DRAFT, SUGGESTED and HIDDEN read as themselves; a published row is
+ * FEATURED when it feeds the Home strip, else LIVE. The values are a subset of 03 §2.2
+ * `StatusPill.status`.
+ */
+export function adminMentionStatus(
+  status: MentionStatus,
+  featured: boolean,
+): 'draft' | 'suggested' | 'hidden' | 'featured' | 'live' {
+  if (status === 'published') return featured ? 'featured' : 'live';
+  return status;
+}
+
+export type AdminMentionListItem = {
+  id: string;
+  platform: MentionPlatform;
+  url: string;
+  /** For `youtube` the 11-char video id `refreshMentions` asks the Data API for (04 §3.4). */
+  externalId: string | null;
+  title: string;
+  creatorName: string;
+  creatorUrl: string | null;
+  publishedAt: string | null;
+  viewCount: number | null;
+  status: MentionStatus;
+  featured: boolean;
+  /** Order of the featured mentions on the Home strip — what `updateMention({reorder})` writes. */
+  sortOrder: number;
+  /** `null` = "About OddSense generally". */
+  projectId: string | null;
+  /**
+   * The attached project's title: the public one (`title_override ?? title`) when the project is
+   * visible, else the stored `projects.title` as far as the session's RLS shows it; `null` for a
+   * general mention or a project this session cannot read.
+   */
+  projectTitle: string | null;
+  createdAt: string;
+};
+
+/** Cap for the list = the `updateMention` reorder maximum (04 §1.6 "max 200"). */
+export const ADMIN_MENTIONS_LIMIT = 200;
+
+/**
+ * The `/admin/mentions` list (02 §1.3 Data cell: "`mentions` (all statuses)") on the request-cookie
+ * client, newest-added first (`created_at` desc, `id` breaks a tie) — deliberately NOT by
+ * `sort_order`, so a reorder of the featured list never reshuffles the table under the pointer.
+ * RLS (05 T-RLS-102/103): an `admin` session reads every status; a `moderator` session gets the
+ * published rows only, so every row a moderator sees reads LIVE or FEATURED — the read-only
+ * degradation ADR-0045 records (the `listAdminVideos` precedent; the policy is never widened).
+ * Project titles come from ONE `projects_public` read; an id the view does not show (a hidden or
+ * draft project) falls back to `projects.title` under the same session's RLS.
+ */
+export async function listAdminMentions(
+  limit: number = ADMIN_MENTIONS_LIMIT,
+): Promise<AdminMentionListItem[]> {
+  const db = await createServerClient();
+  const { data, error } = await db
+    .from('mentions')
+    .select(
+      'id, project_id, platform, url, external_id, title, creator_name, creator_url, published_at, view_count, status, featured, sort_order, created_at',
+    )
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`admin mentions read failed: ${error.code}`);
+
+  const projectIds = [...new Set(data.flatMap((row) => (row.project_id ? [row.project_id] : [])))];
+  const titles = new Map<string, string>();
+  if (projectIds.length > 0) {
+    const visible = await db.from('projects_public').select('id, title').in('id', projectIds);
+    if (visible.error) throw new Error(`admin projects read failed: ${visible.error.code}`);
+    for (const project of visible.data) {
+      if (project.id !== null && project.title !== null) titles.set(project.id, project.title);
+    }
+    const unseen = projectIds.filter((id) => !titles.has(id));
+    if (unseen.length > 0) {
+      const stored = await db.from('projects').select('id, title').in('id', unseen);
+      if (stored.error) throw new Error(`admin projects read failed: ${stored.error.code}`);
+      for (const project of stored.data) titles.set(project.id, project.title);
+    }
+  }
+
+  return data.map((row) => ({
+    id: row.id,
+    platform: row.platform,
+    url: row.url,
+    externalId: row.external_id,
+    title: row.title,
+    creatorName: row.creator_name,
+    creatorUrl: row.creator_url,
+    publishedAt: row.published_at,
+    viewCount: row.view_count,
+    status: row.status,
+    featured: row.featured,
+    sortOrder: row.sort_order,
+    projectId: row.project_id,
+    projectTitle: row.project_id === null ? null : (titles.get(row.project_id) ?? null),
+    createdAt: row.created_at,
+  }));
+}
+
+/**
+ * The `MentionPreview` "Assign to" options (02 §1.3 Data cell: "`projects_public` (assign
+ * select)"; 03 §2.8 `projects: { id; title }[]`): every publicly visible project, title A→Z
+ * (case-insensitive, `id` breaks a tie — sorted here, locale-free, so the order never depends on
+ * the database collation). The caller puts "About OddSense generally" (`project_id: null`) first.
+ */
+export async function listMentionProjectOptions(): Promise<{ id: string; title: string }[]> {
+  const db = await createServerClient();
+  const { data, error } = await db.from('projects_public').select('id, title');
+  if (error) throw new Error(`admin projects read failed: ${error.code}`);
+
+  const options: { id: string; title: string }[] = [];
+  for (const row of data) {
+    if (row.id !== null && row.title !== null) options.push({ id: row.id, title: row.title });
+  }
+  return options.sort((a, b) => {
+    const [left, right] = [a.title.toLowerCase(), b.title.toLowerCase()];
+    if (left !== right) return left < right ? -1 : 1;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  });
+}
+
+/**
+ * The source `/admin/mentions` shows a `SyncStatus` row for (03 §2.10 `SyncStatus` Slice cell
+ * "… · S1.8"; ADR-0045): `refreshMentions` writes `sync_runs.source = 'mentions'` (04 §3.4) and
+ * `triggerSync({ source: 'mentions' })` runs it. `DASHBOARD_SYNC_SOURCES` stays as it is — the
+ * mentions row lives beside the mentions, not on `/admin`. Feed it to `listSyncStatus`.
+ */
+export const MENTIONS_SYNC_SOURCES = ['mentions'] as const;
+export type MentionsSyncSource = (typeof MENTIONS_SYNC_SOURCES)[number];
+
+// ---- S1.8 block END --------------------------------------------------------------------------

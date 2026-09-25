@@ -3,13 +3,15 @@
  * (05 T-ADP-1: 04 SC-09 timeout / retry / backoff / `Retry-After` / `X-Ratelimit-Reset` + SC-10
  * User-Agent + secret-free errors; 05 T-ADP-20: nothing under `lib/adapters/` reads `process.env`;
  * ADR-0030 D6: `method: 'POST'` + JSON `body`, an empty 2xx body → `null`, `retryOn` narrowing;
- * ADR-0043 D3: `fetchText` — the same loop for a non-JSON body, blind to the response content type).
+ * ADR-0043 D3: `fetchText` — the same loop for a non-JSON body, blind to the response content type;
+ * ADR-0045: `fetchPage` — the same loop again, with the three opt-in guards the S1.8 Open Graph read
+ * needs: `redirect: 'manual'`, `contentTypes`, `maxBytes`).
  * Pure over `mockFetch` — no sockets (05 H-5); backoff timing via fake timers.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AdapterError, fetchJson, fetchText, redactSecrets } from '@/lib/adapters/http';
+import { AdapterError, fetchJson, fetchPage, fetchText, redactSecrets } from '@/lib/adapters/http';
 import { REPO_ROOT } from '../../helpers/envTest';
 import { mockFetch } from '../../helpers/mockFetch';
 
@@ -211,7 +213,7 @@ describe('T-ADP-20 adapters never read process.env (04 SC-25)', () => {
   it('T-ADP-20 grep "process.env" over lib/adapters/ finds nothing', () => {
     const dir = path.join(REPO_ROOT, 'lib', 'adapters');
     const names = readdirSync(dir).filter((name) => name.endsWith('.ts'));
-    expect(names.length).toBeGreaterThanOrEqual(6); // http, modrinth, curseforge, resend, discord, youtube
+    expect(names.length).toBeGreaterThanOrEqual(7); // http, modrinth, curseforge, resend, discord, youtube, oembed
     for (const name of names) {
       const text = readFileSync(path.join(dir, name), 'utf8');
       expect(text, `lib/adapters/${name} must take env by injection (04 SC-25)`).not.toContain(
@@ -486,5 +488,393 @@ describe('T-ADP-1 fetchText (ADR-0043 D3 — one loop with fetchJson)', () => {
       'GET /a?api_key=[redacted]&token=[redacted] → 500',
     );
     expect(redactSecrets('https://x.test/a?part=snippet')).toBe('https://x.test/a?part=snippet');
+  });
+});
+
+describe('T-ADP-1 fetchPage (ADR-0045 — one loop with fetchJson / fetchText, three opt-in guards)', () => {
+  const HTML = '<!doctype html><title>hello</title>';
+  const htmlHeaders = { 'content-type': 'text/html; charset=utf-8' };
+  const encoder = new TextEncoder();
+
+  /** A body that records whether anybody pulled from it or cancelled it (pulls only on demand). */
+  function watchedBody(chunks: () => Uint8Array | null): {
+    stream: ReadableStream<Uint8Array>;
+    seen: { pulls: number; cancelled: boolean };
+  } {
+    const seen = { pulls: 0, cancelled: false };
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          seen.pulls += 1;
+          const next = chunks();
+          if (next === null) controller.close();
+          else controller.enqueue(next);
+        },
+        cancel() {
+          seen.cancelled = true;
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    return { stream, seen };
+  }
+
+  const caught = (promise: Promise<unknown>): Promise<AdapterError | null> =>
+    promise.then(
+      () => null,
+      (thrown: unknown) => thrown as AdapterError,
+    );
+
+  it('T-ADP-1 fetchPage returns {status, location, contentType, text} for a 2xx: GET, the SC-10 UA, Accept, a 10 s AbortSignal.timeout', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    const seen: { method?: string; ua?: string | null; accept?: string | null } = {};
+    const responses: number[] = [];
+    const fetchSpy = vi.fn(
+      mockFetch({
+        [URL_LIST]: (request) => {
+          seen.method = request.method;
+          seen.ua = request.headers.get('user-agent');
+          seen.accept = request.headers.get('accept');
+          return new Response(HTML, { headers: { 'content-type': 'Text/HTML; Charset=UTF-8' } });
+        },
+      }),
+    );
+    const page = await fetchPage(URL_LIST, {
+      ua: UA,
+      fetch: fetchSpy,
+      accept: 'text/html',
+      onResponse: (response) => responses.push(response.status),
+    });
+    expect(page).toEqual({ status: 200, location: null, contentType: 'text/html', text: HTML });
+    expect(seen).toEqual({ method: 'GET', ua: UA, accept: 'text/html' });
+    expect(responses).toEqual([200]);
+    expect(timeoutSpy).toHaveBeenCalledWith(10_000);
+    expect(fetchSpy.mock.calls[0]?.[1]?.signal).toBe(timeoutSpy.mock.results[0]?.value);
+
+    // No content type at all → null; the default Accept is any type; a smuggled method/body is ignored.
+    let accept: string | null = null;
+    let method = '';
+    const bare = mockFetch({
+      [URL_LIST]: (request) => {
+        accept = request.headers.get('accept');
+        method = request.method;
+        return new Response(encoder.encode('raw'));
+      },
+    });
+    const smuggled = { ua: UA, fetch: bare, method: 'POST', body: { a: 1 } };
+    expect(await fetchPage(URL_LIST, smuggled)).toEqual({
+      status: 200,
+      location: null,
+      contentType: null,
+      text: 'raw',
+    });
+    expect(accept).toBe('*/*');
+    expect(method).toBe('GET');
+  });
+
+  it.each([301, 302, 303, 307, 308])(
+    'T-ADP-1 fetchPage redirect manual: a %i is RETURNED with its raw Location, never followed, its body cancelled unread',
+    async (status) => {
+      const { stream, seen } = watchedBody(() => encoder.encode('you are being redirected'));
+      const redirectModes: string[] = [];
+      const fetchSpy = vi.fn(
+        mockFetch({
+          'https://upstream.test/final': () => new Response('followed!', { headers: htmlHeaders }),
+          [URL_LIST]: (request) => {
+            redirectModes.push(request.redirect);
+            return new Response(stream, { status, headers: { location: '/final?x=1' } });
+          },
+        }),
+      );
+      const page = await fetchPage(URL_LIST, { ua: UA, fetch: fetchSpy, redirect: 'manual' });
+      expect(page).toEqual({ status, location: '/final?x=1', contentType: null, text: '' });
+      expect(redirectModes).toEqual(['manual']);
+      expect(fetchSpy).toHaveBeenCalledTimes(1); // `/final` was never asked for
+      expect(fetchSpy.mock.calls[0]?.[1]).toMatchObject({ redirect: 'manual' });
+      expect(seen).toEqual({ pulls: 0, cancelled: true });
+    },
+  );
+
+  it('T-ADP-1 fetchPage redirect manual: an absolute Location is passed through verbatim; a missing one is null; onResponse sees the hop', async () => {
+    const statuses: number[] = [];
+    const absolute = mockFetch({
+      [URL_LIST]: () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: 'http://127.0.0.1/latest/meta-data/?token=abc' },
+        }),
+    });
+    expect(
+      await fetchPage(URL_LIST, {
+        ua: UA,
+        fetch: absolute,
+        redirect: 'manual',
+        onResponse: (response) => statuses.push(response.status),
+      }),
+    ).toEqual({
+      status: 302,
+      location: 'http://127.0.0.1/latest/meta-data/?token=abc', // raw — the CALLER re-checks it
+      contentType: null,
+      text: '',
+    });
+    expect(statuses).toEqual([302]);
+
+    const missing = mockFetch({ [URL_LIST]: () => new Response(null, { status: 301 }) });
+    expect(await fetchPage(URL_LIST, { ua: UA, fetch: missing, redirect: 'manual' })).toEqual({
+      status: 301,
+      location: null,
+      contentType: null,
+      text: '',
+    });
+  });
+
+  it('T-ADP-1 fetchPage redirect manual: any other 3xx (300, 304) stays an http_error; a 2xx is read as usual', async () => {
+    for (const status of [300, 304]) {
+      const impl = mockFetch({ [URL_LIST]: () => new Response(null, { status }) });
+      await expect(
+        fetchPage(URL_LIST, { ua: UA, fetch: impl, redirect: 'manual' }),
+      ).rejects.toMatchObject({ status, code: 'http_error' });
+    }
+    const ok = mockFetch({ [URL_LIST]: () => new Response(HTML, { headers: htmlHeaders }) });
+    expect(await fetchPage(URL_LIST, { ua: UA, fetch: ok, redirect: 'manual' })).toEqual({
+      status: 200,
+      location: null,
+      contentType: 'text/html',
+      text: HTML,
+    });
+  });
+
+  it('T-ADP-1 the redirect key is opt-in: fetchJson, fetchText and a plain fetchPage send the init object they always sent', async () => {
+    const fetchSpy = vi.fn(mockFetch({ [URL_LIST]: () => Response.json({ ok: true }) }));
+    await fetchJson(URL_LIST, { ua: UA, fetch: fetchSpy });
+    await fetchText(URL_LIST, { ua: UA, fetch: fetchSpy });
+    await fetchPage(URL_LIST, { ua: UA, fetch: fetchSpy });
+    await fetchPage(URL_LIST, { ua: UA, fetch: fetchSpy, redirect: 'follow' });
+    await fetchPage(URL_LIST, { ua: UA, fetch: fetchSpy, redirect: 'manual' });
+    const keys = fetchSpy.mock.calls.map((call) => Object.keys(call[1] ?? {}));
+    expect(keys).toEqual([
+      ['method', 'headers', 'signal'],
+      ['method', 'headers', 'signal'],
+      ['method', 'headers', 'signal'],
+      ['method', 'headers', 'signal'],
+      ['method', 'headers', 'redirect', 'signal'],
+    ]);
+  });
+
+  it('T-ADP-1 fetchText under redirect manual reports the hop as an http_error — never an empty string', async () => {
+    const impl = mockFetch({
+      [URL_LIST]: () => new Response(null, { status: 302, headers: { location: '/elsewhere' } }),
+    });
+    const error = await caught(fetchText(URL_LIST, { ua: UA, fetch: impl, redirect: 'manual' }));
+    expect(error).toBeInstanceOf(AdapterError);
+    expect(error).toMatchObject({ status: 302, code: 'http_error', body: '' });
+    expect(error?.message).toBe(`GET ${URL_LIST} → 302`);
+  });
+
+  it.each([
+    ['another type', { 'content-type': 'application/pdf' }],
+    ['JSON', { 'content-type': 'application/json; charset=utf-8' }],
+    ['a look-alike', { 'content-type': 'text/htmlx' }],
+    ['no header at all', {}],
+  ] as [string, Record<string, string>][])(
+    'T-ADP-1 fetchPage contentTypes: %s → typed unsupported, the body unread, NOT retried',
+    async (_label, headers) => {
+      const { stream, seen } = watchedBody(() => encoder.encode('%PDF-1.7 …'));
+      const fetchSpy = vi.fn(mockFetch({ [URL_LIST]: () => new Response(stream, { headers }) }));
+      const error = await caught(
+        fetchPage(URL_LIST, { ua: UA, fetch: fetchSpy, contentTypes: ['text/html'] }), // default retries: 3
+      );
+      expect(error).toBeInstanceOf(AdapterError);
+      expect(error).toMatchObject({ status: 200, code: 'unsupported', body: '' });
+      expect(error?.message).toBe(`GET ${URL_LIST} → unsupported (content type)`);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(seen).toEqual({ pulls: 0, cancelled: true });
+    },
+  );
+
+  it('T-ADP-1 fetchPage contentTypes: a listed type passes whatever its case or parameters; unset → never checked', async () => {
+    const xhtml = mockFetch({
+      [URL_LIST]: () =>
+        new Response(HTML, { headers: { 'content-type': 'APPLICATION/XHTML+XML;charset=utf-8' } }),
+    });
+    const page = await fetchPage(URL_LIST, {
+      ua: UA,
+      fetch: xhtml,
+      contentTypes: ['text/html', 'application/xhtml+xml'],
+    });
+    expect(page).toMatchObject({ status: 200, contentType: 'application/xhtml+xml', text: HTML });
+
+    const pdf = mockFetch({
+      [URL_LIST]: () => new Response('%PDF', { headers: { 'content-type': 'application/pdf' } }),
+    });
+    expect(await fetchPage(URL_LIST, { ua: UA, fetch: pdf })).toMatchObject({
+      contentType: 'application/pdf',
+      text: '%PDF',
+    });
+  });
+
+  it('T-ADP-1 fetchPage maxBytes: a Content-Length over the cap → unsupported before a single byte is read, not retried', async () => {
+    const { stream, seen } = watchedBody(() => encoder.encode('x'.repeat(10)));
+    const fetchSpy = vi.fn(
+      mockFetch({
+        [URL_LIST]: () =>
+          new Response(stream, { headers: { ...htmlHeaders, 'content-length': '2000000' } }),
+      }),
+    );
+    const error = await caught(
+      fetchPage(URL_LIST, { ua: UA, fetch: fetchSpy, maxBytes: 1_048_576 }),
+    );
+    expect(error).toBeInstanceOf(AdapterError);
+    expect(error).toMatchObject({ status: 200, code: 'unsupported', body: '' });
+    expect(error?.message).toBe(`GET ${URL_LIST} → unsupported (body over 1048576 bytes)`);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(seen).toEqual({ pulls: 0, cancelled: true });
+  });
+
+  it('T-ADP-1 fetchPage maxBytes: a streamed body with no (or a lying) Content-Length is cut off the moment it passes the cap', async () => {
+    for (const headers of [htmlHeaders, { ...htmlHeaders, 'content-length': '12' }]) {
+      const chunk = encoder.encode('x'.repeat(40_000));
+      const { stream, seen } = watchedBody(() => chunk); // never ends on its own
+      const fetchSpy = vi.fn(mockFetch({ [URL_LIST]: () => new Response(stream, { headers }) }));
+      const error = await caught(
+        fetchPage(URL_LIST, { ua: UA, fetch: fetchSpy, maxBytes: 100_000 }),
+      );
+      expect(error).toMatchObject({ status: 200, code: 'unsupported', body: '' });
+      expect(seen.pulls).toBe(3); // 40k + 40k + 40k > 100k — the 4th chunk is never asked for
+      expect(seen.cancelled).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('T-ADP-1 fetchPage maxBytes: a body at or under the cap is decoded as UTF-8 — a character split across chunks, a BOM, an exact fit', async () => {
+    const bytes = encoder.encode('\uFEFFcafé ☕ déjà vu');
+    const cut = bytes.indexOf(0xc3) + 1; // between the two bytes of the first `é`
+    const parts = [bytes.slice(0, cut), bytes.slice(cut), null];
+    const { stream } = watchedBody(() => parts.shift() ?? null);
+    const impl = mockFetch({ [URL_LIST]: () => new Response(stream, { headers: htmlHeaders }) });
+    const page = await fetchPage(URL_LIST, { ua: UA, fetch: impl, maxBytes: bytes.byteLength });
+    expect(page).toEqual({
+      status: 200,
+      location: null,
+      contentType: 'text/html',
+      text: 'café ☕ déjà vu',
+    });
+    // Same answer as the uncapped read of the same bytes.
+    const plain = mockFetch({ [URL_LIST]: () => new Response(bytes, { headers: htmlHeaders }) });
+    expect((await fetchPage(URL_LIST, { ua: UA, fetch: plain })).text).toBe(page.text);
+
+    const oneOver = mockFetch({ [URL_LIST]: () => new Response(bytes, { headers: htmlHeaders }) });
+    await expect(
+      fetchPage(URL_LIST, { ua: UA, fetch: oneOver, maxBytes: bytes.byteLength - 1 }),
+    ).rejects.toMatchObject({ code: 'unsupported' });
+  });
+
+  it('T-ADP-1 fetchPage maxBytes: a null body is the empty string', async () => {
+    const impl = mockFetch({
+      [URL_LIST]: () => new Response(null, { status: 200, headers: htmlHeaders }),
+    });
+    expect(
+      await fetchPage(URL_LIST, {
+        ua: UA,
+        fetch: impl,
+        maxBytes: 10,
+        contentTypes: ['text/html'],
+      }),
+    ).toEqual({ status: 200, location: null, contentType: 'text/html', text: '' });
+  });
+
+  it('T-ADP-1 fetchPage timeout: timeoutMs reaches AbortSignal.timeout; a timed-out request or a body that dies mid-read is a typed network_error', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    const timedOut = vi.fn((async () => {
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+    }) as typeof fetch);
+    const error = await caught(
+      fetchPage(URL_LIST, { ua: UA, fetch: timedOut, timeoutMs: 2_500, retries: 0 }),
+    );
+    expect(timeoutSpy).toHaveBeenCalledWith(2_500);
+    expect(error).toBeInstanceOf(AdapterError);
+    expect(error).toMatchObject({ status: 0, code: 'network_error', body: '' });
+    expect(error?.message).toContain('TimeoutError');
+    expect(timedOut).toHaveBeenCalledTimes(1);
+
+    let pulls = 0;
+    const dying = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          pulls += 1;
+          if (pulls === 1) controller.enqueue(encoder.encode('<html>'));
+          else controller.error(new DOMException('aborted', 'TimeoutError'));
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const midRead = mockFetch({
+      [URL_LIST]: () => new Response(dying, { headers: htmlHeaders }),
+    });
+    const readError = await caught(
+      fetchPage(`${URL_LIST}?token=hunter2`, { ua: UA, fetch: midRead, maxBytes: 1_000 }),
+    );
+    expect(readError).toBeInstanceOf(AdapterError);
+    expect(readError).toMatchObject({ status: 0, code: 'network_error', body: '' });
+    expect(readError?.message).toContain('token=[redacted]');
+    expect(readError?.message).not.toContain('hunter2');
+  });
+
+  it('T-ADP-1 fetchPage retries: 0 is honoured (one attempt, no backoff); the default is still the SC-09 loop', async () => {
+    const once = vi.fn(mockFetch({ [URL_LIST]: () => new Response('boom', { status: 503 }) }));
+    await expect(fetchPage(URL_LIST, { ua: UA, fetch: once, retries: 0 })).rejects.toMatchObject({
+      status: 503,
+      code: 'http_error',
+      body: 'boom',
+    });
+    expect(once).toHaveBeenCalledTimes(1);
+
+    const dead = vi.fn((async () => {
+      throw new TypeError('fetch failed');
+    }) as typeof fetch);
+    await expect(fetchPage(URL_LIST, { ua: UA, fetch: dead, retries: 0 })).rejects.toMatchObject({
+      status: 0,
+      code: 'network_error',
+    });
+    expect(dead).toHaveBeenCalledTimes(1);
+
+    vi.useFakeTimers();
+    const { fetch: impl, times } = timedRoute(() => new Response('boom', { status: 500 }));
+    const settled = caught(fetchPage(URL_LIST, { ua: UA, fetch: impl }));
+    await vi.runAllTimersAsync();
+    expect(await settled).toMatchObject({ status: 500, code: 'http_error' });
+    expect(times).toEqual([0, 1000, 3000, 7000]);
+  });
+
+  it('T-ADP-1 fetchPage labels are redacted: no key-like query value reaches an unsupported / http_error message', async () => {
+    const url = 'https://upstream.test/page?id=7&key=hunter2&sig=s1gnature';
+    const pdf = mockFetch({
+      'https://upstream.test/page': () =>
+        new Response('%PDF', { headers: { 'content-type': 'application/pdf' } }),
+    });
+    const big = mockFetch({
+      'https://upstream.test/page': () => new Response('x'.repeat(50), { headers: htmlHeaders }),
+    });
+    const denied = mockFetch({
+      'https://upstream.test/page': (request) =>
+        new Response(`no: ${request.url}`, { status: 403 }),
+    });
+    const errors = [
+      await caught(fetchPage(url, { ua: UA, fetch: pdf, contentTypes: ['text/html'] })),
+      await caught(fetchPage(url, { ua: UA, fetch: big, maxBytes: 10 })),
+      await caught(fetchPage(url, { ua: UA, fetch: denied, retries: 0 })),
+    ];
+    expect(errors.map((error) => error?.code)).toEqual([
+      'unsupported',
+      'unsupported',
+      'http_error',
+    ]);
+    for (const error of errors) {
+      expect(error?.message).toContain('key=[redacted]&sig=[redacted]');
+      for (const text of [error?.message ?? '', error?.body ?? '']) {
+        expect(text).not.toContain('hunter2');
+        expect(text).not.toContain('s1gnature');
+      }
+    }
   });
 });

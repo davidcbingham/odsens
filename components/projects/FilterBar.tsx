@@ -21,6 +21,17 @@ import styles from './FilterBar.module.css';
  * type (DESIGN.md §4 via `typeGlyph`), active = `--indigo` fill white text; selects right,
  * radius 3px. Phone: type row `overflow-x:auto` (scroll-snap), selects stack. All-types
  * default on `/projects` (02 §2.2: the bar shows ALL + one active).
+ *
+ * Two exports, one view (S1.8 — ADR-0045; the `VideoStage` / `VideoStageView` precedent,
+ * ADR-0043 D4). Additive (03 C-03): `FilterBar` keeps its props and its markup.
+ *   `FilterBar`      reads the URL with `useSearchParams` — it must sit under a `<Suspense>`.
+ *   `FilterBarView`  the same bar for a query string it is GIVEN (`query`, no leading `?`), with
+ *                    no URL read — so `SeenOnGridView` can render it inside the `/seen-on`
+ *                    `<Suspense>` FALLBACK (`query=""`: ALL active, selects on their first
+ *                    option). The bar is then in the ISR HTML and the resolved island renders
+ *                    identical markup: nothing pops in, nothing shifts. `usePathname` /
+ *                    `useRouter` do not opt a static page out of prerendering; only
+ *                    `useSearchParams` does.
  */
 export type FilterOption = { value: string; label: string; count: number };
 export type FilterGroup = {
@@ -38,10 +49,20 @@ export type FilterBarProps = {
   selects: FilterSelect[];
 };
 
+export type FilterBarViewProps = FilterBarProps & {
+  /** The current query string, no leading `?` — what `useSearchParams().toString()` gives. */
+  query: string;
+};
+
 export function FilterBar({ groups, selects }: FilterBarProps) {
+  const query = useSearchParams().toString();
+  return <FilterBarView groups={groups} selects={selects} query={query} />;
+}
+
+export function FilterBarView({ groups, selects, query }: FilterBarViewProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = new URLSearchParams(query);
 
   const hrefWith = (key: string, value: string | null): string => {
     const params = new URLSearchParams(searchParams.toString());

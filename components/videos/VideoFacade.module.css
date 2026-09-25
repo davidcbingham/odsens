@@ -1,7 +1,8 @@
 /* VideoFacade — DESIGN.md §11.1 Video facade (thumbnail + scrim, indigo play block with a white
    triangle and a 5px 5px 0 shadow, duration chip, CLICK TO LOAD YOUTUBE chip), §11.5 Shorts (9:16,
-   gold duration chip), §12.7 #58 sizes 88 / 44 / 56 (ADR-0043 D7); 03 §2.6 (tokens --scrim-35
-   --indigo --indigo-hover --indigo-deep --white --ink --line --gold --gold-ink --font-pixel). */
+   gold duration chip), §12.7 #58 sizes 88 / 44 / 56 (ADR-0043 D7; `mention` = 56, a grid card —
+   ADR-0045); 03 §2.6 (tokens --scrim-35 --indigo --indigo-hover --indigo-deep --white --ink --line
+   --gold --gold-ink --font-pixel). */
 .video-facade {
   position: relative;
   display: block;
@@ -24,7 +25,8 @@
 }
 
 .video-facade[data-variant='short'],
-.video-facade[data-variant='card'] {
+.video-facade[data-variant='card'],
+.video-facade[data-variant='mention'] {
   --play: 56px;
   --tri-side: 18px;
   --tri-half: 12px;

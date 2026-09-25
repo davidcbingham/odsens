@@ -86,7 +86,8 @@ test.describe('project exclusive', () => {
     await expect(download).toHaveAccessibleName('Download seed-exclusive-pack-1.0.0.zip');
     await expect(download).toHaveAttribute('href', DOWNLOAD_HREF);
 
-    // SEEN ON is S1.8 — no heading yet (05 T-E2E-4 "SEEN ON absent").
+    // SEEN ON absent (05 T-E2E-4): the row ships in S1.8 and renders nothing for a project with no
+    // mention — seed-exclusive-pack has none (00 S1.8.AC3).
     await expect(page.getByRole('heading', { name: 'SEEN ON' })).toHaveCount(0);
 
     // COMMENTS closed state (05 T-E2E-4 "Comments closed state text"; SEED-6 comments_enabled=false):

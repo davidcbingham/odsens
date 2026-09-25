@@ -7,6 +7,9 @@ import styles from './Footer.module.css';
 /**
  * Footer — DESIGN.md §5 Footer, §11.6, §12.2 footer line; 03 §2.1 `Footer`; 02 RP-13.
  * Server, no props: reads `FLAGS.commissions` directly for the "Custom orders" link (01 INV-74).
+ * Two dry lines under the wordmark, both verbatim: the Mojang one (S0) and, since S1.8, "Creators
+ * featuring the mods aren't affiliated with odsens." — on every page (DESIGN.md §12.2; 00
+ * S1.8.AC9; 05 T-E2E-1). Two `<p>`s in the same `.footer-line` recipe, so they read as one block.
  * "Find me" rows carry the Modrinth / CurseForge / YouTube marks from S1.2 (03 §2.1 Footer row:
  * "via `PlatformMark` + word") — mark without `withWord` so the slab keeps `role="img"
  * aria-label="<Platform>"` (03 §2.2 `PlatformMark` Tests cell) while the link text stays the
@@ -104,7 +107,9 @@ export function Footer() {
           <p className={styles['footer-line']}>
             Mods and other odd things, made by OddSense. Not affiliated with Mojang.
           </p>
-          {/* S1.8 adds the second dry line: "Creators featuring the mods aren't affiliated with odsens." */}
+          <p className={styles['footer-line']}>
+            Creators featuring the mods aren&apos;t affiliated with odsens.
+          </p>
         </div>
         <FooterColumn title="Find me" links={FIND_ME} />
         <FooterColumn title="Site" links={SITE} />

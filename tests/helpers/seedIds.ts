@@ -69,10 +69,13 @@ export const SEED_COMMENTS = {
   deleted: seedId('comments', 5), // by seed_user, 2 days ago
 } as const;
 
-/** SEED-10 — mentions (S1.8). */
+/**
+ * SEED-10 — mentions (S1.8; open columns pinned by ADR-0045). Both published, `source` manual,
+ * created by `oddsense`. Newest first: youtube · tiktok → ReachLine `1.2M VIEWS · 2 VIDEOS · 2 CREATORS`.
+ */
 export const SEED_MENTIONS = {
-  youtube: seedId('mentions', 1),
-  tiktok: seedId('mentions', 2),
+  youtube: seedId('mentions', 1), // on project …0101, external_id seedvid0001, 1,200,000 views, featured, sort_order 1
+  tiktok: seedId('mentions', 2), // project_id NULL (about OddSense generally), view_count NULL, not featured, sort_order 2
 } as const;
 
 /** SEED-5 — project_versions (S1.2/S1.3). */

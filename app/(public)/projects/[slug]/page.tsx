@@ -15,7 +15,9 @@ import { Gallery } from '@/components/projects/Gallery';
 import { GetItPanel, type GetItPanelProps } from '@/components/projects/GetItPanel';
 import { TipPanel } from '@/components/projects/TipPanel';
 import { VersionsTable } from '@/components/projects/VersionsTable';
+import { SeenOnRow } from '@/components/seen-on/SeenOnRow';
 import { listPublicComments } from '@/lib/data/comments';
+import { getProjectMentions } from '@/lib/data/mentions';
 import {
   listPublishedProjects,
   resolveProjectPage,
@@ -33,12 +35,15 @@ import styles from './page.module.css';
  * §12.5; pass-3 "Project detail" mockup; ADR-0037 D4 redirects, D6 primary rule + "Also on"
  * rows + Source row, D7 `is_exclusive`).
  *
- * ISR(600; projects, project:<slug>, settings) — 01 INV-38, 02 §0.1/§5/RP-23: `revalidate = 600`
- * matches `lib/data/projects.ts` `getProjectDetail`, whose `unstable_cache` entry carries the two
- * project tags; `lib/data/settings.ts` adds `settings` and `lib/data/comments.ts` re-uses
- * `project:<slug>` (every comment action revalidates it — 02 §5). The page never touches a
- * Supabase client or `cookies()` (01 INV-09/INV-12, 02 RP-03); the data reads are
- * `resolveProjectPage(slug)`, `getPublicSettings()` and `listPublicComments(target)`. Unknown
+ * ISR(600; projects, project:<slug>, settings, mentions) — 01 INV-38, 02 §0.1/§5/RP-23:
+ * `revalidate = 600` matches `lib/data/projects.ts` `getProjectDetail`, whose `unstable_cache`
+ * entry carries the two project tags; `lib/data/settings.ts` adds `settings`,
+ * `lib/data/comments.ts` re-uses `project:<slug>` (every comment action revalidates it — 02 §5)
+ * and, since S1.8, `lib/data/mentions.ts` adds `mentions` (`createMention` / `updateMention` /
+ * `refreshMentions` revalidate it, and a changed mention's `project:<slug>` with it — 02 RP-22).
+ * The page never touches a Supabase client or `cookies()` (01 INV-09/INV-12, 02 RP-03); the data
+ * reads are `resolveProjectPage(slug)`, `getPublicSettings()`, `listPublicComments(target)` and
+ * `getProjectMentions(slug)`. Unknown
  * slug, `status <> 'published'` or `overrides.hidden` → the view has no row → `notFound()`
  * (02 §2.3; 00 S1.2.AC9; SM-04) — unless `project_redirects` maps the slug to a visible
  * canonical project (a folded duplicate, ADR-0037 D4): then BOTH `generateMetadata` and the
@@ -55,6 +60,10 @@ import styles from './page.module.css';
  * (`Markdown(body_md)`, then `overrides.notes_md` under a `NoteCallout`) · VERSIONS & FILES
  * (`VersionsTable` — per-file Download hrefs + kinds computed by `lib/data/projects.ts`,
  * ADR-0037 D6 / ADR-0002 #42) ·
+ * SEEN ON (`SeenOnRow` — 02 §2.3 #5, 00 S1.8.AC2 / AC3, DESIGN.md §12.2: this project's published
+ * mentions from the ONE cached `listPublishedMentions` read Home and `/seen-on` also use, featured
+ * first then newest, 2-up `MentionCard`s under a title + count; a project with no mention renders
+ * NOTHING here — no heading, no empty state; YouTube cards are facades until clicked, 01 INV-57) ·
  * COMMENTS (`CommentThread`, the ADR-0002 C1 client seam — 02 §2.3 #6, 00 S1.4: the public
  * thread from `listPublicComments` is in the ISR HTML as props, the viewer's own rows merge in
  * after hydration; `commentsEnabled = overrides.comments_enabled ?? !comments_closed_default`;
@@ -225,7 +234,11 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const detail = await resolveOrLeave(slug);
 
   const target = { type: 'project' as const, id: detail.id, slug: detail.slug };
-  const [settings, thread] = await Promise.all([getPublicSettings(), listPublicComments(target)]);
+  const [settings, thread, mentions] = await Promise.all([
+    getPublicSettings(),
+    listPublicComments(target),
+    getProjectMentions(detail.slug),
+  ]);
   // 02 §2.3 / 04 §1.2: coalesce(project_overrides.comments_enabled, not comments_closed_default).
   const commentsEnabled = detail.commentsEnabledOverride ?? !settings.commentsClosedDefault;
 
@@ -303,6 +316,9 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               <VersionsTable versions={detail.versions} projectId={detail.id} slug={detail.slug} />
             </section>
           ) : null}
+
+          {/* SEEN ON (02 §2.3 #5; 00 S1.8): renders nothing when the project has no mentions. */}
+          <SeenOnRow mentions={mentions} />
 
           {/* COMMENTS (02 §2.3 #6; 00 S1.4): `#comments` is the fragment target; the heading is
               the `SectionTitle` inside `CommentThread` (`sectionTitleId('COMMENTS')`). */}

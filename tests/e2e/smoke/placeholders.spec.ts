@@ -4,6 +4,7 @@
  * S1.2 replaced `/projects` — its assertions live in tests/e2e/smoke/projects.spec.ts (T-E2E-2).
  * S1.5b replaced `/support` — tests/e2e/smoke/support.spec.ts (T-E2E-11).
  * S1.6 replaced `/videos` — tests/e2e/smoke/videos.spec.ts (T-E2E-6).
+ * S1.8 replaced `/seen-on` — tests/e2e/smoke/seen-on.spec.ts (T-E2E-10).
  */
 import { test, expect } from '../fixtures';
 import { expectNoSeriousA11y } from '../../helpers/axe';
@@ -12,7 +13,6 @@ import { shoot } from '../../helpers/screenshots';
 const PLACEHOLDERS = [
   { path: '/skins', name: 'Skins', slug: 'skins' },
   { path: '/art', name: 'Art', slug: 'art' },
-  { path: '/seen-on', name: 'Seen on', slug: 'seen-on' },
 ] as const;
 
 for (const { path, name, slug } of PLACEHOLDERS) {

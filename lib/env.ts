@@ -54,6 +54,9 @@ export const envSchema = z.object({
   CURSEFORGE_API_BASE: z.string().optional(),
   YOUTUBE_API_BASE: z.string().optional(),
   YOUTUBE_RSS_BASE: z.string().optional(),
+  // The YouTube oEmbed ENDPOINT only (`lib/adapters/youtube.ts` `oembed`, default
+  // https://www.youtube.com/oembed). The Open Graph page read in `lib/adapters/oembed.ts` has NO
+  // override of any kind — no env name can aim it at a private host (ADR-0045).
   OEMBED_BASE: z.string().optional(),
   DISCORD_API_BASE: z.string().optional(),
   RESEND_API_BASE: z.string().optional(),
