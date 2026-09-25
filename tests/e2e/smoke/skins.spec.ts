@@ -57,6 +57,19 @@ const NAME_B = 'Seed Skin B';
 const DESCRIPTION_A = 'The one that started it. Plain, dependable, slightly cursed.';
 const DESCRIPTION_B = 'Slim arms. Big feelings.';
 
+/**
+ * WebGL for this spec only (ADR-0048 D31): on the CI runner (Linux, no GPU) headless Chromium has
+ * no WebGL under the shared launch args — every `SkinViewer3D` leg fell to `unsupported` in PR #35
+ * round 1 — so this file pins ANGLE-on-SwiftShader. It stays out of `playwright.config.ts`
+ * because that mode routes compositing through GL, whose texture ceiling fails the 56k-px
+ * `/dev/components` capture (T-E2E-48). A worker-scoped option: the file gets its own worker.
+ */
+test.use({
+  launchOptions: {
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  },
+});
+
 /** SwiftShader + the lazy chunk + the texture fetch: generous, never asserted synchronously. */
 const VIEWER_TIMEOUT = 30_000;
 

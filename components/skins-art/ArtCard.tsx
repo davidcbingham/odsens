@@ -59,6 +59,8 @@ export function ArtCard({ item, index, className }: ArtCardProps) {
         width={item.width}
         height={item.height}
         sizes={SIZES}
+        // The first card is the page's LCP element: eager + preloaded, the rest lazy (ADR-0048 D30).
+        priority={index === 0}
         className={styles['art-card-img']}
       />
       <span className={styles['art-card-caption']}>

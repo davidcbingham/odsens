@@ -7,7 +7,9 @@
  * `forbidden` (ADR-0002 C7) · admin A. T-ACT-59: a replacement `texture` → the object at the SAME
  * path is overwritten (bytes differ), `render_bust_path` is cleared and the REAL renderer sets it
  * again (`bust_rendered: true`) — the clearing is proven with the mocked renderer failing: a row
- * that had a bust ends with NULL and `bust_rendered: false`; the `status` publish toggle,
+ * that had a bust ends with NULL and `bust_rendered: false`; a `model` change (classic → slim)
+ * clears and re-renders the bust the same way while a `model` equal to the stored one re-renders
+ * nothing (ADR-0048 D29); the `status` publish toggle,
  * `sort_order`, `is_exclusive`, `description_md: null` (and a blank string) clear; a taken `slug` →
  * `conflict`; unknown id → `not_found`; nothing to change → `validation`; `{reorder}` → every
  * listed row takes its `sort_order` in ONE rpc call, a missing id → `not_found` and NOTHING
@@ -209,7 +211,7 @@ describe('T-ACT-59 updateSkin patch', () => {
     expect(adminLines()).toEqual([]);
   });
 
-  it('T-ACT-59 a metadata-only patch: status toggles, sort_order, is_exclusive, model, name, slug; bust_rendered reports the stored bust', async () => {
+  it('T-ACT-59 a metadata-only patch: status toggles, sort_order, is_exclusive, name, slug; bust_rendered reports the stored bust (a model change is its own leg — D29)', async () => {
     const id = await makeSkin();
     const slug = `t-${RUN}-renamed`;
     const data = expectOk(
@@ -218,7 +220,6 @@ describe('T-ACT-59 updateSkin patch', () => {
         status: 'draft',
         sort_order: 42,
         is_exclusive: true,
-        model: 'slim',
         name: '  t_ Renamed  ',
         slug,
       }),
@@ -230,7 +231,6 @@ describe('T-ACT-59 updateSkin patch', () => {
       status: 'draft',
       sort_order: 42,
       is_exclusive: true,
-      model: 'slim',
       name: 't_ Renamed',
       slug,
       render_bust_path: null,
@@ -238,7 +238,7 @@ describe('T-ACT-59 updateSkin patch', () => {
     expect(await readSkin(id)).toEqual(data.skin);
     // Only the sent keys are audited.
     expect((adminLines()[0] as { meta: { fields: string[] } }).meta.fields.sort()).toEqual(
-      ['id', 'is_exclusive', 'model', 'name', 'slug', 'sort_order', 'status'].sort(),
+      ['id', 'is_exclusive', 'name', 'slug', 'sort_order', 'status'].sort(),
     );
 
     // Publish again — the toggle both ways, and the texture object is untouched by metadata.
@@ -253,6 +253,53 @@ describe('T-ACT-59 updateSkin patch', () => {
     const flagged = expectOk(await patch({ id: withBust, sort_order: 1 }));
     if (!('skin' in flagged)) throw new Error('expected the {skin, bust_rendered} arm');
     expect(flagged.bust_rendered).toBe(true);
+  });
+
+  it('T-ACT-59 a model change re-renders the bust (ADR-0048 D29): the same model sent again re-renders nothing; classic → slim clears the stale bust in the update and the real renderer draws the slim one', async () => {
+    const id = randomUUID();
+    await makeSkin({ id, render_bust_path: `skins/${id}/bust.png` });
+    // The factory uploads the texture only — a bust object at that path proves a render ran.
+    expect(await listObjects('skins', id)).toEqual([`${id}/texture.png`]);
+
+    // The form sends every key (D28): a `model` equal to the stored one is not a change.
+    const same = expectOk(await patch({ id, model: 'classic', name: 't_ same model' }));
+    if (!('skin' in same)) throw new Error('expected the {skin, bust_rendered} arm');
+    expect(same.bust_rendered).toBe(true);
+    expect(same.skin.render_bust_path).toBe(`skins/${id}/bust.png`);
+    expect(await listObjects('skins', id)).toEqual([`${id}/texture.png`]);
+    expect((adminLines()[0] as { meta: { fields: string[] } }).meta.fields.sort()).toEqual(
+      ['id', 'model', 'name'].sort(),
+    );
+
+    const changed = expectOk(await patch({ id, model: 'slim' }));
+    if (!('skin' in changed)) throw new Error('expected the {skin, bust_rendered} arm');
+    expect(changed.bust_rendered).toBe(true);
+    expect(changed.skin.model).toBe('slim');
+    expect(changed.skin.render_bust_path).toBe(`skins/${id}/bust.png`);
+    expect((await listObjects('skins', id)).sort()).toEqual([
+      `${id}/bust.png`,
+      `${id}/texture.png`,
+    ]);
+    expect(tags.calls).toEqual(['skins', 'skins']);
+    const lines = adminLines();
+    expect(lines).toHaveLength(2);
+    expect((lines[1] as { meta: { fields: string[] } }).meta.fields.sort()).toEqual(
+      ['id', 'model', 'render_bust_path'].sort(),
+    );
+  });
+
+  it('T-ACT-59 a model change with the renderer failing: the stale bust is cleared (NULL, bust_rendered false) and the model is still saved', async () => {
+    const id = randomUUID();
+    await makeSkin({ id, render_bust_path: `skins/${id}/bust.png` });
+    renderFailure.active = true;
+
+    const data = expectOk(await patch({ id, model: 'slim' }));
+    if (!('skin' in data)) throw new Error('expected the {skin, bust_rendered} arm');
+    expect(data.bust_rendered).toBe(false);
+    expect(data.skin.model).toBe('slim');
+    expect(data.skin.render_bust_path).toBeNull();
+    expect((await readSkin(id)).render_bust_path).toBeNull();
+    expect(tags.calls).toEqual(['skins']);
   });
 
   it('T-ACT-59 description_md: null clears; a blank string clears too (the form emptied the field); text is stored', async () => {
