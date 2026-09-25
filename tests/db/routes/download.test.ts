@@ -19,25 +19,48 @@
  * (H-1). Factory rows for the draft / override-hidden 404 cells and for the T-ACT-83 Modrinth-first
  * project (its object is placed with `uploadFixture` and removed in afterAll); seed rows otherwise
  * read-only.
+ *
+ * T-ACT-76 (S1.7 — kind `skin`, ADR-0002 C8; ADR-0048 D1 / D22; SEED-7): seed skin …0601 →
+ * 302 to the PUBLIC texture URL with `?download=seed-skin-a.png` (no signing), the same D6 headers,
+ * `skins.downloads` 0 → 1 (restored in afterAll — the SEED-7 reader contract asserts 0); a factory
+ * DRAFT skin → 404 `not_found` (never revealed); the 31st hit from one ip → 429 (one `download`
+ * scope for every kind); a `record_skin_download` raise (the row unpublished between resolve and
+ * rpc — simulated by an override of `resolveDownloadable` answering a skin `Downloadable` for a
+ * draft factory skin) → 500 `internal`, the counter untouched.
  */
 import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import { NextRequest } from 'next/server';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import * as route from '@/app/api/download/[fileId]/route';
+import type { Downloadable } from '@/lib/files';
 import { ipHash, uaHash } from '@/lib/hash';
 import { RATE_LIMITED_MESSAGE } from '@/lib/rate-limit';
 import { clearRateLimitHits, countRateLimitHits } from '@/tests/helpers/arrange';
 import { asRole } from '@/tests/helpers/asRole';
 import { setupActionMocks } from '@/tests/helpers/callAction';
 import { withDbFault } from '@/tests/helpers/dbFault';
-import { cleanupFactories, makeFile, makeProject, makeVersion } from '@/tests/helpers/factories';
-import { SEED_FILES, SEED_PROJECTS, SEED_VERSIONS, seedId } from '@/tests/helpers/seedIds';
+import {
+  cleanupFactories,
+  makeFile,
+  makeProject,
+  makeSkin,
+  makeVersion,
+} from '@/tests/helpers/factories';
+import {
+  SEED_FILES,
+  SEED_PROJECTS,
+  SEED_SKINS,
+  SEED_VERSIONS,
+  seedId,
+} from '@/tests/helpers/seedIds';
 import { spyLog } from '@/tests/helpers/spies';
 import { removeObjects, uploadFixture } from '@/tests/helpers/storage';
 
 /** Flipped by the T-ACT-44 signed-URL-failure row only; read inside the hoisted mock factory. */
 const signedUrlFailure = vi.hoisted(() => ({ active: false }));
+/** Set by the T-ACT-76 rpc-failure row only: what `resolveDownloadable` answers instead of the DB. */
+const resolveOverride = vi.hoisted(() => ({ value: null as Downloadable | null }));
 
 vi.mock('@/lib/files', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/files')>();
@@ -51,7 +74,9 @@ vi.mock('@/lib/files', async (importOriginal) => {
     }
     return actual.createDownloadUrl(bucket, objectPath, filename);
   };
-  return { ...actual, createDownloadUrl };
+  const resolveDownloadable: typeof actual.resolveDownloadable = async (id) =>
+    resolveOverride.value ?? actual.resolveDownloadable(id);
+  return { ...actual, createDownloadUrl, resolveDownloadable };
 });
 
 setupActionMocks();
@@ -71,6 +96,9 @@ const IP_BLANK_HOP = '203.0.113.48'; // T-ACT-43 blank first x-forwarded-for hop
 const IP_LOOPBACK = '127.0.0.1'; // T-ACT-43 no client-ip header at all (the loopback marker)
 const IP_FAULT = '203.0.113.49'; // T-ACT-44 RPC faults
 const IP_83 = '203.0.113.50'; // T-ACT-83 hosted file on a Modrinth-first project
+const IP_76 = '203.0.113.76'; // T-ACT-76 seed skin 302 + draft 404
+const IP_76_LIMIT = '203.0.113.77'; // T-ACT-76 31st request
+const IP_76_FAULT = '203.0.113.78'; // T-ACT-76 record_skin_download raise
 const TEST_IPS = [
   IP_43,
   IP_44,
@@ -81,6 +109,9 @@ const TEST_IPS = [
   IP_LOOPBACK,
   IP_FAULT,
   IP_83,
+  IP_76,
+  IP_76_LIMIT,
+  IP_76_FAULT,
 ] as const;
 
 /** Objects this file placed in `project-files` (object paths, no bucket prefix) — removed in afterAll. */
@@ -150,8 +181,21 @@ async function resetSeedDownloadState(): Promise<void> {
   if (project.error) throw new Error(`reset: projects restore failed: ${project.error.message}`);
 }
 
+/** SEED-7: …0601 `downloads` 0 — the restore target (H-1; the SEED-7 reader contract asserts it). */
+async function resetSeedSkinDownloads(): Promise<void> {
+  const { error } = await service.from('skins').update({ downloads: 0 }).eq('id', SEED_SKINS.skinA);
+  if (error) throw new Error(`reset: skins restore failed: ${error.message}`);
+}
+
+async function skinDownloads(id: string): Promise<number> {
+  const { data, error } = await service.from('skins').select('downloads').eq('id', id).single();
+  if (error) throw new Error(error.message);
+  return data.downloads;
+}
+
 afterAll(async () => {
   await resetSeedDownloadState();
+  await resetSeedSkinDownloads();
   for (const ip of TEST_IPS) await clearRateLimitHits('download', ipHash(ip));
   await removeObjects('project-files', placedObjects);
   await cleanupFactories();
@@ -484,5 +528,121 @@ describe("T-ACT-83 /api/download/[fileId] on a source='modrinth' project", () =>
       .eq('file_id', fileId);
     expect(error).toBeNull();
     expect(rows).toEqual([{ project_id: projectId, ip_hash: ipHash(IP_83) }]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-ACT-76 — kind `skin` (ADR-0002 C8; ADR-0048 D1): public URL + `?download=`, RPC
+// `record_skin_download`, the same rate limit and headers as every other kind
+// ---------------------------------------------------------------------------------------------
+describe('T-ACT-76 /api/download/[fileId] kind skin', () => {
+  afterEach(() => {
+    resolveOverride.value = null;
+  });
+
+  it('T-ACT-76 seed skin …0601 → 302 to the public texture URL with ?download=seed-skin-a.png, D6 headers, skins.downloads 0→1', async () => {
+    await resetSeedSkinDownloads();
+    expect(await skinDownloads(SEED_SKINS.skinA)).toBe(0);
+    const fileCounts = await seedCounts();
+
+    const res = await get(SEED_SKINS.skinA, IP_76);
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''}/storage/v1/object/public/skins/${SEED_SKINS.skinA}/texture.png?download=seed-skin-a.png`,
+    );
+    // D6 — identical to the signed kind.
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(res.headers.get('referrer-policy')).toBe('no-referrer');
+    // No signing on a public bucket: no token, no `/sign/`.
+    const location = new URL(res.headers.get('location') ?? '');
+    expect(location.searchParams.get('token')).toBeNull();
+    expect(location.pathname).not.toContain('/sign/');
+
+    expect(await skinDownloads(SEED_SKINS.skinA)).toBe(1);
+    // The exclusive-file counters are not this kind's business.
+    expect(await seedCounts()).toEqual(fileCounts);
+
+    // Supabase honours `?download=`: the redirect target serves the bytes as an attachment.
+    const target = await fetch(location.href);
+    expect(target.status).toBe(200);
+    expect(target.headers.get('content-disposition')).toContain('attachment');
+    expect(target.headers.get('content-disposition')).toContain('seed-skin-a.png');
+    expect((await target.arrayBuffer()).byteLength).toBeGreaterThan(0);
+  });
+
+  it('T-ACT-76 a factory DRAFT skin → 404 not_found (never revealed); unknown uuid → 404; counters untouched', async () => {
+    const draft = await makeSkin({ status: 'draft', fixture: null });
+    const res = await get(draft, IP_76);
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({
+      ok: false,
+      error: { code: 'not_found', message: 'Nothing here.' },
+    });
+    expect(await skinDownloads(draft)).toBe(0);
+
+    const unknown = await get(randomUUID(), IP_76);
+    expect(unknown.status).toBe(404);
+  });
+
+  it('T-ACT-76 a published factory skin → 302 with its own slug as the file name, downloads 0→1', async () => {
+    const id = await makeSkin();
+    const res = await get(id, IP_76);
+    expect(res.status).toBe(302);
+    const { data } = await service.from('skins').select('slug').eq('id', id).single();
+    expect(new URL(res.headers.get('location') ?? '').searchParams.get('download')).toBe(
+      `${data?.slug ?? ''}.png`,
+    );
+    expect(await skinDownloads(id)).toBe(1);
+  });
+
+  it(`T-ACT-76 31st request in a minute from one ip → 429, Retry-After 60, "${RATE_LIMITED_MESSAGE}" — one scope for every kind`, async () => {
+    const key = ipHash(IP_76_LIMIT);
+    const { error } = await service
+      .from('rate_limit_hits')
+      .insert(Array.from({ length: 30 }, () => ({ scope: 'download', key })));
+    expect(error).toBeNull();
+
+    const id = await makeSkin();
+    const res = await get(id, IP_76_LIMIT);
+    expect(res.status).toBe(429);
+    expect(res.headers.get('retry-after')).toBe('60');
+    expect(await res.json()).toEqual({
+      ok: false,
+      error: { code: 'rate_limited', message: RATE_LIMITED_MESSAGE },
+    });
+    expect(await skinDownloads(id)).toBe(0);
+    expect(await countRateLimitHits('download', key)).toBe(31);
+  });
+
+  it('T-ACT-76 record_skin_download raises (the row unpublished between resolve and rpc) → 500 internal, counter untouched, one route_unhandled line', async () => {
+    const draft = await makeSkin({ status: 'draft', fixture: null });
+    const { data } = await service.from('skins').select('slug').eq('id', draft).single();
+    resolveOverride.value = {
+      kind: 'skin',
+      bucket: 'skins',
+      path: `${draft}/texture.png`,
+      filename: `${data?.slug ?? 'x'}.png`,
+      urlKind: 'public',
+      counter: 'record_skin_download',
+    };
+    const logs = spyLog();
+    try {
+      const res = await get(draft, IP_76_FAULT);
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: { code: 'internal', message: 'Something broke.' },
+      });
+    } finally {
+      logs.restore();
+    }
+    expect(await skinDownloads(draft)).toBe(0);
+    const lines = logs.lines.filter(
+      (entry) => (entry as { msg?: string }).msg === 'route_unhandled',
+    ) as Array<{ action?: string; meta?: { name?: string } }>;
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.action).toBe('download');
+    expect(lines[0]?.meta?.name).toBe('Error');
   });
 });

@@ -1,7 +1,7 @@
 /**
  * tests/e2e/smoke/projects.spec.ts — T-E2E-2: `/projects` (02 §2.2, SM-02; DESIGN.md §6.2, §5
  * Filter bar, §11.7 empty; ADR-0002 #39/A7; 00 S1.2.AC2/AC3/AC4). Replaces the S0 placeholder
- * assertions (02 RP-16 — see placeholders.spec.ts). Runs in `smoke-desktop` and `smoke-phone`.
+ * assertions (02 RP-16; the placeholder spec retired with S1.7 — no placeholders remain). Runs in `smoke-desktop` and `smoke-phone`.
  *
  * Seed truths (05 §3 SEED-4..6): 3 published projects — metal-pipe-mace (resourcepack, 2531),
  * pixel-chameleon (mod, 1688 combined), seed-exclusive-pack (datapack, 7) — so the count line is

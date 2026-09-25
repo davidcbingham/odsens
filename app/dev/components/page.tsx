@@ -56,6 +56,14 @@ import { MentionPreview } from '@/components/seen-on/MentionPreview';
 import { ReachLine } from '@/components/seen-on/ReachLine';
 import { SeenOnGrid } from '@/components/seen-on/SeenOnGrid';
 import { SeenOnRow } from '@/components/seen-on/SeenOnRow';
+import { SkinCard } from '@/components/skins-art/SkinCard';
+import { SkinsStageView } from '@/components/skins-art/SkinsStage';
+import { SkinViewer3D } from '@/components/skins-art/SkinViewer3D';
+import { ArtCard } from '@/components/skins-art/ArtCard';
+import { ArtGallery } from '@/components/skins-art/ArtGallery';
+import { ArtMasonry } from '@/components/skins-art/ArtMasonry';
+import { ArtForm } from '@/components/admin/ArtForm';
+import { SkinForm } from '@/components/admin/SkinForm';
 import { ViewerProvider } from '@/components/accounts/ViewerProvider';
 import { ProfileMenu } from '@/components/accounts/ProfileMenu';
 import { HandleField } from '@/components/accounts/HandleField';
@@ -141,6 +149,15 @@ import {
   seenOnGridFixtures,
   seenOnDescribedStates,
   mentionPreviewFixtures,
+  skinViewer3dFixtures,
+  skinCardFixtures,
+  skinsStageFixtures,
+  skinsDescribedStates,
+  artCardFixtures,
+  artMasonryFixtures,
+  artGalleryFixtures,
+  skinFormFixtures,
+  artFormFixtures,
 } from '@/tests/fixtures/ui';
 import styles from './page.module.css';
 
@@ -845,6 +862,100 @@ export default function ComponentsPreviewPage() {
                     out they answer with their inline error (interaction-only pending / error
                     states, the SyncStatus precedent). */}
                 <MentionPreview {...props} />
+              </Specimen>
+            ))}
+          </div>
+        </Area>
+
+        {/* ---------------------------------------------------------------- Skins + Art (03 §2.7) */}
+        <Area id="area-skins-art" title="SKINS + ART">
+          <div className={styles['preview-group']}>
+            {skinViewer3dFixtures.map(({ label, props, note }) => (
+              <Specimen key={label} name="SkinViewer3D" label={label}>
+                {/* The one WebGL specimen family: the chunk is lazy (03 C-18), the texture is the
+                    LOCAL Supabase object of seed-skin-b (SEED-13) — see the fixture header. */}
+                {note !== undefined ? <p className={styles['preview-note']}>{note}</p> : null}
+                <SkinViewer3D {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          {/* Skins (03 §2.7 `SkinCard` + the `SkinsStage` island — S1.7 ADR-0048 D13 / ADR-0048 D14 / D15 / ADR-0048 D16). */}
+          <div className={styles['preview-group']}>
+            {skinCardFixtures.map(({ label, props, note }) => (
+              <Specimen key={label} name="SkinCard" label={label}>
+                {/* Busts and textures are LOCAL Supabase seed objects (SEED-13); `no bust` is
+                    the one card that opens a WebGL context — see the fixture header. */}
+                {note !== undefined ? <p className={styles['preview-note']}>{note}</p> : null}
+                <SkinCard {...props} />
+              </Specimen>
+            ))}
+            {skinsDescribedStates.map(({ name, label, note }) => (
+              <Specimen key={label} name={name} label={label}>
+                {/* The page-level empty state: the island is not mounted — described, not rendered. */}
+                <p className={styles['preview-note']}>{note}</p>
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {skinsStageFixtures.map(({ label, props, note }) => (
+              <Specimen key={label} name="SkinsStageView" label={label}>
+                {/* The View takes `selectedSlug` as a prop and reads no URL (the VideoStage
+                    precedent) — the gallery shows one fixed selection; card clicks rewrite
+                    `?skin=` on this page's URL without re-rendering the specimen. */}
+                {note !== undefined ? <p className={styles['preview-note']}>{note}</p> : null}
+                <SkinsStageView {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          {/* Art (03 §2.7 `ArtCard` / `ArtMasonry` + `ArtMasonryLightbox` / the `ArtGallery`
+              island — S1.7 ADR-0048 D13 / ADR-0048 D17). Pieces are LOCAL Supabase seed objects (SEED-13) and
+              the local brand images — see the fixture header. */}
+          <div className={styles['preview-group']}>
+            {artCardFixtures.map(({ label, props, note }) => (
+              <Specimen key={label} name="ArtCard" label={label}>
+                {/* Outside a masonry the link opens the image itself (no delegated listener). */}
+                {note !== undefined ? <p className={styles['preview-note']}>{note}</p> : null}
+                <ArtCard {...props} />
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {artMasonryFixtures.map(({ label, props, note }) => (
+              <Specimen key={label} name="ArtMasonry" label={label}>
+                {/* A card click opens the lazy `Lightbox` (03 §3 `open` → `closing` on Esc). */}
+                {note !== undefined ? <p className={styles['preview-note']}>{note}</p> : null}
+                <ArtMasonry {...props} />
+              </Specimen>
+            ))}
+            {artGalleryFixtures.map(({ label, props, note }) => (
+              <Specimen key={label} name="ArtGallery" label={label}>
+                {/* Reads `?kind=` from this page's URL (`/dev/components?kind=icon` shows the
+                    "NO ART HERE YET" state); its filter bar rewrites it. */}
+                {note !== undefined ? <p className={styles['preview-note']}>{note}</p> : null}
+                <Suspense fallback={null}>
+                  <ArtGallery {...props} />
+                </Suspense>
+              </Specimen>
+            ))}
+          </div>
+
+          {/* The admin half of the area (the `/admin/skins` + `/admin/art` form islands — 03 §2.10,
+              ADR-0048 D19 / D27 / D19 / D27). Save (and the art well's `begin`) call the real actions —
+              signed out they answer with their inline error (interaction-only states, the
+              MentionPreview precedent); `edit` pictures are LOCAL Supabase seed objects. */}
+          <div className={styles['preview-group']} data-wide="">
+            {skinFormFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="SkinForm" label={label}>
+                <SkinForm {...props} />
+              </Specimen>
+            ))}
+            {artFormFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="ArtForm" label={label}>
+                <ArtForm {...props} />
               </Specimen>
             ))}
           </div>

@@ -115,7 +115,7 @@
   align-self: flex-start;
 }
 
-/* ---- done: emerald square ✔, name + size, Remove ---- */
+/* ---- done: emerald square ✔, name + size, Remove (deferred commit: "Ready to save." — ADR-0048 D18) ---- */
 .upload-well-done {
   display: flex;
   flex-wrap: wrap;
@@ -138,6 +138,12 @@
 .upload-well-size {
   font-size: var(--text-label);
   color: var(--mute-dim);
+}
+
+.upload-well-ready {
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--emerald);
 }
 
 /* ---- error: message (role=alert), Try again ---- */

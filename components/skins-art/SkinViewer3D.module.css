@@ -1,0 +1,135 @@
+/* SkinViewer3D — DESIGN.md §6 #5 Skins (live spinnable viewer; controls spin / walk / front-back on a
+   solid slab inside the viewer); pass-3 Skins artboard (3:4 well on --slab-sunk, 2px line, small
+   700 controls in a row along the bottom); 03 §2.7 `SkinViewer3D` row; S1.7 ADR-0048 D16/ADR-0048 D14.
+   Outer `.viewer` (SkinViewer3D.tsx) carries `data-variant` — stage: the well itself (--slab-sunk,
+   2px --line-soft outline, 3:4 under 900px / 4:3 above); bust: a transparent 3:4 box for the
+   SkinCard slot, no controls. Inner `.viewer-body` (the dynamic leaf, or its loading shell) carries
+   `data-state` loading | ready | unsupported (03 C-12). */
+.viewer {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.viewer[data-variant='stage'] {
+  background: var(--slab-sunk);
+  outline: 2px solid var(--line-soft);
+}
+
+.viewer-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ---- the canvas box: the model's stage; the canvas is sized to it by a ResizeObserver ---- */
+.box {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+}
+
+.viewer[data-variant='bust'] .box {
+  aspect-ratio: 3 / 4;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Stage: horizontal drags orbit the model, vertical ones scroll the page (OrbitControls would
+     set `none`, which swallows the scroll on phone). Bust: no controls, no gesture at all. */
+  touch-action: pan-y;
+}
+
+.viewer[data-variant='bust'] .canvas {
+  touch-action: auto;
+}
+
+/* Until the first frame the canvas is present (skinview3d owns it) but invisible under the Skeleton. */
+.viewer-body[data-state='loading'] .canvas {
+  opacity: 0;
+}
+
+.viewer-body[data-state='unsupported'] .canvas {
+  display: none;
+}
+
+.skeleton {
+  position: absolute;
+  inset: 0;
+}
+
+/* ---- unsupported: the cached bust (or the pixelated texture) + one line ---- */
+.fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-12);
+  padding: var(--space-16);
+}
+
+.fallback-bust {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+/* The 64×64 source at 3× — integer scale, never smoothed (DESIGN.md §4 / §9). */
+.fallback-texture {
+  width: 192px;
+  height: 192px;
+  max-width: 100%;
+  image-rendering: pixelated;
+}
+
+.fallback-line {
+  flex: none;
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: 1.4;
+  color: var(--mute);
+  text-align: center;
+}
+
+/* ---- controls row: a solid slab under the canvas, inside the well (DESIGN.md §6 #5) ---- */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  background: var(--slab);
+  border-top: 2px solid var(--line-soft);
+}
+
+.viewer[data-variant='bust'] .controls,
+.viewer-body[data-state='unsupported'] .controls {
+  display: none;
+}
+
+/* Pressed toggles (Spin / Walk) take the indigo fill so the state reads without the label changing. */
+.control[aria-pressed='true'],
+.control[aria-pressed='true']:hover {
+  background: var(--indigo);
+  border-color: var(--indigo);
+  color: var(--white);
+}
+
+.control[aria-pressed='true']:active {
+  background: var(--indigo-deep);
+  border-color: var(--indigo-deep);
+}
+
+@media (max-width: 899px) {
+  .viewer[data-variant='stage'] .box {
+    aspect-ratio: 3 / 4;
+  }
+}

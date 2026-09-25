@@ -1,0 +1,33 @@
+/* ArtMasonry — DESIGN.md §6 #6 Art (column-flow masonry, natural sizes, one 18px gutter; four
+   columns desktop, two phone, one under 480); 03 §2.7 ArtMasonry tokens (--space-18); pass-3
+   Sections "07 — ART GALLERY" (column-count 4, column-gap 18, 18px between pieces). The card look
+   lives in ArtCard.module.css — this file is the column flow. */
+.art-masonry {
+  columns: 4;
+  column-gap: var(--space-18);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A piece never splits across columns; the same 18px sits between pieces as between columns. The
+   hover translate (−2) and the 3px focus ring need no extra room — outlines never affect layout
+   (DESIGN.md §3). */
+.art-masonry-item {
+  display: block;
+  break-inside: avoid;
+  margin: 0 0 var(--space-18);
+}
+
+/* tablet + phone ≤ 899 = two columns (DESIGN.md §6 #6 "two phone"), under 480 = one. */
+@media (max-width: 899px) {
+  .art-masonry {
+    columns: 2;
+  }
+}
+
+@media (max-width: 479px) {
+  .art-masonry {
+    columns: 1;
+  }
+}

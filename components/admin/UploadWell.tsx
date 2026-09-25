@@ -16,7 +16,7 @@ import { LOADER_OPTIONS } from '@/lib/format/loader';
 import { Toggle } from '@/components/primitives/Toggle';
 import type { ActionResult } from '@/lib/actions/result';
 import { formatFileSize } from '@/lib/format/size';
-import { UPLOAD_KINDS, sizeLimitMessage, typeMessage } from '@/lib/validation/files';
+import { UPLOAD_KINDS, pngDimensions, sizeLimitMessage, typeMessage } from '@/lib/validation/files';
 import styles from './UploadWell.module.css';
 
 /**
@@ -46,22 +46,47 @@ import styles from './UploadWell.module.css';
  * `done` (Remove doubles as clear). `disabled` renders the well inert — `aria-disabled="true"`,
  * `title="Admin only"`, input disabled, drag handlers inert — never hidden (03 §2.10 admin-only
  * controls rule; 02 §1.3).
+ *
+ * Two additive modes (S1.7 D18, ADR-0048; 03 C-03 additive props — with neither prop the well
+ * behaves exactly as above):
+ *   pick mode        `onPick` given: after the client pre-check (and, for `kind="skin"`, the first
+ *                    24 bytes read for a 64×64 IHDR — "Skins need to be 64×64.") the well goes
+ *                    `done` and hands the `File` to the parent; no `begin`, no PUT, no `commit`
+ *                    (`action` is optional here). The parent form sends the bytes itself
+ *                    (`SkinForm` → `createSkin` FormData, 04 §1.5).
+ *   deferred commit  `onUploaded` given: `begin` → PUT → `done` ("Ready to save.") WITHOUT
+ *                    `commit`; the parent's own commit call carries the `path` (`ArtForm` →
+ *                    `createArt` / `updateArt` `{phase:'commit', path, …}`). No `router.refresh`
+ *                    — nothing is committed yet.
+ * In both modes Remove (and a fresh pick, or a failed one) hands the parent `null` first, so a
+ * file the well no longer shows is never submitted.
  */
 export type UploadWellProps = {
   /** `UPLOAD_KINDS` key (lib/validation/files.ts): accept list + cap + limits copy. */
-  kind: 'project-media' | 'project-file';
+  kind: 'project-media' | 'project-file' | 'skin' | 'art';
   /**
    * The phase-discriminated server action (or a client wrapper around one) — 04 §1.4.5.
    * Method syntax on purpose (bivariant params): the 03 §2.10 row types this prop as
    * `typeof uploadProjectFile | typeof uploadProjectMedia | …`, so the typed actions must be
    * passable directly; an arrow-syntax property would reject them under strictFunctionTypes.
+   * Optional only in pick mode (`onPick`), where the well never calls it.
    */
-  action(input: Record<string, unknown>): Promise<ActionResult<unknown>>;
+  action?(input: Record<string, unknown>): Promise<ActionResult<unknown>>;
   /** Spread into both phase inputs (e.g. `{project_id, kind}` / `{project_id, version_number}`). */
   targetIds: Record<string, string>;
   /** Gallery: re-arm after `done`. */
   multiple?: boolean;
   onCommitted?: (row: unknown) => void;
+  /**
+   * Pick mode (ADR-0048 D18): the checked `File` after the client pre-check, or `null` when the well is
+   * cleared (Remove, a failed re-pick). No network in this mode.
+   */
+  onPick?: (file: File | null) => void;
+  /**
+   * Deferred-commit mode (ADR-0048 D18): the uploaded object's pending `path` (+ name and size for the
+   * parent's own line) after `begin` → PUT, or `null` when cleared. The parent commits it.
+   */
+  onUploaded?: (pending: { path: string; filename: string; sizeBytes: number } | null) => void;
   /** Moderator view: rendered disabled + `title="Admin only"` (03 §2.10 preamble). */
   disabled?: boolean;
   /**
@@ -84,8 +109,13 @@ type WellState =
 
 const ADMIN_ONLY_TITLE = 'Admin only';
 const PUT_FAILED = "That upload didn't go through. Try again.";
+/** 04 §1.5 / T-E2E-38 — the verbatim skin size line (the server's `createSkin` says the same). */
+const SKIN_SIZE_MESSAGE = 'Skins need to be 64×64.';
+/** PNG signature + IHDR length/type + width/height = the first 24 bytes (`pngDimensions`). */
+const PNG_HEADER_BYTES = 24;
 
-const MB = 1024 * 1024;
+const KB = 1024;
+const MB = 1024 * KB;
 
 function extensionOf(name: string): string | null {
   const dot = name.lastIndexOf('.');
@@ -108,7 +138,7 @@ function mediaMimeFor(ext: string): 'image/png' | 'image/jpeg' | 'image/webp' | 
   }
 }
 
-/** `accept` for the picker: extensions for files, MIME types for media — from `UPLOAD_KINDS`. */
+/** `accept` for the picker: extensions for files, MIME types for media (images, skins, art) — from `UPLOAD_KINDS`. */
 function acceptFor(kind: UploadWellKind): string {
   const rule = UPLOAD_KINDS[kind];
   if (kind === 'project-file') return rule.exts.map((ext) => `.${ext}`).join(',');
@@ -120,15 +150,32 @@ function acceptFor(kind: UploadWellKind): string {
   return mimes.join(',');
 }
 
-/** ".jar .zip .mrpack · 100 MB max" / "png · jpg · webp · 5 MB per image" — cap from `maxBytes`. */
+/**
+ * ".jar .zip .mrpack · 100 MB max" / "png · jpg · webp · 5 MB per image" (art: "… 10 MB per image")
+ * / "png · 64×64 · 64 KB max" — every number from `UPLOAD_KINDS` (04 U4).
+ */
 function limitsLine(kind: UploadWellKind): string {
   const rule = UPLOAD_KINDS[kind];
   const cap = Math.round(rule.maxBytes / MB);
   if (kind === 'project-file') {
     return `${rule.exts.map((ext) => `.${ext}`).join(' ')} · ${cap} MB max`;
   }
+  if (rule.width !== undefined && rule.height !== undefined) {
+    const capKb = Math.round(rule.maxBytes / KB);
+    return `${rule.exts.join(' · ')} · ${rule.width}×${rule.height} · ${capKb} KB max`;
+  }
   const names = rule.exts.filter((ext) => ext !== 'jpeg');
   return `${names.join(' · ')} · ${cap} MB per image`;
+}
+
+/** Pick mode, `kind="skin"`: the IHDR of the first 24 bytes must say 64×64 (no full read). */
+async function isSkinSized(
+  file: File,
+  rule: (typeof UPLOAD_KINDS)[UploadWellKind],
+): Promise<boolean> {
+  const head = new Uint8Array(await file.slice(0, PNG_HEADER_BYTES).arrayBuffer());
+  const dims = pngDimensions(head);
+  return dims !== null && dims.width === rule.width && dims.height === rule.height;
 }
 
 /** The `begin` result's `{path, signed_url}` — shape-checked, no zod in components (03 C-16). */
@@ -177,6 +224,8 @@ export function UploadWell({
   targetIds,
   multiple = false,
   onCommitted,
+  onPick,
+  onUploaded,
   disabled = false,
   disabledTitle = ADMIN_ONLY_TITLE,
   className,
@@ -192,10 +241,20 @@ export function UploadWell({
   const dragInert = disabled || state.name === 'uploading';
   const showDrop =
     state.name === 'idle' || state.name === 'dragover' || (state.name === 'done' && multiple);
+  // ADR-0048 D18: `onPick` wins over `onUploaded`; neither → the two-phase upload as before.
+  const mode: 'pick' | 'deferred' | 'commit' =
+    onPick !== undefined ? 'pick' : onUploaded !== undefined ? 'deferred' : 'commit';
+
+  /** The new modes: whatever the parent held from before is void the moment a new pick starts. */
+  function clearParent(): void {
+    if (mode === 'pick') onPick?.(null);
+    else if (mode === 'deferred') onUploaded?.(null);
+  }
 
   async function handleFile(file: File): Promise<void> {
     if (disabled) return;
     cancelRequested.current = false;
+    clearParent();
 
     // Client pre-check before `begin` — size/ext only, the server's exact copy (03 §2.10).
     const rule = UPLOAD_KINDS[kind];
@@ -208,9 +267,26 @@ export function UploadWell({
       setState({ name: 'error', message: typeMessage(ext, kind) });
       return;
     }
-    const mediaMime = kind === 'project-media' ? mediaMimeFor(ext) : null;
-    if (kind === 'project-media' && mediaMime === null) {
+    const mediaMime = kind === 'project-file' ? null : mediaMimeFor(ext);
+    if (kind !== 'project-file' && mediaMime === null) {
       setState({ name: 'error', message: typeMessage(ext, kind) });
+      return;
+    }
+
+    if (mode === 'pick') {
+      // Skins: the IHDR must say 64×64 — the server's exact line (04 §1.5; T-E2E-38).
+      if (rule.width !== undefined && !(await isSkinSized(file, rule))) {
+        setState({ name: 'error', message: SKIN_SIZE_MESSAGE });
+        return;
+      }
+      setState({ name: 'done', filename: file.name, sizeBytes: file.size });
+      onPick?.(file);
+      return;
+    }
+
+    if (action === undefined) {
+      // A two-phase well without an action is a wiring error; say so the way a failed PUT would.
+      setState({ name: 'error', message: PUT_FAILED });
       return;
     }
 
@@ -252,6 +328,13 @@ export function UploadWell({
       return;
     }
 
+    if (mode === 'deferred') {
+      // The parent's own commit call carries the path (ADR-0048 D18); nothing to refresh yet.
+      setState({ name: 'done', filename: file.name, sizeBytes: file.size });
+      onUploaded?.({ path: signed.path, filename: file.name, sizeBytes: file.size });
+      return;
+    }
+
     setState({ name: 'uploading', filename: file.name, percent: 100, checking: true });
     const commit = await action({ phase: 'commit', ...targetIds, path: signed.path });
     if (!commit.ok) {
@@ -276,6 +359,7 @@ export function UploadWell({
   }
 
   function reset(): void {
+    clearParent();
     setState({ name: 'idle' });
   }
 
@@ -396,7 +480,11 @@ export function UploadWell({
             <span className={styles['upload-well-check']} aria-hidden="true">
               ✔
             </span>
-            <span className="visually-hidden">Uploaded</span>
+            {mode === 'deferred' ? (
+              <span className={styles['upload-well-ready']}>Ready to save.</span>
+            ) : (
+              <span className="visually-hidden">{mode === 'pick' ? 'Chosen' : 'Uploaded'}</span>
+            )}
             <span className={styles['upload-well-name']}>{state.filename}</span>
             <span className={styles['upload-well-size']}>{formatFileSize(state.sizeBytes)}</span>
             <Button

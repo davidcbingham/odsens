@@ -117,3 +117,26 @@ export {
   type SeenOnDescribedState,
 } from './seenOn';
 export { mentionPreviewFixtures, type MentionPreviewFixture } from './mentionPreview';
+// ---- S1.7 Skins + Art ----
+export { skinViewer3dFixtures, type SkinViewer3DFixture } from './skinViewer3d';
+export {
+  skinCardFixtures,
+  skinsStageFixtures,
+  skinsDescribedStates,
+  type SkinCardFixture,
+  type SkinsStageFixture,
+  type SkinsDescribedState,
+  artCardFixtures,
+  artMasonryFixtures,
+  artGalleryFixtures,
+  type ArtCardFixture,
+  type ArtMasonryFixture,
+  type ArtGalleryFixture,
+} from './skinsArt';
+// ---- S1.7 Admin ----
+export {
+  skinFormFixtures,
+  artFormFixtures,
+  type SkinFormFixture,
+  type ArtFormFixture,
+} from './adminForms';

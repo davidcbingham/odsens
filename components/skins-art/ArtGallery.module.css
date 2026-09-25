@@ -1,0 +1,15 @@
+/* ArtGallery — DESIGN.md §6 #6 Art (filter row over the masonry); pass-3 Sections "07 — ART
+   GALLERY" (bar, then 28px to the flow). The bar's own look lives in FilterBar.module.css and the
+   columns in ArtMasonry.module.css — this file is the column (the `SeenOnGrid` recipe). */
+.art-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  min-width: 0;
+}
+
+@media (max-width: 599px) {
+  .art-gallery {
+    gap: var(--space-16);
+  }
+}

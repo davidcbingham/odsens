@@ -9,8 +9,8 @@
 --   SEED-4  projects (3)                                  — S1.2 (below)
 --   SEED-5  project_versions (4) + project_files (5)      — S1.2 (below)
 --   SEED-6  project_links (1) + project_overrides (2)     — S1.2 (below)
---   SEED-7  skins (2)                                     — arrives in S1.7
---   SEED-8  art (2)                                       — arrives in S1.7
+--   SEED-7  skins (2)                                     — S1.7 (below; ADR-0048 D20)
+--   SEED-8  art (2)                                       — S1.7 (below; ADR-0048 D20)
 --   SEED-9  comments (5) + comment_likes + comment_reports — S1.4 (below)
 --   SEED-10 mentions (2)                                  — S1.8 (below; ADR-0045)
 --   SEED-11 videos (7)                                    — S1.6 (below; ADR-0043 D8)
@@ -263,6 +263,82 @@ insert into public.project_overrides (
   ('00000000-0000-4000-8000-000000000102', true, 1, false, null, null, '[]'::jsonb, 'seed note', true),
   ('00000000-0000-4000-8000-000000000103', true, 2, false, null, null, '[]'::jsonb, null, false)
 on conflict (project_id) do nothing;
+
+-- =============================================================================================
+-- SEED-7 — skins (2) per 05 §3; the columns the 05 row leaves open are pinned by ADR-0048 D20.
+--   …0601  seed-skin-a, classic, NOT exclusive, published, sort_order 2, `render_bust_path` SET
+--          (`skins/…0601/bust.png` — the cached-bust arm: its card shows the <img>).
+--   …0602  seed-skin-b, slim, EXCLUSIVE, published, sort_order 1, `render_bust_path` NULL (the
+--          live-fallback arm: its card mounts the 3D canvas — T-E2E-7). sort_order 1 puts it FIRST,
+--          so `/skins` selects it by default and DOWNLOAD PNG points at …0602.
+-- Both `downloads 0` (T-ACT-76 / T-E2E-7 bump …0601 / …0602 and restore); one dry description
+-- line each (the Markdown the stage renders). `texture_path` / `render_bust_path` name objects in
+-- the row's OWN folder (CHECKs `skins_*_path_own`); the bytes are SEED-13 (`images/skin-64.png`
+-- for both textures, `images/thumb-1280x720.png` as …0601's bust — any PNG). `created_at` is a fixed
+-- literal so "newest created" ties never depend on the clock. Idempotent on id — and unlike
+-- SEED-10/11 the conflict arm UPDATES every column, so a reset-less re-run restores the shape.
+-- =============================================================================================
+insert into public.skins (
+  id, slug, name, description_md, texture_path, model, render_bust_path, is_exclusive, status,
+  sort_order, downloads, created_at
+) values
+  ('00000000-0000-4000-8000-000000000601', 'seed-skin-a', 'Seed Skin A',
+   'The one that started it. Plain, dependable, slightly cursed.',
+   'skins/00000000-0000-4000-8000-000000000601/texture.png', 'classic',
+   'skins/00000000-0000-4000-8000-000000000601/bust.png', false, 'published',
+   2, 0, '2026-05-01 12:00:00+00'),
+  ('00000000-0000-4000-8000-000000000602', 'seed-skin-b', 'Seed Skin B',
+   'Slim arms. Big feelings.',
+   'skins/00000000-0000-4000-8000-000000000602/texture.png', 'slim',
+   null, true, 'published',
+   1, 0, '2026-05-02 12:00:00+00')
+on conflict (id) do update
+  set slug             = excluded.slug,
+      name             = excluded.name,
+      description_md   = excluded.description_md,
+      texture_path     = excluded.texture_path,
+      model            = excluded.model,
+      render_bust_path = excluded.render_bust_path,
+      is_exclusive     = excluded.is_exclusive,
+      status           = excluded.status,
+      sort_order       = excluded.sort_order,
+      downloads        = excluded.downloads,
+      created_at       = excluded.created_at;
+
+-- =============================================================================================
+-- SEED-8 — art (2) per 05 §3; open columns pinned by ADR-0048 D20.
+--   …0701  seed-art-avatar, kind avatar, 256×256, DOWNLOADABLE, year 2025, sort_order 1 — the
+--          lightbox with a Download button (T-E2E-9).
+--   …0702  seed-art-thumb, kind thumbnail, 1280×720, not downloadable, year NULL, sort_order 2 —
+--          the 16:9 masonry box next to the square one (natural aspect, never cropped).
+-- Both published, credit NULL. `image_path` carries the content hash of the SEED-13 fixture the
+-- globalSetup uploads there (F-8: `scripts/check-fixtures.mjs` verifies the literal against the
+-- fixture bytes); the CHECK `art_image_path_own` binds it to the row's own folder. `created_at`
+-- fixed literals; idempotent on id with a full-column update arm (as SEED-7).
+-- =============================================================================================
+insert into public.art (
+  id, slug, title, kind, image_path, width, height, year, credit, downloadable, status,
+  sort_order, created_at
+) values
+  ('00000000-0000-4000-8000-000000000701', 'seed-art-avatar', 'Seed Avatar', 'avatar',
+   'art/00000000-0000-4000-8000-000000000701/b64a4e0e96965d51.png', -- <hash16 of images/icon-256.png>
+   256, 256, 2025, null, true, 'published', 1, '2026-05-03 12:00:00+00'),
+  ('00000000-0000-4000-8000-000000000702', 'seed-art-thumb', 'Seed Thumbnail', 'thumbnail',
+   'art/00000000-0000-4000-8000-000000000702/6ce87bbf56e4d5f6.png', -- <hash16 of images/thumb-1280x720.png>
+   1280, 720, null, null, false, 'published', 2, '2026-05-04 12:00:00+00')
+on conflict (id) do update
+  set slug         = excluded.slug,
+      title        = excluded.title,
+      kind         = excluded.kind,
+      image_path   = excluded.image_path,
+      width        = excluded.width,
+      height       = excluded.height,
+      year         = excluded.year,
+      credit       = excluded.credit,
+      downloadable = excluded.downloadable,
+      status       = excluded.status,
+      sort_order   = excluded.sort_order,
+      created_at   = excluded.created_at;
 
 -- =============================================================================================
 -- SEED-9 — comments (5) on project …0102 (pixel-chameleon) + 1 like + 1 report per 05 §3

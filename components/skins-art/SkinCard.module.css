@@ -1,0 +1,128 @@
+/* SkinCard — DESIGN.md §6 #5 (3:4 bust slots, 64×64 source pinned in the corner, selected =
+   --indigo-lift outline, exclusive badge), §4 (pixelated Minecraft imagery), §5 Project card hover
+   (--slab-raised, --indigo-lift outline, 6px 6px 0 --indigo-deep, translate -3/-3); pass-3 Skins
+   artboard (slab card, sunk 3:4 slot with a 2px bottom rule, name 700 under it — Bungee 17px per
+   03 §2.7); 03 §2.7 SkinCard tokens (--slab --slab-sunk --line --line-soft --indigo-lift
+   --font-display). The outline sits on the <article>; the global gold focus ring sits on the <a>. */
+.skin-card {
+  /* Anchor for the ExclusiveBadge pinned at the top-left corner. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+  transition:
+    background-color var(--dur-fast) ease-out,
+    outline-color var(--dur-fast) ease-out,
+    box-shadow var(--dur-fast) ease-out,
+    transform var(--dur-fast) ease-out;
+}
+
+/* Exclusive: gold outline (DESIGN.md §5). */
+.skin-card[data-exclusive] {
+  outline-color: var(--gold);
+}
+
+/* Selected (03 C-13 keys on the ARIA attribute): the --indigo-lift edge, over gold. */
+.skin-card:has(> .skin-card-link[aria-current='true']) {
+  outline-color: var(--indigo-lift);
+}
+
+/* ExclusiveBadge in the top-left corner, over the 2px outline by 1px (DESIGN.md §5). */
+.skin-card-badge {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  z-index: 1;
+}
+
+.skin-card:hover,
+.skin-card:focus-within {
+  background: var(--slab-raised);
+  outline-color: var(--indigo-lift);
+  box-shadow: 6px 6px 0 var(--indigo-deep);
+  transform: translate(-3px, -3px);
+}
+
+/* Whole card is one link (03 §2.7: "one <a> per card"). */
+.skin-card-link {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* The 3:4 slot: --slab-sunk, 2px --line-soft rule under it (pass-3 artboard). Positioned for the
+   fill image / the live bust / the corner thumb. */
+.skin-card-slot {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  background: var(--slab-sunk);
+  border-bottom: 2px solid var(--line-soft);
+}
+
+/* The cached bust: covers the slot (a 3:4 render fits exactly); pixelated — DESIGN.md §4. */
+.skin-card-bust {
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+
+/* The live bust (ADR-0048 D14 / D15): the viewer's own 3:4 box fills the slot. */
+.skin-card-live {
+  position: absolute;
+  inset: 0;
+}
+
+/* The 64×64 source at 1× — integer scale, never smoothed (DESIGN.md §4 / §6 #5), 2px --line. */
+.skin-card-source {
+  position: absolute;
+  right: var(--space-12);
+  bottom: var(--space-12);
+  z-index: 1;
+  width: 64px;
+  height: 64px;
+  background: var(--ink);
+  border: 2px solid var(--line);
+  image-rendering: pixelated;
+}
+
+.skin-card-body {
+  padding: var(--space-12);
+}
+
+/* Name: Bungee 17px (03 §2.7 — the 17px token is --text-body); two line boxes always, so a
+   fallback-font wrap cannot move the grid (CLS). */
+.skin-card-name {
+  display: -webkit-box;
+  min-height: calc(2 * 1.15em);
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  font-weight: 400;
+  line-height: 1.15;
+  text-transform: uppercase;
+  color: var(--chalk);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.skin-card:has(> .skin-card-link[aria-current='true']) .skin-card-name {
+  color: var(--white);
+}
+
+/* Reduced motion: keep colour changes, drop the offset move (03 C-28). */
+@media (prefers-reduced-motion: reduce) {
+  .skin-card:hover,
+  .skin-card:focus-within {
+    transform: none;
+  }
+}
