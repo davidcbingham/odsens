@@ -13,6 +13,10 @@ test.describe('components preview', () => {
   test('T-E2E-48 /dev/components renders every Button variant, labelled svgs, axe clean', async ({
     page,
   }) => {
+    // The gallery is one long page (every 03 §2 component in every state); at 390 the axe pass plus
+    // the settle-and-shoot walk took 24–26 s on CI before S1.8 and the Seen on area grew it — the
+    // default 30 s budget timed out twice on 2026-09-25. Same budget as the admin flows.
+    test.setTimeout(90_000);
     const response = await page.goto('/dev/components');
     expect(response?.status()).toBe(200);
 
