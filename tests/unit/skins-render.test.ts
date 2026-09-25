@@ -11,7 +11,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   boxFaces,
   boxUvs,
@@ -36,6 +36,11 @@ import {
   TEXTURE_SIZE,
 } from '@/lib/skins/render';
 import { REPO_ROOT } from '../helpers/envTest';
+
+// A render is 60–100 ms on the build Mac but 1.4–2 s on the shared CI runner under coverage
+// instrumentation: the four-render determinism case hit vitest's 5 s default there (5.7 s, PR #35
+// round 1). The elapsed-time contract stays the per-render bound asserted below, not this ceiling.
+vi.setConfig({ testTimeout: 30_000 });
 
 const fixture = (name: string): Uint8Array =>
   new Uint8Array(readFileSync(path.join(REPO_ROOT, 'tests', 'fixtures', 'images', name)));
@@ -165,6 +170,11 @@ describe('lib/skins/model — geometry', () => {
     expect(buildModel('classic', false)).toHaveLength(36);
     expect(faces.map((f) => f.side).slice(0, 6)).toEqual(SIDES);
     for (const f of faces) expect(f.shade).toBe(FACE_SHADE[f.side]);
+  });
+
+  it('emits the parts in the order the coplanar tie-break relies on (ADR-0047 D5): body before the arms, right leg before left', () => {
+    const order = [...new Set(buildModel('classic').map((f) => f.part))];
+    expect(order).toEqual(['head', 'body', 'rightArm', 'leftArm', 'rightLeg', 'leftLeg']);
   });
 
   it('narrows both arms to 3 for the slim model and keeps them 4 for classic', () => {
@@ -364,6 +374,28 @@ describe('renderBustPng — validation', () => {
   it('rejects a 64×32 legacy skin and a 128×128 HD skin with RenderError(validation)', async () => {
     await expectValidationError(renderBustPng(fixture('skin-64x32.png'), 'classic'));
     await expectValidationError(renderBustPng(fixture('skin-128.png'), 'slim'));
+    await expect(renderBustPng(fixture('skin-128.png'), 'slim')).rejects.toThrow(
+      'Skins need to be 64×64 (got 128×128).',
+    );
+  });
+
+  it('refuses a huge PNG from its header, before decoding a pixel (ADR-0047 D3)', async () => {
+    // 4096×4096 of one colour compresses to a few KB — a decompression bomb in miniature.
+    const bomb = await sharp({
+      create: {
+        width: 4096,
+        height: 4096,
+        channels: 4,
+        background: { r: 1, g: 2, b: 3, alpha: 1 },
+      },
+    })
+      .png()
+      .toBuffer();
+    const started = performance.now();
+    await expect(renderBustPng(new Uint8Array(bomb), 'classic')).rejects.toThrow(
+      'Skins need to be 64×64 (got 4096×4096).',
+    );
+    expect(performance.now() - started).toBeLessThan(500);
   });
 
   it('rejects non-PNG bytes, truncated PNGs and bad options', async () => {

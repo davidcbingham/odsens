@@ -296,6 +296,23 @@ test.describe('art', () => {
     await expect(box.getByText('2025', { exact: true })).toBeVisible();
     const boxImg = box.locator('img');
     await expect(boxImg).toHaveAttribute('alt', AVATAR_TITLE);
+    // The picture shows at its own size, or as large as the viewer allows (ADR-0048 D30): the
+    // rendered box follows the `width` / `height` attributes, never the srcset candidate's
+    // density (which drew a 256-px avatar at 171 px in PR #35 round 1).
+    await expect
+      .poll(async () =>
+        boxImg.evaluate((img) => {
+          const el = img as HTMLImageElement;
+          const media = el.parentElement as HTMLElement;
+          const rendered = Math.round(el.getBoundingClientRect().width);
+          const expected = Math.min(
+            Number(el.getAttribute('width')),
+            Math.floor(media.getBoundingClientRect().width),
+          );
+          return Math.abs(rendered - expected) <= 1 ? 'fits' : `${rendered}px vs ${expected}px`;
+        }),
+      )
+      .toBe('fits');
     expect(decodeURIComponent((await boxImg.getAttribute('src')) ?? '')).toContain(AVATAR_OBJECT);
     // Download only when downloadable (AC6): the public object URL + `?download=<slug>.<ext>`.
     const download = box.getByRole('link', { name: 'Download' });

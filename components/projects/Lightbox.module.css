@@ -58,12 +58,18 @@
   aspect-ratio: 16 / 9;
 }
 
+/*
+ * Sized images (art): the `width` / `height` attributes set the box — never `width: auto`, which
+ * takes next/image's density-corrected intrinsic size (a srcset candidate the optimizer serves
+ * at source size draws the picture at a fraction of its width — ADR-0048 D30). `max-*` only
+ * shrink it; `object-fit: contain` keeps the ratio when the height is the binding limit.
+ */
 .lightbox-img {
   display: block;
   max-width: 100%;
   max-height: 100%;
-  width: auto;
   height: auto;
+  object-fit: contain;
 }
 
 .lightbox-img-fill {

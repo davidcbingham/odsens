@@ -282,14 +282,34 @@ function isPng(bytes: Uint8Array): boolean {
   return PNG_MAGIC.every((byte, i) => bytes[i] === byte);
 }
 
+/** Width / height the IHDR chunk declares (bytes 16..23), or null when the header is short. */
+function ihdrSize(png: Uint8Array): { width: number; height: number } | null {
+  if (png.byteLength < 24) return null;
+  const view = new DataView(png.buffer, png.byteOffset, png.byteLength);
+  return { width: view.getUint32(16), height: view.getUint32(20) };
+}
+
 /** Decode a 64×64 PNG to raw RGBA (`validation` on anything else). */
 async function decodeTexture(texture: Uint8Array): Promise<Uint8Array> {
   if (!isPng(texture)) throw new RenderError('validation', 'Skin textures must be a PNG.');
+  // The header says the size before any pixel is inflated: a wrong size is refused here with the
+  // exact numbers, and `limitInputPixels` makes sharp refuse a header that lies — a decompression
+  // bomb never allocates (ADR-0047 D3).
+  const declared = ihdrSize(texture);
+  if (declared !== null && (declared.width !== TEXTURE_SIZE || declared.height !== TEXTURE_SIZE)) {
+    throw new RenderError(
+      'validation',
+      `Skins need to be 64×64 (got ${declared.width}×${declared.height}).`,
+    );
+  }
   let data: Buffer;
   let width: number;
   let height: number;
   try {
-    const decoded = await sharp(Buffer.from(texture.buffer, texture.byteOffset, texture.byteLength))
+    const decoded = await sharp(
+      Buffer.from(texture.buffer, texture.byteOffset, texture.byteLength),
+      { limitInputPixels: TEXTURE_SIZE * TEXTURE_SIZE },
+    )
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });

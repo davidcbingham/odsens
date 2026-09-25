@@ -254,7 +254,10 @@ async function applyReorder(
   };
 }
 
-/** `{id, …patch}`: the stored row decides `not_found`; a texture replaces in place and re-renders. */
+/**
+ * `{id, …patch}`: the stored row decides `not_found`; a texture replaces in place and re-renders,
+ * and so does a model change (ADR-0048 D29).
+ */
 async function applyPatch(
   admin: Admin,
   values: SkinPatchValues,
@@ -272,12 +275,16 @@ async function applyPatch(
 
   // Only the provided keys land in the update — an absent one keeps its stored value, `null`
   // clears the description. The schema strips unknown keys; the annotation pins every key to
-  // its column type. A new texture clears the cached bust in the same statement.
+  // its column type. A new texture OR a model change (classic ⇄ slim draws different arms)
+  // invalidates the cached bust: cleared in the same statement, re-rendered below (ADR-0048
+  // D29). A `model` equal to the stored one — the form sends every key — is not a change.
   const typed: SkinUpdate = patch;
   const columns: SkinUpdate = Object.fromEntries(
     Object.entries(typed).filter(([, value]) => value !== undefined),
   );
-  if (bytes !== null) columns.render_bust_path = null;
+  const modelChanged = patch.model !== undefined && patch.model !== stored.model;
+  const rerender = bytes !== null || modelChanged;
+  if (rerender) columns.render_bust_path = null;
 
   const { data: row, error } = await admin
     .from('skins')
@@ -298,8 +305,8 @@ async function applyPatch(
   if (row === null) return fail('not_found', NOT_FOUND_SKIN);
 
   let data: UpdateSkinData = { skin: row, bust_rendered: row.render_bust_path !== null };
-  if (bytes !== null) {
-    await uploadTexture(admin, id, bytes);
+  if (rerender) {
+    if (bytes !== null) await uploadTexture(admin, id, bytes);
     data = await renderAndReread(admin, id);
   }
 
