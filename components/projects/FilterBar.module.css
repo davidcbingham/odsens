@@ -50,6 +50,15 @@
   color: var(--white);
 }
 
+/* Keyboard focus keeps the site-wide ring — DESIGN.md §5: 3px --gold, 2px offset (03 C-25). The
+   button's own 2px --line-soft outline and the active fill's outline-color would otherwise win over
+   the global `:focus-visible` rule; both selectors so the active link gets the same ring. */
+.filter-bar-type:focus-visible,
+.filter-bar-type[aria-current='true']:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
 .filter-bar-count {
   color: var(--mute);
 }
@@ -99,6 +108,10 @@
     overflow-x: auto;
     scroll-snap-type: x proximity;
     max-width: 100%;
+    /* The scroll box would clip the 5px focus ring (2px offset + 3px): give it that room on every
+       side and take it back with the margin — no visible change at rest. */
+    padding: 5px;
+    margin: -5px;
   }
 
   .filter-bar-type {
