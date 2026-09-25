@@ -2,56 +2,17 @@
  * tests/helpers/globalSetup.db.ts — Vitest `db` project globalSetup (docs/build/05-test-plan.md §1.5 H-1).
  * Runs `supabase db reset` ONCE per run: applies supabase/migrations/* + supabase/seed.sql against the
  * local stack (API :54321, DB :54322). Set SKIP_DB_RESET=1 to reuse the current local state.
- * Then uploads the SEED-13 storage objects (`seed.sql` never carries bytes): the exclusive project's
- * file + icon, and (S1.7) the two skin textures, the …0601 bust and the two art pieces — the
- * reset wiped `storage.objects`, so this runs on every reset (and harmlessly upserts when the
- * reset was skipped).
+ * Then uploads the SEED-13 storage objects (`seed.sql` never carries bytes) through the shared
+ * `uploadSeedObjects` (`seedObjects.ts` — the Playwright globalSetup calls the same function, ADR-0048
+ * D31): the reset wiped `storage.objects`, so this runs on every reset (and harmlessly upserts when
+ * the reset was skipped).
  * Finally waits for PostgREST to finish reloading its schema cache after the reset's container
  * restart (`waitForRest`): the first test file otherwise races it and every request answers
  * PGRST002 "Could not query the database for the schema cache" (seen 2026-09-03, S1.4 db lane).
  */
 import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import { loadEnvTest } from './envTest';
-import { fixturePath } from './fixtures';
-import { SEED_ART, SEED_PROJECTS, SEED_SKINS, SEED_VERSIONS } from './seedIds';
-import { uploadFixture } from './storage';
-
-/** SEED-13: the objects the seed rows point at (paths WITHOUT the bucket prefix). */
-async function uploadSeedObjects(): Promise<void> {
-  // globalSetup runs in its own process, before any setupFiles — load `.env.test` itself.
-  loadEnvTest();
-  const projectId = SEED_PROJECTS.seedExclusivePack;
-  const versionId = SEED_VERSIONS.exclusive_1_0_0;
-
-  await uploadFixture(
-    'project-files',
-    `${projectId}/${versionId}/seed-exclusive-pack-1.0.0.zip`,
-    'files/pack.zip',
-  );
-
-  // The icon path's `{hash16}` segment is content-addressed (04 SC-21) — derive it from the fixture
-  // bytes so it always equals the literal `seed.sql` stores (F-8 keeps the two in sync).
-  const iconBytes = await readFile(fixturePath('images', 'icon-256.png'));
-  const hash16 = createHash('sha256').update(iconBytes).digest('hex').slice(0, 16);
-  await uploadFixture('project-media', `${projectId}/icon/${hash16}.png`, 'images/icon-256.png');
-
-  // S1.7 (SEED-7/8 + their SEED-13 objects): both textures are the 64×64 brand skin; …0601's bust is
-  // "any PNG" (the 16:9 thumb — the card only needs an <img>); the art paths carry the fixtures'
-  // own `{hash16}` (F-8 keeps them equal to the `seed.sql` literals). Object paths carry no bucket
-  // prefix — the DB rows do (`skins/…`, `art/…`; 04 SC-21).
-  await uploadFixture('skins', `${SEED_SKINS.skinA}/texture.png`, 'images/skin-64.png');
-  await uploadFixture('skins', `${SEED_SKINS.skinB}/texture.png`, 'images/skin-64.png');
-  await uploadFixture('skins', `${SEED_SKINS.skinA}/bust.png`, 'images/thumb-1280x720.png');
-  const thumbBytes = await readFile(fixturePath('images', 'thumb-1280x720.png'));
-  const thumbHash16 = createHash('sha256').update(thumbBytes).digest('hex').slice(0, 16);
-  await uploadFixture('art', `${SEED_ART.avatar}/${hash16}.png`, 'images/icon-256.png');
-  await uploadFixture('art', `${SEED_ART.thumb}/${thumbHash16}.png`, 'images/thumb-1280x720.png');
-  console.log(
-    '[db] SEED-13 storage objects uploaded (project-files + project-media + skins + art)',
-  );
-}
+import { uploadSeedObjects } from './seedObjects';
 
 /** Polls the REST API with the service key until the schema cache answers (PGRST002 gone). */
 async function waitForRest(timeoutMs = 60_000): Promise<void> {
@@ -79,6 +40,9 @@ export default async function globalSetup(): Promise<void> {
       '[db] SKIP_DB_RESET=1 — reusing the current local database state (H-1 reset skipped)',
     );
     await uploadSeedObjects();
+    console.log(
+      '[db] SEED-13 storage objects uploaded (project-files + project-media + skins + art)',
+    );
     await waitForRest();
     return;
   }
@@ -97,5 +61,8 @@ export default async function globalSetup(): Promise<void> {
     );
   }
   await uploadSeedObjects();
+  console.log(
+    '[db] SEED-13 storage objects uploaded (project-files + project-media + skins + art)',
+  );
   await waitForRest();
 }

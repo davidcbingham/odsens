@@ -30,8 +30,16 @@
   opacity: 0;
 }
 
+/*
+ * The figure takes the whole middle column (ADR-0048 D30): under the grid's `justify-items: center`
+ * it was fit-content, and the `fill` branch — a `width: 100%` box around an absolutely positioned
+ * image — resolved to 0×0, so every project gallery opened an empty scrim with two arrows (S1.2 →
+ * S1.7). Its children stay centred; the sized branch's media box is still content-sized.
+ */
 .lightbox-figure {
   grid-column: 2;
+  justify-self: stretch;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;

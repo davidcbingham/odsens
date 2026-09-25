@@ -31,6 +31,9 @@ function webServerEnv(): Record<string, string> {
 export default defineConfig({
   testDir: 'tests/e2e',
   outputDir: 'test-results',
+  // 05 CI-5 / SEED-13 (ADR-0048 D31): put the seed rows' storage objects in place before the run —
+  // `seed.sql` carries no bytes and the CI `e2e` job starts from a fresh stack. Idempotent upsert.
+  globalSetup: './tests/helpers/globalSetup.e2e.ts',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI), // 05 H-11
   retries: process.env.CI ? 1 : 0, // 05 CI-11
@@ -40,13 +43,14 @@ export default defineConfig({
     colorScheme: 'dark',
     trace: 'on-first-retry',
     screenshot: 'off',
-    // S1.7 (ADR-0048 D21 / D31): `--enable-unsafe-swiftshader` keeps the SwiftShader WebGL
-    // fallback allowed on Chrome ≥ 131 — enough on a Mac, where the GPU exists. NOT
-    // `--use-angle=swiftshader` here: that one moves compositing onto the GL path, whose texture
+    // S1.7 (ADR-0048 D21): software WebGL for headless Chromium (SwiftShader), so the
+    // `SkinViewer3D` canvas reaches `data-state="ready"` in CI; T-E2E-7 fails loudly on
+    // `unsupported` rather than accepting the fallback (00 §S1.7 risk "software GL flag").
+    // `--enable-unsafe-swiftshader` keeps the fallback allowed on Chrome ≥ 131; NOT
+    // `--use-angle=swiftshader` — that one moves compositing onto the GL path, whose texture
     // ceiling makes `Page.captureScreenshot` fail on a full-page shot taller than it (the 56k-px
-    // `/dev/components` gallery, T-E2E-48). The CI runner (Linux, no GPU) gets no WebGL from these
-    // args at all, so `tests/e2e/smoke/skins.spec.ts` — the one spec that needs a live canvas —
-    // pins ANGLE-on-SwiftShader for its own worker with `test.use({ launchOptions })` (D31).
+    // `/dev/components` gallery, T-E2E-48) while adding nothing: WebGL is already available —
+    // on the GPU-less CI runner too (a Linux probe with this Playwright build; D31).
     launchOptions: {
       args: ['--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
     },
