@@ -400,6 +400,37 @@ describe('refreshMentions (04 §3.4)', () => {
     expect(tags.calls).toEqual([]);
   });
 
+  it('T-ACT-54 a viewCount that is not a number ("lots", "", "-3") reaching the job END-TO-END → read as hidden: the stored number is KEPT, nothing written, ok=true, no tags (pinned adapter-only until this pass)', async () => {
+    await perturb();
+    const before = await mentionRows([onProject, sameVideo, draftGeneral]);
+    const junk: Record<string, string> = { [FIX_1]: 'lots', [FIX_2]: '' };
+    spyFetch({
+      [VIDEOS_URL]: (request: Request) =>
+        new Response(
+          JSON.stringify({
+            kind: 'youtube#videoListResponse',
+            items: idsOf(request.url).map((id) => ({
+              kind: 'youtube#video',
+              id,
+              statistics: { viewCount: junk[id] ?? '-3' },
+            })),
+          }),
+          { status: 200, headers: JSON_HEADERS },
+        ),
+    });
+    const tags = spyRevalidateTag();
+    const summary = await run();
+
+    expect(summary.ok).toBe(true);
+    // Every id asked came back junk: the two fixture ids and the seed video (`-3`).
+    expect(summary).toMatchObject({ items: 0, updated: 0, returned: 3, errors: [] });
+    expect(await mentionRows([onProject, sameVideo, draftGeneral])).toEqual(before);
+    expect((await mentionRow(onProject)).view_count).toBe(STALE_VIEWS);
+    expect((await mentionRow(SEED_MENTIONS.youtube)).view_count).toBe(1_200_000);
+    expect(tags.calls).toEqual([]);
+    expect(await runRow(summary.run_id)).toMatchObject({ ok: true, items: 0, error: null });
+  });
+
   it('T-ACT-54 only the mention whose number differs is written; a changed GENERAL mention revalidates mentions alone (no project tag)', async () => {
     // Heal the two `fixmen00001` rows; leave only the general draft stale.
     await setViews([onProject, sameVideo], FIX_1_VIEWS);
@@ -555,6 +586,51 @@ describe('refreshMentions (04 §3.4)', () => {
       });
       expectKeyAbsent(JSON.stringify(logs.lines));
     });
+
+    it('T-ACT-54 a 429 + Retry-After on ONE batch inside the job is retried (SC-09) — the same 50 ids asked again — the run completes, every row is written, and the three batches count as 3 units (the retry is not one)', async () => {
+      await setViews(batchIds, STALE_VIEWS);
+      let requests = 0;
+      const fetchSpy = spyFetch({
+        [VIDEOS_URL]: (request: Request) => {
+          requests += 1;
+          return requests === 2
+            ? new Response('{"error":{"code":429,"message":"slow down"}}', {
+                status: 429,
+                headers: { ...JSON_HEADERS, 'retry-after': '1' },
+              })
+            : answerFactoryIds(request);
+        },
+      });
+      const tags = spyRevalidateTag();
+      const summary = await run();
+
+      expect(summary.ok).toBe(true);
+      expect(summary).toMatchObject({
+        items: BATCH_SIZE,
+        updated: BATCH_SIZE,
+        returned: BATCH_SIZE,
+        units: 3,
+        errors: [],
+      });
+      expect(fetchSpy.calls).toHaveLength(4); // 3 batches + the one retry
+      // 120 factory ids + the file's own eligible rows (two fixture ids, the seed video).
+      const asked = summary.asked as number;
+      expect(asked).toBeGreaterThan(100);
+      expect(asked).toBeLessThanOrEqual(150);
+      const perRequest = fetchSpy.calls.map(idsOf);
+      expect(perRequest.map((ids) => ids.length)).toEqual([50, 50, 50, asked - 100]);
+      expect(perRequest[2]).toEqual(perRequest[1]); // the 429'd batch, verbatim, once more
+      const everyId = [
+        ...(perRequest[0] ?? []),
+        ...(perRequest[1] ?? []),
+        ...(perRequest[3] ?? []),
+      ];
+      expect(new Set(everyId).size).toBe(asked);
+      const after = await mentionRows(batchIds);
+      expect(after.every((row) => row.view_count === BATCH_VIEWS)).toBe(true);
+      expect(tags.calls).toEqual(['mentions', `project:${projectSlug}`]);
+      expect(await runRow(summary.run_id)).toMatchObject({ ok: true, items: BATCH_SIZE });
+    }, 30_000);
   });
 
   it('T-ACT-54 the eligible read is paged: a full 1,000-row page is followed by the next page; 999 ids go out as 20 requests of ≤ 50; a row that came back without an external_id is never asked about', async () => {

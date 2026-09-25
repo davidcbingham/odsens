@@ -31,6 +31,7 @@ import {
   hasFieldError,
   previewIsComplete,
   publishErrors,
+  storedLink,
   type DraftFieldKey,
   type MentionDraft,
   type PublishErrors,
@@ -53,7 +54,7 @@ import styles from './MentionPreview.module.css';
  *   `empty`    dashed `--line-strong` slot "Paste a link above."; PUBLISH is rendered DISABLED (a
  *              moderator never gets past this state and must still see the control — ADR-0045)
  *   `preview`  the fetched card: thumb · title · platform mark + "Platform · creator" · views
- *              (Silkscreen `--emerald`) · date; ghost "Edit fields" → `manual`
+ *              (Silkscreen `--emerald`) · date · the LINK LINE (below); ghost "Edit fields" → `manual`
  *   `error`    the action's message VERBATIM in a `role="alert"` line (04 §1.6: "Couldn't read
  *              that page. You can fill the fields by hand.") above the manual fields
  *   `manual`   Title · Creator · Platform (`Select`, all six incl. `other`) · Creator link · Date ·
@@ -61,6 +62,12 @@ import styles from './MentionPreview.module.css';
  *              or no creator name (both required on create) opens here instead of the card.
  * "Assign to" (`Select`: "About OddSense generally" first and default = `project_id: null`, then
  * the projects) and PUBLISH sit in ONE row under every state, so nothing jumps between states.
+ *
+ * Link line (ADR-0046): the card, and the manual fields in `manual` / `error`, show the address
+ * PUBLISH will store (`storedLink` — a fetched page's `canonical_url` verbatim, else the pasted link
+ * upgraded to https) on one clipped line, as TEXT (never an anchor — nothing here is clickable
+ * before it is approved), so the admin sees the address visitors will get even when a page's
+ * `og:url` names another one than he pasted. The full address is in `title`.
  *
  * Thumbnail (ADR-0002 #33; 01 INV-54): the card renders `mentionThumbnail()` — the
  * `i.ytimg.com/vi/<id>/hqdefault.jpg` literal built from a well-formed YouTube id — through
@@ -150,8 +157,19 @@ function viewsLabel(count: number | null): string | null {
   return `${formatCount(count)} ${count === 1 ? 'VIEW' : 'VIEWS'}`;
 }
 
-/** The fetched card (03 §2.8 `preview`): thumb + title + creator + views + date. */
-function PreviewCard({ preview }: { preview: MentionPreviewData }) {
+/** The stored link on one line (ADR-0046): a word, then the address, clipped by CSS; text only. */
+function StoredLinkLine({ link }: { link: string }) {
+  if (link === '') return null;
+  return (
+    <p className={styles['mention-preview-stored']} title={link}>
+      <span className={styles['mention-preview-stored-word']}>Link</span>
+      <span className={styles['mention-preview-stored-url']}>{link}</span>
+    </p>
+  );
+}
+
+/** The fetched card (03 §2.8 `preview`): thumb + title + creator + views + date + the link line. */
+function PreviewCard({ preview, link }: { preview: MentionPreviewData; link: string }) {
   const thumbnail = mentionThumbnail({
     platform: preview.platform,
     externalId: preview.external_id,
@@ -194,6 +212,7 @@ function PreviewCard({ preview }: { preview: MentionPreviewData }) {
             </time>
           ) : null}
         </div>
+        <StoredLinkLine link={link} />
       </div>
     </div>
   );
@@ -323,6 +342,7 @@ export function MentionPreview(props: MentionPreviewProps) {
 
   const busy = fetchPending || publishPending;
   const showFields = state === 'manual' || state === 'error';
+  const link = storedLink(url, preview);
   const assignOptions: SelectOption[] = [
     { value: GENERAL_VALUE, label: GENERAL_LABEL },
     ...projects.map((project) => ({ value: project.id, label: project.title })),
@@ -367,7 +387,9 @@ export function MentionPreview(props: MentionPreviewProps) {
           {fetchLine}
         </p>
       ) : null}
-      {state === 'preview' && preview !== null ? <PreviewCard preview={preview} /> : null}
+      {state === 'preview' && preview !== null ? (
+        <PreviewCard preview={preview} link={link} />
+      ) : null}
     </>
   );
 
@@ -382,6 +404,11 @@ export function MentionPreview(props: MentionPreviewProps) {
 
   const fields = showFields ? (
     <div className={styles['mention-preview-fields']} aria-live="off">
+      {link !== '' ? (
+        <div className={styles['mention-preview-field-wide']}>
+          <StoredLinkLine link={link} />
+        </div>
+      ) : null}
       <div className={styles['mention-preview-field-wide']}>
         <Field
           label="Title"

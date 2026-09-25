@@ -220,8 +220,12 @@ test.describe('seen on', () => {
       .evaluateAll((els) => els.map((el) => Number(el.tagName.slice(1))));
     expect(levels).toEqual([1, 2, 3, 3]);
 
-    // Gold 3px focus ring on the facade, the link-out thumb and the footer project link.
-    for (const target of [play, out, projectLink]) {
+    // Gold 3px focus ring on the facade, the link-out thumb, the footer project link — and the
+    // filter bar's platform links, whose own 2px --line-soft outline used to win (S1.8 follow-up:
+    // FilterBar.module.css `:focus-visible`, DESIGN.md §5 — 3px --gold, 2px offset).
+    const platformLink = filter.getByRole('link', { name: 'YOUTUBE 1' });
+    const activeLink = filter.getByRole('link', { name: 'ALL 2' }); // aria-current — indigo fill
+    for (const target of [play, out, projectLink, platformLink, activeLink]) {
       await target.focus();
       await page.keyboard.press('Shift+Tab');
       await page.keyboard.press('Tab');
@@ -230,7 +234,12 @@ test.describe('seen on', () => {
       await expect(target).toHaveCSS('outline-width', '3px');
       await expect(target).toHaveCSS('outline-style', 'solid');
     }
-    await projectLink.blur();
+    await expect(platformLink).toHaveCSS('outline-offset', '2px');
+    await expect(activeLink).toHaveCSS('outline-offset', '2px');
+    // At rest the link keeps its own 2px --line-soft outline (no visible change without focus).
+    await activeLink.blur();
+    await expect(platformLink).toHaveCSS('outline-color', LINE_SOFT);
+    await expect(platformLink).toHaveCSS('outline-width', '2px');
 
     await expectNoSeriousA11y(page);
     await shoot(page, 'seen-on');

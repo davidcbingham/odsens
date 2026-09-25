@@ -25,6 +25,7 @@ import {
   hasFieldError,
   previewIsComplete,
   publishErrors,
+  storedLink,
   type MentionDraft,
 } from '@/components/seen-on/MentionPreview.draft';
 import { createMentionInput, type MentionPreviewData } from '@/lib/actions/mentions.schema';
@@ -189,6 +190,50 @@ describe('T-E2E-39 draftFromPreview / previewIsComplete — how "Edit fields" st
     expect(previewIsComplete({ ...YOUTUBE, creator_name: '   ' })).toBe(false);
     expect(previewIsComplete({ ...YOUTUBE, title: '' })).toBe(false);
     expect(previewIsComplete({ ...YOUTUBE, title: ' \n ' })).toBe(false);
+  });
+});
+
+describe('T-E2E-39 storedLink — the address the card and the manual fields show (ADR-0046)', () => {
+  it('T-E2E-39 a fetched page → its canonical_url verbatim, whatever was pasted', () => {
+    expect(storedLink('https://youtu.be/abc?si=tracking', YOUTUBE)).toBe(YOUTUBE.canonical_url);
+    expect(storedLink('', YOUTUBE)).toBe(YOUTUBE.canonical_url);
+    const elsewhere = { ...YOUTUBE, canonical_url: 'https://example.test/other' };
+    expect(storedLink('https://example.test/pasted', elsewhere)).toBe('https://example.test/other');
+  });
+
+  it('T-E2E-39 no page read → the pasted link trimmed, normalised and upgraded to https (the readMentionUrl rule)', () => {
+    expect(storedLink('  http://127.0.0.1:4010/x  ', null)).toBe('https://127.0.0.1:4010/x');
+    expect(storedLink('HTTPS://Example.TEST/Path?q=1#frag', null)).toBe(
+      'https://example.test/Path?q=1#frag',
+    );
+    expect(storedLink('https://example.test', null)).toBe('https://example.test/');
+  });
+
+  it('T-E2E-39 the same string buildCreateMentionInput sends as url, on both paths', () => {
+    const fetched = buildCreateMentionInput({
+      url: 'https://youtu.be/abc',
+      preview: YOUTUBE,
+      draft: draftFromPreview(YOUTUBE),
+      projectId: '',
+    });
+    if (!fetched.ok) throw new Error('fetched path builds');
+    expect(fetched.input.url).toBe(storedLink('https://youtu.be/abc', YOUTUBE));
+    // By hand the client sends the trimmed text and the server upgrades the scheme — the line
+    // shows the upgraded form, which is what the row will hold.
+    const typed = buildCreateMentionInput({
+      url: ' https://example.test/post ',
+      preview: null,
+      draft: { ...EMPTY_DRAFT, title: 'x', creatorName: 'y' },
+      projectId: '',
+    });
+    if (!typed.ok) throw new Error('typed path builds');
+    expect(storedLink(' https://example.test/post ', null)).toBe(typed.input.url);
+  });
+
+  it("T-E2E-39 nothing pasted → ''; text that is not a URL is shown as typed (the schema refuses it)", () => {
+    expect(storedLink('', null)).toBe('');
+    expect(storedLink('   ', null)).toBe('');
+    expect(storedLink('not a link', null)).toBe('not a link');
   });
 });
 

@@ -769,6 +769,59 @@ describe('T-ADP-1 fetchPage (ADR-0045 — one loop with fetchJson / fetchText, t
     ).rejects.toMatchObject({ code: 'unsupported' });
   });
 
+  it('T-ADP-1 fetchPage maxBytes: a 5 MB 500 body is NOT read whole — ≤ maxBytes (and ≤ 1,200 bytes) pulled, the rest cancelled, excerpt ≤ 300 chars, still retried (ADR-0046)', async () => {
+    vi.useFakeTimers();
+    const CHUNK = 64 * 1024;
+    const chunk = encoder.encode('e'.repeat(CHUNK));
+    const bodies: { pulls: number; cancelled: boolean }[] = [];
+    const fetchSpy = vi.fn(
+      mockFetch({
+        [URL_LIST]: () => {
+          let sent = 0;
+          const { stream, seen } = watchedBody(() => {
+            if (sent >= 5 * 1024 * 1024) return null; // 5 MB in 64 KiB chunks
+            sent += CHUNK;
+            return chunk;
+          });
+          bodies.push(seen);
+          return new Response(stream, { status: 500, headers: htmlHeaders });
+        },
+      }),
+    );
+    const settled = caught(fetchPage(URL_LIST, { ua: UA, fetch: fetchSpy, maxBytes: 1_048_576 }));
+    await vi.runAllTimersAsync();
+    const error = await settled;
+    expect(error).toBeInstanceOf(AdapterError);
+    expect(error).toMatchObject({ status: 500, code: 'http_error' });
+    expect(error?.body).toBe('e'.repeat(300));
+    expect(fetchSpy).toHaveBeenCalledTimes(4); // the SC-09 loop is unchanged: 1 + 3 retries
+    // Every attempt pulled ONE chunk (64 KiB ≥ the 1,200-byte excerpt read) and cancelled the rest.
+    expect(bodies).toHaveLength(4);
+    for (const seen of bodies) expect(seen).toEqual({ pulls: 1, cancelled: true });
+  });
+
+  it('T-ADP-1 fetchPage maxBytes: an error body is cut at the excerpt, redacted first, and never thrown over as unsupported', async () => {
+    const echoed = `no: ${URL_LIST}?key=hunter2&x=${'y'.repeat(5_000)}`;
+    const fetchSpy = vi.fn(
+      mockFetch({ [URL_LIST]: () => new Response(echoed, { status: 403, headers: htmlHeaders }) }),
+    );
+    const error = await caught(
+      fetchPage(URL_LIST, { ua: UA, fetch: fetchSpy, maxBytes: 100, retries: 0 }),
+    );
+    expect(error).toMatchObject({ status: 403, code: 'http_error' });
+    // ≤ 100 bytes were read; the redaction then swaps a 7-char value for `[redacted]`.
+    expect(error?.body.length).toBeLessThanOrEqual(100 + '[redacted]'.length);
+    expect(error?.body).toContain('key=[redacted]');
+    expect(error?.body).not.toContain('hunter2');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    // Without maxBytes nothing changed: the whole body is read, then cut to 300 after redaction.
+    const whole = await caught(fetchPage(URL_LIST, { ua: UA, fetch: fetchSpy, retries: 0 }));
+    expect(whole?.body).toHaveLength(300);
+    expect(whole?.body).toContain('key=[redacted]');
+    expect(whole?.body).not.toContain('hunter2');
+  });
+
   it('T-ADP-1 fetchPage maxBytes: a null body is the empty string', async () => {
     const impl = mockFetch({
       [URL_LIST]: () => new Response(null, { status: 200, headers: htmlHeaders }),

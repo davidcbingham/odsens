@@ -32,7 +32,9 @@
  *   `unsupported` with the body unread; `maxBytes` — a `Content-Length` over the cap throws
  *   `unsupported` before the read, otherwise the body is streamed and cut off the moment the DECODED
  *   byte count passes the cap (the transport hands over decompressed bytes, so a compressed bomb is
- *   bounded too). `unsupported` is thrown, never retried. `fetchText` given `redirect: 'manual'`
+ *   bounded too), and a 4xx / 5xx body is read only as far as its 300-character excerpt needs
+ *   (`min(maxBytes, 1200)` decoded bytes, the rest cancelled — ADR-0046; without `maxBytes` an
+ *   error body is still read whole). `unsupported` is thrown, never retried. `fetchText` given `redirect: 'manual'`
  *   reports the redirect as an `http_error` — it has no way to return one.
  * - Every request carries `User-Agent` = the caller's `ua` (= `env.MODRINTH_USER_AGENT`, SC-10 —
  *   also sent to CurseForge/YouTube/OG/Resend/Discord fetches) and an `Accept` header:
@@ -56,6 +58,11 @@ const BACKOFF_MS = [1_000, 2_000, 4_000] as const;
 const MAX_DELAY_MS = 30_000;
 /** A4: raw upstream error bodies are truncated before storage/logging. */
 const BODY_LIMIT = 300;
+/**
+ * How much of a non-2xx body is READ for that excerpt when the caller set `maxBytes` (ADR-0046):
+ * 300 characters are at most 1,200 UTF-8 bytes. Without `maxBytes` the body is read whole, as ever.
+ */
+const EXCERPT_BYTES = BODY_LIMIT * 4;
 /** The statuses `redirect: 'manual'` hands back; any other 3xx (300, 304, 305) stays an `http_error`. */
 const REDIRECT_STATUSES: ReadonlySet<number> = new Set([301, 302, 303, 307, 308]);
 
@@ -121,7 +128,11 @@ export type FetchTextOptions = Omit<FetchJsonOptions, 'method' | 'body'> & {
    * Default: the transport follows redirects (unchanged).
    */
   redirect?: 'follow' | 'manual';
-  /** Stop after this many DECODED body bytes → `AdapterError 'unsupported'`. Default: unbounded (unchanged). */
+  /**
+   * Stop after this many DECODED body bytes → `AdapterError 'unsupported'`; a non-2xx body is then
+   * read only as far as its excerpt needs (≤ `min(maxBytes, 1200)` bytes — ADR-0046). Default:
+   * unbounded (unchanged).
+   */
   maxBytes?: number;
   /**
    * Lower-case media types a 2xx may carry (`text/html`). Anything else — a missing header
@@ -254,6 +265,36 @@ async function readCapped(response: Response, maxBytes: number, label: string): 
 }
 
 /**
+ * The excerpt source of a non-2xx body (`AdapterError.body`, ≤ 300 chars after redaction). With no
+ * `maxBytes` the body is read whole, as it always was; with one (ADR-0046 — `fetchPage` reading a
+ * page the adapter does not own) at most `min(maxBytes, EXCERPT_BYTES)` DECODED bytes are read and
+ * the rest is cancelled — never thrown over: the status is the error, the body only illustrates it.
+ * A read that fails yields `''`, like the uncapped `.text().catch(() => '')`.
+ */
+async function readExcerpt(response: Response, maxBytes: number | undefined): Promise<string> {
+  if (maxBytes === undefined) return response.text().catch(() => '');
+  if (response.body === null) return '';
+  const limit = Math.min(maxBytes, EXCERPT_BYTES);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = '';
+  let total = 0;
+  try {
+    while (total < limit) {
+      const { done, value } = await reader.read();
+      if (done) return text + decoder.decode();
+      const part = value.byteLength > limit - total ? value.subarray(0, limit - total) : value;
+      total += part.byteLength;
+      text += decoder.decode(part, { stream: true });
+    }
+    await reader.cancel().catch(() => undefined);
+  } catch {
+    return '';
+  }
+  return text + decoder.decode();
+}
+
+/**
  * The one SC-09 request loop behind `fetchJson`, `fetchText` and `fetchPage` (ADR-0043 D3): timeout
  * per attempt, retry/backoff, `Retry-After` / `X-Ratelimit-Reset`, SC-10 User-Agent, `onResponse`,
  * redaction. Resolves with the 2xx body as text and — unless the caller opted into `contentTypes` —
@@ -339,7 +380,8 @@ async function requestBody(
     }
 
     // Redacted BEFORE truncation: an upstream that echoes the request URL never leaks a key tail.
-    const body = redactSecrets(await response.text().catch(() => '')).slice(0, BODY_LIMIT);
+    // Under `maxBytes` the read itself is bounded (ADR-0046); the regex redacts a value cut short.
+    const body = redactSecrets(await readExcerpt(response, options.maxBytes)).slice(0, BODY_LIMIT);
     lastError = new AdapterError(`${label} → ${response.status}`, {
       status: response.status,
       code: 'http_error',

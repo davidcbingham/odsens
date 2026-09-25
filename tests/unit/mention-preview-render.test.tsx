@@ -175,6 +175,31 @@ describe('T-E2E-39 MentionPreview — preview card', () => {
     expect(html).not.toContain('role="alert"');
   });
 
+  it('T-E2E-39 the card shows the link PUBLISH stores — the canonical_url, verbatim, as text (ADR-0046)', () => {
+    const base = fixture('MentionPreview · preview');
+    if (base.preview === null) throw new Error('fixture has a preview');
+    const html = render(base);
+    expect(html).toContain('>Link</span>');
+    expect(html).toContain(`>${base.preview.canonical_url}</span>`);
+    expect(html).toContain(`title="${base.preview.canonical_url}"`);
+    // Text, never an anchor: nothing on the card is clickable before it is approved.
+    expect(tags(html, 'a')).toEqual([]);
+
+    // A page whose og:url names ANOTHER address than the one pasted: the card shows what will be
+    // stored, so the substitution is visible before PUBLISH.
+    const elsewhere = 'https://example.test/somewhere-else?ref=og';
+    const swapped = render({ ...base, preview: { ...base.preview, canonical_url: elsewhere } });
+    expect(swapped).toContain(`>${elsewhere}</span>`);
+    expect(count(swapped, '>Link</span>')).toBe(1);
+  });
+
+  it('T-E2E-39 the non-YouTube card shows its stored link too; the empty state shows none', () => {
+    const tiktok = fixture('MentionPreview · preview, no image');
+    if (tiktok.preview === null) throw new Error('fixture has a preview');
+    expect(render(tiktok)).toContain(`>${tiktok.preview.canonical_url}</span>`);
+    expect(render(fixture('MentionPreview · empty'))).not.toContain('>Link</span>');
+  });
+
   it('T-E2E-39 every image source is i.ytimg.com or a local brand mark — never the fetched URL', () => {
     for (const { label, props } of mentionPreviewFixtures) {
       const sources = tags(render(props), 'img').map((tag) => /src="([^"]*)"/.exec(tag)?.[1] ?? '');
@@ -245,6 +270,17 @@ describe('T-E2E-39 MentionPreview — error and manual', () => {
     for (const word of ['YouTube', 'TikTok', 'Twitch', 'Reddit', 'Article', 'Other']) {
       expect(html, word).toContain(`>${word}</span>`);
     }
+  });
+
+  it('T-E2E-39 manual: the stored link sits above the fields; the error fixture (nothing pasted) shows none', () => {
+    const manual = fixture('MentionPreview · manual');
+    if (manual.preview === null) throw new Error('fixture has a preview');
+    const html = render(manual);
+    const linkAt = html.indexOf(`>${manual.preview.canonical_url}</span>`);
+    const titleAt = html.indexOf('>Title</label>');
+    expect(linkAt).toBeGreaterThan(-1);
+    expect(linkAt).toBeLessThan(titleAt);
+    expect(render(fixture('MentionPreview · error'))).not.toContain('>Link</span>');
   });
 
   it('T-E2E-39 manual: fields seeded from the preview, no alert, PUBLISH enabled', () => {
