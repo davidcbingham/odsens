@@ -1,7 +1,7 @@
 # ADR-0046 — S1.8 follow-ups fix pass: the stored link on the preview card, the capped error-body read
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-09-25
