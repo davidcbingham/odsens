@@ -52,11 +52,25 @@
  *    `revalidateTag('videos')`), polls `/videos` and `/` to the §11.7 empty state, un-hides exactly
  *    those rows and polls both pages back. No service-side delete; the service client only
  *    repairs a failed run in `afterAll`.
+ *  - S1.8 (same file, same reason — ADR-0045): T-E2E-42 gains the `/admin/mentions` leg — the
+ *    Mentions view AND the Suggested stub, axe + shots at 1280 AND 390 (00 S1.8.AC12; ADR-0045
+ *    D27), pristine seed first; the final describe holds T-E2E-39 — the moderator's disabled
+ *    controls (no POST), then the admin pastes `https://www.youtube.com/watch?v=seedvid0009`
+ *    (answered by the :4010 fixture server — ADR-0002 #73; the SSRF guard's DNS lookup of
+ *    `www.youtube.com` is REAL, so an offline machine fails here — tests/fixtures/README.md),
+ *    publishes it onto metal-pipe-mace, features / reorders (handle keys AND the Move buttons) /
+ *    hides it, publishes a second mention by hand after an unreadable link, and polls `/`,
+ *    `/seen-on` and `/projects/metal-pipe-mace` after every step. Every public effect is reached
+ *    through the page's own actions (`createMention` / `updateMention` → `revalidateTag`); the
+ *    two test rows are hidden THROUGH THE UI, the pages polled back to seed truth, and only then
+ *    deleted with the service client (there is no delete action — 01 INV-24).
  *
  * Seed truths: SEED-4..6 (3 published projects; overrides featured 1 = pixel-chameleon,
  * 2 = seed-exclusive-pack; CF link 900001 on pixel-chameleon), SEED-12 (one ok run per source),
  * SEED-9 (the held `…0203` by seed_user2, the hidden + reported `…0204`), SEED-11 (7 videos:
- * `seedvid0002` hidden, `seedvid0003` the one Short, no overrides).
+ * `seedvid0002` hidden, `seedvid0003` the one Short, no overrides), SEED-10 (2 published mentions:
+ * `…0301` YouTube `seedvid0001` on metal-pipe-mace, 1,200,000 views, featured, sort_order 1;
+ * `…0302` TikTok about OddSense generally, no count, not featured; no `mentions` sync run).
  */
 import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
@@ -89,7 +103,13 @@ import { fixturePath, loadFixture } from '../../helpers/fixtures';
 import { loginAs, logout } from '../../helpers/loginAs';
 import { shoot } from '../../helpers/screenshots';
 import { listObjects, removeObjects } from '../../helpers/storage';
-import { SEED_COMMENTS, SEED_PROJECTS, SEED_USERS, SEED_VIDEOS } from '../../helpers/seedIds';
+import {
+  SEED_COMMENTS,
+  SEED_MENTIONS,
+  SEED_PROJECTS,
+  SEED_USERS,
+  SEED_VIDEOS,
+} from '../../helpers/seedIds';
 import { repairThreadCache } from '../../helpers/threadCache';
 
 test.describe.configure({ mode: 'serial' });
@@ -180,7 +200,7 @@ async function restoreSeedCurseforgeListing(service: ServiceClient): Promise<voi
 // T-E2E-42 — a11y + screenshots, pristine seed state first
 // ---------------------------------------------------------------------------------------------
 
-test('T-E2E-42 admin routes: axe zero serious/critical + 1280 screenshots (/admin, /admin/projects, /admin/projects/[id]) + /admin/comments at 1280 and 390', async ({
+test('T-E2E-42 admin routes: axe zero serious/critical + 1280 screenshots (/admin, /admin/projects, /admin/projects/[id]) + /admin/comments, /admin/settings and /admin/mentions (both views) at 1280 and 390', async ({
   page,
 }) => {
   await loginAs(page, 'admin');
@@ -232,6 +252,44 @@ test('T-E2E-42 admin routes: axe zero serious/critical + 1280 screenshots (/admi
   await expect(page.getByRole('heading', { name: 'NOTIFICATIONS' })).toBeVisible();
   await expectNoSeriousA11y(page);
   await shoot(page, 'admin-settings');
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  // S1.8: the mentions page — desktop AND phone (00 S1.8.AC12; ADR-0045 D27), seed state: the
+  // empty "Add a mention" island, one featured row in FEATURED ORDER, two table rows.
+  await page.goto('/admin/mentions');
+  await expect(page).toHaveTitle('Mentions · Admin');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Mentions');
+  await expect(page.getByRole('region', { name: 'Add a mention' })).toHaveAttribute(
+    'data-state',
+    'empty',
+  );
+  const mentionList = page.locator('section', {
+    has: page.getByRole('heading', { level: 2, name: /^ALL MENTIONS/ }),
+  });
+  await expect(mentionList.locator('tbody tr')).toHaveCount(2);
+  await expect(mentionList.getByText('FEATURED', { exact: true })).toHaveCount(1);
+  await expect(mentionList.getByText('LIVE', { exact: true })).toHaveCount(1);
+  await expect(page.locator('ol[aria-label="Featured mentions"] li')).toHaveCount(1);
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-mentions');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('heading', { level: 2, name: /^ALL MENTIONS/ })).toBeVisible();
+  // The table scrolls inside its own wrapper — the page itself never scrolls sideways at 390.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-mentions');
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  // The Suggested view — the v1.5 stub (00 S1.8.AC10), both widths.
+  await page.goto('/admin/mentions?tab=suggested');
+  await expect(page.getByRole('heading', { name: 'NOTHING SUGGESTED' })).toBeVisible();
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-mentions-suggested');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('heading', { name: 'NOTHING SUGGESTED' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-mentions-suggested');
   await page.setViewportSize({ width: 1280, height: 800 });
 });
 
@@ -3777,5 +3835,738 @@ test.describe('videos on /admin + the public empty state (S1.6 — ADR-0043 D9)'
     await expectVideosAtUrl(page, '/', hiddenTitle, () => expectSeedHome(page));
     expect(await readVideos()).toEqual(seed); // a nudge cycle leaves seed truth behind too
     restoredThroughApp = true;
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-E2E-39 (S1.8; 00 S1.8.AC1 / AC2 / AC4 / AC5 / AC8 / AC10; 02 §1.3 `/admin/mentions`; 03 §2.8
+// `MentionPreview`, §2.10 `ReorderableList`; ADR-0002 C7 / #33 / #73; ADR-0045) — curating Seen on.
+// Same recipe as T-E2E-47 (FLK-3 / FLK-4): every public effect is reached the way Oliver reaches
+// it — `createMention` / `updateMention` through the page, each of which calls
+// `revalidateTag('mentions')` (+ the project's tag) — and the ISR pages are polled by
+// re-navigation, never slept on; a dry poll revalidates again through the app (`nudgeMentionsTag`:
+// Hide → Show on the seed TikTok row, which leaves seed truth behind). There is no delete action
+// (01 INV-24), so the two rows this test creates are HIDDEN through the UI, the three public pages
+// polled back to seed truth, and only then removed with the service client (cleanup only — a
+// hidden row is on no public page, so its removal needs no revalidation). `mutatesSeed` (the
+// reorder rewrites `…0301.sort_order`, the nudge flips `…0302.status`), restored through the same
+// actions; `afterAll` repairs a failed run (rows by service, then the app's own revalidation in a
+// fresh context — the `repairThreadCache` reasoning: `next start` keeps ISR entries on disk).
+//
+// The pasted link is answered by the :4010 fixture server (`OEMBED_BASE` → `youtube/oembed.json` =
+// title + creator; `YOUTUBE_API_BASE` `videos?id=seedvid0009` → `youtube/videos/seedvid0009.json` =
+// views + date — ADR-0045 D8; step 2 wins the title, step 3 fills views + date, 04 §5.4).
+// The unreadable link is `http://127.0.0.1:4010/x`: the SSRF guard refuses loopback before any
+// request leaves (04 §4.4), which is exactly the "couldn't read it" path — deterministic, offline.
+// ---------------------------------------------------------------------------------------------
+test.describe('mentions on /admin/mentions (S1.8 — T-E2E-39)', () => {
+  const SEED_YOUTUBE_TITLE = 'Metal Pipe Mace is the loudest mod I have ever installed';
+  const SEED_TIKTOK_TITLE = 'this mod makes no sense and I love it';
+  const SEED_REACH = '1.2M VIEWS · 2 VIDEOS · 2 CREATORS';
+
+  const PASTED_URL = 'https://www.youtube.com/watch?v=seedvid0009';
+  const PASTED_ID = 'seedvid0009';
+  // tests/fixtures/youtube/oembed.json (title, creator) + youtube/videos/seedvid0009.json
+  // (viewCount 48213, publishedAt 2026-07-04T15:00:00Z).
+  const PASTED_TITLE = 'I played every OdSens datapack at once';
+  const PASTED_CREATOR = 'BlockBuddy';
+  const PASTED_VIEWS = 48_213;
+  const PASTED_VIEWS_LABEL = '48.2K VIEWS';
+  const PASTED_DATE = '4 Jul 2026';
+
+  const UNREADABLE_URL = 'http://127.0.0.1:4010/x';
+  const MANUAL_URL = 'https://127.0.0.1:4010/x'; // as stored: http is upgraded (04 §1.6)
+  const MANUAL_TITLE = 't_e2e39 a write-up nobody could fetch';
+  const MANUAL_CREATOR = 't_e2e39 blog';
+  const UNREADABLE_LINE = "Couldn't read that page. You can fill the fields by hand.";
+
+  const TEST_URLS: readonly string[] = [PASTED_URL, MANUAL_URL];
+  const COLUMNS =
+    'id, url, platform, external_id, title, creator_name, thumbnail_url, status, source, featured, sort_order, view_count, project_id, created_by';
+
+  type MentionRow = {
+    id: string;
+    url: string;
+    platform: string;
+    external_id: string | null;
+    title: string;
+    creator_name: string;
+    thumbnail_url: string | null;
+    status: string;
+    source: string;
+    featured: boolean;
+    sort_order: number;
+    view_count: number | null;
+    project_id: string | null;
+    created_by: string | null;
+  };
+
+  /** Set once both test rows are gone AND the three public pages were seen back on seed truth. */
+  let restoredThroughApp = false;
+  /** Set right before the first write — until then no row and no cache was touched. */
+  let mutated = false;
+
+  function service() {
+    return loose(asRole('service'));
+  }
+
+  /** Every mention, seed rows first (`…0301`, `…0302`), then whatever this test created. */
+  async function readMentions(): Promise<MentionRow[]> {
+    const { data, error } = await service().from('mentions').select(COLUMNS).order('id');
+    expect(error).toBeNull();
+    const rows = (data ?? []) as MentionRow[];
+    const seedIds: readonly string[] = Object.values(SEED_MENTIONS);
+    return [
+      ...rows.filter((row) => seedIds.includes(row.id)),
+      ...rows.filter((row) => !seedIds.includes(row.id)),
+    ];
+  }
+
+  async function readByUrl(url: string): Promise<MentionRow | undefined> {
+    return (await readMentions()).find((row) => row.url === url);
+  }
+
+  /** Cleanup only (service client): the rows this test pastes — `mentions.url` is UNIQUE. */
+  async function deleteTestRows(): Promise<void> {
+    const { error } = await service()
+      .from('mentions')
+      .delete()
+      .in('url', [...TEST_URLS]);
+    expect(error).toBeNull();
+  }
+
+  function mentionList(page: Page) {
+    return page.locator('section', {
+      has: page.getByRole('heading', { level: 2, name: /^ALL MENTIONS/ }),
+    });
+  }
+
+  function tableRow(page: Page, title: string) {
+    return mentionList(page).locator('tbody tr', { hasText: title });
+  }
+
+  function featuredOrder(page: Page) {
+    return page.locator('ol[aria-label="Featured mentions"] li');
+  }
+
+  function addRegion(page: Page) {
+    return page.getByRole('region', { name: 'Add a mention' });
+  }
+
+  /**
+   * One worded row button = one `updateMention({id, patch})` + PRG; waits until the re-rendered row
+   * offers `becomes` (Feature → Unfeature, Hide → Show, …), i.e. the stored state was read back.
+   */
+  async function rowAction(page: Page, word: string, title: string, becomes: string) {
+    await page.goto('/admin/mentions');
+    const row = tableRow(page, title);
+    await row.getByRole('button', { name: `${word} ${title}`, exact: true }).click();
+    await expect(row.getByRole('button', { name: `${becomes} ${title}`, exact: true })).toBeVisible(
+      { timeout: 10_000 },
+    );
+  }
+
+  /** Two `revalidateTag('mentions')` calls that leave seed truth behind (`…0302` stays published). */
+  async function nudgeMentionsTag(page: Page): Promise<void> {
+    await rowAction(page, 'Hide', SEED_TIKTOK_TITLE, 'Show');
+    await rowAction(page, 'Show', SEED_TIKTOK_TITLE, 'Hide');
+  }
+
+  /**
+   * `expectAtUrl` with the T-E2E-47 cycle: `revalidateTag(…, 'max')` is stale-while-revalidate
+   * twice over (the page entry AND the `unstable_cache` reader), so the regeneration after the
+   * LAST write can bake the previous list for another 600 s. When the re-navigation poll runs dry,
+   * revalidate again through the app and poll again — never a fixed sleep (FLK-4).
+   */
+  async function expectMentionsAtUrl(
+    page: Page,
+    url: string,
+    assert: () => Promise<void>,
+  ): Promise<void> {
+    for (let cycle = 0; ; cycle += 1) {
+      try {
+        await expect(async () => {
+          await page.goto(url);
+          await assert();
+        }).toPass({ timeout: 8_000, intervals: [400, 800, 1_600] });
+        return;
+      } catch (error) {
+        if (cycle === 3) throw error;
+        await nudgeMentionsTag(page);
+      }
+    }
+  }
+
+  const quick = { timeout: 1_000 };
+
+  /** Home: the IN THE WILD cards in order + the reach line (totals over every published mention). */
+  async function expectHomeStrip(page: Page, titles: string[], reach: string): Promise<void> {
+    const strip = page.locator('section[aria-labelledby="section-title-in-the-wild"]');
+    await expect(strip.locator('article[data-variant] h3')).toHaveText(titles, quick);
+    await expect(strip.getByText(reach, { exact: true })).toBeVisible(quick);
+  }
+
+  /** `/projects/metal-pipe-mace`: the SEEN ON count + its cards in order. */
+  async function expectProjectRow(page: Page, titles: string[]): Promise<void> {
+    const row = page.locator('section[aria-labelledby="section-title-seen-on"]');
+    const count = titles.length === 1 ? '1 MENTION' : `${titles.length} MENTIONS`;
+    await expect(row.getByText(count, { exact: true })).toBeVisible(quick);
+    await expect(row.locator('article[data-variant] h3')).toHaveText(titles, quick);
+  }
+
+  /** `/seen-on`: the filter buttons (names with counts) + the cards in order. */
+  async function expectSeenOn(page: Page, buttons: string[], titles: string[]): Promise<void> {
+    const names = page.locator('[role="group"][aria-label="Filter"]').getByRole('link');
+    await expect(names).toHaveText(buttons, quick);
+    await expect(page.locator('main article[data-variant] h3')).toHaveText(titles, quick);
+  }
+
+  async function expectSeedEverywhere(page: Page): Promise<void> {
+    await expectMentionsAtUrl(page, '/', () =>
+      expectHomeStrip(page, [SEED_YOUTUBE_TITLE], SEED_REACH),
+    );
+    await expectMentionsAtUrl(page, '/projects/metal-pipe-mace', () =>
+      expectProjectRow(page, [SEED_YOUTUBE_TITLE]),
+    );
+    await expectMentionsAtUrl(page, '/seen-on', () =>
+      expectSeenOn(
+        page,
+        ['ALL 2', 'YOUTUBE 1', 'TIKTOK 1'],
+        [SEED_YOUTUBE_TITLE, SEED_TIKTOK_TITLE],
+      ),
+    );
+  }
+
+  /** Waits for the ONE server-action POST a completed reorder sends (the glue has no redirect). */
+  function reorderPost(page: Page) {
+    return page.waitForResponse(
+      (res) =>
+        res.request().method() === 'POST' && new URL(res.url()).pathname === '/admin/mentions',
+    );
+  }
+
+  async function featuredSortOrders(): Promise<Record<string, number>> {
+    const rows = await readMentions();
+    return Object.fromEntries(
+      rows.filter((row) => row.featured).map((row) => [row.title, row.sort_order]),
+    );
+  }
+
+  test.beforeAll(() => {
+    loadEnvTest();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    if (!mutated || restoredThroughApp) return;
+    // A failed run. Rows first (service client — cleanup only): the test rows go, SEED-10 truth
+    // comes back (`…0301` featured at sort_order 1, both rows published).
+    await deleteTestRows();
+    const youtube = await service()
+      .from('mentions')
+      .update({ status: 'published', featured: true, sort_order: 1 })
+      .eq('id', SEED_MENTIONS.youtube);
+    expect(youtube.error).toBeNull();
+    const tiktok = await service()
+      .from('mentions')
+      .update({ status: 'published', featured: false, sort_order: 2 })
+      .eq('id', SEED_MENTIONS.tiktok);
+    expect(tiktok.error).toBeNull();
+    const runs = await service().from('sync_runs').delete().eq('source', 'mentions');
+    expect(runs.error).toBeNull();
+    // Then the ISR entries, through the app's own revalidation (a service write revalidates
+    // nothing), in a fresh admin context since afterAll has no page.
+    const context = await browser.newContext();
+    // A bare context has none of `../fixtures`' routing: keep the optimizer from asking
+    // `i.ytimg.com` for the seed thumbnails while the repair polls the public pages (H-10).
+    await context.route('**/_next/image?**', (route) => route.abort());
+    const page = await context.newPage();
+    try {
+      await loginAs(page, 'admin');
+      await nudgeMentionsTag(page);
+      await expectSeedEverywhere(page);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('T-E2E-39 moderator: /admin/mentions shows paste, publish, reorder, Feature and Hide controls disabled under title="Admin only"; a click sends no POST and writes nothing', async ({
+    page,
+  }) => {
+    const before = await readMentions();
+    expect(before.map((row) => row.id)).toEqual([SEED_MENTIONS.youtube, SEED_MENTIONS.tiktok]);
+
+    await loginAs(page, 'mod');
+    await page.goto('/admin/mentions');
+    await expect(page).toHaveTitle('Mentions · Admin');
+
+    // The RLS-filtered read (05 T-RLS-102 / 103; ADR-0045 D24): published rows only — both seed
+    // rows are, so the moderator sees FEATURED + LIVE and can never see HIDDEN / DRAFT.
+    const list = mentionList(page);
+    await expect(list.locator('tbody tr')).toHaveCount(2);
+    await expect(list.getByText('FEATURED', { exact: true })).toHaveCount(1);
+    await expect(list.getByText('LIVE', { exact: true })).toHaveCount(1);
+    await expect(list.getByText('HIDDEN', { exact: true })).toHaveCount(0);
+
+    const underAdminOnly = (el: Element) => el.closest('[title="Admin only"]') !== null;
+
+    // The add-a-mention island: link field, Fetch, Assign to and PUBLISH — present, disabled,
+    // under title="Admin only" (03 §2.10), with no <form> anywhere in it.
+    const region = addRegion(page);
+    await expect(region).toHaveAttribute('data-state', 'empty');
+    const paste = [
+      region.getByLabel('Link', { exact: true }),
+      region.getByRole('button', { name: 'Fetch', exact: true }),
+      region.getByLabel('Assign to', { exact: true }),
+      region.getByRole('button', { name: 'PUBLISH', exact: true }),
+    ];
+    for (const control of paste) {
+      await expect(control).toHaveCount(1);
+      await expect(control).toBeDisabled();
+      expect(await control.evaluate(underAdminOnly), `${ADMIN_ONLY} on the add controls`).toBe(
+        true,
+      );
+    }
+    await expect(region.locator('form')).toHaveCount(0);
+
+    // Row actions: the same worded buttons an admin gets, disabled, no <form> around them.
+    const rowButtons = [
+      `Unfeature ${SEED_YOUTUBE_TITLE}`,
+      `Hide ${SEED_YOUTUBE_TITLE}`,
+      `Feature ${SEED_TIKTOK_TITLE}`,
+      `Hide ${SEED_TIKTOK_TITLE}`,
+    ].map((name) => list.getByRole('button', { name, exact: true }));
+    for (const button of rowButtons) {
+      await expect(button).toHaveCount(1);
+      await expect(button).toBeDisabled();
+      expect(await button.evaluate(underAdminOnly)).toBe(true);
+    }
+    await expect(list.locator('form')).toHaveCount(0);
+
+    // Reorder: the ⠿ handle and both Move buttons — disabled + aria-disabled + the title itself.
+    await expect(featuredOrder(page)).toHaveCount(1);
+    const reorder = [
+      `Move ${SEED_YOUTUBE_TITLE}`,
+      `Move up ${SEED_YOUTUBE_TITLE}`,
+      `Move down ${SEED_YOUTUBE_TITLE}`,
+    ].map((name) => page.getByRole('button', { name, exact: true }));
+    for (const button of reorder) {
+      await expect(button).toBeDisabled();
+      await expect(button).toHaveAttribute('aria-disabled', 'true');
+      await expect(button).toHaveAttribute('title', ADMIN_ONLY);
+    }
+
+    // SYNC: "Sync now" disabled the `SyncStatus` way.
+    const sync = page.getByRole('button', { name: 'Sync now' });
+    await expect(sync).toHaveCount(1);
+    await expect(sync).toBeDisabled();
+    expect(await sync.evaluate(underAdminOnly)).toBe(true);
+
+    // Clicking a disabled control issues no action call and no forbidden toast (02 §1.3). A
+    // server-action POST leaves in the click's own task, so two painted frames bound the wait;
+    // the stored rows are the second witness.
+    const posts: string[] = [];
+    page.on('request', (req) => {
+      if (req.method() === 'POST') posts.push(req.url());
+    });
+    for (const control of [paste[1], paste[3], rowButtons[1], rowButtons[2], ...reorder, sync]) {
+      await control?.click({ force: true });
+    }
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }),
+    );
+    expect(posts, 'no server-action POST left the page').toEqual([]);
+    await expect(page.getByText('Not allowed.')).toHaveCount(0);
+    await expect(page.getByText('Saved.', { exact: true })).toHaveCount(0);
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0);
+    expect(await readMentions()).toEqual(before);
+
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'admin-mentions-moderator');
+
+    // The Suggested view reads the same for a moderator: the stub, nothing to press.
+    await page.goto('/admin/mentions?tab=suggested');
+    await expect(page.getByRole('heading', { name: 'NOTHING SUGGESTED' })).toBeVisible();
+    await expect(page.locator('main').getByRole('button')).toHaveCount(0);
+  });
+
+  test('T-E2E-39 admin: paste a YouTube link → preview (thumb, title, creator, views, date) → assign metal-pipe-mace → PUBLISH → SEEN ON count 2; FEATURED / LIVE / HIDDEN tags; Feature → Home strip; reorder by keyboard AND by the Move buttons flips the strip and survives a reload; Hide → gone from Home, the project page and /seen-on; an unreadable link → the error line + manual fields → PUBLISH; Suggested stub mutates nothing', async ({
+    page,
+    requests,
+  }) => {
+    // ~16 action round trips + ~14 polled public pages (each may need a revalidation cycle).
+    test.setTimeout(300_000);
+    await deleteTestRows(); // a leftover from a killed run would answer PUBLISH with `conflict`
+    const seed = await readMentions();
+    expect(seed.map((row) => row.id)).toEqual([SEED_MENTIONS.youtube, SEED_MENTIONS.tiktok]);
+    expect(seed.map((row) => [row.status, row.featured, row.sort_order, row.view_count])).toEqual([
+      ['published', true, 1, 1_200_000],
+      ['published', false, 2, null],
+    ]);
+
+    await loginAs(page, 'admin');
+    await page.goto('/admin/mentions');
+    const list = mentionList(page);
+    const region = addRegion(page);
+    await expect(list.locator('tbody tr')).toHaveCount(2);
+    await expect(list.getByText('2 TOTAL', { exact: true })).toBeVisible();
+    await expect(
+      tableRow(page, SEED_YOUTUBE_TITLE).getByText('FEATURED', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      tableRow(page, SEED_TIKTOK_TITLE).getByText('LIVE', { exact: true }),
+    ).toBeVisible();
+    await expect(tableRow(page, SEED_TIKTOK_TITLE)).toContainText('About OddSense');
+    await expect(tableRow(page, SEED_YOUTUBE_TITLE)).toContainText('Metal Pipe Mace');
+    await expect(tableRow(page, SEED_YOUTUBE_TITLE)).toContainText('1.2M');
+    // The admin list asks no platform for a thumbnail — marks only (ADR-0002 #33).
+    const listImages = await list
+      .locator('img')
+      .evaluateAll((imgs) => imgs.map((img) => img.getAttribute('src') ?? ''));
+    for (const src of listImages) expect(src).toMatch(/^\/brand\/marks\//);
+    await expect(featuredOrder(page)).toHaveCount(1);
+
+    // -- Empty state: PUBLISH is there but disabled until there is something to publish ----------
+    await expect(region).toHaveAttribute('data-state', 'empty');
+    await expect(region.getByText('Paste a link above.', { exact: true })).toBeVisible();
+    const publish = region.getByRole('button', { name: 'PUBLISH', exact: true });
+    await expect(publish).toBeDisabled();
+
+    // -- SYNC: "Sync now" runs `refreshMentions` against the fixture server (ADR-0045 D11). The
+    // fixture answers `videos?id=seedvid0001` with strangers, so the seed count is untouched.
+    mutated = true;
+    const syncRow = page
+      .locator('section', { has: page.getByRole('heading', { level: 2, name: 'SYNC' }) })
+      .locator('tbody tr');
+    await expect(syncRow).toHaveCount(1);
+    await expect(syncRow).toContainText('Mentions');
+    await syncRow.getByRole('button', { name: 'Sync now' }).click();
+    await expect(page.getByText('Sync started.')).toBeVisible({ timeout: 30_000 });
+    await expect(syncRow.getByText('LIVE', { exact: true })).toBeVisible({ timeout: 15_000 });
+    const run = await service()
+      .from('sync_runs')
+      .select('ok, finished_at, error')
+      .eq('source', 'mentions')
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .single();
+    expect(run.error).toBeNull();
+    expect(run.data?.ok).toBe(true);
+    expect(run.data?.finished_at).not.toBeNull();
+    expect((await readMentions())[0]?.view_count).toBe(1_200_000);
+
+    // -- Paste → Fetch → the preview card, every field from the fixture server (AC1) -------------
+    await page.goto('/admin/mentions');
+    const link = region.getByLabel('Link', { exact: true });
+    await link.fill(PASTED_URL);
+    await region.getByRole('button', { name: 'Fetch', exact: true }).click();
+    await expect(region).toHaveAttribute('data-state', 'preview', { timeout: 45_000 });
+    await expect(region.getByText(PASTED_TITLE, { exact: true })).toBeVisible();
+    await expect(region.getByText(`YouTube · ${PASTED_CREATOR}`)).toBeVisible();
+    await expect(region.getByText(PASTED_VIEWS_LABEL, { exact: true })).toBeVisible();
+    await expect(region.locator('time')).toHaveText(PASTED_DATE);
+    await expect(region.locator('time')).toHaveAttribute('datetime', /^2026-07-04T15:00:00/);
+    const previewThumb = region.locator('img[src^="/_next/image"]');
+    await expect(previewThumb).toHaveCount(1);
+    expect(decodeURIComponent((await previewThumb.getAttribute('src')) ?? '')).toContain(
+      `https://i.ytimg.com/vi/${PASTED_ID}/hqdefault.jpg`,
+    );
+    await expect(region.locator('[role="alert"]')).toHaveCount(0);
+    expect(await readByUrl(PASTED_URL), 'a preview stores nothing').toBeUndefined();
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'admin-mentions-preview');
+
+    // -- Assign → PUBLISH: "Saved.", the island resets, the row lands on top as LIVE (AC2) --------
+    const assign = region.getByLabel('Assign to', { exact: true });
+    await expect(assign).toHaveText('About OddSense generally'); // the safe default
+    await assign.click();
+    await expect(
+      page.getByRole('listbox', { name: 'Assign to options' }).getByRole('option'),
+    ).toHaveText([
+      'About OddSense generally',
+      'Metal Pipe Mace',
+      'Pixel Chameleon',
+      'Seed Exclusive Pack',
+    ]);
+    await page.getByRole('option', { name: 'Metal Pipe Mace', exact: true }).click();
+    await expect(assign).toHaveText('Metal Pipe Mace');
+    await expect(publish).toBeEnabled();
+    await publish.click();
+    await expect(page.getByText('Saved.', { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(region).toHaveAttribute('data-state', 'empty');
+    await expect(link).toHaveValue('');
+    await expect(link).toBeFocused();
+    await expect(list.locator('tbody tr')).toHaveCount(3, { timeout: 10_000 });
+    await expect(list.getByText('3 TOTAL', { exact: true })).toBeVisible();
+    await expect(list.locator('tbody tr').first()).toContainText(PASTED_TITLE); // newest added
+    const pastedRow = tableRow(page, PASTED_TITLE);
+    await expect(pastedRow.getByText('LIVE', { exact: true })).toBeVisible();
+    await expect(pastedRow).toContainText(`YouTube · ${PASTED_CREATOR}`);
+    await expect(pastedRow).toContainText('Metal Pipe Mace');
+    await expect(pastedRow).toContainText('48.2K');
+
+    const stored = await readByUrl(PASTED_URL);
+    expect(stored).toMatchObject({
+      url: PASTED_URL,
+      platform: 'youtube',
+      external_id: PASTED_ID,
+      title: PASTED_TITLE,
+      creator_name: PASTED_CREATOR,
+      status: 'published',
+      source: 'manual',
+      featured: false,
+      view_count: PASTED_VIEWS,
+      project_id: MACE,
+      created_by: SEED_USERS.oddsense,
+    });
+
+    // Only ever an `i.ytimg.com` address (01 INV-54; ADR-0045 D7). Which video's is the fixture's
+    // business: `youtube/oembed.json` answers every link with the same recorded thumbnail.
+    expect(stored?.thumbnail_url).toMatch(
+      /^https:\/\/i\.ytimg\.com\/vi\/[\w-]{11}\/hqdefault\.jpg$/,
+    );
+
+    // The project page: SEEN ON count 2 — the featured seed mention first, then the new one.
+    await expectMentionsAtUrl(page, '/projects/metal-pipe-mace', () =>
+      expectProjectRow(page, [SEED_YOUTUBE_TITLE, PASTED_TITLE]),
+    );
+    const newCard = page
+      .locator('section[aria-labelledby="section-title-seen-on"] article[data-variant]')
+      .filter({ hasText: PASTED_TITLE });
+    await expect(newCard).toHaveAttribute('data-variant', 'inline'); // plays in place (AC5)
+    await expect(newCard.getByText(PASTED_VIEWS_LABEL, { exact: true })).toBeVisible();
+    await expect(newCard.getByRole('button', { name: `Play ${PASTED_TITLE}` })).toBeVisible();
+    // `/seen-on`: newest first, counts and tiles follow (1,200,000 + 48,213 still reads 1.2M).
+    await expectMentionsAtUrl(page, '/seen-on', () =>
+      expectSeenOn(
+        page,
+        ['ALL 3', 'YOUTUBE 2', 'TIKTOK 1'],
+        [PASTED_TITLE, SEED_YOUTUBE_TITLE, SEED_TIKTOK_TITLE],
+      ),
+    );
+    await expect(page.locator('main dl dd')).toHaveText(['1.2M', '3', '3']);
+    // Not featured yet → Home still shows the one seed card; the reach line counts all three.
+    await expectMentionsAtUrl(page, '/', () =>
+      expectHomeStrip(page, [SEED_YOUTUBE_TITLE], '1.2M VIEWS · 3 VIDEOS · 3 CREATORS'),
+    );
+
+    // -- Feature → joins the END of the Home strip (sort_order = last + 1) — "Saved." PRG ---------
+    await rowAction(page, 'Feature', PASTED_TITLE, 'Unfeature');
+    await expect(page.getByText('Saved.', { exact: true })).toBeVisible();
+    await expect(pastedRow.getByText('FEATURED', { exact: true })).toBeVisible();
+    await expect(featuredOrder(page)).toHaveCount(2);
+    await expect(featuredOrder(page).nth(0)).toContainText(SEED_YOUTUBE_TITLE);
+    await expect(featuredOrder(page).nth(1)).toContainText(PASTED_TITLE);
+    expect(await featuredSortOrders()).toEqual({ [SEED_YOUTUBE_TITLE]: 1, [PASTED_TITLE]: 2 });
+    await expectMentionsAtUrl(page, '/', () =>
+      expectHomeStrip(
+        page,
+        [SEED_YOUTUBE_TITLE, PASTED_TITLE],
+        '1.2M VIEWS · 3 VIDEOS · 3 CREATORS',
+      ),
+    );
+
+    // -- Reorder by keyboard (⠿ handle, ArrowUp): ONE action call; Home flips; survives a reload --
+    await page.goto('/admin/mentions');
+    await expect(featuredOrder(page)).toHaveCount(2);
+    const byKeys = reorderPost(page);
+    await page.getByRole('button', { name: `Move ${PASTED_TITLE}`, exact: true }).press('ArrowUp');
+    await byKeys;
+    await expect(featuredOrder(page).nth(0)).toContainText(PASTED_TITLE);
+    await expect.poll(featuredSortOrders).toEqual({ [PASTED_TITLE]: 1, [SEED_YOUTUBE_TITLE]: 2 });
+    await page.reload();
+    await expect(featuredOrder(page).nth(0)).toContainText(PASTED_TITLE);
+    await expect(featuredOrder(page).nth(1)).toContainText(SEED_YOUTUBE_TITLE);
+    await expectMentionsAtUrl(page, '/', () =>
+      expectHomeStrip(
+        page,
+        [PASTED_TITLE, SEED_YOUTUBE_TITLE],
+        '1.2M VIEWS · 3 VIDEOS · 3 CREATORS',
+      ),
+    );
+
+    // -- Reorder by the visible Move buttons (00 S1.8 risk note): same contract, other way round.
+    // The ends are `aria-disabled`, never natively disabled (focus must not drop to <body>).
+    await page.goto('/admin/mentions');
+    const moveUpFirst = page.getByRole('button', { name: `Move up ${PASTED_TITLE}`, exact: true });
+    const moveDownFirst = page.getByRole('button', {
+      name: `Move down ${PASTED_TITLE}`,
+      exact: true,
+    });
+    await expect(moveUpFirst).toHaveAttribute('aria-disabled', 'true');
+    await expect(moveUpFirst).toHaveJSProperty('disabled', false); // focusable — a no-op press
+    await expect(moveDownFirst).not.toHaveAttribute('aria-disabled');
+    for (const button of [moveUpFirst, moveDownFirst]) {
+      const box = await button.boundingBox();
+      expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
+    const byButton = reorderPost(page);
+    await moveDownFirst.click();
+    await byButton;
+    await expect(featuredOrder(page).nth(0)).toContainText(SEED_YOUTUBE_TITLE);
+    await expect(moveDownFirst).toBeFocused(); // the pressed button keeps focus at the end
+    await expect(moveDownFirst).toHaveAttribute('aria-disabled', 'true');
+    await expect.poll(featuredSortOrders).toEqual({ [SEED_YOUTUBE_TITLE]: 1, [PASTED_TITLE]: 2 });
+    await page.reload();
+    await expect(featuredOrder(page).nth(0)).toContainText(SEED_YOUTUBE_TITLE);
+    await expect(featuredOrder(page).nth(1)).toContainText(PASTED_TITLE);
+    await expectMentionsAtUrl(page, '/', () =>
+      expectHomeStrip(
+        page,
+        [SEED_YOUTUBE_TITLE, PASTED_TITLE],
+        '1.2M VIEWS · 3 VIDEOS · 3 CREATORS',
+      ),
+    );
+
+    // -- Hide → HIDDEN tag, out of FEATURED ORDER, gone from all three public pages (AC8) ---------
+    await rowAction(page, 'Hide', PASTED_TITLE, 'Show');
+    await expect(pastedRow.getByText('HIDDEN', { exact: true })).toBeVisible();
+    await expect(pastedRow.getByRole('button')).toHaveCount(1); // "Show" only
+    await expect(featuredOrder(page)).toHaveCount(1);
+    // The three worded tags, one per row (05 T-E2E-39 "FEATURED / LIVE / HIDDEN").
+    await expect(list.locator('tbody tr')).toHaveCount(3);
+    await expect(list.getByText('FEATURED', { exact: true })).toHaveCount(1);
+    await expect(list.getByText('LIVE', { exact: true })).toHaveCount(1);
+    await expect(list.getByText('HIDDEN', { exact: true })).toHaveCount(1);
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'admin-mentions-curated');
+    await expectSeedEverywhere(page);
+    expect(await page.content()).not.toContain(PASTED_ID);
+
+    // -- An unreadable link → the action's line verbatim + the manual fields → PUBLISH (AC1) ------
+    await page.goto('/admin/mentions');
+    await link.fill(UNREADABLE_URL);
+    await region.getByRole('button', { name: 'Fetch', exact: true }).click();
+    await expect(region).toHaveAttribute('data-state', 'error', { timeout: 30_000 });
+    const alert = region.locator('[role="alert"]');
+    await expect(alert).toHaveCount(1);
+    await expect(alert).toHaveText(UNREADABLE_LINE);
+    await expect(region.locator('img[src^="/_next/image"]')).toHaveCount(0);
+    const title = region.getByLabel('Title', { exact: true });
+    const creator = region.getByLabel('Creator', { exact: true });
+    await expect(title).toBeVisible();
+    await expect(creator).toBeVisible();
+    for (const label of ['Creator link', 'Date', 'Views']) {
+      await expect(region.getByLabel(label, { exact: true })).toBeVisible();
+    }
+    await expect(region.getByLabel('Platform', { exact: true })).toHaveText('Article');
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'admin-mentions-manual');
+
+    // PUBLISH with nothing typed: the action's own words land on the two required fields.
+    await publish.click();
+    await expect(region.getByText('Type a title.', { exact: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(region.getByText("Type the creator's name.", { exact: true })).toBeVisible();
+    expect(await readByUrl(MANUAL_URL)).toBeUndefined();
+
+    await title.fill(MANUAL_TITLE);
+    await creator.fill(MANUAL_CREATOR);
+    await publish.click();
+    await expect(page.getByText('Saved.', { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(region).toHaveAttribute('data-state', 'empty');
+    await expect(list.locator('tbody tr')).toHaveCount(4, { timeout: 10_000 });
+    const manualRow = tableRow(page, MANUAL_TITLE);
+    await expect(manualRow.getByText('LIVE', { exact: true })).toBeVisible();
+    await expect(manualRow).toContainText(`Article · ${MANUAL_CREATOR}`);
+    await expect(manualRow).toContainText('About OddSense');
+    expect(await readByUrl(MANUAL_URL)).toMatchObject({
+      url: MANUAL_URL,
+      platform: 'article',
+      external_id: null,
+      title: MANUAL_TITLE,
+      creator_name: MANUAL_CREATOR,
+      thumbnail_url: null,
+      status: 'published',
+      source: 'manual',
+      featured: false,
+      view_count: null,
+      project_id: null,
+      created_by: SEED_USERS.oddsense,
+    });
+
+    // Publicly: a link-out card, `READ ON <SITE>` (03 V-04), the placeholder mark and NO remote
+    // image of any kind (ADR-0002 #33); about OddSense generally → the ODSENS chip. Never clicked.
+    await expectMentionsAtUrl(page, '/seen-on', () =>
+      expectSeenOn(
+        page,
+        ['ALL 3', 'YOUTUBE 1', 'TIKTOK 1', 'ARTICLE 1'],
+        [SEED_YOUTUBE_TITLE, SEED_TIKTOK_TITLE, MANUAL_TITLE], // no date → last
+      ),
+    );
+    const manualCard = page.locator('main article[data-variant]').filter({ hasText: MANUAL_TITLE });
+    await expect(manualCard).toHaveAttribute('data-variant', 'link-out');
+    const manualOut = manualCard.getByRole('link', { name: /^READ ON 127\.0\.0\.1 ?: / });
+    await expect(manualOut).toHaveAttribute('href', MANUAL_URL);
+    await expect(manualOut).toHaveAttribute('target', '_blank');
+    await expect(manualOut).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(manualCard.locator('img[src^="/_next/image"]')).toHaveCount(0);
+    await expect(manualCard.getByRole('img', { name: 'Article' })).toHaveCount(1);
+    await expect(manualCard.getByRole('img', { name: 'odsens' })).toHaveCount(1);
+    await expect(manualCard.getByText(MANUAL_CREATOR, { exact: true })).toBeVisible();
+    await expect(manualCard.getByRole('link', { name: MANUAL_CREATOR })).toHaveCount(0); // no link given
+    await expectNoSeriousA11y(page);
+
+    // -- Suggested: the v1.5 stub — no rows, no Approve / Dismiss, nothing that mutates (AC10) ----
+    await page.goto('/admin/mentions');
+    await page
+      .getByRole('navigation', { name: 'Mentions views' })
+      .getByRole('link', { name: /^Suggested/ })
+      .click();
+    await expect(page).toHaveURL(/\/admin\/mentions\?tab=suggested$/);
+    const views = page.getByRole('navigation', { name: 'Mentions views' });
+    await expect(views.getByRole('link', { name: /^Suggested/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    await expect(views.getByRole('link', { name: 'Mentions', exact: true })).not.toHaveAttribute(
+      'aria-current',
+    );
+    await expect(page.getByRole('heading', { name: 'NOTHING SUGGESTED' })).toBeVisible();
+    await expect(
+      page.getByText('Auto-found mentions will wait here for a yes or no. Not yet.', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    const main = page.locator('main');
+    await expect(main.getByRole('button')).toHaveCount(0);
+    await expect(main.locator('form, input, textarea, [role="combobox"]')).toHaveCount(0);
+    await expect(main.getByRole('button', { name: /approve|dismiss/i })).toHaveCount(0);
+    await expect(main.locator('table')).toHaveCount(0);
+    // The sidebar item stays current on `?tab=` (the nav compares the pathname only).
+    await expect(
+      page.getByRole('navigation', { name: 'Admin' }).getByRole('link', { name: 'Mentions' }),
+    ).toHaveAttribute('aria-current', 'page');
+
+    // -- Cleanup THROUGH THE UI: hide the manual row too, poll all three pages back to seed truth,
+    // and only then remove the two (now invisible) rows with the service client --------------------
+    await rowAction(page, 'Hide', MANUAL_TITLE, 'Show');
+    await expectSeedEverywhere(page);
+    const html = await page.content();
+    expect(html).not.toContain(MANUAL_TITLE);
+    expect(html).not.toContain(PASTED_ID);
+
+    await deleteTestRows();
+    const runs = await service().from('sync_runs').delete().eq('source', 'mentions');
+    expect(runs.error).toBeNull();
+    expect(await readMentions()).toEqual(seed);
+    restoredThroughApp = true;
+
+    // The preview thumbnail and every public card rode `/_next/image` on OUR host (01 INV-54):
+    // this test never pressed Play, so the browser asked no YouTube / Google host for anything.
+    const google = requests.filter((url) => {
+      try {
+        return /(^|\.)(youtube\.com|youtube-nocookie\.com|youtu\.be|ytimg\.com|ggpht\.com|google\.com|googleapis\.com|googlevideo\.com|gstatic\.com)$/.test(
+          new URL(url).hostname,
+        );
+      } catch {
+        return false;
+      }
+    });
+    expect(google, 'no browser request to a YouTube / Google host').toEqual([]);
   });
 });

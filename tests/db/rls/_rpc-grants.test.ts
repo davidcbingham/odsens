@@ -22,7 +22,14 @@
  *                                                   `linkProjectListing` issues through the service
  *                                                   client (T-RLS-137, ADR-0037 D3; migration
  *                                                   20260911120300); definer, search_path=public,
- *                                                   VOLATILE (it writes)
+ *                                                   VOLATILE (it writes). S1.8: the body gains the
+ *                                                   mentions re-parent (20260919120200) — grants
+ *                                                   and signature unchanged (T-RLS-137 still holds)
+ *   reorder_mentions(jsonb)                         anon/authenticated D · service A — the S1.8
+ *                                                   one-statement reorder `updateMention({reorder})`
+ *                                                   issues through the service client (ADR-0045;
+ *                                                   migration 20260919120100); definer,
+ *                                                   search_path=public, VOLATILE, returns integer
  * S1.5 (ADR-0030 D11, migration 20260903120200): `check_handle` is ALSO denied to `service_role` and
  * `can_comment`'s set is re-stated with an every-role revoke, so the cells above hold on Supabase
  * images whose default ACL grants EXECUTE on new functions to every API role (the PR #8 CI lesson).
@@ -33,8 +40,10 @@
  *
  * T-RLS-133 (`can_comment` behaviour) is `mutatesSeed`: `site_settings.comments_closed_default` flips
  * to true through `service` and is restored in `afterAll`; its factory projects fall to
- * `cleanupFactories`.
+ * `cleanupFactories`. The `reorder_mentions` behaviour cases use factory mentions only (the seed
+ * rows' `sort_order` is asserted untouched).
  */
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -44,11 +53,12 @@ import { REPO_ROOT } from '@/tests/helpers/envTest';
 import {
   cleanupFactories,
   makeFile,
+  makeMention,
   makeProject,
   makeUser,
   makeVersion,
 } from '@/tests/helpers/factories';
-import { SEED_COMMENTS, SEED_PROJECTS, SEED_USERS } from '@/tests/helpers/seedIds';
+import { SEED_COMMENTS, SEED_MENTIONS, SEED_PROJECTS, SEED_USERS } from '@/tests/helpers/seedIds';
 
 const FUNCTIONS = {
   check_handle: 'public.check_handle(text)',
@@ -62,6 +72,7 @@ const FUNCTIONS = {
   moderator_thread: 'public.moderator_thread(text,uuid)',
   migration_versions: 'public.migration_versions()',
   fold_project: 'public.fold_project(uuid,uuid)',
+  reorder_mentions: 'public.reorder_mentions(jsonb)',
 } as const;
 
 function canExecute(role: 'anon' | 'authenticated' | 'service_role', fn: string): boolean {
@@ -681,5 +692,156 @@ describe('T-RLS-137 fold_project grants (ADR-0037 D3)', () => {
     expect(error?.message).toBe('A project cannot be folded into itself.');
     expect(data).toBeNull();
     expect(sql('select count(*) from public.project_redirects')).toEqual([['0']]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-RLS-129 reorder_mentions(p_items jsonb) — S1.8, ADR-0045 (migration 20260919120100). The
+// one-statement reorder `updateMention({ reorder })` issues through the service client after
+// `requireRole('admin')` (04 §1.6 "reorder runs in one transaction"; the action-level cases are
+// T-ACT-64). Every JWT role and PUBLIC are refused; definer + search_path = public; VOLATILE.
+// Behaviour: every listed row takes its `sort_order` in ONE call; a listed id that is not a row →
+// P0002 and NOTHING applied; a payload the action would never send → 22023, nothing applied.
+// Factory mentions only — the SEED-10 rows' order is asserted untouched (05 H-1).
+// ---------------------------------------------------------------------------------------------
+describe('T-RLS-129 reorder_mentions grants + behaviour (ADR-0045)', () => {
+  const service = asRole('service');
+  type Item = { id: string; sort_order: number };
+
+  afterAll(cleanupFactories);
+
+  /** `sort_order` of the given mentions, keyed by id (service read). */
+  async function orderOf(ids: string[]): Promise<Record<string, number>> {
+    const { data, error } = await service.from('mentions').select('id, sort_order').in('id', ids);
+    expect(error).toBeNull();
+    return Object.fromEntries((data ?? []).map((row) => [row.id, row.sort_order]));
+  }
+
+  async function seedOrder(): Promise<Record<string, number>> {
+    return orderOf([SEED_MENTIONS.youtube, SEED_MENTIONS.tiktok]);
+  }
+
+  const SEED_ORDER = { [SEED_MENTIONS.youtube]: 1, [SEED_MENTIONS.tiktok]: 2 };
+
+  it('T-RLS-129 reorder_mentions: anon/authenticated denied, service_role allowed, never PUBLIC', () => {
+    expect(canExecute('anon', FUNCTIONS.reorder_mentions)).toBe(false);
+    expect(canExecute('authenticated', FUNCTIONS.reorder_mentions)).toBe(false);
+    expect(canExecute('service_role', FUNCTIONS.reorder_mentions)).toBe(true);
+    expect(publicCanExecute('reorder_mentions')).toBe(false);
+  });
+
+  it('T-RLS-129 reorder_mentions is a volatile plpgsql security-definer function with search_path = public returning integer', () => {
+    const rows = sql(
+      "select p.prosecdef, p.provolatile, l.lanname, coalesce(array_to_string(p.proconfig, ','), ''), pg_get_function_result(p.oid), pg_get_function_identity_arguments(p.oid) from pg_proc p join pg_namespace n on n.oid = p.pronamespace join pg_language l on l.oid = p.prolang where n.nspname = 'public' and p.proname = 'reorder_mentions'",
+    );
+    expect(rows).toEqual([['t', 'v', 'plpgsql', 'search_path=public', 'integer', 'p_items jsonb']]);
+  });
+
+  it.each(['anon', 'user', 'banned', 'mod', 'admin'] as const)(
+    'T-RLS-129 %s cannot call reorder_mentions (42501) and no sort_order moves',
+    async (role) => {
+      const id = await makeMention({ sort_order: 5 });
+      const { data, error } = await asRole(role).rpc('reorder_mentions', {
+        p_items: [
+          { id, sort_order: 1 },
+          { id: SEED_MENTIONS.youtube, sort_order: 9 },
+        ],
+      });
+      expect(error?.code).toBe('42501');
+      expect(data).toBeNull();
+      expect(await orderOf([id])).toEqual({ [id]: 5 });
+      expect(await seedOrder()).toEqual(SEED_ORDER);
+    },
+  );
+
+  it('T-RLS-129 service reorders every listed mention in ONE call and returns the count; unlisted rows and other columns stay put', async () => {
+    const [a, b, c, bystander] = await Promise.all([
+      makeMention({ sort_order: 1, featured: true }),
+      makeMention({ sort_order: 2, featured: true }),
+      makeMention({ sort_order: 3, featured: true, status: 'hidden' }),
+      makeMention({ sort_order: 4 }),
+    ]);
+    const before = await service
+      .from('mentions')
+      .select('id, updated_at')
+      .in('id', [a, b, c, bystander]);
+    const stampBefore = new Map((before.data ?? []).map((row) => [row.id, row.updated_at]));
+
+    const items: Item[] = [
+      { id: c, sort_order: 1 },
+      { id: a, sort_order: 2 },
+      { id: b, sort_order: 3 },
+    ];
+    const { data, error } = await service.rpc('reorder_mentions', { p_items: items });
+    expect(error).toBeNull();
+    expect(data).toBe(3);
+
+    expect(await orderOf([a, b, c, bystander])).toEqual({ [c]: 1, [a]: 2, [b]: 3, [bystander]: 4 });
+    const after = await service
+      .from('mentions')
+      .select('id, status, featured, updated_at')
+      .in('id', [a, b, c, bystander]);
+    const rows = new Map((after.data ?? []).map((row) => [row.id, row]));
+    // Only `sort_order` is written: a hidden row stays hidden and featured; the trigger stamps the
+    // listed rows (01 INV-97) and leaves the unlisted one alone.
+    expect(rows.get(c)).toMatchObject({ status: 'hidden', featured: true });
+    expect(rows.get(bystander)).toMatchObject({ status: 'published', featured: false });
+    for (const id of [a, b, c]) {
+      expect(Date.parse(rows.get(id)?.updated_at ?? ''), id).toBeGreaterThan(
+        Date.parse(stampBefore.get(id) ?? ''),
+      );
+    }
+    expect(rows.get(bystander)?.updated_at).toBe(stampBefore.get(bystander));
+    expect(await seedOrder()).toEqual(SEED_ORDER);
+  });
+
+  it('T-RLS-129 an unknown id → P0002 with a plain message and NOTHING applied (the known rows keep their order)', async () => {
+    const [a, b] = await Promise.all([
+      makeMention({ sort_order: 1 }),
+      makeMention({ sort_order: 2 }),
+    ]);
+    const { data, error } = await service.rpc('reorder_mentions', {
+      p_items: [
+        { id: b, sort_order: 1 },
+        { id: randomUUID(), sort_order: 2 },
+        { id: a, sort_order: 3 },
+      ],
+    });
+    expect(error?.code).toBe('P0002');
+    expect(error?.message).toBe('One of those mentions could not be found.');
+    expect(data).toBeNull();
+    expect(await orderOf([a, b])).toEqual({ [a]: 1, [b]: 2 });
+  });
+
+  it('T-RLS-129 an empty list is a no-op → 0', async () => {
+    const { data, error } = await service.rpc('reorder_mentions', { p_items: [] });
+    expect(error).toBeNull();
+    expect(data).toBe(0);
+    expect(await seedOrder()).toEqual(SEED_ORDER);
+  });
+
+  it('T-RLS-129 a payload the action would never send → 22023 and nothing applied (not an array · a missing field · an id listed twice)', async () => {
+    const id = await makeMention({ sort_order: 5 });
+    const payloads: Array<[string, unknown]> = [
+      ['not an array', { id, sort_order: 1 }],
+      ['null', null],
+      ['no sort_order', [{ id }]],
+      ['no id', [{ sort_order: 1 }]],
+      [
+        'listed twice',
+        [
+          { id, sort_order: 1 },
+          { id, sort_order: 2 },
+        ],
+      ],
+    ];
+    for (const [label, p_items] of payloads) {
+      const { data, error } = await service.rpc('reorder_mentions', {
+        p_items: p_items as Item[],
+      });
+      expect(error?.code, label).toBe('22023');
+      expect(data, label).toBeNull();
+    }
+    expect(await orderOf([id])).toEqual({ [id]: 5 });
   });
 });

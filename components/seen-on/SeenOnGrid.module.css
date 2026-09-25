@@ -1,0 +1,43 @@
+/* SeenOnGrid — DESIGN.md §12.2 Seen on page (filter bar over a 3-up mention grid, 1-up on phone);
+   pass-3 "Seen on page desktop" (gap 20). The bar's own look lives in FilterBar.module.css — this
+   file is the column and the grid (the `ProjectGrid` recipe). */
+.seen-on-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  min-width: 0;
+}
+
+.seen-on-grid-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-20);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Cards in one row share a height: the item is a flex box and the card fills it, so every footer
+   strip sits on the row's bottom edge. */
+.seen-on-grid-item {
+  display: flex;
+  min-width: 0;
+}
+
+/* tablet 600–899 = 2-up, phone ≤599 = 1-up (DESIGN.md §6 breakpoints) */
+@media (max-width: 899px) {
+  .seen-on-grid-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .seen-on-grid {
+    gap: var(--space-16);
+  }
+
+  .seen-on-grid-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-16);
+  }
+}

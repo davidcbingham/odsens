@@ -101,3 +101,19 @@ export {
   type VideoCardFixture,
   type VideoStageFixture,
 } from './videos';
+// ---- S1.8 Seen on ----
+export {
+  mentionCardFixtures,
+  reachLineFixtures,
+  seenOnRowFixtures,
+  inTheWildStripFixtures,
+  seenOnGridFixtures,
+  seenOnDescribedStates,
+  type MentionCardFixture,
+  type ReachLineFixture,
+  type SeenOnRowFixture,
+  type InTheWildStripFixture,
+  type SeenOnGridFixture,
+  type SeenOnDescribedState,
+} from './seenOn';
+export { mentionPreviewFixtures, type MentionPreviewFixture } from './mentionPreview';

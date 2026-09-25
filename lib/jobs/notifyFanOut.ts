@@ -7,9 +7,10 @@
  *
  * F0 — stale check (J-S / ADR-0030 D3): for each `STALE_SOURCES` entry whose condition holds
  * (`modrinth`, `youtube` always; `curseforge` only with `CURSEFORGE_API_KEY` + ≥ 1 curseforge
- * `project_links` row; `mentions` = false until the table lands in S1.8), a source that HAS
- * `sync_runs` rows but no `ok = true` run finished inside `STALE_WINDOW_HOURS` is stale → one
- * `sync.stale` event `{subject_type:'sync_source', subject_id: syncSourceSubjectId(source),
+ * `project_links` row; `mentions` — wired in S1.8, ADR-0045 — only with `YOUTUBE_API_KEY` + ≥ 1
+ * mention `refreshMentions` would refresh: YouTube, `external_id` set, draft | published), a source
+ * that HAS `sync_runs` rows but no `ok = true` run finished inside `STALE_WINDOW_HOURS` is stale →
+ * one `sync.stale` event `{subject_type:'sync_source', subject_id: syncSourceSubjectId(source),
  * payload:{source, last_ok_at, hours_since_ok}}`, deduped on a `sync.stale` event for that subject
  * younger than the window. A source with no `sync_runs` row at all is never stale (e.g. a source
  * before its first run). `stats` / `notify` / `skins` are not in the set.
@@ -34,6 +35,7 @@
  */
 import 'server-only';
 import { env } from '@/lib/env';
+import { MENTION_REFRESH_STATUSES } from '@/lib/jobs/constants';
 import { runJob, type JobDb } from '@/lib/jobs/runner';
 import type { JobOptions, JobSummary } from '@/lib/jobs/types';
 import {
@@ -80,10 +82,21 @@ async function staleCondition(db: JobDb, source: StaleSource): Promise<boolean> 
       if (error) throw new Error(`project_links count failed: ${error.message}`);
       return (count ?? 0) > 0;
     }
-    case 'mentions':
-      // `YOUTUBE_API_KEY` set + ≥ 1 YouTube mention — the `mentions` table lands in S1.8, which
-      // wires this condition (ADR-0030 D3). Until then: never stale.
-      return false;
+    case 'mentions': {
+      // J-S ** (wired in S1.8 — ADR-0030 D3, ADR-0045): `YOUTUBE_API_KEY` set + ≥ 1 mention the job
+      // would refresh — the 04 §3.4 select exactly (YouTube, `external_id` set, draft | published).
+      // Without the key `refreshMentions` skips; with nothing to refresh there is nothing to be
+      // stale about (a hidden-only or TikTok-only table never rings the allay).
+      if (env.YOUTUBE_API_KEY === undefined) return false;
+      const { count, error } = await db
+        .from('mentions')
+        .select('id', { count: 'exact', head: true })
+        .eq('platform', 'youtube')
+        .not('external_id', 'is', null)
+        .in('status', MENTION_REFRESH_STATUSES);
+      if (error) throw new Error(`mentions count failed: ${error.message}`);
+      return (count ?? 0) > 0;
+    }
     default:
       return true;
   }

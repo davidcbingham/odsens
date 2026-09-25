@@ -1,0 +1,175 @@
+/* /admin/mentions — DESIGN.md §6 #9 (admin: Space Grotesk labels, clarity over flair), §12.2 Admin →
+   Mentions (pass-3 Seen On artboards 04 / 05), §11.1 Admin table. Tokens only (03 C-08); section
+   rhythm and cell recipes are `/admin/projects`'s. */
+
+.admin-mentions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-40);
+}
+
+.admin-mentions-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* Artboard 04 lede: 15px --mute under the (visually hidden) title. */
+.admin-mentions-intro {
+  margin: 0;
+  color: var(--mute);
+  font-size: var(--text-ui);
+  line-height: 1.4;
+}
+
+/* Views — two links (03 C-13: state is `aria-current`, never a modifier class — C-04). Active:
+   --slab fill, 2px --line-soft outline, 3px --gold bar inside the bottom edge (the nav underline
+   recipe), chalk 700; idle: --mute 500. 44px targets (03 C-24). The negative margin pulls the row
+   up under the head so head + tabs read as one block inside the page's 40px rhythm. */
+.admin-mentions-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: calc(var(--space-16) * -1);
+}
+
+.admin-mentions-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 44px;
+  padding: var(--space-12) var(--space-16);
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  color: var(--mute);
+  font-size: var(--text-small);
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    color var(--dur-fast) ease-out,
+    background-color var(--dur-fast) ease-out;
+}
+
+.admin-mentions-tab:hover {
+  color: var(--chalk);
+}
+
+.admin-mentions-tab[aria-current='page'] {
+  background: var(--slab);
+  outline-color: var(--line-soft);
+  box-shadow: inset 0 -3px 0 var(--gold);
+  color: var(--chalk);
+  font-weight: 700;
+}
+
+/* The idle outline above is part of the look, so the focus ring is restated after it (03 C-25:
+   3px --gold, 2px offset — the globals `:focus-visible` values). */
+.admin-mentions-tab:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.admin-mentions-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+/* Admin section header — DESIGN.md §6 #9 "poster type goes": Space Grotesk 700, chalk. */
+.admin-mentions-heading {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-body);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.admin-mentions-heading-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-12);
+}
+
+/* Mention cell: platform mark, then title over "Platform · creator". */
+.admin-mentions-mention {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+/* The floor keeps the title readable when the table scrolls sideways on a phone (the `/admin`
+   video-cell recipe): the title breaks `anywhere`, so without a floor the auto table layout
+   squeezes this column to one letter per line at 390. The scroll stays inside `Table`'s wrapper. */
+.admin-mentions-name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 180px;
+}
+
+.admin-mentions-title {
+  color: var(--chalk);
+  font-size: var(--text-ui);
+  font-weight: 700;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.admin-mentions-title:hover {
+  box-shadow: inset 0 -2px 0 currentColor;
+}
+
+.admin-mentions-meta {
+  color: var(--mute-dim);
+  font-size: var(--text-label-sm);
+  overflow-wrap: anywhere;
+}
+
+/* One line: a project title is a short name, and the long mention title beside it is the cell
+   that should give way (it wraps) — not "Metal Pipe / Mace". */
+.admin-mentions-project {
+  color: var(--chalk);
+  font-size: var(--text-ui);
+  white-space: nowrap;
+}
+
+.admin-mentions-views {
+  color: var(--mute);
+  font-size: var(--text-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A hidden row steps back (artboard 04): title and project drop to --mute. */
+.admin-mentions-mention[data-status='hidden'] .admin-mentions-title,
+.admin-mentions-project[data-status='hidden'] {
+  color: var(--mute);
+}
+
+/* Worded row buttons, right-aligned, never wrapping mid-pair out of the cell. */
+.admin-mentions-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
+.admin-mentions-order-help {
+  margin: 0;
+  color: var(--mute-dim);
+  font-size: var(--text-label);
+}
+
+.admin-mentions-order {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.admin-mentions-order-title {
+  color: var(--chalk);
+  font-size: var(--text-ui);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}

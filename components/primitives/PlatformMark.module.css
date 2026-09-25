@@ -1,5 +1,6 @@
 /* PlatformMark — DESIGN.md §4 third-party marks ("official logos at official colours inside a
-   neutral slab"); 03 §2.2 `PlatformMark`. Placeholder marks until the official assets land (Q44). */
+   neutral slab"); 03 §2.2 `PlatformMark` (tokens --plugin-wash --font-display). Placeholder marks
+   until the official assets land (Q44). */
 .platform-mark {
   display: inline-flex;
   align-items: center;
@@ -26,4 +27,25 @@
 
 .platform-mark-logo {
   display: block;
+}
+
+/* `article` / `other` (S1.8): the `external` glyph in the placeholder marks' own stroke colour. */
+.platform-mark-slab[data-kind='glyph'] {
+  color: var(--mute);
+}
+
+/* `odsens` (S1.8): the ODSENS wordmark chip — same slab, as tall as `size`, as wide as the word.
+   Bungee 16px: DESIGN.md §2 keeps Bungee at 16px or more outside button / filter labels (the
+   16px member of the type scale is --text-body-phone). Chalk on --plugin-wash, the neutral-pill
+   pairing (§12.7 StatusPill fills). */
+.platform-mark-slab[data-kind='wordmark'] {
+  width: auto;
+  padding: 0 var(--space-8);
+  font-family: var(--font-display);
+  font-size: var(--text-body-phone);
+  font-weight: 400;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--chalk);
 }

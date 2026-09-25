@@ -1,0 +1,50 @@
+/* /seen-on — DESIGN.md §12.2 Seen on page, §3 page gutters (24 phone / 40 desktop, max content
+   1280), §6 breakpoints; pass-3 "Seen on page desktop" (tiles 3-across, gap 20); 02 §2.6. The
+   filter bar and the grid live in SeenOnGrid.module.css — this file is the page shell, the title
+   and the stat-tile row (§11.1: grid placement is the parent's duty). */
+.seen-on {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  max-width: var(--measure-page);
+  margin: 0 auto;
+  padding: var(--space-40);
+}
+
+.seen-on-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-page-title);
+  font-weight: 400;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--white);
+}
+
+.seen-on-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-20);
+}
+
+/* Phones: 2-up (§11.1 "2x2 phone"); with three tiles the last one takes the full row instead of
+   leaving a hole beside it. */
+@media (max-width: 599px) {
+  .seen-on {
+    gap: var(--space-16);
+    padding: var(--space-24) var(--space-24) var(--space-40);
+  }
+
+  .seen-on-title {
+    font-size: var(--text-page-title-phone);
+  }
+
+  .seen-on-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-16);
+  }
+
+  .seen-on-tiles > :last-child {
+    grid-column: 1 / -1;
+  }
+}

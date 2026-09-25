@@ -22,13 +22,25 @@ import styles from './ReorderableList.module.css';
  * restores. Every move announces "Moved <title> to position N of M" in an `aria-live="polite"`
  * region. Pointer drag reorders live and commits once on drop.
  *
+ * Move up / Move down (S1.8 — 00 S1.8 risk note "provide move up/down buttons too"; ADR-0045):
+ * every row also ends with two VISIBLE 44px buttons, so the order never depends on a drag or on
+ * knowing the handle's arrow keys. One press = one step = one `onReorder` (the arrow-key path).
+ * Glyph: `Icon name="chevron-down"`, turned over in CSS for "up" (the 03 `Icon` name list is
+ * frozen and has no up chevron). Names: "Move up <title>" / "Move down <title>" — worded so
+ * neither contains the handle's "Move <title>" (role-name lookups match substrings). The first
+ * row's Up and the last row's Down are `aria-disabled="true"`, NOT natively disabled: a focused
+ * button that turns `disabled` drops keyboard focus to `<body>` — which is exactly what would
+ * happen the moment a row reaches an end; pressing one is a no-op. Additive (03 C-03) — no prop
+ * changed; `/admin/projects` gets the buttons too.
+ *
  * `onReorder(ids)` fires ONCE per completed reorder — the parent calls `curateProject` once with
  * the batch shape `{ reorder: [{ project_id, featured_order }] }` (one call, one revalidate —
  * ADR-0002 A11). No data fetching here (01 INV-09); rows arrive as `node` props.
  *
  * `title` per item feeds the handle label + announcements (03 a11y: "Move <title>"; falls back
- * to the id). `disabled` renders every handle disabled + `title="Admin only"` for moderators —
- * never hidden (03 §2.10 admin-only controls rule, 02 §1.3).
+ * to the id). `disabled` renders every handle AND both move buttons disabled (`disabled` +
+ * `aria-disabled="true"`) + `title="Admin only"` for moderators — never hidden (03 §2.10
+ * admin-only controls rule, 02 §1.3).
  */
 export type ReorderableItem = {
   id: string;
@@ -43,7 +55,10 @@ export type ReorderableListProps = {
   onReorder: (ids: string[]) => void;
   /** Names the list (e.g. "Featured projects"). */
   label: string;
-  /** Moderator view: handles render disabled + `title="Admin only"` (03 §2.10), never hidden. */
+  /**
+   * Moderator view: handles and move buttons render disabled + `title="Admin only"` (03 §2.10),
+   * never hidden.
+   */
   disabled?: boolean;
 };
 
@@ -118,6 +133,25 @@ export function ReorderableList({
       beforeGrab.current = order;
       commit(next);
     }
+  }
+
+  /**
+   * Move up / Move down button: always its own completed reorder. If a keyboard grab is open
+   * (Space on a handle, then a press here), the press settles it too — ONE `onReorder` carries
+   * whatever is on screen plus this step, measured against the order before the grab.
+   */
+  function nudge(id: string, delta: -1 | 1): void {
+    if (disabled) return;
+    const next = moveId(order, id, delta);
+    const before = beforeGrab.current ?? order;
+    beforeGrab.current = null;
+    dragging.current = false;
+    if (grabbed !== null) setGrabbed(null);
+    if (next !== order) {
+      applyOrder(next);
+      announceMove(id, next);
+    }
+    if (before.join(' ') !== next.join(' ')) onReorder(next);
   }
 
   function handleKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>, id: string): void {
@@ -205,9 +239,11 @@ export function ReorderableList({
   return (
     <div className={styles['reorderable-list']}>
       <ol className={styles['reorderable-list-rows']} aria-label={label}>
-        {order.map((id) => {
+        {order.map((id, index) => {
           const item = byId.get(id);
           if (!item) return null;
+          const atTop = index === 0;
+          const atBottom = index === order.length - 1;
           return (
             <li
               key={id}
@@ -234,6 +270,32 @@ export function ReorderableList({
                 <Icon name="drag" size={20} />
               </button>
               <div className={styles['reorderable-list-node']}>{item.node}</div>
+              <span className={styles['reorderable-list-steps']}>
+                <button
+                  type="button"
+                  className={styles['reorderable-list-step']}
+                  data-direction="up"
+                  aria-label={`Move up ${titleOf(id)}`}
+                  disabled={disabled}
+                  aria-disabled={disabled || atTop ? 'true' : undefined}
+                  title={disabled ? ADMIN_ONLY_TITLE : undefined}
+                  onClick={() => nudge(id, -1)}
+                >
+                  <Icon name="chevron-down" size={20} />
+                </button>
+                <button
+                  type="button"
+                  className={styles['reorderable-list-step']}
+                  data-direction="down"
+                  aria-label={`Move down ${titleOf(id)}`}
+                  disabled={disabled}
+                  aria-disabled={disabled || atBottom ? 'true' : undefined}
+                  title={disabled ? ADMIN_ONLY_TITLE : undefined}
+                  onClick={() => nudge(id, 1)}
+                >
+                  <Icon name="chevron-down" size={20} />
+                </button>
+              </span>
             </li>
           );
         })}

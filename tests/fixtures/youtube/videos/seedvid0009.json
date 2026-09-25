@@ -1,0 +1,60 @@
+{
+  "kind": "youtube#videoListResponse",
+  "etag": "etag-videos-seedvid0009",
+  "items": [
+    {
+      "kind": "youtube#video",
+      "etag": "etag-seedvid0009",
+      "id": "seedvid0009",
+      "snippet": {
+        "publishedAt": "2026-07-04T15:00:00Z",
+        "channelId": "UCfixturecreator000000001",
+        "title": "I tried the Metal Pipe Mace in hardcore",
+        "description": "One life, one pipe. It went about as well as you would expect.",
+        "thumbnails": {
+          "default": {
+            "url": "https://i.ytimg.com/vi/seedvid0009/default.jpg",
+            "width": 120,
+            "height": 90
+          },
+          "medium": {
+            "url": "https://i.ytimg.com/vi/seedvid0009/mqdefault.jpg",
+            "width": 320,
+            "height": 180
+          },
+          "high": {
+            "url": "https://i.ytimg.com/vi/seedvid0009/hqdefault.jpg",
+            "width": 480,
+            "height": 360
+          }
+        },
+        "channelTitle": "Fixture Creator",
+        "categoryId": "20",
+        "liveBroadcastContent": "none",
+        "localized": {
+          "title": "I tried the Metal Pipe Mace in hardcore",
+          "description": "One life, one pipe. It went about as well as you would expect."
+        }
+      },
+      "contentDetails": {
+        "duration": "PT14M2S",
+        "dimension": "2d",
+        "definition": "hd",
+        "caption": "false",
+        "licensedContent": false,
+        "contentRating": {},
+        "projection": "rectangular"
+      },
+      "statistics": {
+        "viewCount": "48213",
+        "likeCount": "1904",
+        "favoriteCount": "0",
+        "commentCount": "212"
+      }
+    }
+  ],
+  "pageInfo": {
+    "totalResults": 1,
+    "resultsPerPage": 1
+  }
+}

@@ -1,10 +1,12 @@
 /**
- * lib/adapters/http.ts — `fetchJson` / `fetchText` + `AdapterError`, the one HTTP path for every
- * adapter (04 SC-09 / SC-10; §4 adapter rules A1–A5; 05 T-ADP-1; registry Adapters: `http`
- * (`fetchJson`, `fetchText`); ADR-0030 D6 — `method` / `body` for the S1.5 POST adapters;
- * ADR-0043 D3 — `fetchText`, the same loop for a non-JSON body: the YouTube RSS feed is Atom XML).
+ * lib/adapters/http.ts — `fetchJson` / `fetchText` / `fetchPage` + `AdapterError`, the one HTTP path
+ * for every adapter (04 SC-09 / SC-10; §4 adapter rules A1–A5; 05 T-ADP-1; registry Adapters: `http`
+ * (`fetchJson`, `fetchText`, `fetchPage`); ADR-0030 D6 — `method` / `body` for the S1.5 POST
+ * adapters; ADR-0043 D3 — `fetchText`, the same loop for a non-JSON body: the YouTube RSS feed is
+ * Atom XML; ADR-0045 — `fetchPage`, the same loop for a page somebody else chose: the S1.8 Open
+ * Graph read, 04 §4.4).
  *
- * Both exports run ONE request loop (`requestBody`) — everything below holds for either:
+ * All three exports run ONE request loop (`requestBody`) — everything below holds for each:
  *
  * - `AbortSignal.timeout(10000)` on every attempt (10 s — SC-09).
  * - Retries HTTP 429/5xx and network errors with backoff 1 s → 2 s → 4 s, honouring `Retry-After` /
@@ -20,9 +22,22 @@
  * - `fetchText` (ADR-0043 D3): GET only; resolves to the 2xx body verbatim (an empty body is `''`)
  *   and NEVER looks at the response `Content-Type` — the caller owns the parse and its
  *   `parse_error` (the e2e fixture paths and `spyFetch` serve `rss.xml` with a JSON content type).
+ * - `fetchPage` (ADR-0045): GET only, for a URL the adapter does not own (`lib/adapters/oembed.ts`).
+ *   Resolves to `{status, location, contentType, text}` instead of a bare string, and is where three
+ *   OPT-IN guards live — each is off unless the caller sets it, so `fetchJson` / `fetchText` calls
+ *   send the same request and read the body the same way as before:
+ *   `redirect: 'manual'` — a 301/302/303/307/308 is RETURNED (status + raw `Location`, body
+ *   discarded) and never followed, so the caller can re-check every hop (the default transport
+ *   follows up to 20 hops on its own); `contentTypes` — a 2xx whose media type is not listed throws
+ *   `unsupported` with the body unread; `maxBytes` — a `Content-Length` over the cap throws
+ *   `unsupported` before the read, otherwise the body is streamed and cut off the moment the DECODED
+ *   byte count passes the cap (the transport hands over decompressed bytes, so a compressed bomb is
+ *   bounded too). `unsupported` is thrown, never retried. `fetchText` given `redirect: 'manual'`
+ *   reports the redirect as an `http_error` — it has no way to return one.
  * - Every request carries `User-Agent` = the caller's `ua` (= `env.MODRINTH_USER_AGENT`, SC-10 —
  *   also sent to CurseForge/YouTube/OG/Resend/Discord fetches) and an `Accept` header:
- *   `application/json` from `fetchJson`, the caller's `accept` (default any type) from `fetchText`.
+ *   `application/json` from `fetchJson`, the caller's `accept` (default any type) from `fetchText`
+ *   and `fetchPage`.
  * - `fetch` is injectable: factories pass theirs down (SC-25) and unit tests use `mockFetch` (05 H-5).
  *   `onResponse` lets the Modrinth adapter watch quota headers (04 §4.1) and the Discord adapter read
  *   the final status without a second HTTP path.
@@ -41,6 +56,8 @@ const BACKOFF_MS = [1_000, 2_000, 4_000] as const;
 const MAX_DELAY_MS = 30_000;
 /** A4: raw upstream error bodies are truncated before storage/logging. */
 const BODY_LIMIT = 300;
+/** The statuses `redirect: 'manual'` hands back; any other 3xx (300, 304, 305) stays an `http_error`. */
+const REDIRECT_STATUSES: ReadonlySet<number> = new Set([301, 302, 303, 307, 308]);
 
 /**
  * Failure taxonomy across adapters: `http_error`/`network_error`/`parse_error` from this module;
@@ -92,12 +109,36 @@ export type FetchJsonOptions = {
 };
 
 /**
- * `fetchText` options (ADR-0043 D3): the SC-09 knobs of `fetchJson` without `method` / `body` — a
- * text read is always a GET.
+ * `fetchText` / `fetchPage` options (ADR-0043 D3): the SC-09 knobs of `fetchJson` without `method` /
+ * `body` — a text read is always a GET. The last three are the opt-in `fetchPage` guards
+ * (ADR-0045); left unset, nothing about the request or the read changes.
  */
 export type FetchTextOptions = Omit<FetchJsonOptions, 'method' | 'body'> & {
   /** `Accept` request header. Defaults to any type — the body is returned verbatim either way. */
   accept?: string;
+  /**
+   * `'manual'` → a 301/302/303/307/308 is RETURNED (`status` + `location`), never followed.
+   * Default: the transport follows redirects (unchanged).
+   */
+  redirect?: 'follow' | 'manual';
+  /** Stop after this many DECODED body bytes → `AdapterError 'unsupported'`. Default: unbounded (unchanged). */
+  maxBytes?: number;
+  /**
+   * Lower-case media types a 2xx may carry (`text/html`). Anything else — a missing header
+   * included — → `AdapterError 'unsupported'` with the body NOT read. Default: not checked (unchanged).
+   */
+  contentTypes?: readonly string[];
+};
+
+/** `fetchPage` result. `status` is 2xx, or a redirect status when `redirect: 'manual'`. */
+export type FetchedPage = {
+  status: number;
+  /** Raw `Location` header of a manual redirect (may be relative, may be absent); `null` on a 2xx. */
+  location: string | null;
+  /** Lower-cased media type without parameters (`text/html`); `null` when absent or on a redirect. */
+  contentType: string | null;
+  /** The 2xx body (`''` on a redirect or an empty body). */
+  text: string;
 };
 
 /** `setTimeout` promise — fake-timer friendly; shared with the adapters' quota waits. */
@@ -144,18 +185,83 @@ function headerDelayMs(response: Response): number | null {
   return delay;
 }
 
-/** What the shared loop hands back on a 2xx: the raw body plus the pieces a parse error names. */
-type ReceivedBody = { status: number; text: string; label: string };
+/**
+ * What the shared loop hands back: the raw body plus the pieces a parse error names. `status` is
+ * 2xx, or a redirect status under `redirect: 'manual'`. `headers` is the response's own object,
+ * passed along untouched — only `fetchPage` reads it.
+ */
+type ReceivedBody = { status: number; text: string; label: string; headers: Headers };
+
+/** Everything the loop understands: the `fetchJson` options plus the opt-in `fetchPage` guards. */
+type RequestOptions = FetchJsonOptions &
+  Pick<FetchTextOptions, 'redirect' | 'maxBytes' | 'contentTypes'>;
+
+/** Lower-cased media type without parameters (`Text/HTML; charset=utf-8` → `text/html`), or `null`. */
+function mediaType(headers: Headers): string | null {
+  const type = (headers.get('content-type') ?? '').split(';')[0]?.trim().toLowerCase();
+  return type === undefined || type === '' ? null : type;
+}
+
+/** Lets go of a body nobody will read, so the connection is released; never throws. */
+async function discardBody(response: Response): Promise<void> {
+  await response.body?.cancel().catch(() => undefined);
+}
 
 /**
- * The one SC-09 request loop behind `fetchJson` and `fetchText` (ADR-0043 D3): timeout per attempt,
- * retry/backoff, `Retry-After` / `X-Ratelimit-Reset`, SC-10 User-Agent, `onResponse`, redaction.
- * Resolves with the 2xx body as text — never inspects the response `Content-Type`; throws
- * `AdapterError` on the final failure.
+ * `maxBytes` read: refuses a declared `Content-Length` over the cap before reading, otherwise
+ * streams the body and stops the moment the decoded byte count passes the cap → `unsupported`.
+ * UTF-8, like `Response#text()`. A read that dies half-way (timeout, reset) is a typed
+ * `network_error`, so a caller that maps `AdapterError` never sees a bare stream error.
+ */
+async function readCapped(response: Response, maxBytes: number, label: string): Promise<string> {
+  const tooLarge = (): AdapterError =>
+    new AdapterError(`${label} → unsupported (body over ${String(maxBytes)} bytes)`, {
+      status: response.status,
+      code: 'unsupported',
+      body: '',
+    });
+  const declared = Number(response.headers.get('content-length') ?? '');
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    await discardBody(response);
+    throw tooLarge();
+  }
+  if (response.body === null) return '';
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = '';
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        throw tooLarge();
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+  } catch (error) {
+    if (error instanceof AdapterError) throw error;
+    throw new AdapterError(`${label} → network_error (${redactSecrets(String(error))})`, {
+      status: 0,
+      code: 'network_error',
+      body: '',
+    });
+  }
+  return text + decoder.decode();
+}
+
+/**
+ * The one SC-09 request loop behind `fetchJson`, `fetchText` and `fetchPage` (ADR-0043 D3): timeout
+ * per attempt, retry/backoff, `Retry-After` / `X-Ratelimit-Reset`, SC-10 User-Agent, `onResponse`,
+ * redaction. Resolves with the 2xx body as text and — unless the caller opted into `contentTypes` —
+ * never inspects the response `Content-Type`; throws `AdapterError` on the final failure.
  */
 async function requestBody(
   url: string,
-  options: FetchJsonOptions,
+  options: RequestOptions,
   accept: string,
 ): Promise<ReceivedBody> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -163,6 +269,7 @@ async function requestBody(
   const retryOn = options.retryOn ?? defaultRetryOn;
   const method: FetchJsonMethod = options.method ?? 'GET';
   const fetchImpl = options.fetch ?? globalThis.fetch;
+  const manualRedirect = options.redirect === 'manual';
   const safeUrl = redactSecrets(url);
   const label = `${method} ${safeUrl}`;
 
@@ -183,6 +290,8 @@ async function requestBody(
         method,
         headers,
         ...(encodedBody !== undefined ? { body: encodedBody } : {}),
+        // Only ever set when asked for — every other call's init object is what it always was.
+        ...(manualRedirect ? { redirect: 'manual' as const } : {}),
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
@@ -201,7 +310,33 @@ async function requestBody(
 
     options.onResponse?.(response);
 
-    if (response.ok) return { status: response.status, text: await response.text(), label };
+    const { status, headers: responseHeaders } = response;
+
+    // `redirect: 'manual'` — hand the hop back unfollowed; its body is never read.
+    if (manualRedirect && REDIRECT_STATUSES.has(status)) {
+      await discardBody(response);
+      return { status, text: '', label, headers: responseHeaders };
+    }
+
+    if (response.ok) {
+      if (options.contentTypes !== undefined) {
+        const type = mediaType(responseHeaders);
+        if (type === null || !options.contentTypes.includes(type)) {
+          await discardBody(response);
+          // Thrown, not assigned to `lastError`: a wrong media type is never retried.
+          throw new AdapterError(`${label} → unsupported (content type)`, {
+            status,
+            code: 'unsupported',
+            body: '',
+          });
+        }
+      }
+      const text =
+        options.maxBytes === undefined
+          ? await response.text()
+          : await readCapped(response, options.maxBytes, label);
+      return { status, text, label, headers: responseHeaders };
+    }
 
     // Redacted BEFORE truncation: an upstream that echoes the request URL never leaks a key tail.
     const body = redactSecrets(await response.text().catch(() => '')).slice(0, BODY_LIMIT);
@@ -255,6 +390,43 @@ export async function fetchJson<T = unknown>(url: string, options: FetchJsonOpti
  */
 export async function fetchText(url: string, options: FetchTextOptions): Promise<string> {
   const { accept, ...rest } = options;
-  const { text } = await requestBody(url, { ...rest, method: 'GET' }, accept ?? '*/*');
+  const { status, text, label } = await requestBody(
+    url,
+    { ...rest, method: 'GET' },
+    accept ?? '*/*',
+  );
+  // Only reachable under `redirect: 'manual'`: a string cannot carry a redirect, and `''` would
+  // read as an empty page — so it is the `http_error` any other non-2xx is.
+  if (status >= 300) {
+    throw new AdapterError(`${label} → ${String(status)}`, {
+      status,
+      code: 'http_error',
+      body: '',
+    });
+  }
   return text;
+}
+
+/**
+ * The SC-09 HTTP call for a page the adapter does not own (ADR-0045 — the Open Graph read of
+ * `lib/adapters/oembed.ts`, 04 §4.4). GET only, the same loop as `fetchJson` / `fetchText`; resolves
+ * with the status, the media type and the body, and — under `redirect: 'manual'` — with a redirect's
+ * status and raw `Location` instead of following it. `maxBytes` / `contentTypes` refuse a body that
+ * is too large or of the wrong kind with a typed `unsupported` (see `FetchTextOptions`). The SSRF
+ * rules are NOT here: the caller checks the URL before this call and every `location` after it.
+ */
+export async function fetchPage(url: string, options: FetchTextOptions): Promise<FetchedPage> {
+  const { accept, ...rest } = options;
+  const { status, text, headers } = await requestBody(
+    url,
+    { ...rest, method: 'GET' },
+    accept ?? '*/*',
+  );
+  const redirected = status >= 300;
+  return {
+    status,
+    location: redirected ? headers.get('location') : null,
+    contentType: redirected ? null : mediaType(headers),
+    text,
+  };
 }

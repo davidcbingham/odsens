@@ -2,7 +2,9 @@
  * tests/db/actions/_meta.test.ts — T-ACT-0 (05 §7.2) for every S1.1 action exported from
  * lib/actions/accounts.ts (`checkHandle`, `completeOnboarding`, `updateProfile`, `deleteAccount`) and,
  * since S1.4, the eight comment actions of lib/actions/comments.ts; S1.5 the three settings actions;
- * S1.6 `updateVideo` (lib/actions/videos.ts — 04 §1.8; its DB-fault arms live in updateVideo.test.ts).
+ * S1.6 `updateVideo` (lib/actions/videos.ts — 04 §1.8; its DB-fault arms live in updateVideo.test.ts);
+ * S1.8 the three mention actions of lib/actions/mentions.ts (`fetchMentionPreview`, `createMention`,
+ * `updateMention` — 04 §1.6; their DB-fault arms live in the three per-action files).
  *
  * (1) result shape + never throws: `@/lib/supabase/admin` is mocked to THROW in this file (a switch —
  *     see `adminMode`), so the first service-role touch inside each action (the rate limiter / the
@@ -13,11 +15,12 @@
  *     `issues[]` (not `unauthenticated`), and `fetch` is never called.
  * (3) role re-check: the S1.4 `requireRole` actions (`moderateComment`, `banUser`, `renameUserHandle`,
  *     the moderator path of `deleteComment`) and the S1.5 settings actions (`updateSettings`,
- *     `testDiscordWebhook`, `setUserRole` — lib/actions/settings.ts, admin-only) and S1.6's
- *     `updateVideo` (lib/actions/videos.ts, admin-only) called as `user` WITH
+ *     `testDiscordWebhook`, `setUserRole` — lib/actions/settings.ts, admin-only), S1.6's
+ *     `updateVideo` (lib/actions/videos.ts, admin-only) and S1.8's three mention actions
+ *     (lib/actions/mentions.ts, admin-only — ADR-0002 C7) called as `user` WITH
  *     the admin client mocked to succeed (the switch flipped to the real client) still answer
  *     `forbidden`; accounts.ts has no `requireRole` (S1.1), and every `requireRole` call site in
- *     comments.ts / settings.ts / videos.ts has its SC-24 `logAdmin` twin.
+ *     comments.ts / settings.ts / videos.ts / mentions.ts has its SC-24 `logAdmin` twin.
  * (4) every `error.code` asserted across tests/db/{actions,routes,proxy} is a member of the 04 §7 union.
  */
 import fs from 'node:fs';
@@ -38,6 +41,12 @@ import type {
   RenameUserHandleInput,
   ReportCommentInput,
 } from '@/lib/actions/comments.schema';
+import * as mentions from '@/lib/actions/mentions';
+import type {
+  CreateMentionInput,
+  FetchMentionPreviewInput,
+  UpdateMentionInput,
+} from '@/lib/actions/mentions.schema';
 import type { ActionResult } from '@/lib/actions/result';
 import { INTERNAL_MESSAGE, VALIDATION_MESSAGE } from '@/lib/actions/run';
 import * as settings from '@/lib/actions/settings';
@@ -56,10 +65,17 @@ import { REPO_ROOT } from '@/tests/helpers/envTest';
 import {
   cleanupFactories,
   makeComment,
+  makeMention,
   makeUser,
   restoreSeedCommentCounts,
 } from '@/tests/helpers/factories';
-import { SEED_COMMENTS, SEED_PROJECTS, SEED_USERS, SEED_VIDEOS } from '@/tests/helpers/seedIds';
+import {
+  SEED_COMMENTS,
+  SEED_MENTIONS,
+  SEED_PROJECTS,
+  SEED_USERS,
+  SEED_VIDEOS,
+} from '@/tests/helpers/seedIds';
 import { spyLog, type LogSpy } from '@/tests/helpers/spies';
 
 /** `throw` = the DB-outage fault injection of (1); `real` = the working service client for (3). */
@@ -111,6 +127,43 @@ async function readSeedVideo(): Promise<unknown> {
   return data;
 }
 const SEED_VIDEO_TRUTH = { hidden: false, is_short: false, is_short_override: null };
+
+const { createMention, fetchMentionPreview, updateMention } = mentions;
+
+const S18_MENTION_ACTIONS = ['createMention', 'fetchMentionPreview', 'updateMention'] as const;
+
+/** A link no case below ever gets to resolve, request or store (validation, auth or the outage stop it first). */
+const MENTION_LINK = 'https://example.test/t_meta-mention';
+const MENTION_INPUT: CreateMentionInput = {
+  url: MENTION_LINK,
+  project_id: null,
+  platform: 'article',
+  title: 't_ T-ACT-0 mention',
+  creator_name: 't_ meta',
+  status: 'published',
+  featured: true,
+};
+
+/** SEED-10 `…0301` — published, featured, first on the Home strip; every case must leave it so (05 H-1). */
+async function readSeedMention(): Promise<unknown> {
+  const { data } = await service
+    .from('mentions')
+    .select('status, featured, sort_order, project_id')
+    .eq('id', SEED_MENTIONS.youtube)
+    .single();
+  return data;
+}
+const SEED_MENTION_TRUTH = {
+  status: 'published',
+  featured: true,
+  sort_order: 1,
+  project_id: SEED_PROJECTS.metalPipeMace,
+};
+
+async function mentionsAt(url: string): Promise<unknown> {
+  const { data } = await service.from('mentions').select('id').eq('url', url);
+  return data;
+}
 
 /** A well-formed webhook URL — no request ever leaves in this file (auth or the outage stop it first). */
 const WEBHOOK = 'https://discord.com/api/webhooks/123/t_metatoken';
@@ -354,6 +407,61 @@ describe('T-ACT-0 (1) S1.6 updateVideo returns internal on a service outage, not
   });
 });
 
+describe('T-ACT-0 (1) S1.8 mention actions return internal on a service outage, nothing written', () => {
+  afterAll(async () => {
+    await cleanupFactories();
+  });
+
+  it('T-ACT-0 fetchMentionPreview: the rate limiter needs the service client → internal, nothing resolved or requested', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    try {
+      const res = await callAction(fetchMentionPreview, { url: MENTION_LINK }, { role: 'admin' });
+      expectInternal(res, 'fetchMentionPreview');
+      // The outage stops the call before step 1: the only requests are the session check's.
+      const external = fetchSpy.mock.calls.filter(([input]) => {
+        const url = input instanceof Request ? input.url : String(input);
+        return !url.startsWith(process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'unset');
+      });
+      expect(external).toEqual([]);
+      expect(JSON.stringify(logs.lines)).not.toContain('example.test');
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it('T-ACT-0 createMention: the project read / insert needs the service client → internal, no row', async () => {
+    const res = await callAction(createMention, MENTION_INPUT, { role: 'admin' });
+    expectInternal(res, 'createMention');
+    expect(await mentionsAt(MENTION_LINK)).toEqual([]);
+  });
+
+  it('T-ACT-0 updateMention (patch form and reorder form): → internal, row untouched', async () => {
+    const id = await makeMention({
+      platform: 'article',
+      external_id: null,
+      url: `${MENTION_LINK}-${freeHandle('')}`,
+      status: 'hidden',
+      sort_order: 4,
+    });
+    expectInternal(
+      await callAction(updateMention, { id, patch: { featured: true } }, { role: 'admin' }),
+      'updateMention',
+    );
+    logs.restore();
+    logs = spyLog();
+    expectInternal(
+      await callAction(updateMention, { reorder: [{ id, sort_order: 1 }] }, { role: 'admin' }),
+      'updateMention',
+    );
+    const { data } = await service
+      .from('mentions')
+      .select('featured, sort_order')
+      .eq('id', id)
+      .single();
+    expect(data).toEqual({ featured: false, sort_order: 4 });
+  });
+});
+
 describe('T-ACT-0 (2) zod validation runs before auth and before any DB call', () => {
   const invalid: Array<{
     name: string;
@@ -562,6 +670,70 @@ describe('T-ACT-0 (2) zod validation runs before auth and before any DB call', (
         ),
       path: 'is_short',
     },
+    {
+      name: 'fetchMentionPreview: a javascript: link',
+      call: () => callAction(fetchMentionPreview, { url: 'javascript:alert(1)' }, { role: 'anon' }),
+      path: 'url',
+    },
+    {
+      name: 'fetchMentionPreview: credentials in the link',
+      call: () =>
+        callAction(
+          fetchMentionPreview,
+          { url: 'https://oliver:hunter2@example.test/' },
+          { role: 'anon' },
+        ),
+      path: 'url',
+    },
+    {
+      name: 'fetchMentionPreview: url is not a string',
+      call: () =>
+        callAction(fetchMentionPreview, { url: 7 } as unknown as FetchMentionPreviewInput, {
+          role: 'anon',
+        }),
+      path: 'url',
+    },
+    {
+      name: 'createMention: empty title',
+      call: () => callAction(createMention, { ...MENTION_INPUT, title: '' }, { role: 'anon' }),
+      path: 'title',
+    },
+    {
+      name: 'createMention: status outside draft / published',
+      call: () =>
+        callAction(
+          createMention,
+          { ...MENTION_INPUT, status: 'suggested' } as unknown as CreateMentionInput,
+          { role: 'anon' },
+        ),
+      path: 'status',
+    },
+    {
+      name: 'updateMention: neither form',
+      call: () => callAction(updateMention, {} as unknown as UpdateMentionInput, { role: 'anon' }),
+      path: '',
+    },
+    {
+      name: 'updateMention: an empty patch',
+      call: () =>
+        callAction(updateMention, { id: SEED_MENTIONS.youtube, patch: {} }, { role: 'anon' }),
+      path: 'patch',
+    },
+    {
+      name: 'updateMention: reorder lists a mention twice',
+      call: () =>
+        callAction(
+          updateMention,
+          {
+            reorder: [
+              { id: SEED_MENTIONS.youtube, sort_order: 1 },
+              { id: SEED_MENTIONS.youtube, sort_order: 2 },
+            ],
+          },
+          { role: 'anon' },
+        ),
+      path: 'reorder.1.id',
+    },
   ];
 
   it.each(invalid)('T-ACT-0 $name → validation, no network call', async ({ call, path: p }) => {
@@ -628,6 +800,17 @@ describe('T-ACT-0 (3) role re-check', () => {
     expect(auditCalls.sort()).toEqual([...S16_VIDEO_ACTIONS]);
   });
 
+  it('T-ACT-0 S1.8 lib/actions/mentions.ts exports exactly the three mention actions; every requireRole call site has its SC-24 logAdmin twin', () => {
+    expect(Object.keys(mentions).sort()).toEqual([...S18_MENTION_ACTIONS]);
+    const source = fs.readFileSync(path.join(REPO_ROOT, 'lib', 'actions', 'mentions.ts'), 'utf8');
+    const requireRoleCalls = source.match(/await requireRole\('admin'\)/g) ?? [];
+    const auditCalls = [...source.matchAll(/logAdmin\(\s*'(\w+)'/g)].map((m) => m[1] ?? '');
+    expect(requireRoleCalls).toHaveLength(3);
+    expect(source.includes("requireRole('moderator')")).toBe(false);
+    // ONE call site per action — `updateMention`'s two forms share a single revalidate + audit tail.
+    expect(auditCalls.sort()).toEqual([...S18_MENTION_ACTIONS]);
+  });
+
   describe('T-ACT-0 requireRole actions as `user` with the admin client mocked to SUCCEED → forbidden', () => {
     beforeEach(() => {
       adminMode.mode = 'real';
@@ -688,6 +871,32 @@ describe('T-ACT-0 (3) role re-check', () => {
         call: () =>
           callAction(updateVideo, { youtube_id: SEED_VIDEO, hidden: true }, { role: 'user' }),
       },
+      {
+        name: 'fetchMentionPreview',
+        call: () => callAction(fetchMentionPreview, { url: MENTION_LINK }, { role: 'user' }),
+      },
+      {
+        name: 'createMention',
+        call: () => callAction(createMention, MENTION_INPUT, { role: 'user' }),
+      },
+      {
+        name: 'updateMention (patch form)',
+        call: () =>
+          callAction(
+            updateMention,
+            { id: SEED_MENTIONS.youtube, patch: { featured: false, status: 'hidden' } },
+            { role: 'user' },
+          ),
+      },
+      {
+        name: 'updateMention (reorder form)',
+        call: () =>
+          callAction(
+            updateMention,
+            { reorder: [{ id: SEED_MENTIONS.youtube, sort_order: 9 }] },
+            { role: 'user' },
+          ),
+      },
     ];
 
     it.each(roleChecks)('T-ACT-0 $name → forbidden', async ({ call }) => {
@@ -713,6 +922,8 @@ describe('T-ACT-0 (3) role re-check', () => {
         .single();
       expect(row?.moderation_mode).toBe('auto');
       expect(await readSeedVideo()).toEqual(SEED_VIDEO_TRUTH);
+      expect(await readSeedMention()).toEqual(SEED_MENTION_TRUTH);
+      expect(await mentionsAt(MENTION_LINK)).toEqual([]);
     });
   });
 });

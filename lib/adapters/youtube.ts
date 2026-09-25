@@ -1,7 +1,8 @@
 /**
  * lib/adapters/youtube.ts — `createYoutube` (04 §4.3 export list verbatim; §3.3 what `syncYoutube`
- * asks for; §5.3 Shorts heuristic; 04 SC-09/SC-10/SC-16/SC-25; 01 INV-26/INV-78/INV-83;
- * 05 T-ADP-9..15, T-UNIT-29, T-ADP-20; ADR-0043 D2/D3).
+ * asks for; §3.4 what `refreshMentions` asks for; §5.3 Shorts heuristic; §5.4 steps 2–3;
+ * 04 SC-09/SC-10/SC-16/SC-25; 01 INV-26/INV-78/INV-83; 05 T-ADP-9..15, T-UNIT-29, T-ADP-20;
+ * ADR-0043 D2/D3; ADR-0045 — `listVideoStats`, `getVideoMeta`, `OEMBED_BASE`).
  *
  * Pure I/O + mapping, no DB access (04 §4 A1–A3). Factory `createYoutube({fetch, env})` — env is an
  * argument (the caller passes `lib/env.ts`'s `env`); this module reads no environment of its own
@@ -9,13 +10,15 @@
  * - Construction requires `MODRINTH_USER_AGENT` (SC-10: the same UA goes to YouTube) and
  *   `YOUTUBE_CHANNEL_ID` (SC-16 boot-required; every `channelId` parameter defaults to it).
  *   `YOUTUBE_API_KEY` is OPTIONAL: without it the adapter still constructs and `fetchRss` / `oembed`
- *   work (04 §3.3 RSS-only degraded run, 05 T-ACT-71), while `listVideos` / `listUploads` /
- *   `channelStats` throw `AdapterError 'unsupported'` with NO request — callers read `hasKey` (or
- *   the env) first.
+ *   work (04 §3.3 RSS-only degraded run, 05 T-ACT-71), while `listVideos` / `listVideoStats` /
+ *   `getVideoMeta` / `listUploads` / `channelStats` throw `AdapterError 'unsupported'` with NO
+ *   request — callers read `hasKey` (or the env) first.
  * - Two upstreams: the keyless Atom feed `https://www.youtube.com/feeds/videos.xml` (newest 15
  *   uploads, 0 quota units) and the Data API `https://www.googleapis.com/youtube/v3` with
  *   `key=<YOUTUBE_API_KEY>` as a query param. `YOUTUBE_RSS_BASE` / `YOUTUBE_API_BASE` override them
- *   in tests only (ADR-0002 #73).
+ *   in tests only (ADR-0002 #73); `OEMBED_BASE` does the same for the keyless oEmbed endpoint
+ *   (ADR-0045) — an adapter-owned constant is swapped, the caller's URL only ever travels as an
+ *   encoded query value. It is NOT read by `lib/adapters/oembed.ts`, which has no override at all.
  * - Every call goes through `lib/adapters/http.ts` (SC-09: 10 s timeout, retry ≤ 3 with backoff):
  *   JSON through `fetchJson`, the feed through `fetchText` (ADR-0043 D3). The feed is parsed by the
  *   hand-rolled Atom reader `parseRss` below — no XML dependency (01 INV-78); it never looks at the
@@ -26,8 +29,14 @@
  * - `listVideos(ids)` returns `MappedVideo[]` with live/upcoming items
  *   (`snippet.liveBroadcastContent !== 'none'`) already dropped (ADR-0002 #77; ADR-0043 D2) — an id
  *   that does not come back mapped is simply not in the list (deleted, private, live, upcoming).
+ * - `listVideoStats(ids)` (04 §3.4, ADR-0045) is the lean sibling: `part=statistics` only, ids that
+ *   are not 11 url-safe chars never sent, live / upcoming items KEPT (a view count is a view count),
+ *   a hidden count → `view_count: null`. `getVideoMeta(id)` (04 §5.4 step 3, ADR-0045) asks
+ *   `part=snippet,statistics` for ONE id and answers only for the item whose `id` IS that id — never
+ *   "the first item" — else `null`. Neither touches `MappedVideo` / `mapVideo` (05 T-ADP-12 pins them).
  * - `unitsUsed` counts Data-API list requests issued by THIS instance (jobs build one adapter per
- *   run — SC-25): +1 per `videos` / `playlistItems` / `channels` request, RSS and oEmbed are free;
+ *   run — SC-25): +1 per `videos` / `playlistItems` / `channels` request (whichever method made
+ *   it), RSS and oEmbed are free;
  *   SC-09 retries of one request are not counted again (00 S1.6 AC9, 05 T-ADP-13).
  * - `oembed` / `videoIdFromUrl` are consumed from S1.8 (`fetchMentionPreview`, 04 §5.4); they live
  *   here because 04 §4.3 lists them on this adapter.
@@ -58,6 +67,18 @@ const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 
 /** 04 §5.3 tag rule — `#shorts` as its own token, any case, in `title + ' ' + description`. */
 const SHORTS_TAG_RE = /\B#shorts\b/i;
+
+/**
+ * A `snippet.channelId` that may be written into a URL (`getVideoMeta`): url-safe chars only. Real
+ * ids are `UC` + 22; the fixtures' are a little longer, hence the range.
+ */
+const CHANNEL_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** The one thumbnail host 01 INV-54 / the CSP allow (`i.ytimg.com`). */
+const YTIMG_PREFIX = 'https://i.ytimg.com/';
+
+/** 04 §5.4 step 3: a creator link built from `snippet.channelId`. */
+const CHANNEL_URL_PREFIX = 'https://www.youtube.com/channel/';
 
 /** 04 §5.3: a video of at most this many seconds is a Short. */
 const SHORT_MAX_SECONDS = 60;
@@ -90,6 +111,7 @@ const youtubeEnvSchema = z.object({
   YOUTUBE_API_KEY: z.string().min(1).optional(),
   YOUTUBE_API_BASE: z.string().optional(),
   YOUTUBE_RSS_BASE: z.string().optional(),
+  OEMBED_BASE: z.string().optional(),
 });
 
 export type YoutubeEnv = Partial<
@@ -100,6 +122,7 @@ export type YoutubeEnv = Partial<
     | 'YOUTUBE_API_KEY'
     | 'YOUTUBE_API_BASE'
     | 'YOUTUBE_RSS_BASE'
+    | 'OEMBED_BASE'
   >
 >;
 
@@ -144,6 +167,39 @@ export const youtubeVideoItemSchema = z.object({
 export type YoutubeVideoItem = z.infer<typeof youtubeVideoItemSchema>;
 
 export const videosListResponseSchema = z.object({ items: z.array(youtubeVideoItemSchema) });
+
+/**
+ * One `videos.list` item asked with `part=statistics` only (04 §3.4 — `listVideoStats`). A full item
+ * parses too (unknown keys are dropped), so the mention fixtures need no second copy.
+ */
+export const youtubeVideoStatsItemSchema = z.object({
+  id: z.string().regex(VIDEO_ID_RE),
+  statistics: z.object({ viewCount: countSchema.optional() }).optional(),
+});
+
+export const videoStatsResponseSchema = z.object({ items: z.array(youtubeVideoStatsItemSchema) });
+
+/**
+ * One `videos.list` item asked with `part=snippet,statistics` (04 §5.4 step 3 — `getVideoMeta`).
+ * Deliberately loose: an answer may carry items that were not asked for (the e2e fixture server
+ * answers a single-id request it has no file for with the whole list), and one odd stranger must not
+ * fail the read — only the item whose `id` matches is held to having a title.
+ */
+export const youtubeVideoMetaItemSchema = z.object({
+  id: z.string(),
+  snippet: z
+    .object({
+      title: z.string().optional(),
+      publishedAt: z.string().optional(),
+      channelId: z.string().optional(),
+      channelTitle: z.string().optional(),
+      thumbnails: youtubeThumbnailsSchema.optional(),
+    })
+    .optional(),
+  statistics: z.object({ viewCount: countSchema.optional() }).optional(),
+});
+
+export const videoMetaResponseSchema = z.object({ items: z.array(youtubeVideoMetaItemSchema) });
 
 export const playlistItemsResponseSchema = z.object({
   items: z.array(
@@ -207,6 +263,29 @@ export type MappedVideo = {
   /** `null` (never 0) when `statistics` — or that one count, e.g. hidden likes — is missing. */
   view_count: number | null;
   like_count: number | null;
+};
+
+/** `listVideoStats` result (04 §3.4): `view_count` is `null` — never 0 — when the creator hides it. */
+export type VideoStats = { youtube_id: string; view_count: number | null };
+
+/**
+ * `getVideoMeta` result (04 §5.4 step 3 — what `fetchMentionPreview` takes from the Data API).
+ * Creator data is the public channel name + link only (00 S1.8 AC11).
+ */
+export type VideoMeta = {
+  youtube_id: string;
+  title: string;
+  channel_title: string | null;
+  /** `snippet.channelId` when it is url-safe, else `null`. */
+  channel_id: string | null;
+  /** `https://www.youtube.com/channel/<channel_id>`, `null` without a usable id. */
+  channel_url: string | null;
+  /** Best of maxres ▸ … ▸ default that lives on `https://i.ytimg.com/` (01 INV-54), else `null`. */
+  thumbnail_url: string | null;
+  /** `Date#toISOString()` form; `null` when upstream sent none / an unparseable one. */
+  published_at: string | null;
+  /** `null` (never 0) when `statistics` or the count is missing. */
+  view_count: number | null;
 };
 
 /** `channelStats` result (05 T-ADP-13). `subs` is `null` when the channel hides its count. */
@@ -437,6 +516,7 @@ export function createYoutube({
   const parsed = youtubeEnvSchema.parse(env);
   const apiBase = parsed.YOUTUBE_API_BASE ?? YOUTUBE_API;
   const rssBase = parsed.YOUTUBE_RSS_BASE ?? YOUTUBE_RSS;
+  const oembedBase = parsed.OEMBED_BASE ?? YOUTUBE_OEMBED;
   const ua = parsed.MODRINTH_USER_AGENT;
   const defaultChannelId = parsed.YOUTUBE_CHANNEL_ID;
   const apiKey = parsed.YOUTUBE_API_KEY;
@@ -542,6 +622,73 @@ export function createYoutube({
     },
 
     /**
+     * 04 §3.4 (ADR-0045): `videos.list part=statistics` in batches of ≤ 50 ids, one unit each,
+     * strictly one after another. Ids that are not 11 url-safe chars are never sent (a mention's
+     * `external_id` can be typed by hand); duplicates are asked for once; nothing left to ask → no
+     * request. Live / upcoming items are NOT dropped; an id upstream does not answer is simply absent.
+     */
+    async listVideoStats(ids: string[]): Promise<VideoStats[]> {
+      const unique = [...new Set(ids)].filter((id) => VIDEO_ID_RE.test(id));
+      const stats: VideoStats[] = [];
+      for (let start = 0; start < unique.length; start += VIDEOS_BATCH) {
+        const batch = unique.slice(start, start + VIDEOS_BATCH);
+        const { items } = await list(
+          'videos',
+          `part=statistics&id=${batch.join(',')}`,
+          videoStatsResponseSchema,
+        );
+        for (const item of items) {
+          stats.push({ youtube_id: item.id, view_count: countOrNull(item.statistics?.viewCount) });
+        }
+      }
+      return stats;
+    },
+
+    /**
+     * 04 §5.4 step 3 (ADR-0045): `videos.list part=snippet,statistics` for ONE id, 1 unit. Answers
+     * for the item whose `id` equals `id` and for nothing else — never `items[0]`; no such item
+     * (deleted, private, or an upstream that answered with other videos) → `null`. A malformed id →
+     * `null` with no request. Live / upcoming items are NOT dropped. The matched item must carry a
+     * title, else typed `parse_error`.
+     */
+    async getVideoMeta(id: string): Promise<VideoMeta | null> {
+      if (!VIDEO_ID_RE.test(id)) return null;
+      const query = `part=snippet,statistics&id=${id}`;
+      const { items } = await list('videos', query, videoMetaResponseSchema);
+      const item = items.find((candidate) => candidate.id === id);
+      if (item === undefined) return null;
+      const title = item.snippet?.title?.trim() ?? '';
+      if (title === '') {
+        throw new AdapterError(
+          `GET ${apiBase}/videos?${query} → parse_error (item without title)`,
+          {
+            status: 200,
+            code: 'parse_error',
+            body: '',
+          },
+        );
+      }
+      const channelId = item.snippet?.channelId ?? '';
+      const channelTitle = item.snippet?.channelTitle?.trim() ?? '';
+      const published = Date.parse(item.snippet?.publishedAt ?? '');
+      const thumbnails = item.snippet?.thumbnails ?? {};
+      const thumbnail = THUMBNAIL_ORDER.map((size) => thumbnails[size]?.url).find(
+        (url) => url?.startsWith(YTIMG_PREFIX) === true,
+      );
+      const usableChannelId = CHANNEL_ID_RE.test(channelId) ? channelId : null;
+      return {
+        youtube_id: item.id,
+        title,
+        channel_title: channelTitle === '' ? null : channelTitle,
+        channel_id: usableChannelId,
+        channel_url: usableChannelId === null ? null : `${CHANNEL_URL_PREFIX}${usableChannelId}`,
+        thumbnail_url: thumbnail ?? null,
+        published_at: Number.isNaN(published) ? null : new Date(published).toISOString(),
+        view_count: countOrNull(item.statistics?.viewCount),
+      };
+    },
+
+    /**
      * 04 §4.3 / §3.3 step 3: walks `playlistItems.list part=contentDetails` over the uploads playlist
      * (`"UU" + channelId.slice(2)`, 50/page, one unit per page) → every video id, de-duplicated, in
      * upstream order. Stops at the last page, at a `nextPageToken` it has already followed, or after
@@ -593,10 +740,11 @@ export function createYoutube({
 
     /**
      * 04 §4.3 / §5.4 step 2: `GET https://www.youtube.com/oembed?url=<enc>&format=json` — no key, 0
-     * units. 401/404 (private / removed video) → typed `not_found` (05 T-ADP-15).
+     * units. 401/404 (private / removed video) → typed `not_found` (05 T-ADP-15). The endpoint is
+     * `OEMBED_BASE` in tests (ADR-0045); `url` is only ever an encoded query value.
      */
     async oembed(url: string): Promise<YoutubeOembed> {
-      const target = `${YOUTUBE_OEMBED}?url=${encodeURIComponent(url)}&format=json`;
+      const target = `${oembedBase}?url=${encodeURIComponent(url)}&format=json`;
       let payload: unknown;
       try {
         payload = await fetchJson<unknown>(target, { ua, fetch: fetchImpl });

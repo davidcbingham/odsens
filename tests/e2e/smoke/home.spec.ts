@@ -3,14 +3,27 @@
  * S1.2: T-E2E-1 hero + featured, T-E2E-45b sitemap). Runs in `smoke-desktop` (1280) and
  * `smoke-phone` (390).
  *
- * T-E2E-1 by slice (05 §8): S1.2 "hero + featured", S1.6 "Latest videos" — its own test below.
- * The IN THE WILD strip + ReachLine (S1.8), the footer creators line (S1.8),
- * `FloatingSupportButton` (S1.9 — 03 Slice cell) and the 4-up `ExclusiveBadge` text
- * "ONLY ON ODSENS" (S1.3 — 03 `ProjectCard` "the `ExclusiveBadge` itself ships in S1.3") are NOT
- * asserted yet; their rows extend this spec in those slices. Seed truths (SEED-6): hero =
- * pixel-chameleon (featured_order 1), Featured 4-up = seed-exclusive-pack only (hero excluded,
- * 02 §2.1 — no back-fill). SEED-11 (7 rows — ADR-0043 D8): the Home 2-up = `seedvid0001` +
- * `seedvid0004`; `seedvid0002` is hidden (and the newest row overall), `seedvid0003` is a Short.
+ * T-E2E-1 by slice (05 §8): S1.2 "hero + featured", S1.6 "Latest videos", S1.8 "IN THE WILD +
+ * footer line" — each its own test below. `FloatingSupportButton` (S1.9 — 03 Slice cell) and the
+ * 4-up `ExclusiveBadge` text "ONLY ON ODSENS" (S1.3 — 03 `ProjectCard` "the `ExclusiveBadge` itself
+ * ships in S1.3") are NOT asserted yet; their rows extend this spec in those slices. Seed truths
+ * (SEED-6): hero = pixel-chameleon (featured_order 1), Featured 4-up = seed-exclusive-pack only
+ * (hero excluded, 02 §2.1 — no back-fill). SEED-11 (7 rows — ADR-0043 D8): the Home 2-up =
+ * `seedvid0001` + `seedvid0004`; `seedvid0002` is hidden (and the newest row overall),
+ * `seedvid0003` is a Short. SEED-10 (ADR-0045 D4): one featured mention (`…0301`, YouTube
+ * `seedvid0001`, 1,200,000 views, on metal-pipe-mace) + one un-featured TikTok mention with no
+ * count → the strip holds ONE card and the reach line reads `1.2M VIEWS · 2 VIDEOS · 2 CREATORS`
+ * (totals over every published mention, not over the cards).
+ *
+ * T-E2E-1 IN THE WILD + footer line leg (00 S1.8.AC3 / AC4 / AC5 / AC9; 02 §2.1 #3; 03 §2.8;
+ * DESIGN.md §12.1 / §12.2; ADR-0045 D16 / D17 / D19): the strip sits between FEATURED PROJECTS
+ * and LATEST VIDEOS — head ("All mentions" → `/seen-on`) → cards → `ReachLine`; its card is a
+ * FACADE (56px play block, thumbnail through `/_next/image`), so the page-wide "no `<iframe>`, no
+ * Google-host request" truths of the S1.6 leg still hold with a third facade on the page; no
+ * footer strip on Home cards; both dry footer lines. Then the play leg: the strip's facade → one
+ * nocookie frame + the `--indigo-lift` outline + "on YouTube ↗"; playing a LATEST VIDEOS facade
+ * (the SAME video id — the store is keyed by facade, not by id) hands the slot over and the
+ * mention card goes back to `idle` with its facade — never two outlined cards.
  *
  * T-E2E-1 Latest videos leg (00 S1.6.AC2 / AC6; 02 §2.1 #4; ADR-0041 D6; ADR-0043 D15): two
  * facades and no `<iframe>`, ZERO requests to any YouTube / Google host — matched on
@@ -41,6 +54,10 @@ function googleHostRequests(requests: string[]): string[] {
 }
 
 const GOLD = 'rgb(255, 198, 31)'; // --gold
+const INDIGO_LIFT = 'rgb(139, 134, 245)'; // --indigo-lift
+
+/** SEED-10 `…0301` (ADR-0045 D4) — deliberately NOT the seed video's own title. */
+const MENTION_TITLE = 'Metal Pipe Mace is the loudest mod I have ever installed';
 
 /** 02 RP-13 — the "Find me" links, in order. */
 const FIND_ME_LINKS = [
@@ -329,6 +346,132 @@ test.describe('home', () => {
 
     await expectNoSeriousA11y(page);
     await shoot(page, 'home-latest-videos');
+  });
+
+  test('T-E2E-1 IN THE WILD + footer line (S1.8): strip between Featured and Latest videos shows mention …0301 as a facade, ReachLine 1.2M VIEWS · 2 VIDEOS · 2 CREATORS, All mentions → /seen-on, both footer lines, zero iframe, zero Google-host requests; play → one nocookie frame, back to idle when another facade plays', async ({
+    page,
+    requests,
+  }) => {
+    const response = await page.goto('/', { waitUntil: 'networkidle' });
+    expect(response?.status()).toBe(200);
+    expect(await response?.text()).not.toContain('<iframe');
+
+    // The strip: h2 IN THE WILD, placed after FEATURED PROJECTS and before LATEST VIDEOS (02 §2.1).
+    const strip = page.locator('section[aria-labelledby="section-title-in-the-wild"]');
+    await expect(strip).toHaveCount(1);
+    await expect(strip.getByRole('heading', { level: 2 })).toHaveText('IN THE WILD');
+    const h2s = await page
+      .locator('main h2')
+      .evaluateAll((els) => els.map((el) => (el.textContent ?? '').replace(/\s+/g, ' ').trim()));
+    expect(h2s.indexOf('IN THE WILD')).toBeGreaterThan(h2s.indexOf('FEATURED PROJECTS'));
+    expect(h2s.indexOf('IN THE WILD')).toBeLessThan(h2s.indexOf('LATEST VIDEOS'));
+    expect(h2s.indexOf('FEATURED PROJECTS')).toBeGreaterThanOrEqual(0);
+
+    // "All mentions" → /seen-on: a 44px ghost link in the strip's head.
+    const all = strip.getByRole('link', { name: /All mentions/ });
+    await expect(all).toHaveAttribute('href', '/seen-on');
+    expect((await all.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+    // Exactly ONE card on seed — the featured mention …0301 (the TikTok one is not featured).
+    const cards = strip.locator('article[data-variant]');
+    await expect(cards).toHaveCount(1);
+    const card = cards.first();
+    await expect(card).toHaveAttribute('data-variant', 'inline');
+    await expect(card).toHaveAttribute('data-state', 'idle');
+    await expect(card.getByRole('heading', { level: 3 })).toHaveText(MENTION_TITLE);
+    await expect(
+      card.getByRole('link', { name: 'Seed Creator (opens in new tab)' }),
+    ).toHaveAttribute('href', 'https://www.youtube.com/@seedcreator');
+    await expect(card.getByText('1.2M VIEWS', { exact: true })).toBeVisible();
+    await expect(card.getByRole('img', { name: 'YouTube' })).toHaveCount(1);
+    // Home cards carry no project footer strip (03 §2.8 `InTheWildStrip`) — `/seen-on` only.
+    await expect(card.getByRole('link', { name: 'Metal Pipe Mace' })).toHaveCount(0);
+    await expect(strip.getByText('this mod makes no sense and I love it')).toHaveCount(0);
+
+    // A facade, never a frame: button + 56px play block (ADR-0045 D17) + next/image thumbnail.
+    const play = card.getByRole('button', { name: `Play ${MENTION_TITLE}`, exact: true });
+    await expect(play).toBeVisible();
+    const block = await card
+      .locator('[data-variant="mention"] > button > span:first-child')
+      .boundingBox();
+    expect(Math.round(block?.width ?? 0)).toBe(56);
+    const thumb = (await card.locator('img[alt=""]').first().getAttribute('src')) ?? '';
+    expect(thumb).toMatch(/^\/_next\/image\?/);
+    expect(decodeURIComponent(thumb)).toContain(`/vi/${SEED_VIDEOS.long.youtubeId}/`);
+
+    // ReachLine under the cards: the visible run verbatim (05 T-UNIT-9 twin) + its spoken form.
+    const reach = strip.getByText('1.2M VIEWS · 2 VIDEOS · 2 CREATORS', { exact: true });
+    await expect(reach).toBeVisible();
+    await expect(strip.getByText('1.2 million views · 2 videos · 2 creators')).toBeAttached();
+    const reachBox = await reach.boundingBox();
+    const cardBox = await card.boundingBox();
+    expect(reachBox && cardBox).toBeTruthy();
+    if (reachBox && cardBox) expect(reachBox.y).toBeGreaterThanOrEqual(cardBox.y + cardBox.height);
+
+    // Footer, every page from S1.8 on (00 S1.8.AC9; 02 RP-13): both dry lines, verbatim.
+    const footer = page.getByRole('contentinfo');
+    await expect(
+      footer.getByText('Mods and other odd things, made by OddSense. Not affiliated with Mojang.'),
+    ).toBeVisible();
+    await expect(
+      footer.getByText("Creators featuring the mods aren't affiliated with odsens.", {
+        exact: true,
+      }),
+    ).toBeVisible();
+
+    // The S1.6 truths still hold with the strip on the page: no frame, no Google-host request.
+    await expect(page.locator('iframe')).toHaveCount(0);
+    expect(googleHostRequests(requests)).toEqual([]);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBe(0);
+
+    // Gold focus ring on the strip's facade and on "All mentions".
+    for (const target of [all, play]) {
+      await target.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      await expect(target).toBeFocused();
+      await expect(target).toHaveCSS('outline-color', GOLD);
+      await expect(target).toHaveCSS('outline-width', '3px');
+    }
+    await play.blur();
+
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'home-in-the-wild');
+
+    // -- Play (AC5): one privacy-enhanced frame inside the card, the playing outline, the ghost link
+    await play.click();
+    await expect(page.locator('iframe')).toHaveCount(1);
+    const frame = card.locator('iframe');
+    await expect(frame).toHaveCount(1);
+    const src = new URL((await frame.getAttribute('src')) ?? '');
+    expect(src.origin).toBe('https://www.youtube-nocookie.com');
+    expect(src.pathname).toBe(`/embed/${SEED_VIDEOS.long.youtubeId}`);
+    await expect(card).toHaveAttribute('data-state', 'playing');
+    await expect(card).toHaveCSS('outline-color', INDIGO_LIFT);
+    await expect(card.getByRole('link', { name: /on YouTube/ })).toHaveAttribute(
+      'href',
+      `https://www.youtube.com/watch?v=${SEED_VIDEOS.long.youtubeId}`,
+    );
+
+    // Another facade takes the slot — here the Latest videos card for the SAME video id: still
+    // one frame on the page, and the mention card is `idle` again (outline + ghost link gone).
+    const latest = page.locator('section[aria-labelledby="latest-videos"]');
+    await latest.getByRole('button', { name: /^Play Seed Long Video One/ }).click();
+    await expect(page.locator('iframe')).toHaveCount(1);
+    await expect(latest.locator('iframe')).toHaveCount(1);
+    await expect(card).toHaveAttribute('data-state', 'idle');
+    await expect(card.locator('iframe')).toHaveCount(0);
+    await expect(card.getByRole('link', { name: /on YouTube/ })).toHaveCount(0);
+    await expect(card).not.toHaveCSS('outline-color', INDIGO_LIFT);
+    await expect(play).toBeVisible();
+    expect(
+      googleHostRequests(requests).every(
+        (url) => new URL(url).hostname === 'www.youtube-nocookie.com',
+      ),
+    ).toBe(true);
   });
 
   test('T-E2E-45b /sitemap.xml → 200, lists /projects + published slugs, no noindexed URLs', async ({

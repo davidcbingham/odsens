@@ -1,10 +1,12 @@
 /**
  * tests/unit/adapters/youtube.test.ts — `lib/adapters/youtube.ts` (05 T-ADP-9..13, T-UNIT-29 and the
  * youtube half of T-ADP-20; T-ADP-14/15 — `videoIdFromUrl` / `oembed`, consumed from S1.8 — land
- * here with the functions; 04 §4.3 export list, §5.3 Shorts rows; ADR-0043 D2/D3).
+ * here with the functions; 04 §4.3 export list, §5.3 Shorts rows; ADR-0043 D2/D3; ADR-0045 — the
+ * S1.8 additions: `listVideoStats` (T-ADP-13 legs), `getVideoMeta` + `OEMBED_BASE` (T-ADP-15 legs)).
  * Fixtures: `tests/fixtures/youtube/{rss.xml, rss-malformed.xml, videos-list.json,
- * videos-mentions.json, playlist-items.json, channels.json, oembed.json}` (F-5; hand-made in the
- * upstream shapes — README) + the fixture-server aliases `videos.json` / `playlistItems.json`.
+ * videos-mentions.json, playlist-items.json, channels.json, oembed.json, videos/seedvid0009.json}`
+ * (F-5; hand-made in the upstream shapes — README) + the fixture-server aliases `videos.json` /
+ * `playlistItems.json`.
  * The set: 21 uploads `fixvid00001..fixvid00021` (never a seed id) — 1 live
  * (`…08`), 1 upcoming (`…09`), 3 Shorts (`…03` by duration, `…04` `#shorts` in the title, `…05`
  * `#Shorts` in the description), 16 long; the feed carries the newest 15. Variants (a second page,
@@ -51,6 +53,10 @@ const videosMentions = await loadFixture<VideosList>('youtube', 'videos-mentions
 const playlistItems = await loadFixture<PlaylistItems>('youtube', 'playlist-items.json');
 const channels = await loadFixture('youtube', 'channels.json');
 const oembedFixture = await loadFixture('youtube', 'oembed.json');
+const seedVideo = await loadFixture<{ items: Record<string, unknown>[] }>(
+  'youtube',
+  'videos/seedvid0009.json',
+);
 
 const fixvid = (n: number): string => `fixvid${String(n).padStart(5, '0')}`;
 const ALL_IDS = Array.from({ length: 21 }, (_, index) => fixvid(index + 1));
@@ -759,6 +765,192 @@ describe('T-ADP-13 youtube quota guard + channelStats (04 §4.3 Quota, 00 S1.6 A
   });
 });
 
+describe('T-ADP-13 youtube listVideoStats (04 §3.4 — refreshMentions; ADR-0045)', () => {
+  it('T-ADP-13 listVideoStats(ids) → one request with part=statistics ONLY, duplicates asked once, key last; {youtube_id, view_count} as numbers; 1 unit', async () => {
+    const headers: Record<string, string | null> = {};
+    const fetchSpy = vi.fn(
+      mockFetch({
+        [`${YOUTUBE_API}/videos`]: (request) => {
+          headers['user-agent'] = request.headers.get('user-agent');
+          headers.accept = request.headers.get('accept');
+          return Response.json(videosMentions);
+        },
+      }),
+    );
+    const youtube = createYoutube({ fetch: fetchSpy, env: ENV });
+    const stats = await youtube.listVideoStats(['fixmen00001', 'fixmen00002', 'fixmen00001']);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(
+      `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=fixmen00001,fixmen00002&key=${KEY}`,
+    );
+    expect(headers).toEqual({ 'user-agent': UA, accept: 'application/json' });
+    // The full `videos.list` items of the fixture parse under the lean schema — nothing but the count is kept.
+    expect(stats).toEqual([
+      { youtube_id: 'fixmen00001', view_count: 95400 },
+      { youtube_id: 'fixmen00002', view_count: 401200 },
+    ]);
+    expect(youtube.unitsUsed).toBe(1);
+  });
+
+  it('T-ADP-13 listVideoStats: 120 ids → 3 videos calls (50 / 50 / 20), 3 units; an SC-09 retry is not a new unit', async () => {
+    vi.useFakeTimers();
+    const batches: string[][] = [];
+    let calls = 0;
+    const fetchSpy = vi.fn(
+      mockFetch({
+        [`${YOUTUBE_API}/videos`]: (request) => {
+          calls += 1;
+          if (calls === 1) return new Response('busy', { status: 503 });
+          const url = new URL(request.url);
+          expect(url.searchParams.get('part')).toBe('statistics');
+          batches.push(url.searchParams.get('id')?.split(',') ?? []);
+          return Response.json({ items: [] });
+        },
+      }),
+    );
+    const youtube = createYoutube({ fetch: fetchSpy, env: ENV });
+    const ids = Array.from({ length: 120 }, (_, index) => `m${String(index).padStart(10, '0')}`);
+    const pending = youtube.listVideoStats(ids);
+    await vi.runAllTimersAsync();
+    expect(await pending).toEqual([]);
+    expect(fetchSpy).toHaveBeenCalledTimes(4); // 3 batches + 1 retry
+    expect(batches.map((batch) => batch.length)).toEqual([VIDEOS_BATCH, 50, 20]);
+    expect(batches.flat()).toEqual(ids);
+    expect(youtube.unitsUsed).toBe(3);
+  });
+
+  it('T-ADP-13 listVideoStats: malformed ids are never sent (a hand-typed external_id), and a list of nothing but those makes no request', async () => {
+    const asked: (string | null)[] = [];
+    const fetchSpy = vi.fn(
+      mockFetch({
+        [`${YOUTUBE_API}/videos`]: (request) => {
+          asked.push(new URL(request.url).searchParams.get('id'));
+          return Response.json({ items: [] });
+        },
+      }),
+    );
+    const youtube = createYoutube({ fetch: fetchSpy, env: ENV });
+    const junk = [
+      '',
+      'short',
+      'twelve-chars',
+      'bad id 0001',
+      'a,b,c,d,e,f',
+      '../../../etc',
+      'fixmen0000&',
+      'fixmen0000#',
+      'ｆixmen00001', // a full-width letter
+    ];
+    await youtube.listVideoStats(['fixmen00001', ...junk, 'a-b_c-d_e-f']);
+    expect(asked).toEqual(['fixmen00001,a-b_c-d_e-f']);
+    expect(String(fetchSpy.mock.calls[0]?.[0])).toBe(
+      `${YOUTUBE_API}/videos?part=statistics&id=fixmen00001,a-b_c-d_e-f&key=${KEY}`,
+    );
+
+    expect(await youtube.listVideoStats(junk)).toEqual([]);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(youtube.unitsUsed).toBe(1);
+  });
+
+  it('T-ADP-13 listVideoStats([]) → [] with no request and no unit', async () => {
+    const fetchSpy = vi.fn(mockFetch({}));
+    const youtube = createYoutube({ fetch: fetchSpy, env: ENV });
+    expect(await youtube.listVideoStats([])).toEqual([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(youtube.unitsUsed).toBe(0);
+  });
+
+  it('T-ADP-13 listVideoStats: hidden statistics → view_count null (never 0); an id upstream does not answer is simply absent', async () => {
+    const impl = mockFetch({
+      [`${YOUTUBE_API}/videos`]: () =>
+        Response.json({
+          items: [
+            { id: 'fixmen00001' }, // no statistics at all
+            { id: 'fixmen00002', statistics: { likeCount: '9' } }, // the count alone is hidden
+            { id: 'fixvid00001', statistics: { viewCount: 'lots' } }, // junk
+            { id: 'fixvid00002', statistics: { viewCount: '0' } }, // a real zero stays a zero
+            { id: 'fixvid00003', statistics: { viewCount: 17 } }, // a number, not a string
+          ],
+        }),
+    });
+    const stats = await createYoutube({ fetch: impl, env: ENV }).listVideoStats([
+      'fixmen00001',
+      'fixmen00002',
+      'fixvid00001',
+      'fixvid00002',
+      'fixvid00003',
+      'fixvid00004', // asked for, not answered
+    ]);
+    expect(stats).toEqual([
+      { youtube_id: 'fixmen00001', view_count: null },
+      { youtube_id: 'fixmen00002', view_count: null },
+      { youtube_id: 'fixvid00001', view_count: null },
+      { youtube_id: 'fixvid00002', view_count: 0 },
+      { youtube_id: 'fixvid00003', view_count: 17 },
+    ]);
+  });
+
+  it('T-ADP-13 listVideoStats does NOT drop live / upcoming items (listVideos does — a view count is a view count)', async () => {
+    const impl = mockFetch({ [`${YOUTUBE_API}/videos`]: () => Response.json(videosList) });
+    const youtube = createYoutube({ fetch: impl, env: ENV });
+    const stats = await youtube.listVideoStats(ALL_IDS);
+    expect(stats).toHaveLength(21); // listVideos maps 19 of the same answer
+    expect(stats.find((entry) => entry.youtube_id === 'fixvid00008')).toEqual({
+      youtube_id: 'fixvid00008', // liveBroadcastContent: live
+      view_count: 312,
+    });
+    expect(stats.find((entry) => entry.youtube_id === 'fixvid00009')).toEqual({
+      youtube_id: 'fixvid00009', // upcoming
+      view_count: 0,
+    });
+    expect(stats.find((entry) => entry.youtube_id === 'fixvid00006')?.view_count).toBeNull();
+  });
+
+  it('T-ADP-13 listVideoStats: no YOUTUBE_API_KEY → typed unsupported, 0 requests, 0 units', async () => {
+    const fetchSpy = vi.fn(mockFetch({}));
+    const youtube = createYoutube({ fetch: fetchSpy, env: ENV_NO_KEY });
+    const error = await caught(youtube.listVideoStats(['fixmen00001']));
+    expect(error).toBeInstanceOf(AdapterError);
+    expect(error).toMatchObject({ status: 0, code: 'unsupported', body: '' });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(youtube.unitsUsed).toBe(0);
+  });
+
+  it('T-ADP-13 listVideoStats: YOUTUBE_API_BASE is honoured; a failing batch fails the call with the key redacted; a malformed body is a parse_error', async () => {
+    const base = 'http://127.0.0.1:4010/youtube';
+    const viaBase = vi.fn(mockFetch({ [`${base}/videos`]: () => Response.json(videosMentions) }));
+    const stats = await createYoutube({
+      fetch: viaBase,
+      env: { ...ENV, YOUTUBE_API_BASE: base },
+    }).listVideoStats(['fixmen00001']);
+    expect(stats).toHaveLength(2);
+    expect(String(viaBase.mock.calls[0]?.[0])).toBe(
+      `${base}/videos?part=statistics&id=fixmen00001&key=${KEY}`,
+    );
+
+    const denied = vi.fn(
+      mockFetch({
+        [`${YOUTUBE_API}/videos`]: (request) =>
+          new Response(`quota: ${request.url}`, { status: 403 }),
+      }),
+    );
+    const youtube = createYoutube({ fetch: denied, env: ENV });
+    const error = await caught(youtube.listVideoStats(['fixmen00001']));
+    expect(error).toMatchObject({ status: 403, code: 'http_error' });
+    expect(denied).toHaveBeenCalledTimes(1);
+    expect(youtube.unitsUsed).toBe(1); // the failed request still spent its unit
+    for (const text of [error?.message ?? '', error?.body ?? '']) expect(text).not.toContain(KEY);
+    expect(error?.message).toContain('key=[redacted]');
+
+    const malformed = mockFetch({
+      [`${YOUTUBE_API}/videos`]: () => Response.json({ items: [{ id: 'not-eleven' }] }),
+    });
+    await expect(
+      createYoutube({ fetch: malformed, env: ENV }).listVideoStats(['fixmen00001']),
+    ).rejects.toMatchObject({ status: 200, code: 'parse_error' });
+  });
+});
+
 describe('T-UNIT-29 pickThumbnail', () => {
   const t = (name: string) => ({ url: `https://i.ytimg.com/vi/fixvid00001/${name}.jpg` });
 
@@ -875,6 +1067,250 @@ describe('T-ADP-15 youtube oembed (04 §4.3, §5.4 step 2 — consumed from S1.8
       [YOUTUBE_OEMBED]: () => Response.json({ title: 'x', author_name: 'n', author_url: 'u' }),
     });
     expect((await createYoutube({ fetch: bare, env: ENV }).oembed(WATCH)).thumbnail_url).toBeNull();
+  });
+});
+
+describe('T-ADP-15 youtube OEMBED_BASE + getVideoMeta (04 §5.4 steps 2–3; ADR-0045)', () => {
+  const WATCH = 'https://www.youtube.com/watch?v=seedvid0009';
+  const META_URL = `${YOUTUBE_API}/videos?part=snippet,statistics&id=seedvid0009&key=${KEY}`;
+
+  /** The fixture item with a few fields swapped — derived in memory (F-6). */
+  function seedItem(patch: {
+    id?: string;
+    snippet?: Record<string, unknown>;
+    statistics?: Record<string, unknown> | null;
+  }): Record<string, unknown> {
+    const source = seedVideo.items[0] ?? {};
+    const item: Record<string, unknown> = {
+      ...source,
+      id: patch.id ?? source.id,
+      snippet: { ...(source.snippet as Record<string, unknown>), ...patch.snippet },
+    };
+    if (patch.statistics === null) delete item.statistics;
+    else if (patch.statistics !== undefined) item.statistics = patch.statistics;
+    return item;
+  }
+
+  const answering = (items: unknown[]): typeof fetch =>
+    mockFetch({ [`${YOUTUBE_API}/videos`]: () => Response.json({ items }) });
+
+  it('T-ADP-15 OEMBED_BASE moves the oEmbed ENDPOINT only (the pasted URL stays an encoded query value); unset → the real host', async () => {
+    const base = 'http://127.0.0.1:4010/youtube/oembed';
+    const fetchSpy = vi.fn(mockFetch({ [base]: () => Response.json(oembedFixture) }));
+    const youtube = createYoutube({ fetch: fetchSpy, env: { ...ENV, OEMBED_BASE: base } });
+    expect(await youtube.oembed(WATCH)).toMatchObject({ creator_name: 'BlockBuddy' });
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(
+      'http://127.0.0.1:4010/youtube/oembed?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3Dseedvid0009&format=json',
+    );
+    expect(youtube.unitsUsed).toBe(0);
+
+    // The 401/404 → not_found rule travels with the override.
+    const gone = mockFetch({ [base]: () => new Response('Not Found', { status: 404 }) });
+    await expect(
+      createYoutube({ fetch: gone, env: { ...ENV, OEMBED_BASE: base } }).oembed(WATCH),
+    ).rejects.toMatchObject({ status: 404, code: 'not_found' });
+
+    // It does not touch the Data API or the feed, and the default is still YOUTUBE_OEMBED.
+    const real = vi.fn(mockFetch({ [YOUTUBE_OEMBED]: () => Response.json(oembedFixture) }));
+    await createYoutube({ fetch: real, env: ENV }).oembed(WATCH);
+    expect(String(real.mock.calls[0]?.[0]).startsWith('https://www.youtube.com/oembed?url=')).toBe(
+      true,
+    );
+    const data = vi.fn(mockFetch({ [`${YOUTUBE_API}/videos`]: () => Response.json(seedVideo) }));
+    await createYoutube({ fetch: data, env: { ...ENV, OEMBED_BASE: base } }).getVideoMeta(
+      'seedvid0009',
+    );
+    expect(data.mock.calls[0]?.[0]).toBe(META_URL);
+  });
+
+  it('T-ADP-15 getVideoMeta(id) over videos/seedvid0009.json → one request part=snippet,statistics for ONE id, 1 unit → the eight fields', async () => {
+    const fetchSpy = vi.fn(
+      mockFetch({ [`${YOUTUBE_API}/videos`]: () => Response.json(seedVideo) }),
+    );
+    const youtube = createYoutube({ fetch: fetchSpy, env: ENV });
+    expect(await youtube.getVideoMeta('seedvid0009')).toEqual({
+      youtube_id: 'seedvid0009',
+      title: 'I tried the Metal Pipe Mace in hardcore',
+      channel_title: 'Fixture Creator',
+      channel_id: 'UCfixturecreator000000001',
+      channel_url: 'https://www.youtube.com/channel/UCfixturecreator000000001',
+      thumbnail_url: 'https://i.ytimg.com/vi/seedvid0009/hqdefault.jpg',
+      published_at: '2026-07-04T15:00:00.000Z',
+      view_count: 48213,
+    });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(META_URL);
+    expect(youtube.unitsUsed).toBe(1);
+  });
+
+  it('T-ADP-15 getVideoMeta matches the id STRICTLY: an answer carrying only other ids → null; the match is taken wherever it sits, never items[0]', async () => {
+    // What the e2e fixture server answers for an id it has no file for: the whole 21-video list.
+    const strangers = mockFetch({ [`${YOUTUBE_API}/videos`]: () => Response.json(videosList) });
+    expect(
+      await createYoutube({ fetch: strangers, env: ENV }).getVideoMeta('seedvid0009'),
+    ).toBeNull();
+    expect(
+      await createYoutube({ fetch: answering([]), env: ENV }).getVideoMeta('seedvid0009'),
+    ).toBeNull();
+
+    // A near-miss id (same prefix, different case) is a stranger too; one odd stranger does not fail the read.
+    const mixed = answering([
+      item('fixvid00001'),
+      { id: 'SEEDVID0009', snippet: { title: 'wrong case' } },
+      { id: 'weird', snippet: {} },
+      seedItem({}),
+    ]);
+    expect(
+      await createYoutube({ fetch: mixed, env: ENV }).getVideoMeta('seedvid0009'),
+    ).toMatchObject({
+      youtube_id: 'seedvid0009',
+      title: 'I tried the Metal Pipe Mace in hardcore',
+    });
+  });
+
+  it('T-ADP-15 getVideoMeta keeps a thumbnail only from https://i.ytimg.com/ — the best size that lives there, else null', async () => {
+    const thumbs = (map: Record<string, string>): Record<string, unknown> => ({
+      thumbnails: Object.fromEntries(Object.entries(map).map(([size, url]) => [size, { url }])),
+    });
+    const cases: [Record<string, string>, string | null][] = [
+      [
+        {
+          maxres: 'https://i9.ytimg.com/vi/seedvid0009/maxresdefault.jpg',
+          standard: 'https://i.ytimg.com.evil.example/vi/seedvid0009/sddefault.jpg',
+          high: 'https://i.ytimg.com/vi/seedvid0009/hqdefault.jpg',
+          default: 'https://i.ytimg.com/vi/seedvid0009/default.jpg',
+        },
+        'https://i.ytimg.com/vi/seedvid0009/hqdefault.jpg',
+      ],
+      [{ high: 'http://i.ytimg.com/vi/seedvid0009/hqdefault.jpg' }, null], // not https
+      [{ high: 'https://evil.example/https://i.ytimg.com/x.jpg' }, null],
+      [{}, null],
+    ];
+    for (const [map, expected] of cases) {
+      const youtube = createYoutube({
+        fetch: answering([seedItem({ snippet: thumbs(map) })]),
+        env: ENV,
+      });
+      expect((await youtube.getVideoMeta('seedvid0009'))?.thumbnail_url).toBe(expected);
+    }
+    const none = createYoutube({
+      fetch: answering([seedItem({ snippet: { thumbnails: undefined } })]),
+      env: ENV,
+    });
+    expect((await none.getVideoMeta('seedvid0009'))?.thumbnail_url).toBeNull();
+  });
+
+  it('T-ADP-15 getVideoMeta builds the creator link from channelId — and only from a url-safe one; a missing channel is null, never made up', async () => {
+    const hostile = createYoutube({
+      fetch: answering([
+        seedItem({ snippet: { channelId: '../../@someone?x=1', channelTitle: '  ' } }),
+      ]),
+      env: ENV,
+    });
+    expect(await hostile.getVideoMeta('seedvid0009')).toMatchObject({
+      channel_title: null,
+      channel_id: null,
+      channel_url: null,
+    });
+    const absent = createYoutube({
+      fetch: answering([seedItem({ snippet: { channelId: undefined, channelTitle: undefined } })]),
+      env: ENV,
+    });
+    expect(await absent.getVideoMeta('seedvid0009')).toMatchObject({
+      channel_title: null,
+      channel_id: null,
+      channel_url: null,
+    });
+  });
+
+  it('T-ADP-15 getVideoMeta does NOT drop a live item; hidden statistics → view_count null; an unparseable publishedAt → null', async () => {
+    const live = createYoutube({
+      fetch: answering([
+        seedItem({
+          snippet: { liveBroadcastContent: 'live', publishedAt: 'soon' },
+          statistics: null,
+        }),
+      ]),
+      env: ENV,
+    });
+    expect(await live.getVideoMeta('seedvid0009')).toMatchObject({
+      youtube_id: 'seedvid0009',
+      published_at: null,
+      view_count: null,
+    });
+    const hidden = createYoutube({
+      fetch: answering([seedItem({ statistics: { likeCount: '3' } })]),
+      env: ENV,
+    });
+    expect((await hidden.getVideoMeta('seedvid0009'))?.view_count).toBeNull();
+  });
+
+  it('T-ADP-15 getVideoMeta: the matched item must carry a title → typed parse_error (key-free, empty body); a malformed body → parse_error', async () => {
+    for (const snippet of [{ title: '   ' }, { title: undefined }]) {
+      const error = await caught(
+        createYoutube({ fetch: answering([seedItem({ snippet })]), env: ENV }).getVideoMeta(
+          'seedvid0009',
+        ),
+      );
+      expect(error).toBeInstanceOf(AdapterError);
+      expect(error).toMatchObject({ status: 200, code: 'parse_error', body: '' });
+      expect(error?.message).not.toContain(KEY);
+    }
+    const noSnippet = await caught(
+      createYoutube({ fetch: answering([{ id: 'seedvid0009' }]), env: ENV }).getVideoMeta(
+        'seedvid0009',
+      ),
+    );
+    expect(noSnippet).toMatchObject({ code: 'parse_error' });
+
+    const malformed = mockFetch({ [`${YOUTUBE_API}/videos`]: () => Response.json({}) });
+    const error = await caught(
+      createYoutube({ fetch: malformed, env: ENV }).getVideoMeta('seedvid0009'),
+    );
+    expect(error).toMatchObject({ status: 200, code: 'parse_error' });
+    expect(error?.message).toContain('key=[redacted]');
+    expect(error?.message).not.toContain(KEY);
+  });
+
+  it('T-ADP-15 getVideoMeta: a malformed id → null with no request and no unit; an upstream failure is thrown with the key redacted', async () => {
+    const fetchSpy = vi.fn(mockFetch({}));
+    const youtube = createYoutube({ fetch: fetchSpy, env: ENV });
+    for (const id of [
+      '',
+      'short',
+      'seedvid0009,fixvid00001',
+      'seedvid0009&part=id',
+      '../videos/x',
+    ]) {
+      expect(await youtube.getVideoMeta(id)).toBeNull();
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(youtube.unitsUsed).toBe(0);
+
+    const denied = mockFetch({
+      [`${YOUTUBE_API}/videos`]: (request) => new Response(`no: ${request.url}`, { status: 403 }),
+    });
+    const error = await caught(
+      createYoutube({ fetch: denied, env: ENV }).getVideoMeta('seedvid0009'),
+    );
+    expect(error).toMatchObject({ status: 403, code: 'http_error' });
+    for (const text of [error?.message ?? '', error?.body ?? '']) expect(text).not.toContain(KEY);
+  });
+
+  it('T-ADP-15 getVideoMeta: no YOUTUBE_API_KEY → typed unsupported, 0 requests, 0 units (oembed still works keyless)', async () => {
+    const fetchSpy = vi.fn(mockFetch({ [YOUTUBE_OEMBED]: () => Response.json(oembedFixture) }));
+    const youtube = createYoutube({ fetch: fetchSpy, env: ENV_NO_KEY });
+    const error = await caught(youtube.getVideoMeta('seedvid0009'));
+    expect(error).toBeInstanceOf(AdapterError);
+    expect(error).toMatchObject({ status: 0, code: 'unsupported', body: '' });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(youtube.unitsUsed).toBe(0);
+    expect((await youtube.oembed(WATCH)).creator_name).toBe('BlockBuddy');
+  });
+
+  it('T-ADP-15 the single-id fixture is one videos.list item "seedvid0009" — and the sync alias videos.json never carries it', () => {
+    expect(seedVideo.items.map((entry) => entry.id)).toEqual(['seedvid0009']);
+    expect(videosList.items.map((video) => video.id)).not.toContain('seedvid0009');
   });
 });
 
