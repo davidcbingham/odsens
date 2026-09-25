@@ -303,12 +303,15 @@ test.describe('art', () => {
       .poll(async () =>
         boxImg.evaluate((img) => {
           const el = img as HTMLImageElement;
-          const media = el.parentElement as HTMLElement;
-          const rendered = Math.round(el.getBoundingClientRect().width);
-          const expected = Math.min(
-            Number(el.getAttribute('width')),
-            Math.floor(media.getBoundingClientRect().width),
+          // Measure against the viewer's middle grid column (44px | minmax(0, 1fr) | 44px): the
+          // figure and media boxes around the image are content-sized and shrink WITH it, so they
+          // would agree with a wrongly small picture (round 2 of PR #35).
+          const dialog = el.closest('dialog') as HTMLElement;
+          const column = parseFloat(
+            getComputedStyle(dialog).gridTemplateColumns.split(' ')[1] ?? '0',
           );
+          const rendered = Math.round(el.getBoundingClientRect().width);
+          const expected = Math.min(Number(el.getAttribute('width')), Math.floor(column));
           return Math.abs(rendered - expected) <= 1 ? 'fits' : `${rendered}px vs ${expected}px`;
         }),
       )

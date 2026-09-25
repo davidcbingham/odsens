@@ -244,6 +244,17 @@ test.describe('project detail', () => {
     await expect(dialog).toBeVisible();
     await expect(dialog).toHaveAttribute('data-state', 'open');
     await expect(dialog.locator('img')).toHaveAttribute('alt', 'In hand');
+    // The 16:9 fill box has a real size (ADR-0048 D30: it resolved to 0×0 from S1.2 until the
+    // figure stretched to the viewer's column — an empty scrim with two arrows).
+    await expect
+      .poll(() =>
+        dialog.locator('img').evaluate((img) => {
+          const box = (img.parentElement as HTMLElement).getBoundingClientRect();
+          const wide = box.width > 200 && Math.abs(box.width / box.height - 16 / 9) < 0.01;
+          return wide ? 'fits' : `${Math.round(box.width)}×${Math.round(box.height)}`;
+        }),
+      )
+      .toBe('fits');
     await page.keyboard.press('ArrowRight');
     await expect(dialog.locator('img')).toHaveAttribute('alt', 'Bonk');
     await page.keyboard.press('ArrowLeft');

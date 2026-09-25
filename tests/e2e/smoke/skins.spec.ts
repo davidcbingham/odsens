@@ -57,19 +57,6 @@ const NAME_B = 'Seed Skin B';
 const DESCRIPTION_A = 'The one that started it. Plain, dependable, slightly cursed.';
 const DESCRIPTION_B = 'Slim arms. Big feelings.';
 
-/**
- * WebGL for this spec only (ADR-0048 D31): on the CI runner (Linux, no GPU) headless Chromium has
- * no WebGL under the shared launch args — every `SkinViewer3D` leg fell to `unsupported` in PR #35
- * round 1 — so this file pins ANGLE-on-SwiftShader. It stays out of `playwright.config.ts`
- * because that mode routes compositing through GL, whose texture ceiling fails the 56k-px
- * `/dev/components` capture (T-E2E-48). A worker-scoped option: the file gets its own worker.
- */
-test.use({
-  launchOptions: {
-    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
-  },
-});
-
 /** SwiftShader + the lazy chunk + the texture fetch: generous, never asserted synchronously. */
 const VIEWER_TIMEOUT = 30_000;
 
@@ -97,7 +84,7 @@ async function expectViewerReady(page: Page): Promise<void> {
   });
   expect(
     await body.getAttribute('data-state'),
-    'SkinViewer3D fell to `unsupported`: headless Chromium has no WebGL here — check the ADR-0048 D21 SwiftShader launch args (playwright.config.ts) before touching the spec',
+    'SkinViewer3D fell to `unsupported`: either this browser has no WebGL (check the ADR-0048 D21 launch args in playwright.config.ts) or the seed texture did not load — SEED-13 objects come from tests/helpers/globalSetup.e2e.ts (D31); curl the texture URL before touching the spec',
   ).toBe('ready');
   await expect(readyCanvas(page)).toHaveCount(1);
   // The controls were `disabled` until this frame: their Button colours ease from the disabled
