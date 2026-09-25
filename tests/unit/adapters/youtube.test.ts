@@ -819,6 +819,33 @@ describe('T-ADP-13 youtube listVideoStats (04 §3.4 — refreshMentions; ADR-004
     expect(youtube.unitsUsed).toBe(3);
   });
 
+  it('T-ADP-13 listVideoStats at the batch boundary: exactly 50 ids → ONE videos call and 1 unit; 51 → two (50 + 1) and 2 units', async () => {
+    for (const [count, expected] of [
+      [50, [50]],
+      [51, [50, 1]],
+    ] as const) {
+      const batches: string[][] = [];
+      const fetchSpy = vi.fn(
+        mockFetch({
+          [`${YOUTUBE_API}/videos`]: (request) => {
+            batches.push(new URL(request.url).searchParams.get('id')?.split(',') ?? []);
+            return Response.json({ items: [] });
+          },
+        }),
+      );
+      const youtube = createYoutube({ fetch: fetchSpy, env: ENV });
+      const ids = Array.from(
+        { length: count },
+        (_, index) => `b${String(index).padStart(10, '0')}`,
+      );
+      expect(await youtube.listVideoStats(ids)).toEqual([]);
+      expect(fetchSpy, `${String(count)} ids`).toHaveBeenCalledTimes(expected.length);
+      expect(batches.map((batch) => batch.length)).toEqual([...expected]);
+      expect(batches.flat()).toEqual(ids);
+      expect(youtube.unitsUsed).toBe(expected.length);
+    }
+  });
+
   it('T-ADP-13 listVideoStats: malformed ids are never sent (a hand-typed external_id), and a list of nothing but those makes no request', async () => {
     const asked: (string | null)[] = [];
     const fetchSpy = vi.fn(

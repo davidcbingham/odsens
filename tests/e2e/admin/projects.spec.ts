@@ -4275,6 +4275,11 @@ test.describe('mentions on /admin/mentions (S1.8 — T-E2E-39)', () => {
     );
     await expect(region.locator('[role="alert"]')).toHaveCount(0);
     expect(await readByUrl(PASTED_URL), 'a preview stores nothing').toBeUndefined();
+    // The card names the link PUBLISH will store (S1.8 follow-up, ADR-0046) — as text, no anchor.
+    const shownLink = region.getByText(PASTED_URL, { exact: true });
+    await expect(shownLink).toBeVisible();
+    await expect(region.locator('a')).toHaveCount(0);
+    const shownLinkText = ((await shownLink.textContent()) ?? '').trim();
     await expectNoSeriousA11y(page);
     await shoot(page, 'admin-mentions-preview');
 
@@ -4308,6 +4313,7 @@ test.describe('mentions on /admin/mentions (S1.8 — T-E2E-39)', () => {
     await expect(pastedRow).toContainText('48.2K');
 
     const stored = await readByUrl(PASTED_URL);
+    expect(stored?.url, 'the link the card showed is the link that was stored').toBe(shownLinkText);
     expect(stored).toMatchObject({
       url: PASTED_URL,
       platform: 'youtube',
@@ -4453,6 +4459,10 @@ test.describe('mentions on /admin/mentions (S1.8 — T-E2E-39)', () => {
       await expect(region.getByLabel(label, { exact: true })).toBeVisible();
     }
     await expect(region.getByLabel('Platform', { exact: true })).toHaveText('Article');
+    // The manual fields name the link too: what was typed, upgraded to https — the stored form.
+    const shownManual = region.getByText(MANUAL_URL, { exact: true });
+    await expect(shownManual).toBeVisible();
+    const shownManualText = ((await shownManual.textContent()) ?? '').trim();
     await expectNoSeriousA11y(page);
     await shoot(page, 'admin-mentions-manual');
 
@@ -4474,6 +4484,9 @@ test.describe('mentions on /admin/mentions (S1.8 — T-E2E-39)', () => {
     await expect(manualRow.getByText('LIVE', { exact: true })).toBeVisible();
     await expect(manualRow).toContainText(`Article · ${MANUAL_CREATOR}`);
     await expect(manualRow).toContainText('About OddSense');
+    expect((await readByUrl(MANUAL_URL))?.url, 'shown link = stored link, by hand too').toBe(
+      shownManualText,
+    );
     expect(await readByUrl(MANUAL_URL)).toMatchObject({
       url: MANUAL_URL,
       platform: 'article',

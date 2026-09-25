@@ -16,6 +16,8 @@
  *   previewIsComplete                   a fetched preview without a title or a creator name cannot
  *                                       be published as is (both are required, 1..200 / 1..80) →
  *                                       the island opens the manual fields instead of the card
+ *   storedLink                          the address PUBLISH will store, for the card's link line and
+ *                                       the manual fields (ADR-0046)
  *   buildCreateMentionInput             draft (+ the fetched preview) → the 04 §1.6 payload, or the
  *                                       plain-words field errors for the two values only the
  *                                       client can parse (the date, the view count)
@@ -154,6 +156,30 @@ export function draftFromPreview(preview: MentionPreviewData): MentionDraft {
 /** Title and creator are required on create; a preview missing either opens the manual fields. */
 export function previewIsComplete(preview: MentionPreviewData): boolean {
   return preview.title.trim() !== '' && (preview.creator_name ?? '').trim() !== '';
+}
+
+/**
+ * The link PUBLISH will store, shown on the card and above the manual fields so the admin approves
+ * the address visitors will click (ADR-0046 — a page's `og:url` may name another address than the
+ * one pasted). A fetched page → its `canonical_url` VERBATIM (the action already canonicalised it,
+ * `canonicalMentionUrl`; `buildCreateMentionInput` sends the same string). No page read → the pasted
+ * link trimmed, WHATWG-normalised and upgraded to `https:` (the `readMentionUrl` rule the schema
+ * applies). `canonicalMentionUrl`'s YouTube-id and tracking-param rules need the server-only URL
+ * grammar, so on that by-hand path PUBLISH may still SHORTEN the address (drop `utm_*` / `si` /
+ * `feature`, or a YouTube link to its `watch?v=` form) — never point at another page. `''` when
+ * there is nothing to show.
+ */
+export function storedLink(url: string, preview: MentionPreviewData | null): string {
+  if (preview !== null) return preview.canonical_url;
+  const trimmed = url.trim();
+  if (trimmed === '') return '';
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:') parsed.protocol = 'https:';
+    return parsed.href;
+  } catch {
+    return trimmed;
+  }
 }
 
 /** `YYYY-MM-DD` → that UTC midnight as ISO; `null` for anything that is not a real calendar day. */

@@ -121,6 +121,31 @@
   font-size: var(--text-label);
 }
 
+/* The link PUBLISH stores (ADR-0046) — the card's meta recipe (--mute-dim, --text-label-sm), one
+   line, the address clipped with an ellipsis; the full address is in `title`. No new token. */
+.mention-preview-stored {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  min-width: 0;
+  margin: 0;
+  color: var(--mute-dim);
+  font-size: var(--text-label-sm);
+  line-height: 1.4;
+}
+
+.mention-preview-stored-word {
+  flex: none;
+  font-weight: 700;
+}
+
+.mention-preview-stored-url {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .mention-preview-form {
   display: flex;
   flex-direction: column;
