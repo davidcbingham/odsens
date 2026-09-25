@@ -233,9 +233,12 @@ test.describe('seen on', () => {
       await expect(target).toHaveCSS('outline-color', GOLD);
       await expect(target).toHaveCSS('outline-width', '3px');
       await expect(target).toHaveCSS('outline-style', 'solid');
+      // The filter links draw their own outline INSIDE the box at rest; focused, the ring sits
+      // outside it like everywhere else.
+      if (target === platformLink || target === activeLink) {
+        await expect(target).toHaveCSS('outline-offset', '2px');
+      }
     }
-    await expect(platformLink).toHaveCSS('outline-offset', '2px');
-    await expect(activeLink).toHaveCSS('outline-offset', '2px');
     // At rest the link keeps its own 2px --line-soft outline (no visible change without focus).
     await activeLink.blur();
     await expect(platformLink).toHaveCSS('outline-color', LINE_SOFT);
