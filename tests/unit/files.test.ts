@@ -3,11 +3,35 @@
  * `UPLOAD_KINDS` / `validateUpload` caps + copy with the actual numbers (01 INV-52; ADR-0002 #31),
  * including the `supabase/config.toml` `[storage] file_size_limit = "100MiB"` read (05 CI-13);
  * T-UNIT-19: `pngDimensions` / `isSkinTexture`; T-UNIT-22: `sanitizeFilename` (04 SC-20).
- * Bytes are hand-built or read from tests/fixtures/{images,files} (05 §1.2) — nothing is uploaded.
+ * S1.7 legs (ADR-0048): T-UNIT-17/18/19 on the four skin/art fixtures (`skin-64.png`,
+ * `skin-128.png`, `skin-64x32.png`, `thumb-1280x720.png`) and the pure `lib/files.ts` pieces —
+ * the `skins` / `art` path builders + parsers, the `isOwnSkinPath` / `isOwnArtPath` twins of the
+ * DB CHECKs (ADR-0048 D2), `counterArgs` + `publicDownloadUrl` / `publicObjectUrl` (ADR-0048 D1). Bytes are
+ * hand-built or read from tests/fixtures/{images,files} (05 §1.2) — nothing is uploaded; the
+ * `lib/files.ts` import is safe here (`server-only` is mocked by the unit setup; no client is built).
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import {
+  ART_BUCKET,
+  PROJECT_FILES_BUCKET,
+  SKINS_BUCKET,
+  artFinalPath,
+  artPendingPath,
+  counterArgs,
+  isOwnArtPath,
+  isOwnSkinPath,
+  objectPathInBucket,
+  parseArtFinalPath,
+  parseArtPendingPath,
+  parseArtPendingPathFor,
+  publicDownloadUrl,
+  publicObjectUrl,
+  skinBustPath,
+  skinTexturePath,
+  type Downloadable,
+} from '@/lib/files';
 import {
   UPLOAD_KINDS,
   isSkinTexture,
@@ -398,5 +422,223 @@ describe('sanitizeFilename (T-UNIT-22, 04 SC-20)', () => {
       expect(out).toMatch(/^[A-Za-z0-9][A-Za-z0-9._-]*$/);
       expect(out).not.toContain('..');
     }
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// S1.7 — the four skin / art fixtures through sniff / validate / dimensions (T-UNIT-17/18/19)
+// ---------------------------------------------------------------------------------------------
+
+describe('S1.7 fixtures (T-UNIT-17 / T-UNIT-18 / T-UNIT-19)', () => {
+  it('T-UNIT-17 skin-64.png, skin-128.png, skin-64x32.png and thumb-1280x720.png sniff as PNG', () => {
+    for (const name of ['skin-64.png', 'skin-128.png', 'skin-64x32.png', 'thumb-1280x720.png']) {
+      expect(sniffMime(fixture(`images/${name}`)), name).toBe('image/png');
+    }
+  });
+
+  it('T-UNIT-19 IHDR sizes: 64×64, 128×128, 64×32, 1280×720; only the first is a skin texture', () => {
+    expect(pngDimensions(fixture('images/skin-64.png'))).toEqual({ width: 64, height: 64 });
+    expect(pngDimensions(fixture('images/skin-128.png'))).toEqual({ width: 128, height: 128 });
+    expect(pngDimensions(fixture('images/skin-64x32.png'))).toEqual({ width: 64, height: 32 });
+    expect(pngDimensions(fixture('images/thumb-1280x720.png'))).toEqual({
+      width: 1280,
+      height: 720,
+    });
+    expect(isSkinTexture(fixture('images/skin-64.png'))).toBe(true);
+    expect(isSkinTexture(fixture('images/skin-128.png'))).toBe(false);
+    expect(isSkinTexture(fixture('images/skin-64x32.png'))).toBe(false);
+    expect(isSkinTexture(fixture('images/thumb-1280x720.png'))).toBe(false);
+  });
+
+  it('T-UNIT-18 kind skin: the 64×64 fixture passes; 128×128 / 64×32 / the thumb fail with their size', () => {
+    expect(validateUpload(upload('skin.png', fixture('images/skin-64.png')), 'skin')).toEqual({
+      ok: true,
+      mime: 'image/png',
+    });
+    expect(validateUpload(upload('skin.png', fixture('images/skin-128.png')), 'skin')).toEqual({
+      ok: false,
+      message: "That's 128×128. Skins are 64×64.",
+    });
+    expect(validateUpload(upload('skin.png', fixture('images/skin-64x32.png')), 'skin')).toEqual({
+      ok: false,
+      message: "That's 64×32. Skins are 64×64.",
+    });
+    expect(
+      validateUpload(upload('skin.png', fixture('images/thumb-1280x720.png')), 'skin'),
+    ).toEqual({
+      ok: false,
+      message: "That's 1280×720. Skins are 64×64.",
+    });
+  });
+
+  it('T-UNIT-18 kind art: every one of the four PNG fixtures passes (no dimension rule at this layer)', () => {
+    for (const name of ['skin-64.png', 'skin-128.png', 'skin-64x32.png', 'thumb-1280x720.png']) {
+      expect(validateUpload(upload(name, fixture(`images/${name}`)), 'art'), name).toEqual({
+        ok: true,
+        mime: 'image/png',
+      });
+    }
+  });
+
+  it('T-UNIT-18 every S1.7 fixture is under 100 KB (05 §1.2 fixtures policy)', () => {
+    for (const name of ['skin-64.png', 'skin-128.png', 'skin-64x32.png', 'thumb-1280x720.png']) {
+      expect(fixture(`images/${name}`).byteLength, name).toBeLessThan(100 * KB);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// S1.7 — lib/files.ts pure pieces: paths, parsers, ownership twins, counter args, public URLs
+// (ADR-0048 D1 / D2 / D3; id-less legs on this file's ids per ADR-R9)
+// ---------------------------------------------------------------------------------------------
+
+const SKIN_ID = '00000000-0000-4000-8000-000000000601';
+const OTHER_ID = '00000000-0000-4000-8000-000000000602';
+const ART_ID = '00000000-0000-4000-8000-000000000701';
+const HASH16 = 'b64a4e0e96965d51';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+describe('skins / art paths (lib/files.ts, 04 SC-21)', () => {
+  it('bucket names and the skin path builders', () => {
+    expect(SKINS_BUCKET).toBe('skins');
+    expect(ART_BUCKET).toBe('art');
+    expect(skinTexturePath(SKIN_ID)).toBe(`skins/${SKIN_ID}/texture.png`);
+    expect(skinBustPath(SKIN_ID)).toBe(`skins/${SKIN_ID}/bust.png`);
+    expect(objectPathInBucket('skins', skinTexturePath(SKIN_ID))).toBe(`${SKIN_ID}/texture.png`);
+    expect(objectPathInBucket('art', skinTexturePath(SKIN_ID))).toBeNull();
+    expect(objectPathInBucket('skins', 'skins/')).toBeNull();
+  });
+
+  it('artPendingPath mints a uuid placeholder under the id; artFinalPath is content-addressed', () => {
+    const pending = artPendingPath(ART_ID, 'png');
+    const m = /^art\/([^/]+)\/([^/.]+)\.png$/.exec(pending);
+    expect(m?.[1]).toBe(ART_ID);
+    expect(m?.[2]).toMatch(UUID_RE);
+    expect(artPendingPath(ART_ID, 'png')).not.toBe(pending); // a fresh uuid every call
+    expect(artFinalPath(ART_ID, HASH16, 'webp')).toBe(`art/${ART_ID}/${HASH16}.webp`);
+  });
+
+  it('parseArtPendingPath reads the id + ext back; anything else is null', () => {
+    const pending = artPendingPath(ART_ID, 'jpg');
+    expect(parseArtPendingPath(pending)).toEqual({ artId: ART_ID, ext: 'jpg' });
+    expect(parseArtPendingPathFor(ART_ID, pending)).toEqual({ ext: 'jpg' });
+    expect(parseArtPendingPathFor(OTHER_ID, pending)).toBeNull();
+    for (const bad of [
+      artFinalPath(ART_ID, HASH16, 'png'), // the committed form is not pending
+      `art/${ART_ID}/not-a-uuid.png`,
+      `art/${ART_ID}/${OTHER_ID}.gif`,
+      `art/${ART_ID}/${OTHER_ID}.PNG`,
+      `art/not-a-uuid/${OTHER_ID}.png`,
+      `art/${ART_ID}/x/${OTHER_ID}.png`,
+      `skins/${ART_ID}/${OTHER_ID}.png`,
+      `${ART_ID}/${OTHER_ID}.png`,
+      `art/${ART_ID}/`,
+      '',
+    ]) {
+      expect(parseArtPendingPath(bad), bad).toBeNull();
+    }
+  });
+
+  it('parseArtFinalPath reads the id, hash16 and ext of a committed path; anything else is null', () => {
+    expect(parseArtFinalPath(artFinalPath(ART_ID, HASH16, 'png'))).toEqual({
+      artId: ART_ID,
+      hash16: HASH16,
+      ext: 'png',
+    });
+    for (const bad of [
+      artPendingPath(ART_ID, 'png'),
+      `art/${ART_ID}/${HASH16}.jpeg`,
+      `art/${ART_ID}/${HASH16.slice(0, 15)}.png`,
+      `art/${ART_ID}/${HASH16.toUpperCase()}.png`,
+      `art/${ART_ID}/${HASH16}.png/extra`,
+      `project-media/${ART_ID}/${HASH16}.png`,
+    ]) {
+      expect(parseArtFinalPath(bad), bad).toBeNull();
+    }
+  });
+});
+
+describe('isOwnSkinPath / isOwnArtPath — the app-side twins of the *_path_own CHECKs (ADR-0048 D2)', () => {
+  it('a skin owns exactly its own texture and bust', () => {
+    expect(isOwnSkinPath(SKIN_ID, `skins/${SKIN_ID}/texture.png`)).toBe(true);
+    expect(isOwnSkinPath(SKIN_ID, `skins/${SKIN_ID}/bust.png`)).toBe(true);
+    for (const bad of [
+      `skins/${OTHER_ID}/texture.png`, // another row's folder
+      `skins/${SKIN_ID}/other.png`,
+      `skins/${SKIN_ID}/texture.PNG`,
+      `skins/${SKIN_ID}/texture.png/`,
+      `art/${SKIN_ID}/texture.png`,
+      `${SKIN_ID}/texture.png`,
+      `skins/${SKIN_ID}/../${OTHER_ID}/texture.png`,
+      '',
+    ]) {
+      expect(isOwnSkinPath(SKIN_ID, bad), bad).toBe(false);
+    }
+    // An id that is not a canonical lowercase uuid owns nothing (the CHECK compares `id::text`).
+    const hexId = 'abcdefab-0000-4000-8000-000000000601';
+    expect(isOwnSkinPath(hexId, `skins/${hexId}/texture.png`)).toBe(true);
+    expect(isOwnSkinPath(hexId.toUpperCase(), `skins/${hexId}/texture.png`)).toBe(false);
+    expect(isOwnSkinPath('not-a-uuid', 'skins/not-a-uuid/texture.png')).toBe(false);
+  });
+
+  it('a piece owns exactly art/<its id>/<hash16>.<png|jpg|webp>', () => {
+    for (const ext of ['png', 'jpg', 'webp'] as const) {
+      expect(isOwnArtPath(ART_ID, artFinalPath(ART_ID, HASH16, ext))).toBe(true);
+    }
+    for (const bad of [
+      artFinalPath(OTHER_ID, HASH16, 'png'),
+      artPendingPath(ART_ID, 'png'), // pending is proven through parseArtPendingPathFor instead
+      `art/${ART_ID}/${HASH16}.jpeg`,
+      `art/${ART_ID}/${HASH16}.svg`,
+      `skins/${ART_ID}/${HASH16}.png`,
+      `art/${ART_ID}/${HASH16}`,
+      '',
+    ]) {
+      expect(isOwnArtPath(ART_ID, bad), bad).toBe(false);
+    }
+    expect(isOwnArtPath('not-a-uuid', `art/not-a-uuid/${HASH16}.png`)).toBe(false);
+  });
+});
+
+describe('Downloadable helpers (ADR-0048 D1)', () => {
+  const ctx = { id: SKIN_ID, ipHash: 'a'.repeat(64), uaHash: 'b'.repeat(64) };
+  const projectFile: Downloadable = {
+    kind: 'project_file',
+    bucket: PROJECT_FILES_BUCKET,
+    path: `${OTHER_ID}/${OTHER_ID}/pack.zip`,
+    filename: 'pack.zip',
+    urlKind: 'signed',
+    counter: 'record_download',
+  };
+  const skin: Downloadable = {
+    kind: 'skin',
+    bucket: SKINS_BUCKET,
+    path: `${SKIN_ID}/texture.png`,
+    filename: 'seed-skin-a.png',
+    urlKind: 'public',
+    counter: 'record_skin_download',
+  };
+
+  it('counterArgs: record_download takes the id + both hashes; record_skin_download the id only', () => {
+    expect(counterArgs(projectFile, ctx)).toEqual({
+      p_file_id: SKIN_ID,
+      p_ip_hash: ctx.ipHash,
+      p_ua_hash: ctx.uaHash,
+    });
+    expect(counterArgs(skin, ctx)).toEqual({ p_skin_id: SKIN_ID });
+  });
+
+  it('publicObjectUrl / publicDownloadUrl build the public-bucket URL; the filename is encoded', () => {
+    const base = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''}/storage/v1/object/public`;
+    expect(publicObjectUrl('skins', skinTexturePath(SKIN_ID))).toBe(
+      `${base}/skins/${SKIN_ID}/texture.png`,
+    );
+    expect(publicDownloadUrl(skin.bucket, skin.path, skin.filename)).toBe(
+      `${base}/skins/${SKIN_ID}/texture.png?download=seed-skin-a.png`,
+    );
+    expect(publicDownloadUrl('art', `${ART_ID}/${HASH16}.png`, 'a b&c.png')).toBe(
+      `${base}/art/${ART_ID}/${HASH16}.png?download=a%20b%26c.png`,
+    );
+    expect(() => publicObjectUrl('skins', `art/${SKIN_ID}/texture.png`)).toThrow(/not an object/);
   });
 });

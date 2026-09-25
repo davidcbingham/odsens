@@ -34,6 +34,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      art: {
+        Row: {
+          created_at: string
+          credit: string | null
+          downloadable: boolean
+          height: number
+          id: string
+          image_path: string
+          kind: Database["public"]["Enums"]["art_kind"]
+          slug: string
+          sort_order: number
+          status: Database["public"]["Enums"]["art_status"]
+          title: string
+          updated_at: string
+          width: number
+          year: number | null
+        }
+        Insert: {
+          created_at?: string
+          credit?: string | null
+          downloadable?: boolean
+          height: number
+          id?: string
+          image_path: string
+          kind: Database["public"]["Enums"]["art_kind"]
+          slug: string
+          sort_order?: number
+          status?: Database["public"]["Enums"]["art_status"]
+          title: string
+          updated_at?: string
+          width: number
+          year?: number | null
+        }
+        Update: {
+          created_at?: string
+          credit?: string | null
+          downloadable?: boolean
+          height?: number
+          id?: string
+          image_path?: string
+          kind?: Database["public"]["Enums"]["art_kind"]
+          slug?: string
+          sort_order?: number
+          status?: Database["public"]["Enums"]["art_status"]
+          title?: string
+          updated_at?: string
+          width?: number
+          year?: number | null
+        }
+        Relationships: []
+      }
       comment_likes: {
         Row: {
           comment_id: string
@@ -983,6 +1034,54 @@ export type Database = {
           },
         ]
       }
+      skins: {
+        Row: {
+          created_at: string
+          description_md: string | null
+          downloads: number
+          id: string
+          is_exclusive: boolean
+          model: Database["public"]["Enums"]["skin_model"]
+          name: string
+          render_bust_path: string | null
+          slug: string
+          sort_order: number
+          status: Database["public"]["Enums"]["skin_status"]
+          texture_path: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description_md?: string | null
+          downloads?: number
+          id?: string
+          is_exclusive?: boolean
+          model?: Database["public"]["Enums"]["skin_model"]
+          name: string
+          render_bust_path?: string | null
+          slug: string
+          sort_order?: number
+          status?: Database["public"]["Enums"]["skin_status"]
+          texture_path: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description_md?: string | null
+          downloads?: number
+          id?: string
+          is_exclusive?: boolean
+          model?: Database["public"]["Enums"]["skin_model"]
+          name?: string
+          render_bust_path?: string | null
+          slug?: string
+          sort_order?: number
+          status?: Database["public"]["Enums"]["skin_status"]
+          texture_path?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sync_runs: {
         Row: {
           created_at: string
@@ -1275,9 +1374,14 @@ export type Database = {
         Args: { p_file_id: string; p_ip_hash: string; p_ua_hash: string }
         Returns: undefined
       }
+      record_skin_download: { Args: { p_skin_id: string }; Returns: undefined }
+      reorder_art: { Args: { p_items: Json }; Returns: number }
       reorder_mentions: { Args: { p_items: Json }; Returns: number }
+      reorder_skins: { Args: { p_items: Json }; Returns: number }
     }
     Enums: {
+      art_kind: "avatar" | "thumbnail" | "icon" | "render" | "other"
+      art_status: "draft" | "published"
       comment_status: "published" | "held" | "hidden" | "deleted"
       comment_target: "project" | "skin" | "art" | "video"
       link_platform: "modrinth" | "curseforge"
@@ -1297,6 +1401,8 @@ export type Database = {
       project_status: "draft" | "published" | "hidden"
       project_type: "mod" | "datapack" | "resourcepack" | "plugin"
       report_reason: "spam" | "rude" | "other"
+      skin_model: "classic" | "slim"
+      skin_status: "draft" | "published"
       user_role: "user" | "moderator" | "admin"
       version_type: "release" | "beta" | "alpha"
     }
@@ -1429,6 +1535,8 @@ export const Constants = {
   },
   public: {
     Enums: {
+      art_kind: ["avatar", "thumbnail", "icon", "render", "other"],
+      art_status: ["draft", "published"],
       comment_status: ["published", "held", "hidden", "deleted"],
       comment_target: ["project", "skin", "art", "video"],
       link_platform: ["modrinth", "curseforge"],
@@ -1449,6 +1557,8 @@ export const Constants = {
       project_status: ["draft", "published", "hidden"],
       project_type: ["mod", "datapack", "resourcepack", "plugin"],
       report_reason: ["spam", "rude", "other"],
+      skin_model: ["classic", "slim"],
+      skin_status: ["draft", "published"],
       user_role: ["user", "moderator", "admin"],
       version_type: ["release", "beta", "alpha"],
     },

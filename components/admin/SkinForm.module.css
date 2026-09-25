@@ -1,0 +1,128 @@
+/* SkinForm — the /admin/skins add / edit panel (DESIGN.md §5 Admin field, §6 #9 "clarity over
+   flair", §11.1 Upload well / Square toggle; 02 §1.3; ADR-0048 D19 / D27). The `MentionPreview` slab
+   recipe: --slab fill, 2px --line-soft outline, two field columns from the tablet floor. Tokens
+   only (03 C-08); the inputs keep their own 3px radius through `Field` / `Select`. */
+.skin-form {
+  /* Containing block for the visually-hidden "Admin only" note — without it the absolutely
+     positioned span resolves against the viewport and can widen the page at 390. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+  padding: var(--space-24);
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+}
+
+.skin-form-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+/* Two columns; Description and the texture well span both. */
+.skin-form-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+.skin-form-wide {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+/* "Only on odsens" — the word and the §11.1 square side by side (the `ProjectFileWell` primary
+   row), 44px tall so it lines up with the fields' input rows. */
+.skin-form-toggle {
+  display: flex;
+  align-items: center;
+  align-self: end;
+  justify-content: space-between;
+  gap: var(--space-12);
+  min-height: 44px;
+  color: var(--chalk);
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+
+/* The texture well block: a `Field`-shaped label above the `UploadWell`, the current texture
+   (edit) beside its helper. */
+.skin-form-well {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.skin-form-label {
+  color: var(--chalk);
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+
+.skin-form-helper {
+  color: var(--mute-dim);
+  font-size: var(--text-label-sm);
+  line-height: 1.5;
+}
+
+.skin-form-current {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+/* 40px well on --ink; the 64×64 texture drawn at 32px (an integer half step) pixelated — DESIGN.md §4. */
+.skin-form-thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  background: var(--ink);
+  outline: 2px solid var(--line-soft);
+}
+
+.skin-form-thumb img {
+  image-rendering: pixelated;
+}
+
+/* Inline error lines (03 C-30) — the `Field` error recipe: --danger, plain words. */
+.skin-form-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-small);
+  line-height: 1.4;
+}
+
+/* "Rendering the 3D preview…" / the render-later line — mute, beside the button. */
+.skin-form-status {
+  margin: 0;
+  color: var(--mute);
+  font-size: var(--text-small);
+  line-height: 1.4;
+}
+
+.skin-form-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-12) var(--space-16);
+}
+
+@media (max-width: 599px) {
+  .skin-form {
+    padding: var(--space-16);
+  }
+
+  .skin-form-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .skin-form-toggle {
+    align-self: stretch;
+  }
+}

@@ -15,7 +15,9 @@
  * `externalId` + `modrinthLink` beside `curseforgeLink` from ONE `project_links` read. S1.8
  * (ADR-0045): `/admin/mentions` = `mentions` (all statuses — `listAdminMentions`) +
  * `projects_public` (the assign select — `listMentionProjectOptions`) + `sync_runs` (mentions —
- * `MENTIONS_SYNC_SOURCES`); the block at the end of the file.
+ * `MENTIONS_SYNC_SOURCES`); the S1.8 block. S1.7 (ADR-0048 D12): `/admin/skins` = `skins` (all
+ * statuses — `listAdminSkins` / `getAdminSkin`) and `/admin/art` = `art` (all statuses —
+ * `listAdminArt` / `getAdminArt`); the block at the end of the file.
  *
  * The admin read seam is the REQUEST-COOKIE server client (`lib/supabase/server.ts`) under the
  * S1.2 RLS policies (ADR-0022 `project_is_visible() or is_admin()` arms) — admin routes are
@@ -32,6 +34,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { avatarUrlFor, type CommentAuthor } from '@/lib/data/comments';
+import { publicStorageUrl } from '@/lib/data/projects';
 import { combinedDownloads } from '@/lib/format/downloads';
 import { projectMatchKey } from '@/lib/format/project';
 import { maskSecret } from '@/lib/format/secret';
@@ -1017,3 +1020,216 @@ export const MENTIONS_SYNC_SOURCES = ['mentions'] as const;
 export type MentionsSyncSource = (typeof MENTIONS_SYNC_SOURCES)[number];
 
 // ---- S1.8 block END --------------------------------------------------------------------------
+
+// ---- /admin/skins + /admin/art (S1.7; 02 §1.3 rows; 04 §1.5; ADR-0048 D19 / D27 / D12) ----------
+// ---- S1.7 block START ------------------------------------------------------------------------
+
+type SkinModel = Database['public']['Enums']['skin_model'];
+type SkinStatus = Database['public']['Enums']['skin_status'];
+type ArtKind = Database['public']['Enums']['art_kind'];
+type ArtStatus = Database['public']['Enums']['art_status'];
+
+/**
+ * One `/admin/skins` row — the table (Skin thumb + name + slug · Model · Downloads · Status ·
+ * Actions), the ORDER list and the `SkinForm` edit pre-fill share it (`getAdminSkin` returns the
+ * same shape). URLs are resolved here (03 C-19): `textureUrl` is the 40 px pixelated thumb and
+ * `bustUrl` the cached render or `null` (not rendered yet — 04 §3.8).
+ */
+export type AdminSkinListItem = {
+  id: string;
+  slug: string;
+  name: string;
+  /** The Markdown SOURCE (the form's textarea value); `null` = no description. */
+  descriptionMd: string | null;
+  model: SkinModel;
+  textureUrl: string;
+  bustUrl: string | null;
+  exclusive: boolean;
+  status: SkinStatus;
+  /** What `updateSkin({ reorder })` writes (04 §1.5). */
+  sortOrder: number;
+  /** The `record_skin_download` counter (04 §2.3 D4). */
+  downloads: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Cap for the list = the `updateSkin` reorder maximum (04 §1.5 "max 200"). */
+export const ADMIN_SKINS_LIMIT = 200;
+
+const ADMIN_SKIN_SELECT =
+  'id, slug, name, description_md, texture_path, model, render_bust_path, is_exclusive, status, sort_order, downloads, created_at, updated_at';
+
+type AdminSkinRow = {
+  id: string;
+  slug: string;
+  name: string;
+  description_md: string | null;
+  texture_path: string;
+  model: SkinModel;
+  render_bust_path: string | null;
+  is_exclusive: boolean;
+  status: SkinStatus;
+  sort_order: number;
+  downloads: number;
+  created_at: string;
+  updated_at: string;
+};
+
+function toAdminSkin(row: AdminSkinRow): AdminSkinListItem {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    descriptionMd: row.description_md,
+    model: row.model,
+    textureUrl: publicStorageUrl(row.texture_path),
+    bustUrl: row.render_bust_path === null ? null : publicStorageUrl(row.render_bust_path),
+    exclusive: row.is_exclusive,
+    status: row.status,
+    sortOrder: row.sort_order,
+    downloads: row.downloads,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * The `/admin/skins` list (02 §1.3 Data cell: "`skins` (all statuses)") on the request-cookie
+ * client, newest-added first (`created_at` desc, `id` breaks a tie) — deliberately NOT by
+ * `sort_order`, so a reorder never reshuffles the table under the pointer (the page's ORDER
+ * section sorts the published rows by `sortOrder` itself). RLS (05 T-RLS-53/54): an `admin`
+ * session reads every status; a `moderator` session gets the RLS-filtered PUBLISHED rows only, so
+ * every row a moderator sees reads LIVE — the read-only degradation 02 §1.3 accepts (the
+ * `listAdminVideos` / `listAdminMentions` precedent; the policy is never widened).
+ */
+export async function listAdminSkins(
+  limit: number = ADMIN_SKINS_LIMIT,
+): Promise<AdminSkinListItem[]> {
+  const db = await createServerClient();
+  const { data, error } = await db
+    .from('skins')
+    .select(ADMIN_SKIN_SELECT)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`admin skins read failed: ${error.code}`);
+  return data.map(toAdminSkin);
+}
+
+/**
+ * One skin by id for `/admin/skins?edit=<id>` (the `SkinForm` pre-fill). `null` = unknown id OR
+ * filtered by RLS (a moderator on a draft — 05 T-RLS-54); the page treats both as "nothing to edit".
+ */
+export async function getAdminSkin(id: string): Promise<AdminSkinListItem | null> {
+  const db = await createServerClient();
+  const { data, error } = await db
+    .from('skins')
+    .select(ADMIN_SKIN_SELECT)
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(`admin skin read failed: ${error.code}`);
+  return data === null ? null : toAdminSkin(data);
+}
+
+/**
+ * One `/admin/art` row — the table (Art thumb · Title · Kind · Size `w×h` · Status · Actions),
+ * the ORDER list and the `ArtForm` edit pre-fill share it (`getAdminArt` returns the same shape).
+ * `imageUrl` is resolved here (03 C-19); `imagePath` is the stored `art/<id>/<hash16>.<ext>` the
+ * form shows beside "Replace image" (never a user input — the commit derives the next one).
+ */
+export type AdminArtListItem = {
+  id: string;
+  slug: string;
+  title: string;
+  kind: ArtKind;
+  imageUrl: string;
+  imagePath: string;
+  /** Natural size, server-derived at commit (04 §1.5). */
+  width: number;
+  height: number;
+  year: number | null;
+  /** A handle, never a real name. */
+  credit: string | null;
+  downloadable: boolean;
+  status: ArtStatus;
+  /** What `updateArt({ reorder })` writes (04 §1.5). */
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Cap for the list — art grows faster than skins; engineering call (ADR-0048 D12). */
+export const ADMIN_ART_LIMIT = 500;
+
+const ADMIN_ART_SELECT =
+  'id, slug, title, kind, image_path, width, height, year, credit, downloadable, status, sort_order, created_at, updated_at';
+
+type AdminArtRow = {
+  id: string;
+  slug: string;
+  title: string;
+  kind: ArtKind;
+  image_path: string;
+  width: number;
+  height: number;
+  year: number | null;
+  credit: string | null;
+  downloadable: boolean;
+  status: ArtStatus;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+function toAdminArt(row: AdminArtRow): AdminArtListItem {
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    kind: row.kind,
+    imageUrl: publicStorageUrl(row.image_path),
+    imagePath: row.image_path,
+    width: row.width,
+    height: row.height,
+    year: row.year,
+    credit: row.credit,
+    downloadable: row.downloadable,
+    status: row.status,
+    sortOrder: row.sort_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * The `/admin/art` list (02 §1.3 Data cell: "`art` (all statuses)") on the request-cookie client,
+ * newest-added first (`created_at` desc, `id` breaks a tie) — not by `sort_order`, for the
+ * `listAdminSkins` reason. RLS (05 T-RLS-58/59): an `admin` session reads every status; a
+ * `moderator` session gets the RLS-filtered PUBLISHED rows only, so every row a moderator sees
+ * reads LIVE — the read-only degradation 02 §1.3 accepts; the policy is never widened.
+ */
+export async function listAdminArt(limit: number = ADMIN_ART_LIMIT): Promise<AdminArtListItem[]> {
+  const db = await createServerClient();
+  const { data, error } = await db
+    .from('art')
+    .select(ADMIN_ART_SELECT)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`admin art read failed: ${error.code}`);
+  return data.map(toAdminArt);
+}
+
+/**
+ * One piece by id for `/admin/art?edit=<id>` (the `ArtForm` pre-fill). `null` = unknown id OR
+ * filtered by RLS (a moderator on a draft — 05 T-RLS-59).
+ */
+export async function getAdminArt(id: string): Promise<AdminArtListItem | null> {
+  const db = await createServerClient();
+  const { data, error } = await db.from('art').select(ADMIN_ART_SELECT).eq('id', id).maybeSingle();
+  if (error) throw new Error(`admin art read failed: ${error.code}`);
+  return data === null ? null : toAdminArt(data);
+}
+
+// ---- S1.7 block END --------------------------------------------------------------------------

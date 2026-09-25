@@ -64,15 +64,31 @@
  *    through the page's own actions (`createMention` / `updateMention` → `revalidateTag`); the
  *    two test rows are hidden THROUGH THE UI, the pages polled back to seed truth, and only then
  *    deleted with the service client (there is no delete action — 01 INV-24).
+ *  - S1.7 (same file, same reason — ADR-0048): T-E2E-42 gains the `/admin/skins` and `/admin/art`
+ *    legs — the list views AND the `?edit=<seed id>` views, axe + shots at 1280 AND 390 (00
+ *    S1.7.AC10), pristine seed first; the final describe holds T-E2E-38 — the moderator's disabled
+ *    form / row / reorder controls (no POST) on both routes, then the admin adds
+ *    `images/skin-64.png` as a Slim draft through `SkinForm` (the well's PICK mode — the bytes travel
+ *    inside `createSkin`'s FormData, 04 SC-18), publishes it from the table, polls `/skins` to three
+ *    cards, edits its description, meets the well's own "Skins need to be 64×64." on
+ *    `images/skin-128.png` (the pre-check stops the pick before any byte leaves — the server's
+ *    refusal is T-ACT-58's), then adds `images/thumb-1280x720.png` through `ArtForm` (the well's
+ *    DEFERRED-COMMIT mode: `begin` → PUT → "Ready to save." → the form's own commit), reads the
+ *    server-derived 1280×720 off the row, publishes it and polls `/art` to three cards at natural
+ *    aspect. Both rows are unpublished THROUGH THE UI, the public pages polled back to seed truth,
+ *    and only then removed — rows and objects — with the service client (no delete action).
  *
  * Seed truths: SEED-4..6 (3 published projects; overrides featured 1 = pixel-chameleon,
  * 2 = seed-exclusive-pack; CF link 900001 on pixel-chameleon), SEED-12 (one ok run per source),
  * SEED-9 (the held `…0203` by seed_user2, the hidden + reported `…0204`), SEED-11 (7 videos:
  * `seedvid0002` hidden, `seedvid0003` the one Short, no overrides), SEED-10 (2 published mentions:
  * `…0301` YouTube `seedvid0001` on metal-pipe-mace, 1,200,000 views, featured, sort_order 1;
- * `…0302` TikTok about OddSense generally, no count, not featured; no `mentions` sync run).
+ * `…0302` TikTok about OddSense generally, no count, not featured; no `mentions` sync run),
+ * SEED-7 (2 published skins: `…0601` seed-skin-a classic sort 2 with a bust, `…0602` seed-skin-b
+ * slim exclusive sort 1 without one — the `/skins` default), SEED-8 (2 published art pieces:
+ * `…0701` seed-art-avatar 256×256 downloadable sort 1, `…0702` seed-art-thumb 1280×720 sort 2).
  */
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
 import { freeHandle, readProfile } from '../../helpers/arrange';
 import { asRole, loose } from '../../helpers/asRole';
@@ -104,9 +120,11 @@ import { loginAs, logout } from '../../helpers/loginAs';
 import { shoot } from '../../helpers/screenshots';
 import { listObjects, removeObjects } from '../../helpers/storage';
 import {
+  SEED_ART,
   SEED_COMMENTS,
   SEED_MENTIONS,
   SEED_PROJECTS,
+  SEED_SKINS,
   SEED_USERS,
   SEED_VIDEOS,
 } from '../../helpers/seedIds';
@@ -200,7 +218,7 @@ async function restoreSeedCurseforgeListing(service: ServiceClient): Promise<voi
 // T-E2E-42 — a11y + screenshots, pristine seed state first
 // ---------------------------------------------------------------------------------------------
 
-test('T-E2E-42 admin routes: axe zero serious/critical + 1280 screenshots (/admin, /admin/projects, /admin/projects/[id]) + /admin/comments, /admin/settings and /admin/mentions (both views) at 1280 and 390', async ({
+test('T-E2E-42 admin routes: axe zero serious/critical + 1280 screenshots (/admin, /admin/projects, /admin/projects/[id]) + /admin/comments, /admin/settings, /admin/mentions (both views), /admin/skins and /admin/art (list + edit views) at 1280 and 390', async ({
   page,
 }) => {
   await loginAs(page, 'admin');
@@ -290,6 +308,83 @@ test('T-E2E-42 admin routes: axe zero serious/critical + 1280 screenshots (/admi
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await expectNoSeriousA11y(page);
   await shoot(page, 'admin-mentions-suggested');
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  // S1.7: the skins admin — desktop AND phone (00 S1.7.AC10; ADR-0048 D19 / D27), seed state: the
+  // empty "Add a skin" island, both published rows in ORDER, two LIVE table rows.
+  await page.goto('/admin/skins');
+  await expect(page).toHaveTitle('Skins · Admin');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Skins');
+  await expect(page.getByRole('region', { name: 'Add a skin' })).toBeVisible();
+  const skinList = page.locator('section', {
+    has: page.getByRole('heading', { level: 2, name: /^ALL SKINS/ }),
+  });
+  await expect(skinList.locator('tbody tr')).toHaveCount(2);
+  await expect(skinList.getByText('LIVE', { exact: true })).toHaveCount(2);
+  await expect(page.locator('ol[aria-label="Skin order"] li')).toHaveCount(2);
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-skins');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('heading', { level: 2, name: /^ALL SKINS/ })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-skins');
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  // The edit view: `?edit=<seed id>` — the same island pre-filled under "EDIT SKIN" + Cancel.
+  await page.goto(`/admin/skins?edit=${SEED_SKINS.skinA}`);
+  await expect(page.getByRole('heading', { level: 2, name: 'EDIT SKIN' })).toBeVisible();
+  const editSkin = page.getByRole('region', { name: 'Edit skin' });
+  await expect(editSkin.getByLabel('Name', { exact: true })).toHaveValue('Seed Skin A');
+  await expect(editSkin.getByLabel('Slug', { exact: true })).toHaveValue('seed-skin-a');
+  await expect(editSkin.getByText('Replace texture', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Cancel', exact: true })).toHaveAttribute(
+    'href',
+    '/admin/skins',
+  );
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-skins-edit');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-skins-edit');
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  // S1.7: the art admin — desktop AND phone, seed state: the empty "Add art" island, both
+  // published pieces in ORDER, two LIVE rows with their server-derived sizes.
+  await page.goto('/admin/art');
+  await expect(page).toHaveTitle('Art · Admin');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Art');
+  await expect(page.getByRole('region', { name: 'Add art' })).toBeVisible();
+  const artList = page.locator('section', {
+    has: page.getByRole('heading', { level: 2, name: /^ALL ART/ }),
+  });
+  await expect(artList.locator('tbody tr')).toHaveCount(2);
+  await expect(artList.getByText('LIVE', { exact: true })).toHaveCount(2);
+  await expect(artList.getByText('1280×720', { exact: true })).toHaveCount(1);
+  await expect(artList.getByText('256×256', { exact: true })).toHaveCount(1);
+  await expect(page.locator('ol[aria-label="Art order"] li')).toHaveCount(2);
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-art');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('heading', { level: 2, name: /^ALL ART/ })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-art');
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  await page.goto(`/admin/art?edit=${SEED_ART.thumb}`);
+  await expect(page.getByRole('heading', { level: 2, name: 'EDIT ART' })).toBeVisible();
+  const editArt = page.getByRole('region', { name: 'Edit art' });
+  await expect(editArt.getByLabel('Title', { exact: true })).toHaveValue('Seed Thumbnail');
+  await expect(editArt.getByLabel('Kind', { exact: true })).toHaveText('Thumbnail');
+  await expect(editArt.getByText('Replace image', { exact: true })).toBeVisible();
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-art-edit');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-art-edit');
   await page.setViewportSize({ width: 1280, height: 800 });
 });
 
@@ -4581,5 +4676,678 @@ test.describe('mentions on /admin/mentions (S1.8 — T-E2E-39)', () => {
       }
     });
     expect(google, 'no browser request to a YouTube / Google host').toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-E2E-38 (S1.7; 00 S1.7.AC1 / AC7 / AC9 / AC10; 02 §1.3 `/admin/skins` + `/admin/art`; 03 §2.10
+// `UploadWell` pick / deferred-commit modes + the admin-only controls rule; 04 §1.5; ADR-0002 C7;
+// ADR-0048 D18..D19 / D27) — the admin adds a skin and a picture. Same recipe as T-E2E-39 / T-E2E-47
+// (FLK-3 / FLK-4): every public effect is reached the way Oliver reaches it — `createSkin` /
+// `updateSkin` / `createArt` / `updateArt` through the pages, each of which calls
+// `revalidateTag('skins' | 'art')` — and the ISR pages are polled by re-navigation, never slept
+// on; a dry poll revalidates again through the app (`nudgeSkinsTag` / `nudgeArtTag`: Unpublish →
+// Publish on a seed row, which leaves seed truth behind). There is no delete action (01 INV-24),
+// so the two rows this test creates are UNPUBLISHED through the UI, the public pages polled back
+// to seed truth, and only then removed — rows AND their objects — with the service client
+// (cleanup only: an unpublished row is on no public page, so its removal needs no revalidation).
+// `mutatesSeed` (the nudges flip a seed row's `status` and `updated_at`), restored through the
+// same actions; `afterAll` repairs a failed run (rows + objects by service, then the app's own
+// revalidation in a fresh context — `next start` keeps ISR entries on disk).
+//
+// The 128×128 texture: `UploadWell`'s pick-mode pre-check reads the IHDR and says "Skins need to
+// be 64×64." before any byte leaves the browser, so the SERVER's refusal of a 128 texture cannot
+// be reached from this UI at all — the e2e asserts the well's line and that no request left;
+// `createSkin`'s own refusal (the same words) is T-ACT-58's.
+// ---------------------------------------------------------------------------------------------
+test.describe('skins + art on /admin/skins and /admin/art (S1.7 — T-E2E-38)', () => {
+  const SKIN_NAME = 'e2e skin';
+  const SKIN_SLUG = 'e2e-skin';
+  const SKIN_DESCRIPTION = 'Made by the browser test. Slightly cursed.';
+  const ART_TITLE = 'e2e thumb';
+  const ART_SLUG = 'e2e-thumb';
+  const NOT_64 = 'Skins need to be 64×64.';
+  const SEED_SKIN_A_NAME = 'Seed Skin A';
+  const SEED_ART_AVATAR_TITLE = 'Seed Avatar';
+
+  const SKIN_COLUMNS =
+    'id, slug, name, description_md, model, status, texture_path, render_bust_path, is_exclusive, sort_order, downloads';
+  const ART_COLUMNS =
+    'id, slug, title, kind, status, image_path, width, height, year, credit, downloadable, sort_order';
+
+  type SkinRow = {
+    id: string;
+    slug: string;
+    name: string;
+    description_md: string | null;
+    model: string;
+    status: string;
+    texture_path: string;
+    render_bust_path: string | null;
+    is_exclusive: boolean;
+    sort_order: number;
+    downloads: number;
+  };
+  type ArtRow = {
+    id: string;
+    slug: string;
+    title: string;
+    kind: string;
+    status: string;
+    image_path: string;
+    width: number;
+    height: number;
+    year: number | null;
+    credit: string | null;
+    downloadable: boolean;
+    sort_order: number;
+  };
+
+  /** Set once both test rows are gone AND the public pages were seen back on seed truth. */
+  let restoredThroughApp = false;
+  /** Set right before the first write — until then no row, no object and no cache was touched. */
+  let mutated = false;
+
+  function service() {
+    return loose(asRole('service'));
+  }
+
+  async function readSkins(): Promise<SkinRow[]> {
+    const { data, error } = await service().from('skins').select(SKIN_COLUMNS).order('id');
+    expect(error).toBeNull();
+    return (data ?? []) as SkinRow[];
+  }
+
+  async function readArt(): Promise<ArtRow[]> {
+    const { data, error } = await service().from('art').select(ART_COLUMNS).order('id');
+    expect(error).toBeNull();
+    return (data ?? []) as ArtRow[];
+  }
+
+  /**
+   * Cleanup only (service client): the rows this test creates and every object under their
+   * folders (`skins/<id>/*` — texture + bust; `art/<id>/*` — the content-addressed image).
+   */
+  async function deleteTestRows(): Promise<void> {
+    for (const row of (await readSkins()).filter((skin) => skin.slug === SKIN_SLUG)) {
+      await removeObjects('skins', await listObjects('skins', row.id));
+    }
+    for (const row of (await readArt()).filter((art) => art.slug === ART_SLUG)) {
+      await removeObjects('art', await listObjects('art', row.id));
+    }
+    const skins = await service().from('skins').delete().eq('slug', SKIN_SLUG);
+    expect(skins.error).toBeNull();
+    const art = await service().from('art').delete().eq('slug', ART_SLUG);
+    expect(art.error).toBeNull();
+  }
+
+  const skinRegion = (page: Page) => page.getByRole('region', { name: 'Add a skin' });
+  const artRegion = (page: Page) => page.getByRole('region', { name: 'Add art' });
+  const skinList = (page: Page) =>
+    page.locator('section', { has: page.getByRole('heading', { level: 2, name: /^ALL SKINS/ }) });
+  const artList = (page: Page) =>
+    page.locator('section', { has: page.getByRole('heading', { level: 2, name: /^ALL ART/ }) });
+  const skinCards = (page: Page) => page.locator('main ul a[href^="?skin="]');
+  const artCards = (page: Page) => page.locator('main ul a[data-art-index]');
+
+  /**
+   * One worded row button = one `updateSkin` / `updateArt` + PRG; waits until the re-rendered row
+   * offers `becomes` (Publish → Unpublish, …), i.e. the stored state was read back.
+   */
+  async function rowAction(
+    page: Page,
+    base: '/admin/skins' | '/admin/art',
+    word: 'Publish' | 'Unpublish',
+    title: string,
+  ): Promise<void> {
+    const becomes = word === 'Publish' ? 'Unpublish' : 'Publish';
+    await page.goto(base);
+    const row = page.locator('tbody tr', { hasText: title });
+    await row.getByRole('button', { name: `${word} ${title}`, exact: true }).click();
+    await expect(row.getByRole('button', { name: `${becomes} ${title}`, exact: true })).toBeVisible(
+      { timeout: 10_000 },
+    );
+  }
+
+  /** Two `revalidateTag('skins')` calls that leave seed truth behind (`…0601` stays published). */
+  async function nudgeSkinsTag(page: Page): Promise<void> {
+    await rowAction(page, '/admin/skins', 'Unpublish', SEED_SKIN_A_NAME);
+    await rowAction(page, '/admin/skins', 'Publish', SEED_SKIN_A_NAME);
+  }
+
+  /** Two `revalidateTag('art')` calls that leave seed truth behind (`…0701` stays published). */
+  async function nudgeArtTag(page: Page): Promise<void> {
+    await rowAction(page, '/admin/art', 'Unpublish', SEED_ART_AVATAR_TITLE);
+    await rowAction(page, '/admin/art', 'Publish', SEED_ART_AVATAR_TITLE);
+  }
+
+  /**
+   * `expectAtUrl` with the T-E2E-39 cycle: `revalidateTag(…, 'max')` is stale-while-revalidate
+   * twice over (the page entry AND the `unstable_cache` reader), so the regeneration after the
+   * LAST write can bake the previous list for another 600 s. When the re-navigation poll runs dry,
+   * revalidate again through the app and poll again — never a fixed sleep (FLK-4).
+   */
+  async function expectAtUrlWithNudge(
+    page: Page,
+    url: string,
+    assert: () => Promise<void>,
+    nudge: (page: Page) => Promise<void>,
+  ): Promise<void> {
+    for (let cycle = 0; ; cycle += 1) {
+      try {
+        await expect(async () => {
+          await page.goto(url);
+          await assert();
+        }).toPass({ timeout: 8_000, intervals: [400, 800, 1_600] });
+        return;
+      } catch (error) {
+        if (cycle === 3) throw error;
+        await nudge(page);
+      }
+    }
+  }
+
+  const quick = { timeout: 1_000 };
+
+  /**
+   * After a save the primary button eases from its pending look back to its resting colours over
+   * `--dur-fast` — and under a busy main thread (the `router.refresh()` commit) the fade starts late,
+   * so axe sampled the disabled tokens (2.5:1) on an ENABLED button. Before an axe pass the button
+   * must be enabled and painted in anything but the disabled pair, stable across 200 ms (the
+   * skins.spec precedent: timing, not a contrast defect).
+   */
+  async function settledButton(button: Locator): Promise<void> {
+    await expect(button).toBeEnabled();
+    await expect
+      .poll(
+        () =>
+          button.evaluate(
+            (el) =>
+              new Promise<boolean>((resolve) => {
+                const probe = document.createElement('span');
+                probe.style.color = 'var(--disabled-text)';
+                probe.style.backgroundColor = 'var(--disabled-fill)';
+                document.body.append(probe);
+                const disabled = `${getComputedStyle(probe).color} ${getComputedStyle(probe).backgroundColor}`;
+                probe.remove();
+                const paint = () =>
+                  `${getComputedStyle(el).color} ${getComputedStyle(el).backgroundColor}`;
+                const before = paint();
+                setTimeout(() => resolve(before !== disabled && paint() === before), 200);
+              }),
+          ),
+        { timeout: 5_000 },
+      )
+      .toBe(true);
+  }
+
+  /** A server-action POST leaves in the click's own task, so two painted frames bound the wait. */
+  function twoFrames(page: Page): Promise<void> {
+    return page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }),
+    );
+  }
+
+  /** `/skins` on seed truth: two cards, `seed-skin-b` selected by default (SEED-7 sort_order 1). */
+  async function expectSeedSkins(page: Page): Promise<void> {
+    await expectAtUrlWithNudge(
+      page,
+      '/skins',
+      async () => {
+        await expect(skinCards(page)).toHaveCount(2, quick);
+        await expect(page.locator('main ul a[href="?skin=seed-skin-b"]')).toHaveAttribute(
+          'aria-current',
+          'true',
+          quick,
+        );
+      },
+      nudgeSkinsTag,
+    );
+  }
+
+  /** `/art` on seed truth: two cards, ALL 2 · THUMBNAILS 1. */
+  async function expectSeedArt(page: Page): Promise<void> {
+    await expectAtUrlWithNudge(
+      page,
+      '/art',
+      async () => {
+        await expect(artCards(page)).toHaveCount(2, quick);
+        await expect(
+          page.locator('[role="group"][aria-label="Filter"]').getByRole('link', { name: 'ALL 2' }),
+        ).toBeVisible(quick);
+      },
+      nudgeArtTag,
+    );
+  }
+
+  test.beforeAll(() => {
+    loadEnvTest();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    if (!mutated || restoredThroughApp) return;
+    // A failed run. Rows + objects first (service client — cleanup only), then SEED-7 / SEED-8
+    // truth (both seed rows of each table published), then the ISR entries through the app's own
+    // revalidation in a fresh admin context (a service write revalidates nothing).
+    await deleteTestRows();
+    const skins = await service()
+      .from('skins')
+      .update({ status: 'published' })
+      .in('id', [SEED_SKINS.skinA, SEED_SKINS.skinB]);
+    expect(skins.error).toBeNull();
+    const art = await service()
+      .from('art')
+      .update({ status: 'published' })
+      .in('id', [SEED_ART.avatar, SEED_ART.thumb]);
+    expect(art.error).toBeNull();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    try {
+      await loginAs(page, 'admin');
+      await nudgeSkinsTag(page);
+      await nudgeArtTag(page);
+      await expectSeedSkins(page);
+      await expectSeedArt(page);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('T-E2E-38 moderator: /admin/skins and /admin/art show every form field, the well, Save, Publish / Unpublish and the reorder controls disabled under title="Admin only"; a click sends no POST and writes nothing', async ({
+    page,
+  }) => {
+    const skinsBefore = await readSkins();
+    const artBefore = await readArt();
+    expect(skinsBefore.map((row) => row.id)).toEqual([SEED_SKINS.skinA, SEED_SKINS.skinB]);
+    expect(artBefore.map((row) => row.id)).toEqual([SEED_ART.avatar, SEED_ART.thumb]);
+
+    const underAdminOnly = (el: Element) => el.closest('[title="Admin only"]') !== null;
+    const posts: string[] = [];
+    page.on('request', (req) => {
+      if (req.method() === 'POST') posts.push(req.url());
+    });
+
+    await loginAs(page, 'mod');
+
+    // ---- /admin/skins ---------------------------------------------------------------------------
+    await page.goto('/admin/skins');
+    await expect(page).toHaveTitle('Skins · Admin');
+    // The RLS-filtered read (05 T-RLS-53 / 54): published rows only — both seed rows are.
+    const list = skinList(page);
+    await expect(list.locator('tbody tr')).toHaveCount(2);
+    await expect(list.getByText('LIVE', { exact: true })).toHaveCount(2);
+    await expect(list.getByText('DRAFT', { exact: true })).toHaveCount(0);
+
+    // The form island: every field, the switch, the well's picker and Save — present, disabled,
+    // under title="Admin only" (03 §2.10), with no <form> anywhere in it.
+    const region = skinRegion(page);
+    const skinControls = [
+      region.getByLabel('Name', { exact: true }),
+      region.getByLabel('Slug', { exact: true }),
+      region.getByLabel('Description', { exact: true }),
+      region.getByLabel('Model', { exact: true }),
+      region.getByLabel('Status', { exact: true }),
+      region.getByLabel('Sort order', { exact: true }),
+      region.getByRole('switch', { name: 'Only on odsens' }),
+      region.locator('input[type="file"]'),
+      region.getByRole('button', { name: 'Save', exact: true }),
+    ];
+    for (const control of skinControls) {
+      await expect(control).toHaveCount(1);
+      await expect(control).toBeDisabled();
+      expect(await control.evaluate(underAdminOnly), `${ADMIN_ONLY} on the skin form`).toBe(true);
+    }
+    await expect(region.locator('form')).toHaveCount(0);
+
+    // Row actions: the same worded buttons an admin gets, disabled, no <form> around them; Edit
+    // stays a link (it opens the same read-only form — nothing to disable).
+    const skinRowButtons = ['Seed Skin B', SEED_SKIN_A_NAME].map((name) =>
+      list.getByRole('button', { name: `Unpublish ${name}`, exact: true }),
+    );
+    for (const button of skinRowButtons) {
+      await expect(button).toHaveCount(1);
+      await expect(button).toBeDisabled();
+      expect(await button.evaluate(underAdminOnly)).toBe(true);
+    }
+    await expect(list.locator('form')).toHaveCount(0);
+    await expect(list.getByRole('link', { name: /^Edit / })).toHaveCount(2);
+
+    // Reorder: the ⠿ handle and both Move buttons — disabled + aria-disabled + the title itself.
+    await expect(page.locator('ol[aria-label="Skin order"] li')).toHaveCount(2);
+    const skinReorder = [
+      `Move ${SEED_SKIN_A_NAME}`,
+      `Move up ${SEED_SKIN_A_NAME}`,
+      `Move down ${SEED_SKIN_A_NAME}`,
+    ].map((name) => page.getByRole('button', { name, exact: true }));
+    for (const button of skinReorder) {
+      await expect(button).toBeDisabled();
+      await expect(button).toHaveAttribute('aria-disabled', 'true');
+      await expect(button).toHaveAttribute('title', ADMIN_ONLY);
+    }
+
+    // Clicking a disabled control issues no action call and no forbidden toast (02 §1.3).
+    for (const control of [skinControls[8], skinRowButtons[0], ...skinReorder]) {
+      await control?.click({ force: true });
+    }
+    await twoFrames(page);
+    expect(posts, 'no server-action POST left /admin/skins').toEqual([]);
+    await expect(page.getByText('Not allowed.')).toHaveCount(0);
+    await expect(page.getByText('Saved.', { exact: true })).toHaveCount(0);
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0);
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'admin-skins-moderator');
+
+    // ---- /admin/art -----------------------------------------------------------------------------
+    await page.goto('/admin/art');
+    await expect(page).toHaveTitle('Art · Admin');
+    const pieces = artList(page);
+    await expect(pieces.locator('tbody tr')).toHaveCount(2);
+    await expect(pieces.getByText('LIVE', { exact: true })).toHaveCount(2);
+
+    const art = artRegion(page);
+    const artControls = [
+      art.getByLabel('Title', { exact: true }),
+      art.getByLabel('Slug', { exact: true }),
+      art.getByLabel('Kind', { exact: true }),
+      art.getByLabel('Year', { exact: true }),
+      art.getByLabel('Credit', { exact: true }),
+      art.getByLabel('Status', { exact: true }),
+      art.getByLabel('Sort order', { exact: true }),
+      art.getByRole('switch', { name: 'Visitors can download it' }),
+      art.locator('input[type="file"]'),
+      art.getByRole('button', { name: 'Save', exact: true }),
+    ];
+    for (const control of artControls) {
+      await expect(control).toHaveCount(1);
+      await expect(control).toBeDisabled();
+      expect(await control.evaluate(underAdminOnly), `${ADMIN_ONLY} on the art form`).toBe(true);
+    }
+    await expect(art.locator('form')).toHaveCount(0);
+
+    const artRowButtons = [SEED_ART_AVATAR_TITLE, 'Seed Thumbnail'].map((title) =>
+      pieces.getByRole('button', { name: `Unpublish ${title}`, exact: true }),
+    );
+    for (const button of artRowButtons) {
+      await expect(button).toHaveCount(1);
+      await expect(button).toBeDisabled();
+      expect(await button.evaluate(underAdminOnly)).toBe(true);
+    }
+    await expect(pieces.locator('form')).toHaveCount(0);
+
+    await expect(page.locator('ol[aria-label="Art order"] li')).toHaveCount(2);
+    const artReorder = [
+      `Move ${SEED_ART_AVATAR_TITLE}`,
+      `Move up ${SEED_ART_AVATAR_TITLE}`,
+      `Move down ${SEED_ART_AVATAR_TITLE}`,
+    ].map((name) => page.getByRole('button', { name, exact: true }));
+    for (const button of artReorder) {
+      await expect(button).toBeDisabled();
+      await expect(button).toHaveAttribute('aria-disabled', 'true');
+      await expect(button).toHaveAttribute('title', ADMIN_ONLY);
+    }
+
+    for (const control of [artControls[9], artRowButtons[1], ...artReorder]) {
+      await control?.click({ force: true });
+    }
+    await twoFrames(page);
+    expect(posts, 'no server-action POST left /admin/art').toEqual([]);
+    await expect(page.getByText('Saved.', { exact: true })).toHaveCount(0);
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0);
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'admin-art-moderator');
+
+    // The stored rows are the second witness: nothing changed on either table.
+    expect(await readSkins()).toEqual(skinsBefore);
+    expect(await readArt()).toEqual(artBefore);
+  });
+
+  test('T-E2E-38 admin: add images/skin-64.png as a Slim draft (slug pre-filled, the real bust rendered) → Publish → /skins shows 3 cards with the new one selected; edit its description; skin-128.png → the well says "Skins need to be 64×64." and nothing leaves; /admin/art: add thumb-1280x720.png as a Thumbnail → "Ready to save." → Save → the row reads 1280×720 → Publish → /art shows 3 at natural aspect; unpublish both through the UI, poll back to seed truth, remove the rows + objects', async ({
+    page,
+  }) => {
+    // ~10 action round trips + ~8 polled public pages (each may need a revalidation cycle), plus
+    // the WebGL viewer on every /skins poll.
+    test.setTimeout(300_000);
+    await deleteTestRows(); // a leftover from a killed run would answer Save with `conflict`
+    const seedSkins = await readSkins();
+    const seedArt = await readArt();
+    expect(seedSkins.map((row) => row.id)).toEqual([SEED_SKINS.skinA, SEED_SKINS.skinB]);
+    expect(seedArt.map((row) => row.id)).toEqual([SEED_ART.avatar, SEED_ART.thumb]);
+
+    const posts: string[] = [];
+    page.on('request', (req) => {
+      if (req.method() === 'POST') posts.push(req.url());
+    });
+
+    await loginAs(page, 'admin');
+    await page.goto('/admin/skins');
+    const region = skinRegion(page);
+    const list = skinList(page);
+    await expect(list.locator('tbody tr')).toHaveCount(2);
+    await expect(list.getByText('2 TOTAL', { exact: true })).toBeVisible();
+
+    // -- Save with nothing picked: the form's own line, no call leaves --------------------------
+    const save = region.getByRole('button', { name: 'Save', exact: true });
+    await region.getByLabel('Name', { exact: true }).fill(SKIN_NAME);
+    await expect(region.getByLabel('Slug', { exact: true })).toHaveValue(SKIN_SLUG); // pre-filled
+    await save.click();
+    await expect(region.locator('[role="alert"]')).toHaveText('Drop the 64×64 PNG in first.');
+    expect(posts, 'no server-action POST without a texture').toEqual([]);
+
+    // -- Model Slim, pick the 64×64 texture (pick mode: `done` + the name, no network), Save ------
+    await region.getByLabel('Model', { exact: true }).click();
+    await page.getByRole('option', { name: 'Slim', exact: true }).click();
+    await expect(region.getByLabel('Model', { exact: true })).toHaveText('Slim');
+    const fileInput = region.locator('input[type="file"]');
+    await fileInput.setInputFiles(fixturePath('images', 'skin-64.png'));
+    await expect(region.locator('[data-state="done"]')).toContainText('skin-64.png');
+    await expect(region.locator('[role="alert"]')).toHaveCount(0); // the pick clears the line
+    expect(posts, 'a pick is local — no begin, no PUT').toEqual([]);
+    mutated = true;
+    await save.click();
+    await expect(page.getByText('Saved.', { exact: true })).toBeVisible({ timeout: 45_000 });
+    // ok → the form resets (fields empty, the well back to `idle`) and the table re-reads.
+    await expect(region.getByLabel('Name', { exact: true })).toHaveValue('');
+    await expect(region.locator('[data-state="idle"]')).toHaveCount(1);
+    await expect(list.locator('tbody tr')).toHaveCount(3, { timeout: 10_000 });
+    await expect(list.getByText('3 TOTAL', { exact: true })).toBeVisible();
+    await expect(list.locator('tbody tr').first()).toContainText(SKIN_NAME); // newest created first
+    const skinRow = list.locator('tbody tr', { hasText: SKIN_NAME });
+    await expect(skinRow.getByText('DRAFT', { exact: true })).toBeVisible();
+    await expect(skinRow).toContainText('Slim');
+    await expect(skinRow).toContainText(SKIN_SLUG);
+    // The real renderer ran inside the action (04 §3.8): no "render later" line, a bust stored.
+    await expect(region.getByText(/render later/)).toHaveCount(0);
+    const storedSkin = (await readSkins()).find((row) => row.slug === SKIN_SLUG);
+    expect(storedSkin).toMatchObject({
+      name: SKIN_NAME,
+      model: 'slim',
+      status: 'draft',
+      is_exclusive: false,
+      sort_order: 0,
+      downloads: 0,
+      description_md: null,
+    });
+    expect(storedSkin?.texture_path).toBe(`skins/${storedSkin?.id}/texture.png`);
+    expect(storedSkin?.render_bust_path, 'the bust was rendered').toBe(
+      `skins/${storedSkin?.id}/bust.png`,
+    );
+    expect((await listObjects('skins', storedSkin?.id ?? '')).sort()).toEqual([
+      `${storedSkin?.id}/bust.png`,
+      `${storedSkin?.id}/texture.png`,
+    ]);
+    // A draft is on the ORDER list only once published (02 §1.1: `/skins` reads published rows).
+    await expect(page.locator('ol[aria-label="Skin order"] li')).toHaveCount(2);
+    await settledButton(save);
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'admin-skins-created');
+
+    // -- Publish → "Saved." PRG → LIVE, first in ORDER (sort_order 0); /skins shows 3 (AC1) -------
+    await rowAction(page, '/admin/skins', 'Publish', SKIN_NAME);
+    await expect(page.getByText('Saved.', { exact: true })).toBeVisible();
+    await expect(
+      skinList(page).locator('tbody tr', { hasText: SKIN_NAME }).getByText('LIVE', { exact: true }),
+    ).toBeVisible();
+    await expect(page.locator('ol[aria-label="Skin order"] li')).toHaveCount(3);
+    await expect(page.locator('ol[aria-label="Skin order"] li').first()).toContainText(SKIN_NAME);
+    await expectAtUrlWithNudge(
+      page,
+      '/skins',
+      async () => {
+        await expect(skinCards(page)).toHaveCount(3, quick);
+        // sort_order 0 → the first card → the page's default selection (02 §1.1 `selectSkin`).
+        await expect(page.locator(`main ul a[href="?skin=${SKIN_SLUG}"]`)).toHaveAttribute(
+          'aria-current',
+          'true',
+          quick,
+        );
+      },
+      nudgeSkinsTag,
+    );
+    await expect(page.locator('main h2').first()).toHaveText(SKIN_NAME);
+    await expect(page.getByRole('link', { name: 'DOWNLOAD PNG' })).toHaveAttribute(
+      'href',
+      `/api/download/${storedSkin?.id}`,
+    );
+    // The card shows the cached bust the action rendered (AC3), not the live fallback.
+    await expect(page.getByRole('img', { name: `${SKIN_NAME} skin, 3D render` })).toHaveCount(1);
+    await expect(page.getByRole('switch', { name: 'Slim arms' })).toBeChecked();
+
+    // -- Edit: `?edit=<id>` pre-fills the same island; a description patch → "Saved." -------------
+    await page.goto(`/admin/skins?edit=${storedSkin?.id}`);
+    await expect(page.getByRole('heading', { level: 2, name: 'EDIT SKIN' })).toBeVisible();
+    const edit = page.getByRole('region', { name: 'Edit skin' });
+    await expect(edit.getByLabel('Name', { exact: true })).toHaveValue(SKIN_NAME);
+    await expect(edit.getByLabel('Slug', { exact: true })).toHaveValue(SKIN_SLUG);
+    await expect(edit.getByLabel('Model', { exact: true })).toHaveText('Slim');
+    await expect(edit.getByLabel('Status', { exact: true })).toHaveText('Published');
+    await expect(edit.getByText('Replace texture', { exact: true })).toBeVisible();
+    await edit.getByLabel('Description', { exact: true }).fill(SKIN_DESCRIPTION);
+    await edit.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByText('Saved.', { exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect
+      .poll(async () => {
+        const row = (await readSkins()).find((skin) => skin.slug === SKIN_SLUG);
+        return row?.description_md;
+      })
+      .toBe(SKIN_DESCRIPTION);
+    await expect(edit.getByLabel('Description', { exact: true })).toHaveValue(SKIN_DESCRIPTION);
+    await page.getByRole('link', { name: 'Cancel', exact: true }).click();
+    await expect(page).toHaveURL(/\/admin\/skins$/);
+    await expect(page.getByRole('heading', { level: 2, name: 'ADD A SKIN' })).toBeVisible();
+
+    // -- A 128×128 texture: the well's pre-check says so; nothing leaves the browser (AC1) --------
+    // The pre-check stops the pick before `createSkin` could see the bytes, so the server's own
+    // refusal cannot be reached from this UI — T-ACT-58 proves it with the same words.
+    posts.length = 0;
+    const fresh = skinRegion(page);
+    await fresh.locator('input[type="file"]').setInputFiles(fixturePath('images', 'skin-128.png'));
+    await expect(fresh.locator('[data-state="error"] [role="alert"]')).toHaveText(NOT_64);
+    await twoFrames(page);
+    expect(posts, 'a refused pick sends nothing').toEqual([]);
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'admin-skins-not-64');
+    await fresh.getByRole('button', { name: 'Try again', exact: true }).click();
+    await expect(fresh.locator('[data-state="idle"]')).toHaveCount(1);
+    expect((await readSkins()).length, 'no third row').toBe(3);
+
+    // -- /admin/art: Thumbnail, the two-phase well ("Ready to save."), Save → 1280×720 (AC7) ------
+    await page.goto('/admin/art');
+    const art = artRegion(page);
+    const pieces = artList(page);
+    await expect(pieces.locator('tbody tr')).toHaveCount(2);
+    const artSave = art.getByRole('button', { name: 'Save', exact: true });
+    await art.getByLabel('Title', { exact: true }).fill(ART_TITLE);
+    await expect(art.getByLabel('Slug', { exact: true })).toHaveValue(ART_SLUG);
+    await artSave.click();
+    await expect(art.locator('[role="alert"]')).toHaveText('Add a picture first.');
+    await art.getByLabel('Kind', { exact: true }).click();
+    await page.getByRole('option', { name: 'Thumbnail', exact: true }).click();
+    await expect(art.getByLabel('Kind', { exact: true })).toHaveText('Thumbnail');
+    await art
+      .locator('input[type="file"]')
+      .setInputFiles(fixturePath('images', 'thumb-1280x720.png'));
+    // Deferred-commit mode: `begin` → PUT to the signed URL → `done` with "Ready to save." — and
+    // NO row yet (the parent's Save carries the commit).
+    await expect(art.locator('[data-state="done"]')).toContainText('Ready to save.', {
+      timeout: 30_000,
+    });
+    await expect(art.locator('[data-state="done"]')).toContainText('thumb-1280x720.png');
+    expect(
+      (await readArt()).find((row) => row.slug === ART_SLUG),
+      'begin + PUT store no row',
+    ).toBe(undefined);
+    await artSave.click();
+    await expect(page.getByText('Saved.', { exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(art.getByLabel('Title', { exact: true })).toHaveValue('');
+    await expect(art.locator('[data-state="idle"]')).toHaveCount(1);
+    await expect(pieces.locator('tbody tr')).toHaveCount(3, { timeout: 10_000 });
+    const artRow = pieces.locator('tbody tr', { hasText: ART_TITLE });
+    await expect(pieces.locator('tbody tr').first()).toContainText(ART_TITLE);
+    await expect(artRow).toContainText('1280×720'); // server-derived at commit (AC7)
+    await expect(artRow).toContainText('Thumbnail');
+    await expect(artRow.getByText('DRAFT', { exact: true })).toBeVisible();
+    const storedArt = (await readArt()).find((row) => row.slug === ART_SLUG);
+    expect(storedArt).toMatchObject({
+      title: ART_TITLE,
+      kind: 'thumbnail',
+      status: 'draft',
+      width: 1280,
+      height: 720,
+      year: null,
+      credit: null,
+      downloadable: false,
+      sort_order: 0,
+    });
+    expect(storedArt?.image_path).toMatch(new RegExp(`^art/${storedArt?.id}/[0-9a-f]{16}\\.png$`));
+    // The pending object was moved: one content-addressed object under the folder, nothing else.
+    expect(await listObjects('art', storedArt?.id ?? '')).toEqual([
+      storedArt?.image_path.slice('art/'.length),
+    ]);
+    await settledButton(artSave);
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'admin-art-created');
+
+    // -- Publish → /art shows 3 cards, the new one at its natural 16:9 (AC6) ---------------------
+    await rowAction(page, '/admin/art', 'Publish', ART_TITLE);
+    await expect(page.getByText('Saved.', { exact: true })).toBeVisible();
+    await expect(page.locator('ol[aria-label="Art order"] li')).toHaveCount(3);
+    await expectAtUrlWithNudge(
+      page,
+      '/art',
+      async () => {
+        await expect(artCards(page)).toHaveCount(3, quick);
+        await expect(page.getByRole('link', { name: `Open ${ART_TITLE}` })).toHaveCount(1, quick);
+      },
+      nudgeArtTag,
+    );
+    const filter = page.locator('[role="group"][aria-label="Filter"]');
+    await expect(filter.getByRole('link', { name: 'ALL 3' })).toBeVisible();
+    await expect(filter.getByRole('link', { name: 'THUMBNAILS 2' })).toBeVisible();
+    const newImage = page.getByRole('link', { name: `Open ${ART_TITLE}` }).locator('img');
+    await expect(newImage).toBeVisible();
+    const box = await newImage.boundingBox();
+    expect(box, 'the new image has a box').not.toBeNull();
+    expect(Math.abs((box?.width ?? 0) / (box?.height ?? 1) - 16 / 9), 'natural 16:9').toBeLessThan(
+      (16 / 9) * 0.02,
+    );
+
+    // -- Cleanup THROUGH THE UI: unpublish both, poll the public pages back to seed truth, and only
+    // then remove the two (now invisible) rows and their objects with the service client -----------
+    await rowAction(page, '/admin/skins', 'Unpublish', SKIN_NAME);
+    await rowAction(page, '/admin/art', 'Unpublish', ART_TITLE);
+    await expectSeedSkins(page);
+    expect(await page.content()).not.toContain(SKIN_SLUG);
+    await expectSeedArt(page);
+    expect(await page.content()).not.toContain(ART_SLUG);
+
+    await deleteTestRows();
+    expect(await readSkins()).toEqual(seedSkins);
+    expect(await readArt()).toEqual(seedArt);
+    expect(await listObjects('skins', storedSkin?.id ?? '')).toEqual([]);
+    expect(await listObjects('art', storedArt?.id ?? '')).toEqual([]);
+    restoredThroughApp = true;
   });
 });

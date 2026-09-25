@@ -1,0 +1,51 @@
+/* /skins — DESIGN.md §6 #5, §3 page gutters (24 phone / 40 desktop, max content 1280), §6
+   breakpoints (600 / 900); pass-3 "Skins" 1280 (head: Bungee 40 title + 17px mute subline).
+   Stage internals live in SkinsStage.module.css — this file is the page shell and the head
+   (the /videos page.module.css precedent). */
+.skins {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-32);
+  max-width: var(--measure-page);
+  margin: 0 auto;
+  padding: var(--space-40);
+}
+
+.skins-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.skins-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-page-title);
+  font-weight: 400;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--white);
+}
+
+.skins-line {
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: 1.4;
+  color: var(--mute);
+}
+
+@media (max-width: 599px) {
+  .skins {
+    gap: var(--space-24);
+    padding: var(--space-24) var(--space-24) var(--space-40);
+  }
+
+  .skins-title {
+    font-size: var(--text-page-title-phone);
+  }
+
+  .skins-line {
+    font-size: var(--text-body-phone);
+  }
+}

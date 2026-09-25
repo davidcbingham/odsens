@@ -40,6 +40,16 @@ export default defineConfig({
     colorScheme: 'dark',
     trace: 'on-first-retry',
     screenshot: 'off',
+    // S1.7 (ADR-0048 D21): software WebGL for headless Chromium (SwiftShader), so the
+    // `SkinViewer3D` canvas reaches `data-state="ready"` in CI; T-E2E-7 fails loudly on
+    // `unsupported` rather than accepting the fallback (00 §S1.7 risk "software GL flag").
+    // `--enable-unsafe-swiftshader` keeps the fallback allowed on Chrome ≥ 131; NOT
+    // `--use-angle=swiftshader` — that one moves compositing onto the GL path, whose texture
+    // ceiling makes `Page.captureScreenshot` fail on a full-page shot taller than it (the 56k-px
+    // `/dev/components` gallery, T-E2E-48) while adding nothing: WebGL is already available.
+    launchOptions: {
+      args: ['--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+    },
   },
   webServer: process.env.PLAYWRIGHT_NO_SERVER
     ? undefined

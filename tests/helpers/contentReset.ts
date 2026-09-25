@@ -25,6 +25,12 @@
  * before extra projects (child-first like the rest; a seed mention a test re-assigned to an extra
  * project is nulled by that delete and then repaired by the upsert) and snapshot rows are upserted
  * AFTER projects (the FK needs the parent).
+ * S1.7 adds `skins` and `art` the same way (no FKs in or out — data-model §2.4): `updateSkin` /
+ * `updateArt` publish / reorder seed rows, `createSkin` / `createArt` insert rows no factory
+ * tracks, `record_skin_download` bumps `skins.downloads` (T-ACT-76) — and the e2e build
+ * prerenders `/skins` and `/art` from whatever the db lane left (H-1). Storage objects are NOT
+ * part of the snapshot: `cleanupFactories` removes the factory folders and seed objects are
+ * re-upserted by the globalSetup on every run (SEED-13).
  * Service-role client only (arranging state, 05 §1.3 `asRole('service')`).
  *
  * S1.5 adds the settings tables' documented shape as constants + a constant-based restore (no
@@ -49,6 +55,8 @@ const TABLES = [
   'sync_runs',
   'videos',
   'mentions', // after `projects` — restore upserts run in this order, parents first
+  'skins', // S1.7 — no FKs (data-model §2.4)
+  'art', // S1.7 — no FKs
 ] as const;
 
 type ContentTable = (typeof TABLES)[number];
@@ -65,6 +73,8 @@ const PK: Record<ContentTable, string[]> = {
   sync_runs: ['id'],
   videos: ['id'],
   mentions: ['id'],
+  skins: ['id'],
+  art: ['id'],
 };
 
 /** Generated columns cannot be written back (`projects.search` is GENERATED ALWAYS … STORED). */
@@ -82,6 +92,8 @@ const CHILD_FIRST: ContentTable[] = [
   'mentions', // FK → projects (`on delete set null`, data-model §2.3b) — before its parent
   'projects',
   'videos', // no FK in or out (data-model §2.3) — order is free
+  'skins', // no FK in or out (data-model §2.4) — order is free
+  'art', // no FK in or out (data-model §2.4) — order is free
 ];
 
 function pkKey(table: ContentTable, row: Row): string {

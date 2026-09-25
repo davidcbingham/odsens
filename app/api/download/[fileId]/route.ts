@@ -1,22 +1,31 @@
 /**
- * `/api/download/[fileId]` — counted direct downloads behind 60 s signed URLs (04 §2.3 D1–D7;
- * 02 §2.9; 01 INV-55/INV-56; ADR-0002 C8 / C13 / C14 / C17; 05 T-ACT-43 / T-ACT-44; kind `skin`
- * arrives S1.7, `workroom_file` S2.3 — `lib/files.ts resolveDownloadable` owns the kind table).
+ * `/api/download/[fileId]` — counted direct downloads (04 §2.3 D1–D7; 02 §2.9; 01 INV-55/INV-56;
+ * ADR-0002 C8 / C13 / C14 / C17; 05 T-ACT-43 / T-ACT-44 / T-ACT-76; ADR-0048 D1). Kinds
+ * `project_file` (S1.3) and `skin` (S1.7); `workroom_file` S2.3 — `lib/files.ts resolveDownloadable`
+ * owns the kind table and the route never branches on `kind`.
  *
  * GET only — HEAD would double-count, so HEAD/POST/others → 405 (`Allow: GET`; same `validation`
  * JSON convention as the cron routes). Flow: uuid check (D1) → `resolveDownloadable` (D2 — 404 for
  * unknown/draft/hidden/synced, never 403: drafts are not revealed) → rate limit 30 / min per
- * `ip_hash` (D3 — scope `download` on `rate_limit_hits`; 429 JSON + `Retry-After: 60`) → RPC
- * `record_download` (D4 — counters + hashed log row in one statement) → signed URL, TTL 60 s,
- * `download: <filename>` (D5) → 302 with `Cache-Control: private, no-store`,
- * `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` (D6). A signed-URL failure
- * after the counters is a logged 500 `internal` (04 §2.3 Errors row). Analytics fire client-side
- * on the button (`TrackedLink`), never here (D7). Raw IP/UA never stored or logged (SC-17).
+ * `ip_hash` (D3 — scope `download` on `rate_limit_hits`, one scope for every kind; 429 JSON +
+ * `Retry-After: 60`) → the kind's counter RPC with `counterArgs` (D4 — `record_download` = counters
+ * + hashed log row in one statement; `record_skin_download` = `skins.downloads + 1`, fail-closed on
+ * an unpublished row) → the URL step `urlKind` names: a 60 s signed URL with `download: <filename>`
+ * for a private bucket, or the public object URL with `?download=<filename>` for a public one (D5)
+ * → 302 with `Cache-Control: private, no-store`, `X-Content-Type-Options: nosniff`,
+ * `Referrer-Policy: no-referrer` (D6 — identical for both kinds). A URL-step failure after the
+ * counters is a logged 500 `internal` (04 §2.3 Errors row); so is a counter RPC that raises. Analytics
+ * fire client-side on the button (`TrackedLink`), never here (D7). Raw IP/UA never stored or logged (SC-17).
  */
 import { randomUUID } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { ERROR_STATUS, fail } from '@/lib/actions/result';
-import { createDownloadUrl, resolveDownloadable } from '@/lib/files';
+import {
+  counterArgs,
+  createDownloadUrl,
+  publicDownloadUrl,
+  resolveDownloadable,
+} from '@/lib/files';
 import { ipHash, uaHash } from '@/lib/hash';
 import { log } from '@/lib/log';
 import { RateLimitError, assertRateLimit } from '@/lib/rate-limit';
@@ -73,21 +82,21 @@ export async function GET(
       throw error;
     }
 
-    // D4 — counters + log in one SQL statement (RPC per kind; `record_skin_download` joins S1.7).
+    // D4 — the kind's counter RPC, one SQL statement each (`counterArgs` builds the payload the
+    // counter takes; supabase-js types `rpc` per literal name, so the union call is cast once here).
     const admin = createAdminClient();
-    const { error: rpcError } = await admin.rpc(downloadable.counter, {
-      p_file_id: id,
-      p_ip_hash: ip,
-      p_ua_hash: ua,
-    });
+    const { error: rpcError } = await admin.rpc(
+      downloadable.counter,
+      counterArgs(downloadable, { id, ipHash: ip, uaHash: ua }) as never,
+    );
     if (rpcError) throw new Error(`${downloadable.counter} failed: ${rpcError.code}`);
 
-    // D5/D6 — 60 s signed URL with Content-Disposition attachment, then 302.
-    const url = await createDownloadUrl(
-      downloadable.bucket,
-      downloadable.path,
-      downloadable.filename,
-    );
+    // D5/D6 — the URL step per `urlKind` (signed 60 s + `download:` for a private bucket, the
+    // public object URL + `?download=` for a public one), then the same 302 for every kind.
+    const url =
+      downloadable.urlKind === 'signed'
+        ? await createDownloadUrl(downloadable.bucket, downloadable.path, downloadable.filename)
+        : publicDownloadUrl(downloadable.bucket, downloadable.path, downloadable.filename);
     return new NextResponse(null, {
       status: 302,
       headers: {

@@ -32,7 +32,19 @@
  * file on a Modrinth-first project is the same download as one on an exclusive (the S1.3 code
  * never checked `source`; the contract now says so). CDN-only rows (`storage_path IS NULL`,
  * `url` set) are still never proxied (01 INV-55). RPC `record_download` counts `downloads_direct`
- * on any project. The `Downloadable` shape is unchanged (ADR-0027 D5 stays deferred to S1.7).
+ * on any project.
+ *
+ * S1.7 (ADR-0048 D1/D2/D3; the ADR-0027 D5 debt): `Downloadable` is a discriminated union —
+ * kind `project_file` (private bucket, 60 s signed URL, RPC `record_download`) | kind `skin`
+ * (public bucket, plain public URL + `?download=`, RPC `record_skin_download`) — and the route stays
+ * kind-blind: `counterArgs` builds the RPC payload per kind and `urlKind` picks the URL step. The
+ * `skins` / `art` path builders + parsers follow the project-bucket idiom (DB-stored paths are
+ * bucket-prefixed: `skins/{skin_id}/texture.png`, `skins/{skin_id}/bust.png`,
+ * `art/{art_id}/{hash16}.{png|jpg|webp}`; art's `begin` pending path carries a uuid placeholder
+ * segment). `isOwnSkinPath` / `isOwnArtPath` are the app-side twins of the DB CHECKs
+ * `skins_texture_path_own` / `skins_render_bust_path_own` / `art_image_path_own`
+ * (20260925120000_skins_art.sql): every service-role Storage delete on those buckets re-checks the
+ * CALLER's id first (the `deleteAvatar` rule), and a mismatch touches nothing.
  */
 import 'server-only';
 import sharp from 'sharp';
@@ -311,12 +323,144 @@ export function parseProjectFilePath(
   return { versionId, filename };
 }
 
+/* ------------------------------------------------------------------------------------------------
+ * S1.7 — skins + art buckets (04 SC-21 paths `skins/{skin_id}/…`, `art/{art_id}/…`; data-model §3;
+ * ADR-0048 D1 / D3). The three names below are the data-layer-facing part; the path
+ * builders / parsers / ownership checks and the `Downloadable` `skin` arm follow in this section.
+ * ---------------------------------------------------------------------------------------------- */
+
+export const SKINS_BUCKET = 'skins';
+export const ART_BUCKET = 'art';
+
+/**
+ * Public-bucket URL of a DB-stored (bucket-prefixed) path — `${NEXT_PUBLIC_SUPABASE_URL}/storage/
+ * v1/object/public/${bucket}/${objectPath}` (the `avatarPublicUrl` base; `skins` and `art` are
+ * public-read, data-model §3). Throws when `dbPath` does not carry the `${bucket}/` prefix: every
+ * stored path is CHECK-bound to its bucket, so a mismatch is a programming error, never data.
+ * NOTE: `lib/data/**` builds the same URL through `publicStorageUrl` (`lib/data/projects.ts`) —
+ * this module sits behind the admin-client import fence (01 INV-14).
+ */
+export function publicObjectUrl(bucket: string, dbPath: string): string {
+  const objectPath = objectPathInBucket(bucket, dbPath);
+  if (objectPath === null) {
+    throw new Error(`publicObjectUrl: "${dbPath}" is not an object of bucket "${bucket}"`);
+  }
+  return `${publicBucketBase(bucket)}/${objectPath}`;
+}
+
+/** `${NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}` — the one public-URL base. */
+function publicBucketBase(bucket: string): string {
+  return `${env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}`;
+}
+
 /** Strips the `{bucket}/` prefix a DB-stored path carries; null when it names another bucket. */
 export function objectPathInBucket(bucket: string, dbPath: string): string | null {
   const prefix = `${bucket}/`;
   if (!dbPath.startsWith(prefix)) return null;
   const rest = dbPath.slice(prefix.length);
   return rest.length > 0 ? rest : null;
+}
+
+// ---- S1.7 paths (04 SC-21; ADR-0048 D2 / D3) ------------------------------------------------
+
+export type ArtExt = ProjectMediaExt;
+
+/** `{hash16}.{png|jpg|webp}` — the object name `artFinalPath` produces (mirrors `art_image_path_own`). */
+const ART_FINAL_NAME_RE = /^([0-9a-f]{16})\.(png|jpg|webp)$/;
+/** `{uuid}.{png|jpg|webp}` — the `begin`-phase placeholder name `artPendingPath` produces. */
+const ART_PENDING_NAME_RE =
+  /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.(png|jpg|webp)$/;
+
+/** `skins/{skin_id}/texture.png` — the ONLY texture path the CHECK `skins_texture_path_own` admits. */
+export function skinTexturePath(skinId: string): string {
+  return `${SKINS_BUCKET}/${skinId}/texture.png`;
+}
+
+/** `skins/{skin_id}/bust.png` — the cached bust (`skins_render_bust_path_own`; 04 §3.8). */
+export function skinBustPath(skinId: string): string {
+  return `${SKINS_BUCKET}/${skinId}/bust.png`;
+}
+
+/**
+ * `begin`-phase art path: `art/{art_id}/{uuid}.{ext}` (the `projectMediaPendingPath` precedent —
+ * `{hash16}` is unknown until commit moves it). For `createArt` the `art_id` is minted at `begin`
+ * and travels inside the path; `parseArtPendingPath` reads it back at commit.
+ */
+export function artPendingPath(artId: string, ext: ArtExt): string {
+  return `${ART_BUCKET}/${artId}/${crypto.randomUUID()}.${ext}`;
+}
+
+/** Final art path: `art/{art_id}/{hash16}.{ext}` (04 SC-21; the `art_image_path_own` CHECK). */
+export function artFinalPath(artId: string, hash16: string, ext: ArtExt): string {
+  return `${ART_BUCKET}/${artId}/${hash16}.${ext}`;
+}
+
+/** `art/<uuid>/<name>` → `{ artId, name }`, or null for anything else (no bucket, no uuid, extra segments). */
+function splitArtPath(path: string): { artId: string; name: string } | null {
+  const rest = objectPathInBucket(ART_BUCKET, path);
+  if (rest === null) return null;
+  const parts = rest.split('/');
+  const [artId, name] = parts;
+  if (parts.length !== 2 || artId === undefined || name === undefined) return null;
+  if (!UUID_RE.test(artId)) return null;
+  return { artId, name };
+}
+
+/**
+ * Parses a `begin`-phase art path back into `{ artId, ext }` — null unless it is exactly
+ * `art/<uuid>/<uuid>.<png|jpg|webp>` (INV-53: `createArt` commit trusts nothing else; the embedded
+ * id is the row's id, so the action still checks that no row owns it yet).
+ */
+export function parseArtPendingPath(path: string): { artId: string; ext: ArtExt } | null {
+  const split = splitArtPath(path);
+  if (split === null) return null;
+  const m = ART_PENDING_NAME_RE.exec(split.name);
+  if (m === null) return null;
+  return { artId: split.artId, ext: m[2] as ArtExt };
+}
+
+/** `parseArtPendingPath` scoped to THIS art id (`updateArt` commit): null on any other id. */
+export function parseArtPendingPathFor(artId: string, path: string): { ext: ArtExt } | null {
+  const parsed = parseArtPendingPath(path);
+  if (parsed === null || parsed.artId !== artId) return null;
+  return { ext: parsed.ext };
+}
+
+/**
+ * Parses a committed art path (`art/<uuid>/<hash16>.<ext>`) into `{ artId, hash16, ext }` — the
+ * U3 idempotency arm: a commit re-sent with the final path of the SAME id (after a slug conflict
+ * moved the object already) is accepted; null for anything else.
+ */
+export function parseArtFinalPath(
+  path: string,
+): { artId: string; hash16: string; ext: ArtExt } | null {
+  const split = splitArtPath(path);
+  if (split === null) return null;
+  const m = ART_FINAL_NAME_RE.exec(split.name);
+  if (m === null) return null;
+  return { artId: split.artId, hash16: m[1] as string, ext: m[2] as ArtExt };
+}
+
+/**
+ * True only when `dbPath` is `skins/<skinId>/texture.png` or `skins/<skinId>/bust.png` — what the
+ * two `skins_*_path_own` CHECKs admit for THIS row. The app-side twin of the DB rule (ADR-0048
+ * ADR-0048 D2); every service-role delete/overwrite on the `skins` bucket runs it with the CALLER's id.
+ * Pure; safe with untrusted `dbPath`.
+ */
+export function isOwnSkinPath(skinId: string, dbPath: string): boolean {
+  if (!UUID_RE.test(skinId)) return false;
+  return dbPath === skinTexturePath(skinId) || dbPath === skinBustPath(skinId);
+}
+
+/**
+ * True only when `dbPath` is `art/<artId>/<hash16>.<png|jpg|webp>` — the `art_image_path_own`
+ * CHECK for THIS row (the committed form; a pending path is proven through
+ * `parseArtPendingPathFor` instead). Same rule and same use as `isOwnSkinPath`.
+ */
+export function isOwnArtPath(artId: string, dbPath: string): boolean {
+  if (!UUID_RE.test(artId)) return false;
+  const parsed = parseArtFinalPath(dbPath);
+  return parsed !== null && parsed.artId === artId;
 }
 
 /**
@@ -418,23 +562,87 @@ export async function createDownloadUrl(
   return data.signedUrl;
 }
 
-/** What `/api/download/[fileId]` needs to serve one downloadable thing (04 §2.3 D2). */
-export type Downloadable = {
-  kind: 'project_file'; // 'skin' arrives S1.7 (ADR-0002 C8); 'workroom_file' S2.3
-  bucket: string;
-  /** Object path inside `bucket` (ready for `createDownloadUrl`). */
-  path: string;
-  filename: string;
-  counter: 'record_download';
-};
+/**
+ * What `/api/download/[fileId]` needs to serve one downloadable thing (04 §2.3 D2; ADR-0048 D1).
+ * One arm per kind — the route never branches on `kind`: `counter` + `counterArgs` name the RPC and
+ * its payload, `urlKind` picks signed (private bucket) vs public (`?download=` on the object URL).
+ * `workroom_file` joins in S2.3.
+ */
+export type Downloadable =
+  | {
+      kind: 'project_file';
+      bucket: typeof PROJECT_FILES_BUCKET;
+      /** Object path inside `bucket` (ready for `createDownloadUrl`). */
+      path: string;
+      filename: string;
+      urlKind: 'signed';
+      counter: 'record_download';
+    }
+  | {
+      kind: 'skin';
+      bucket: typeof SKINS_BUCKET;
+      /** Object path inside `bucket` (ready for `publicDownloadUrl`). */
+      path: string;
+      /** `<slug>.png` — what the browser saves. */
+      filename: string;
+      urlKind: 'public';
+      counter: 'record_skin_download';
+    };
+
+/** What the route knows about one request (D3/D4): the resolved id + the SC-17 hashes. */
+export type DownloadCounterContext = { id: string; ipHash: string; uaHash: string };
+
+/** The RPC payload for `d.counter` — `record_download` logs a hashed row, `record_skin_download` only counts. */
+export function counterArgs(
+  d: Downloadable,
+  ctx: DownloadCounterContext,
+): { p_file_id: string; p_ip_hash: string; p_ua_hash: string } | { p_skin_id: string } {
+  if (d.kind === 'skin') return { p_skin_id: ctx.id };
+  return { p_file_id: ctx.id, p_ip_hash: ctx.ipHash, p_ua_hash: ctx.uaHash };
+}
+
+/**
+ * Public-bucket download URL (04 §2.3 D5 for a public kind; ADR-0048 D22): the object URL plus
+ * `?download=<filename>` — Supabase answers it with `Content-Disposition: attachment;
+ * filename=…` (proven by T-RLS-121). Takes the OBJECT path (no bucket prefix), like `createDownloadUrl`.
+ */
+export function publicDownloadUrl(bucket: string, objectPath: string, filename: string): string {
+  return `${publicBucketBase(bucket)}/${objectPath}?download=${encodeURIComponent(filename)}`;
+}
+
+/** The `record_skin_download` arm needs a published row; `slug` names the saved file (ADR-0048 D1). */
+async function resolveSkinDownloadable(id: string): Promise<Downloadable | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('skins')
+    .select('id, slug, texture_path')
+    .eq('id', id)
+    .eq('status', 'published')
+    .maybeSingle();
+  if (error !== null) throw new Error(`resolveDownloadable skins read failed: ${error.message}`);
+  if (data === null) return null;
+  const objectPath = objectPathInBucket(SKINS_BUCKET, data.texture_path);
+  if (objectPath === null) return null;
+  return {
+    kind: 'skin',
+    bucket: SKINS_BUCKET,
+    path: objectPath,
+    filename: `${data.slug}.png`,
+    urlKind: 'public',
+    counter: 'record_skin_download',
+  };
+}
 
 /**
  * Resolves a file id to its bucket + path + counter, generically over kinds (01 INV-56 — the
  * route is not project-hardwired; bucket and owner scope come from data). Kind `project_file`:
  * the row must have `storage_path` (CDN-only rows have `url` and are never proxied — INV-55),
  * its project `status='published'` and not override-hidden; the project's `source` is NOT a
- * condition (ADR-0037 D5(d): hosted files on any source are served and counted). Anything else
- * → null (the route answers 404 — never 403, drafts are not revealed; 04 §2.3 D2).
+ * condition (ADR-0037 D5(d): hosted files on any source are served and counted). Else kind
+ * `skin` (S1.7 — ADR-0002 C8): a PUBLISHED `skins` row → its texture object, saved as
+ * `<slug>.png`, counted by `record_skin_download`. Anything else → null (the route answers 404 —
+ * never 403, drafts are not revealed; 04 §2.3 D2). The two id spaces never collide (uuids), so
+ * the order of the lookups is only a cost choice.
  */
 export async function resolveDownloadable(id: string): Promise<Downloadable | null> {
   const admin = createAdminClient();
@@ -446,7 +654,7 @@ export async function resolveDownloadable(id: string): Promise<Downloadable | nu
     .eq('id', id)
     .maybeSingle();
   if (error !== null) throw new Error(`resolveDownloadable read failed: ${error.message}`);
-  if (data === null) return null;
+  if (data === null) return resolveSkinDownloadable(id);
   if (data.storage_path === null) return null;
 
   const project = data.version.project;
@@ -462,6 +670,7 @@ export async function resolveDownloadable(id: string): Promise<Downloadable | nu
     bucket: PROJECT_FILES_BUCKET,
     path: objectPath,
     filename: data.filename,
+    urlKind: 'signed',
     counter: 'record_download',
   };
 }

@@ -1,0 +1,136 @@
+/* /admin/skins — DESIGN.md §6 #9 (admin: Space Grotesk labels, clarity over flair), §5 Admin table,
+   §4 pixelated texture thumbs; 02 §1.3. Tokens only (03 C-08); section rhythm and cell recipes are
+   `/admin/mentions`'s. */
+
+.admin-skins {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-40);
+}
+
+.admin-skins-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* The lede: 15px --mute under the (visually hidden) title. */
+.admin-skins-intro {
+  margin: 0;
+  color: var(--mute);
+  font-size: var(--text-ui);
+  line-height: 1.4;
+}
+
+.admin-skins-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+/* Admin section header — DESIGN.md §6 #9 "poster type goes": Space Grotesk 700, chalk. */
+.admin-skins-heading {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-body);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Heading + its companion (the TOTAL label, the Cancel ghost) on one line. */
+.admin-skins-heading-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+}
+
+/* Skin cell: the texture well, then name over slug. */
+.admin-skins-skin {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+/* 40px well on --ink; the 64×64 texture at 32px (an integer half step), pixelated — DESIGN.md §4. */
+.admin-skins-thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  background: var(--ink);
+  outline: 2px solid var(--line-soft);
+}
+
+.admin-skins-thumb img {
+  image-rendering: pixelated;
+}
+
+/* The floor keeps the name readable when the table scrolls sideways on a phone (the
+   `/admin/mentions` recipe): the scroll stays inside `Table`'s wrapper. */
+.admin-skins-name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 160px;
+}
+
+.admin-skins-title {
+  color: var(--chalk);
+  font-size: var(--text-ui);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.admin-skins-meta {
+  color: var(--mute-dim);
+  font-size: var(--text-label-sm);
+  overflow-wrap: anywhere;
+}
+
+/* A draft row steps back: the name drops to --mute. */
+.admin-skins-skin[data-status='draft'] .admin-skins-title {
+  color: var(--mute);
+}
+
+.admin-skins-model {
+  color: var(--chalk);
+  font-size: var(--text-ui);
+  white-space: nowrap;
+}
+
+.admin-skins-downloads {
+  color: var(--mute);
+  font-size: var(--text-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Worded row buttons, right-aligned, never wrapping mid-pair out of the cell. */
+.admin-skins-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
+.admin-skins-order-help {
+  margin: 0;
+  color: var(--mute-dim);
+  font-size: var(--text-label);
+}
+
+.admin-skins-order {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.admin-skins-order-title {
+  color: var(--chalk);
+  font-size: var(--text-ui);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
