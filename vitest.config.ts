@@ -26,9 +26,19 @@ import path from 'node:path';
  * loads the actions / routes / jobs, the db lane never loads the pure helpers). `emails/**` joins
  * `coverage.include` with it, so the templates and their previews count in the denominator. As wired
  * at the S1.6 build pass (2026-09-18, combined run): 92.7 lines / 82.2 branches (90.0 statements).
+ *
+ * COV-1 (05 §6 "enforced from S1.2" — wired at the S1.8 build pass, ADR-0045: the config never
+ * carried it, and S1.8 adds the SSRF guard `lib/adapters/oembed.ts` to that scope): `lib/adapters/**`
+ * at 90 lines / 85 branches. The adapters are unit-tested (T-ADP-*, injected `fetch` / env / DNS),
+ * so the threshold is read whenever the run includes the `unit` project — the unit lane alone
+ * (`pnpm test:unit --coverage`, CI-2) and the combined run (CI-3). A db-only run loads the adapters
+ * through a handful of jobs and would fail by construction, so it does not read COV-1. As wired
+ * (2026-09-19): unit lane 99.7 lines / 95.1 branches; combined run 99.72 / 95.44.
  */
 const alias = { '@': path.resolve(import.meta.dirname) };
 
+/** COV-1 (05 §6; wired in S1.8 — ADR-0045): `lib/adapters/**`, read when the `unit` project runs. */
+const COV_1 = { lines: 90, branches: 85 } as const;
 /** COV-2 (05 §6, enforced from S1.4): 85 lines / 80 branches over each scope, aggregated per scope. */
 const COV_2 = { lines: 85, branches: 80 } as const;
 /** COV-4 (05 §6, enforced from S1.5): same numbers over `lib/jobs/**` and `lib/notify/**`, combined run only. */
@@ -51,6 +61,12 @@ function runIncludesDbProject(argv: readonly string[]): boolean {
   return selected.length === 0 || selected.includes('db');
 }
 
+/** `--project unit` / `--project=unit` is selected, or there is no project filter at all. */
+function runIncludesUnitProject(argv: readonly string[]): boolean {
+  const selected = selectedProjects(argv);
+  return selected.length === 0 || selected.includes('unit');
+}
+
 /** No project filter at all — the combined unit + db run (`pnpm test:coverage`, CI-3) that reads COV-4. */
 function runIsCombined(argv: readonly string[]): boolean {
   return selectedProjects(argv).length === 0;
@@ -64,18 +80,15 @@ export default defineConfig({
       reportsDirectory: './coverage',
       reporter: ['text-summary', 'lcov'],
       include: ['lib/**', 'app/api/**', 'app/auth/**', 'emails/**'],
-      ...(runIncludesDbProject(process.argv)
-        ? {
-            thresholds: {
-              'lib/actions/**': COV_2,
-              'app/api/**': COV_2,
-              'app/auth/**': COV_2,
-              ...(runIsCombined(process.argv)
-                ? { ...COV_5, 'lib/jobs/**': COV_4, 'lib/notify/**': COV_4 }
-                : {}),
-            },
-          }
-        : {}),
+      thresholds: {
+        ...(runIncludesUnitProject(process.argv) ? { 'lib/adapters/**': COV_1 } : {}),
+        ...(runIncludesDbProject(process.argv)
+          ? { 'lib/actions/**': COV_2, 'app/api/**': COV_2, 'app/auth/**': COV_2 }
+          : {}),
+        ...(runIsCombined(process.argv)
+          ? { ...COV_5, 'lib/jobs/**': COV_4, 'lib/notify/**': COV_4 }
+          : {}),
+      },
     },
     projects: [
       {

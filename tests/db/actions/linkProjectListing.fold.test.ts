@@ -13,6 +13,10 @@
  *      ONE transaction — a `before delete` trigger (psql) that blocks step (h) on the test duplicate
  *      leaves every moved row where it was; a canonical that already holds the duplicate's link
  *      platform keeps its row and count (the duplicate's is dropped — canonical wins).
+ *      S1.8 (ADR-0045; migration 20260919120200 — step (g2)): the duplicate's `mentions` follow the
+ *      fold onto the canonical row with `status` / `featured` / `sort_order` intact — never nulled
+ *      by the `on delete set null` FK, never deleted (01 INV-24); the returned jsonb keeps its nine
+ *      keys; the re-parent rolls back with the rest when step (h) fails.
  *   2. Via `linkProjectListing` (backend-robustness, lane B) — appended below the marker; includes
  *      the failed-fold → hourly-run → re-link path (a synced same-numbered version the sync already
  *      re-parented onto the canonical merges on the re-link — 00 S1.5a.AC2).
@@ -21,7 +25,8 @@
  * so `cleanupFactories`' delete of it affects 0 rows (a no-op by design); the merged duplicate
  * version and the deduped CDN file likewise. The canonical project's redirect row and moved
  * children cascade with it. `makeComment` bumps `seed_user.comment_count`; `cleanupFactories`
- * restores the SEED-3 value.
+ * restores the SEED-3 value. Factory mentions do NOT cascade with a project (`set null`) —
+ * `cleanupFactories` removes them by id.
  */
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -30,6 +35,7 @@ import {
   cleanupFactories,
   makeComment,
   makeFile,
+  makeMention,
   makeProject,
   makeVersion,
 } from '@/tests/helpers/factories';
@@ -83,6 +89,10 @@ describe('T-ACT-81 fold_project — RPC-direct', () => {
   let dupNewVersionId = '';
   let dupNewFileId = '';
   let commentId = '';
+  let mentionId = '';
+  let hiddenMentionId = '';
+  let canonicalMentionId = '';
+  let generalMentionId = '';
 
   beforeAll(async () => {
     // The canonical odsens row: hosted version 1.0.0 with one hosted primary file (sha SHARED).
@@ -163,6 +173,12 @@ describe('T-ACT-81 fold_project — RPC-direct', () => {
       primary: true,
     });
     commentId = await makeComment({ target_id: duplicateId });
+    // S1.8: coverage Oliver curated on the Modrinth-imported row — one featured, one hidden — plus
+    // a mention already on the canonical row and a general one (neither may move).
+    mentionId = await makeMention({ project_id: duplicateId, featured: true, sort_order: 3 });
+    hiddenMentionId = await makeMention({ project_id: duplicateId, status: 'hidden' });
+    canonicalMentionId = await makeMention({ project_id: canonicalId, sort_order: 1 });
+    generalMentionId = await makeMention({ project_id: null });
     const link = await service.from('project_links').insert({
       project_id: duplicateId,
       platform: 'curseforge',
@@ -204,6 +220,12 @@ describe('T-ACT-81 fold_project — RPC-direct', () => {
     expect(redirect.data).toEqual([]);
     const comment = await service.from('comments').select('target_id').eq('id', commentId).single();
     expect(comment.data?.target_id).toBe(duplicateId);
+    const mention = await service
+      .from('mentions')
+      .select('project_id')
+      .eq('id', mentionId)
+      .single();
+    expect(mention.data?.project_id).toBe(duplicateId);
   });
 
   it('T-ACT-81 folds the duplicate into the canonical row in the D3 order and returns the counts', async () => {
@@ -321,6 +343,49 @@ describe('T-ACT-81 fold_project — RPC-direct', () => {
     expect(redirect.data).toEqual([{ old_slug: duplicateSlug, project_id: canonicalId }]);
   });
 
+  it("T-ACT-81 (g2) the duplicate's mentions follow the fold onto the canonical project — never nulled, never deleted (S1.8, ADR-0045)", async () => {
+    // Runs after the fold above (same describe, in order): the duplicate row is gone by now.
+    const moved = await service
+      .from('mentions')
+      .select('id, project_id, status, featured, sort_order')
+      .in('id', [mentionId, hiddenMentionId])
+      .order('sort_order', { ascending: false });
+    expect(moved.error).toBeNull();
+    expect(moved.data).toEqual([
+      {
+        id: mentionId,
+        project_id: canonicalId,
+        status: 'published',
+        featured: true,
+        sort_order: 3,
+      },
+      {
+        id: hiddenMentionId,
+        project_id: canonicalId,
+        status: 'hidden',
+        featured: false,
+        sort_order: 0,
+      },
+    ]);
+    // The canonical project's own mention and a general one are untouched.
+    const others = await service
+      .from('mentions')
+      .select('id, project_id')
+      .in('id', [canonicalMentionId, generalMentionId]);
+    expect(others.data).toEqual(
+      expect.arrayContaining([
+        { id: canonicalMentionId, project_id: canonicalId },
+        { id: generalMentionId, project_id: null },
+      ]),
+    );
+    expect(others.data).toHaveLength(2);
+    // The SEEN ON row of the canonical project now reads all three.
+    const onCanonical = await service.from('mentions').select('id').eq('project_id', canonicalId);
+    expect((onCanonical.data ?? []).map((row) => row.id).sort()).toEqual(
+      [mentionId, hiddenMentionId, canonicalMentionId].sort(),
+    );
+  });
+
   it('T-ACT-81 a second call naming the deleted duplicate raises "gone already" (the action never issues it)', async () => {
     const { data, error } = await fold(duplicateId, canonicalId);
     expect(error?.code).toBe('P0002');
@@ -402,6 +467,7 @@ describe('T-ACT-81 fold_project — one transaction; canonical wins on links', (
         version_number: '1.1.0',
       });
       const commentId = await makeComment({ target_id: duplicateId });
+      const mentionId = await makeMention({ project_id: duplicateId });
       const link = await service.from('project_links').insert({
         project_id: duplicateId,
         platform: 'curseforge',
@@ -424,7 +490,7 @@ describe('T-ACT-81 fold_project — one transaction; canonical wins on links', (
       }
 
       // Every earlier step rolled back with (h): the merge (a), the move (b), the link (c), the
-      // comment (d), the counter (e), the redirect (g).
+      // comment (d), the counter (e), the redirect (g), the mentions re-parent (g2).
       expect((await service.from('projects').select('id').eq('id', duplicateId)).data).toEqual([
         { id: duplicateId },
       ]);
@@ -464,6 +530,10 @@ describe('T-ACT-81 fold_project — one transaction; canonical wins on links', (
         (await service.from('comments').select('target_id').eq('id', commentId).single()).data
           ?.target_id,
       ).toBe(duplicateId);
+      expect(
+        (await service.from('mentions').select('project_id').eq('id', mentionId).single()).data
+          ?.project_id,
+      ).toBe(duplicateId);
       const canonical = await service
         .from('projects')
         .select('downloads_direct, downloads_curseforge')
@@ -483,6 +553,10 @@ describe('T-ACT-81 fold_project — one transaction; canonical wins on links', (
       const retry = await fold(duplicateId, canonicalId);
       expect(retry.error).toBeNull();
       expect(retry.data).toMatchObject({ versions_merged: 1, versions_moved: 1, links_moved: 1 });
+      expect(
+        (await service.from('mentions').select('project_id').eq('id', mentionId).single()).data
+          ?.project_id,
+      ).toBe(canonicalId);
     },
   );
 

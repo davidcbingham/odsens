@@ -1,7 +1,8 @@
 /* ReorderableList — 03 §2.10 `ReorderableList`; DESIGN.md §12.2 ⠿ drag-reorder, §3 flat offset
    depth. Rows on --slab with 2px --line-soft; grabbed row lifts (--indigo-lift outline,
    4px 4px 0 --ink-deep) behind a 2px --indigo-lift drop-target line. No slide animations, so
-   reduced-motion needs no override (03 §2.10: "Reduced-motion: no slide"). */
+   reduced-motion needs no override (03 §2.10: "Reduced-motion: no slide"). S1.8: two 44px Move
+   up / Move down buttons close every row (ADR-0045). */
 .reorderable-list {
   min-width: 0;
 }
@@ -68,4 +69,41 @@
 .reorderable-list-node {
   flex: 1;
   min-width: 0;
+}
+
+/* Move up / Move down — two 44px targets (03 C-24) at the row's end, the handle's quiet --mute
+   until hovered; the rotate is static geometry (the 03 `Icon` list has no up chevron), not
+   motion. */
+.reorderable-list-steps {
+  display: flex;
+  flex: none;
+  gap: var(--space-4);
+}
+
+.reorderable-list-step {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mute);
+  cursor: pointer;
+  transition: color var(--dur-fast) ease-out;
+}
+
+.reorderable-list-step[data-direction='up'] svg {
+  transform: rotate(180deg);
+}
+
+.reorderable-list-step:hover {
+  color: var(--chalk);
+}
+
+/* At an end (aria-disabled, still focusable) and for moderators (natively disabled). */
+.reorderable-list-step[aria-disabled='true'],
+.reorderable-list-step:disabled {
+  color: var(--disabled-text);
+  cursor: default;
 }

@@ -248,6 +248,98 @@ export type Database = {
           },
         ]
       }
+      mentions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          creator_name: string
+          creator_url: string | null
+          external_id: string | null
+          featured: boolean
+          id: string
+          platform: Database["public"]["Enums"]["mention_platform"]
+          project_id: string | null
+          published_at: string | null
+          sort_order: number
+          source: Database["public"]["Enums"]["mention_source"]
+          status: Database["public"]["Enums"]["mention_status"]
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          url: string
+          view_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          creator_name: string
+          creator_url?: string | null
+          external_id?: string | null
+          featured?: boolean
+          id?: string
+          platform: Database["public"]["Enums"]["mention_platform"]
+          project_id?: string | null
+          published_at?: string | null
+          sort_order?: number
+          source?: Database["public"]["Enums"]["mention_source"]
+          status?: Database["public"]["Enums"]["mention_status"]
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          url: string
+          view_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          creator_name?: string
+          creator_url?: string | null
+          external_id?: string | null
+          featured?: boolean
+          id?: string
+          platform?: Database["public"]["Enums"]["mention_platform"]
+          project_id?: string | null
+          published_at?: string | null
+          sort_order?: number
+          source?: Database["public"]["Enums"]["mention_source"]
+          status?: Database["public"]["Enums"]["mention_status"]
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          url?: string
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_events: {
         Row: {
           actor_id: string | null
@@ -1183,11 +1275,21 @@ export type Database = {
         Args: { p_file_id: string; p_ip_hash: string; p_ua_hash: string }
         Returns: undefined
       }
+      reorder_mentions: { Args: { p_items: Json }; Returns: number }
     }
     Enums: {
       comment_status: "published" | "held" | "hidden" | "deleted"
       comment_target: "project" | "skin" | "art" | "video"
       link_platform: "modrinth" | "curseforge"
+      mention_platform:
+        | "youtube"
+        | "tiktok"
+        | "twitch"
+        | "reddit"
+        | "article"
+        | "other"
+      mention_source: "manual" | "auto"
+      mention_status: "draft" | "suggested" | "published" | "hidden"
       moderation_mode: "auto" | "hold_first_time"
       notification_channel: "email" | "discord" | "inapp" | "push"
       notification_status: "pending" | "sent" | "failed" | "skipped"
@@ -1330,6 +1432,16 @@ export const Constants = {
       comment_status: ["published", "held", "hidden", "deleted"],
       comment_target: ["project", "skin", "art", "video"],
       link_platform: ["modrinth", "curseforge"],
+      mention_platform: [
+        "youtube",
+        "tiktok",
+        "twitch",
+        "reddit",
+        "article",
+        "other",
+      ],
+      mention_source: ["manual", "auto"],
+      mention_status: ["draft", "suggested", "published", "hidden"],
       moderation_mode: ["auto", "hold_first_time"],
       notification_channel: ["email", "discord", "inapp", "push"],
       notification_status: ["pending", "sent", "failed", "skipped"],

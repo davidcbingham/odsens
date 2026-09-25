@@ -12,7 +12,7 @@
 --   SEED-7  skins (2)                                     — arrives in S1.7
 --   SEED-8  art (2)                                       — arrives in S1.7
 --   SEED-9  comments (5) + comment_likes + comment_reports — S1.4 (below)
---   SEED-10 mentions (2)                                  — arrives in S1.8
+--   SEED-10 mentions (2)                                  — S1.8 (below; ADR-0045)
 --   SEED-11 videos (7)                                    — S1.6 (below; ADR-0043 D8)
 --   SEED-12 sync_runs (3) — S1.2 (below); stats_daily (6) — arrives in S1.9
 --   SEED-13 Storage objects — not SQL; uploaded by the e2e/db globalSetup (`uploadFixture`)
@@ -321,6 +321,41 @@ update public.profiles as p
     ('00000000-0000-4000-8000-000000000006'::uuid, 0)
   ) as v (id, comment_count)
  where p.id = v.id;
+
+-- =============================================================================================
+-- SEED-10 — mentions (2) per 05 §3; the columns the 05 row leaves open are pinned by ADR-0045.
+--   …0301  youtube, on project …0101 (metal-pipe-mace — a `source='modrinth'` row), external_id
+--          `seedvid0001` (11 chars — `mentions_youtube_external_id_format`; the id `refreshMentions`
+--          asks the Data API for, 04 §3.4), 1,200,000 views, published, FEATURED, sort_order 1 — the
+--          one card of the Home IN THE WILD strip and of the SEEN ON row on /projects/metal-pipe-mace.
+--   …0302  tiktok, project_id NULL ("About OddSense generally" — the ODSENS chip on /seen-on),
+--          view_count NULL, published, not featured, sort_order 2. thumbnail_url NULL: a non-YouTube
+--          thumbnail is never rendered (ADR-0002 #33 — `PlatformMark` placeholder).
+-- ReachLine over all published = `1.2M VIEWS · 2 VIDEOS · 2 CREATORS` (05 §3).
+-- `published_at` values are fixed literals older than 7 days at build time (2026-09-19; the SEED-11
+-- rule — `relativeTime` prints the absolute form, no screenshot depends on the clock) and the
+-- YouTube row is the newer one, so "newest first" on /seen-on is deterministic (T-E2E-10).
+-- Both are `source='manual'`, created by the seed admin (…0001). Creator data = public channel
+-- name + link only (00 S1.8.AC11). The YouTube thumbnail uses the i.ytimg.com hqdefault shape
+-- (01 INV-54 host; e2e fulfils it locally like SEED-11, H-10). Idempotent on id.
+-- =============================================================================================
+insert into public.mentions (
+  id, project_id, platform, url, external_id, title, creator_name, creator_url, thumbnail_url,
+  published_at, view_count, status, source, featured, sort_order, created_by
+) values
+  ('00000000-0000-4000-8000-000000000301', '00000000-0000-4000-8000-000000000101', 'youtube',
+   'https://www.youtube.com/watch?v=seedvid0001', 'seedvid0001',
+   'Metal Pipe Mace is the loudest mod I have ever installed', 'Seed Creator',
+   'https://www.youtube.com/@seedcreator', 'https://i.ytimg.com/vi/seedvid0001/hqdefault.jpg',
+   '2026-06-14 16:00:00+00', 1200000, 'published', 'manual', true, 1,
+   '00000000-0000-4000-8000-000000000001'),
+  ('00000000-0000-4000-8000-000000000302', null, 'tiktok',
+   'https://www.tiktok.com/@seedtok/video/1', null,
+   'this mod makes no sense and I love it', 'Seed Tok',
+   'https://www.tiktok.com/@seedtok', null,
+   '2026-05-02 12:00:00+00', null, 'published', 'manual', false, 2,
+   '00000000-0000-4000-8000-000000000001')
+on conflict (id) do nothing;
 
 -- =============================================================================================
 -- SEED-11 — videos (7) per 05 §3 as amended by ADR-0043 D8 (05's three rows + four older long ones,

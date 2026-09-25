@@ -1,0 +1,278 @@
+/* MentionCard — DESIGN.md §12.1 Mention card, §12.2 Seen on footer strip; 03 §2.8 (tokens --slab
+   --slab-sunk --slab-foot --line --line-soft --indigo --indigo-lift --ink --chalk --mute
+   --mute-dim --emerald --gold --white --font-pixel). Facade (or the link-out well) on top, creator
+   line + title under it, optional project strip last. ADR-0045 D16. */
+.mention-card {
+  display: flex;
+  flex-direction: column;
+  /* Fill the cell it is given, and shrink to it: a long unbroken name must not floor the card. */
+  width: 100%;
+  min-width: 0;
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  transition: outline-color var(--dur-fast) ease-out;
+}
+
+/* The playing signal (§12.1) — same 2px edge, colour swapped. Never a hover colour here: on a
+   mention card `--indigo-lift` means "this one is playing" and nothing else. */
+.mention-card[data-state='playing'] {
+  outline-color: var(--indigo-lift);
+}
+
+/* ---- thumb slot: 16:9, 2px `--line` rule under it (pass-3 Seen on artboards) ---- */
+.mention-card-thumb {
+  border-bottom: 2px solid var(--line);
+}
+
+/* The card draws the edge: the facade's own 2px outline would sit on top of it and hide the
+   playing colour on three sides (the `VideoCard` precedent). */
+.mention-card-thumb > .mention-card-facade {
+  outline: 0;
+}
+
+/* Link-out: the whole well is the one link. No image, ever (ADR-0002 #33). */
+.mention-card-out {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  background: var(--slab-sunk);
+  color: var(--chalk);
+  text-decoration: none;
+}
+
+.mention-card-well {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+/* Both chips follow the facade's hint chip (`VideoFacade.module.css`): solid `--ink`, 4 / 8
+   padding, 12px inset, flex boxes so the label sets the height — YouTube and link-out cards read
+   as one family. */
+.mention-card-arrow,
+.mention-card-chip {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  padding: var(--space-4) var(--space-8);
+  background: var(--ink);
+  color: var(--chalk);
+}
+
+.mention-card-arrow {
+  top: var(--space-12);
+  right: var(--space-12);
+  font-size: var(--text-label);
+  font-weight: 700;
+  line-height: 1.2;
+  transition:
+    background-color var(--dur-fast) ease-out,
+    color var(--dur-fast) ease-out;
+}
+
+/* Hover: the arrow chip takes the action colour (white on `--indigo`, the primary pairing). */
+.mention-card-out:hover .mention-card-arrow {
+  background: var(--indigo);
+  color: var(--white);
+}
+
+.mention-card-chip {
+  bottom: var(--space-12);
+  left: var(--space-12);
+  max-width: calc(100% - 2 * var(--space-12));
+}
+
+/* One line, always: `READ ON <SITE>` can be 24 characters — on a narrow card it ends in an
+   ellipsis instead of wrapping up into the mark. */
+.mention-card-chip > .mention-card-chip-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- body: creator line, then the title ---- */
+.mention-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+  padding: var(--space-12) var(--space-16) var(--space-16);
+}
+
+/* Always 44px: the height of the "on YouTube ↗" link, so its arrival moves nothing. It wraps only
+   on a card too narrow to hold mark + a readable name + the link on one row (under ~280px — the
+   Home 4-up on a small desktop): there the link takes a row of its own, after the visitor's click. */
+.mention-card-creator {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-12);
+  min-width: 0;
+  min-height: 44px;
+}
+
+/* 96px: the least a name may keep beside the link before the link wraps (a flex-basis is layout
+   geometry — 03 §9 has no token member for it). */
+.mention-card-who {
+  display: flex;
+  flex: 1 1 96px;
+  flex-direction: column;
+  gap: calc(var(--space-4) / 2);
+  min-width: 0;
+}
+
+/* Creator name: 14px 700 (§12.1), one line. */
+.mention-card-name {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-small);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--chalk);
+}
+
+.mention-card-name-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The link is the name only. Its box stays one line tall (so the focus ring hugs the name); the
+   44 x 44 target is the pseudo-element (03 C-24 — the `MarkdownEditor` toolbar precedent). It
+   reaches over the mute meta line and the row's own padding, never over another control. */
+.mention-card-name-link {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
+.mention-card-name-link::after {
+  content: '';
+  position: absolute;
+  top: calc((1.3em - 44px) / 2);
+  bottom: calc((1.3em - 44px) / 2);
+  left: 0;
+  min-width: 44px;
+  width: 100%;
+}
+
+.mention-card-name-link:hover .mention-card-name-text {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.mention-card-name-link:active {
+  color: var(--gold);
+}
+
+/* Views (Silkscreen emerald, from `PixelLabel`) + date, on one baseline. */
+.mention-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-8);
+  min-width: 0;
+  margin: 0;
+}
+
+.mention-card-date {
+  font-size: var(--text-label-sm);
+  line-height: 1.35;
+  color: var(--mute-dim);
+  white-space: nowrap;
+}
+
+/* "on YouTube ↗" — the ghost-link recipe (DESIGN.md §5 ghost: 700 15px `--indigo-lift`; the
+   `VideoStage` "Watch on YouTube ↗" precedent), pushed to the end of the creator row. */
+.mention-card-watch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: 44px;
+  margin-inline-start: auto;
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--indigo-lift);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.mention-card-watch:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.mention-card-watch:active {
+  color: var(--gold);
+}
+
+/* The mention's title: one quiet line under the creator (ADR-0045 D16) — 14px 400 `--mute`,
+   two lines at most. */
+.mention-card-title {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-small);
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--mute);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* ---- footer strip (`/seen-on`): `--slab-foot`, 2px top `--line`; badge left, link beside it ---- */
+.mention-card-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+  min-height: 44px;
+  margin-top: auto;
+  padding: 0 var(--space-16);
+  background: var(--slab-foot);
+  border-top: 2px solid var(--line);
+}
+
+.mention-card-foot > :first-child {
+  flex: none;
+}
+
+/* Project title link: 13px 700 `--indigo-lift`, one line; block padding makes the box the strip's
+   full 44px (a flex box would lose the ellipsis). `min-height` holds the 44px target when the
+   line box rounds down (measured 43.98px at 13px × 1.35 — 03 C-24). */
+.mention-card-project {
+  display: block;
+  min-width: 44px;
+  min-height: 44px;
+  padding-block: calc((44px - 1.35em) / 2);
+  overflow: hidden;
+  font-size: var(--text-label);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--indigo-lift);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mention-card-project:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.mention-card-project:active {
+  color: var(--gold);
+}

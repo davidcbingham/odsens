@@ -50,6 +50,12 @@ import { UpNextList } from '@/components/videos/UpNextList';
 import { VideoCard } from '@/components/videos/VideoCard';
 import { VideoFacade } from '@/components/videos/VideoFacade';
 import { VideoStage } from '@/components/videos/VideoStage';
+import { InTheWildStrip } from '@/components/seen-on/InTheWildStrip';
+import { MentionCard } from '@/components/seen-on/MentionCard';
+import { MentionPreview } from '@/components/seen-on/MentionPreview';
+import { ReachLine } from '@/components/seen-on/ReachLine';
+import { SeenOnGrid } from '@/components/seen-on/SeenOnGrid';
+import { SeenOnRow } from '@/components/seen-on/SeenOnRow';
 import { ViewerProvider } from '@/components/accounts/ViewerProvider';
 import { ProfileMenu } from '@/components/accounts/ProfileMenu';
 import { HandleField } from '@/components/accounts/HandleField';
@@ -128,6 +134,13 @@ import {
   shortsRowFixtures,
   videoCardFixtures,
   videoStageFixtures,
+  mentionCardFixtures,
+  reachLineFixtures,
+  seenOnRowFixtures,
+  inTheWildStripFixtures,
+  seenOnGridFixtures,
+  seenOnDescribedStates,
+  mentionPreviewFixtures,
 } from '@/tests/fixtures/ui';
 import styles from './page.module.css';
 
@@ -773,6 +786,65 @@ export default function ComponentsPreviewPage() {
                 <Suspense fallback={null}>
                   <VideoStage {...props} />
                 </Suspense>
+              </Specimen>
+            ))}
+          </div>
+        </Area>
+
+        {/* ---------------------------------------------------------------- Seen on (03 §2.8) */}
+        <Area id="area-seen-on" title="SEEN ON">
+          <div className={styles['preview-group']}>
+            {mentionCardFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="MentionCard" label={label}>
+                <MentionCard {...props} />
+              </Specimen>
+            ))}
+            {reachLineFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="ReachLine" label={label}>
+                <ReachLine {...props} />
+              </Specimen>
+            ))}
+            {seenOnDescribedStates.map(({ name, label, note }) => (
+              <Specimen key={label} name={name} label={label}>
+                {/* `playing` needs a live YouTube frame — the gallery never frames YouTube (01
+                    INV-57; ADR-0014 live-state exception) — and the "renders nothing" states
+                    have nothing to show: described, not rendered. */}
+                <p className={styles['preview-note']}>{note}</p>
+              </Specimen>
+            ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {seenOnRowFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="SeenOnRow" label={label}>
+                <SeenOnRow {...props} />
+              </Specimen>
+            ))}
+            {inTheWildStripFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="InTheWildStrip" label={label}>
+                <InTheWildStrip {...props} />
+              </Specimen>
+            ))}
+            {seenOnGridFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="SeenOnGrid" label={label}>
+                {/* Reads `?platform=` / `?project=` from this page's URL
+                    (`/dev/components?platform=tiktok&project=metal-pipe-mace` shows the
+                    "NOTHING HERE" state); its filter bar rewrites them. */}
+                <Suspense fallback={null}>
+                  <SeenOnGrid {...props} />
+                </Suspense>
+              </Specimen>
+            ))}
+          </div>
+
+          {/* The admin half of the area (03 §2.8 `MentionPreview` — it lives in `components/seen-on/`). */}
+          <div className={styles['preview-group']} data-wide="">
+            {mentionPreviewFixtures.map(({ label, props }) => (
+              <Specimen key={label} name="MentionPreview" label={label}>
+                {/* "Fetch" / PUBLISH call the real `fetchMentionPreview` / `createMention` — signed
+                    out they answer with their inline error (interaction-only pending / error
+                    states, the SyncStatus precedent). */}
+                <MentionPreview {...props} />
               </Specimen>
             ))}
           </div>

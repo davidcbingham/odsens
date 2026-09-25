@@ -12,9 +12,10 @@
  * (04 §5.5 row, counted on `sync_runs`).
  *
  * S1.2 wires `modrinth` and `curseforge`, S1.6 `youtube` (`full:true` — the schema accepts it for
- * youtube only — reaches `syncYoutube` as the uploads-playlist walk, 04 §3.3 step 3). `mentions` /
- * `stats` are valid input (05 T-ACT-42 enum) but their jobs land in S1.8 / S1.9 — until then they
- * return `upstream_error` (the §1.7 Returns cell's error for a sync that cannot run).
+ * youtube only — reaches `syncYoutube` as the uploads-playlist walk, 04 §3.3 step 3), S1.8
+ * `mentions` (`refreshMentions`, 04 §3.4 — its "Sync now" button lives on `/admin/mentions`,
+ * ADR-0045). `stats` is valid input (05 T-ACT-42 enum) but its job lands in S1.9 — until then it
+ * returns `upstream_error` (the §1.7 Returns cell's error for a sync that cannot run).
  *
  * SC-24: the `requireRole` call site logs `msg:'admin'` with meta keys only before returning
  * `ok:true`. Input schema lives in `./admin.schema.ts` (a `'use server'` module may export only
@@ -24,22 +25,25 @@ import { triggerSyncInput, type TriggerSyncInput } from '@/lib/actions/admin.sch
 import { fail, ok, type ActionResult } from '@/lib/actions/result';
 import { runAction } from '@/lib/actions/run';
 import { requireRole } from '@/lib/auth';
+import { refreshMentions } from '@/lib/jobs/refreshMentions';
 import { syncCurseforge } from '@/lib/jobs/syncCurseforge';
 import { syncModrinth } from '@/lib/jobs/syncModrinth';
 import { syncYoutube } from '@/lib/jobs/syncYoutube';
 import type { JobOptions, JobSummary } from '@/lib/jobs/types';
 import { log } from '@/lib/log';
 
-/** Source → job function (01 INV-72). S1.8 adds `mentions`, S1.9 `stats`. */
+/** Source → job function (01 INV-72). S1.9 adds `stats`. */
 const JOBS: Partial<Record<TriggerSyncInput['source'], (opts: JobOptions) => Promise<JobSummary>>> =
   {
     modrinth: syncModrinth,
     curseforge: syncCurseforge,
     youtube: syncYoutube,
+    mentions: refreshMentions,
   };
 
 // ---------------------------------------------------------------------------------------------
-// triggerSync — 04 §1.7 (SyncStatus "Sync now" buttons in /admin/projects and, from S1.6, /admin)
+// triggerSync — 04 §1.7 (SyncStatus "Sync now" buttons in /admin/projects, from S1.6 /admin and,
+// from S1.8, /admin/mentions)
 // ---------------------------------------------------------------------------------------------
 
 export async function triggerSync(input: TriggerSyncInput): Promise<ActionResult<JobSummary>> {
@@ -48,7 +52,7 @@ export async function triggerSync(input: TriggerSyncInput): Promise<ActionResult
 
     const job = JOBS[data.source];
     if (job === undefined) {
-      // S1.8 / S1.9 land these jobs; the enum already accepts the source (05 T-ACT-42).
+      // S1.9 lands the `stats` job; the enum already accepts the source (05 T-ACT-42).
       return fail('upstream_error', "That sync isn't built yet.");
     }
 

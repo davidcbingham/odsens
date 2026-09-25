@@ -9,13 +9,22 @@
  *   afterAll(async () => { await restoreContentTables(snap); });
  *
  * `restoreContentTables` removes rows that did not exist at snapshot time (children first, FK order)
- * and upserts every snapshot row back, so seed values (SEED-4..6, SEED-11, SEED-12) survive
+ * and upserts every snapshot row back, so seed values (SEED-4..6, SEED-10, SEED-11, SEED-12) survive
  * byte-for-byte.
  *
  * S1.6 adds `videos` to the same snapshot (no `videosReset.ts`): a `syncYoutube` run
  * inserts fixture rows no factory tracks and rewrites seed rows (T-ACT-53/71/74, the cron route,
  * `triggerSync`), and `updateVideo` flips seed `seedvid0001` (T-ACT-68). The e2e build prerenders
  * `/videos` and Home from the DB as the db lane left it, so every such file restores (H-1).
+ *
+ * S1.8 adds `mentions` the same way: a `refreshMentions` run rewrites seed `…0301`'s `view_count`
+ * (T-ACT-54/71/74, the cron route, `triggerSync`), `updateMention` hides / features / reorders seed
+ * rows and `createMention` inserts rows no factory tracks (T-ACT-63/64) — and the e2e build
+ * prerenders Home, `/seen-on` and `/projects/metal-pipe-mace` from whatever the db lane left.
+ * `mentions.project_id` references `projects` (`on delete set null`): extra mentions are removed
+ * before extra projects (child-first like the rest; a seed mention a test re-assigned to an extra
+ * project is nulled by that delete and then repaired by the upsert) and snapshot rows are upserted
+ * AFTER projects (the FK needs the parent).
  * Service-role client only (arranging state, 05 §1.3 `asRole('service')`).
  *
  * S1.5 adds the settings tables' documented shape as constants + a constant-based restore (no
@@ -39,6 +48,7 @@ const TABLES = [
   'project_overrides',
   'sync_runs',
   'videos',
+  'mentions', // after `projects` — restore upserts run in this order, parents first
 ] as const;
 
 type ContentTable = (typeof TABLES)[number];
@@ -54,6 +64,7 @@ const PK: Record<ContentTable, string[]> = {
   project_overrides: ['project_id'],
   sync_runs: ['id'],
   videos: ['id'],
+  mentions: ['id'],
 };
 
 /** Generated columns cannot be written back (`projects.search` is GENERATED ALWAYS … STORED). */
@@ -68,6 +79,7 @@ const CHILD_FIRST: ContentTable[] = [
   'project_links',
   'project_overrides',
   'sync_runs',
+  'mentions', // FK → projects (`on delete set null`, data-model §2.3b) — before its parent
   'projects',
   'videos', // no FK in or out (data-model §2.3) — order is free
 ];

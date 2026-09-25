@@ -7,8 +7,8 @@
  * `makeSyncRun` (05 §8 row S1.2). S1.4: `makeComment` (+ `restoreSeedCommentCounts`, `trackComment`,
  * `purgeNotificationEvents`). S1.5: `makeNotificationEvent` / `makeRecipient` (+ `trackNotificationEvent`,
  * `trackRecipient`, `purgeNotificationRecipients`; `purgeNotificationEvents` now empties the recipients
- * queue first). S1.6: `makeVideo` (05 §8 row S1.6). Later content factories (`makeMention`…) stay
- * stubs until their slice.
+ * queue first). S1.6: `makeVideo` (05 §8 row S1.6). S1.8: `makeMention` (05 §8 row S1.8). Later
+ * content factories (`makeSkin`, `makeArt`) stay stubs until their slice.
  *
  *   const id = await makeUser({ role: 'moderator' });          // handle `t_<8 hex>`, not banned
  *   const newbie = await makeUser({ handle: null });           // onboarding incomplete
@@ -21,6 +21,7 @@
  *   const fileId = await makeFile({ version_id: versionId });
  *   const runId = await makeSyncRun({ source: 'modrinth' });
  *   const videoId = await makeVideo({ hidden: true });          // youtube_id `t_<8 hex>0` (11 chars)
+ *   const mentionId = await makeMention({ status: 'draft' });   // youtube, external_id `t_<8 hex>0`
  *   const eventId = await makeNotificationEvent({ kind: 'comment.held' }); // subject = SEED-9 …0201
  *   const rowId = await makeRecipient({ event_id: eventId, channel: 'discord', status: 'skipped', address: null });
  */
@@ -85,6 +86,32 @@ export type VideoOverrides = FactoryOverrides & {
   like_count?: number | null;
   synced_at?: string | null;
   hidden?: boolean;
+};
+/** S1.8 — `mentions` columns (supabase/migrations/20260919120000_mentions.sql). */
+export type MentionOverrides = FactoryOverrides & {
+  /** Default NULL = "About OddSense generally" (data-model §2.3b); pass a project id to hang it on one. */
+  project_id?: string | null;
+  /** Default `youtube`. For another platform also pass `external_id: null` (or a platform-native id) and a `url`. */
+  platform?: 'youtube' | 'tiktok' | 'twitch' | 'reddit' | 'article' | 'other';
+  /** Default `https://www.youtube.com/watch?v=<external_id>` — unique per row (`mentions_url_key`), https (`mentions_url_format`). */
+  url?: string;
+  /** Default `t_<8 hex>0` — 11 chars of `[A-Za-z0-9_-]` (`mentions_youtube_external_id_format`). */
+  external_id?: string | null;
+  title?: string;
+  creator_name?: string;
+  creator_url?: string | null;
+  thumbnail_url?: string | null;
+  /** Default `2026-01-01T12:00:00Z` — older than both SEED-10 rows, so a factory mention sorts last on "newest first". */
+  published_at?: string | null;
+  view_count?: number | null;
+  /** Default `published` (visible, like `makeProject` / `makeVideo`); `suggested` rows usually also pass `source: 'auto'`. */
+  status?: 'draft' | 'suggested' | 'published' | 'hidden';
+  source?: 'manual' | 'auto';
+  /** Default false — a factory mention never joins the Home strip unless the test features it. */
+  featured?: boolean;
+  sort_order?: number;
+  /** Default: the seed admin (…0001), as `createMention` stamps it (04 §1.6); `null` for an auto row. */
+  created_by?: string | null;
 };
 export type SyncRunOverrides = FactoryOverrides & {
   /** The 7 registry values (sync_runs_source_check). */
@@ -447,8 +474,6 @@ export async function restoreSeedCommentCounts(): Promise<void> {
   }
 }
 
-export const makeMention: Factory = notYet('makeMention');
-
 const createdVideos: string[] = [];
 
 /** Older than every SEED-11 row: a factory video sorts last unless the test dates it. */
@@ -488,6 +513,52 @@ export const makeVideo: Factory<VideoOverrides> = async (overrides = {}) => {
   return insertContentRow('makeVideo', 'videos', row, createdVideos, id);
 };
 
+const createdMentions: string[] = [];
+
+/** Older than both SEED-10 rows: a factory mention sorts last on "newest first" unless the test dates it. */
+const FACTORY_MENTION_PUBLISHED_AT = '2026-01-01T12:00:00.000Z';
+
+/**
+ * S1.8: a `mentions` row through the service client — a published, un-featured YouTube mention
+ * "about OddSense generally" (`project_id` NULL) with 0 views, created by the seed admin. Its
+ * `external_id` is `factoryYoutubeId(id)` and its `url` the canonical watch form of that id (both
+ * unique per row — the `t_` tag rides the video id because the url must be https, 05 §1.3). For a
+ * non-YouTube row pass `platform`, `url` and `external_id: null`. Returns the row `id`.
+ */
+export const makeMention: Factory<MentionOverrides> = async (overrides = {}) => {
+  const id = typeof overrides.id === 'string' ? overrides.id : randomUUID();
+  const tag = shortTag(id);
+  const externalId = factoryYoutubeId(id);
+  const row: Record<string, Json> = {
+    id,
+    project_id: null,
+    platform: 'youtube',
+    url: `https://www.youtube.com/watch?v=${externalId}`,
+    external_id: externalId,
+    title: `t_${tag}`,
+    creator_name: `t_${tag}`,
+    creator_url: `https://www.youtube.com/@t_${tag}`,
+    thumbnail_url: `https://i.ytimg.com/vi/${externalId}/hqdefault.jpg`,
+    published_at: FACTORY_MENTION_PUBLISHED_AT,
+    view_count: 0,
+    status: 'published',
+    source: 'manual',
+    featured: false,
+    sort_order: 0,
+    created_by: SEED_USERS.oddsense,
+    ...defined(overrides),
+  };
+  return insertContentRow('makeMention', 'mentions', row, createdMentions, id);
+};
+
+/**
+ * S1.8: adopts a mention row created OUTSIDE the factories (by `createMention` in an action test)
+ * into the cleanup list, so it leaves with the file like a `makeMention` row would (05 H-1).
+ */
+export function trackMention(id: string): void {
+  createdMentions.push(id);
+}
+
 export const makeSkin: Factory = notYet('makeSkin');
 export const makeArt: Factory = notYet('makeArt');
 
@@ -501,13 +572,19 @@ export const makeSyncRun: Factory<SyncRunOverrides> = async (overrides = {}) => 
   return insertContentRow('makeSyncRun', 'sync_runs', row, createdSyncRuns, id);
 };
 
+/** Ids per `delete … in (…)` request — the filter rides the URL (see `cleanupFactories`). */
+const CLEANUP_CHUNK = 100;
+
 /**
  * Removes every row created by the factories in the current test file: content rows child-first
- * (recipients → events → comments → files → versions → projects → sync_runs → videos; links/overrides
- * a test hung on a factory project fall to its FK cascade), then avatar objects under `avatars/<id>/`, then
- * the auth user (profiles cascade).
+ * (recipients → events → comments → files → versions → mentions → projects → sync_runs → videos;
+ * links/overrides a test hung on a factory project fall to its FK cascade — a mention does not, its
+ * FK is `on delete set null`, hence its own entry before `projects`), then avatar objects under
+ * `avatars/<id>/`, then the auth user (profiles cascade; `mentions.created_by` is set null).
  * Safe to call when a test already deleted a row — 0 affected rows is a no-op, user "not found" is
- * ignored.
+ * ignored. Deletes go out `CLEANUP_CHUNK` ids at a time: the `in.(…)` filter rides the request URL,
+ * and ~230 tracked uuids in one filter answered "URI too long" — which threw on that table and
+ * leaked every table after it (S1.8, `updateMention` reorder legs).
  */
 export const cleanupFactories: () => Promise<void> = async () => {
   const service = asRole('service');
@@ -518,6 +595,7 @@ export const cleanupFactories: () => Promise<void> = async () => {
     ['comments', createdComments],
     ['project_files', createdFiles],
     ['project_versions', createdVersions],
+    ['mentions', createdMentions],
     ['projects', createdProjects],
     ['sync_runs', createdSyncRuns],
     ['videos', createdVideos],
@@ -525,8 +603,11 @@ export const cleanupFactories: () => Promise<void> = async () => {
   for (const [table, tracked] of contentTables) {
     const ids = tracked.splice(0, tracked.length);
     if (ids.length === 0) continue;
-    const { error } = await loose(service).from(table).delete().in('id', ids);
-    if (error) throw new Error(`cleanupFactories: ${table} delete failed: ${error.message}`);
+    for (let start = 0; start < ids.length; start += CLEANUP_CHUNK) {
+      const chunk = ids.slice(start, start + CLEANUP_CHUNK);
+      const { error } = await loose(service).from(table).delete().in('id', chunk);
+      if (error) throw new Error(`cleanupFactories: ${table} delete failed: ${error.message}`);
+    }
   }
   if (touchedComments) await restoreSeedCommentCounts();
   const ids = createdUsers.splice(0, createdUsers.length);

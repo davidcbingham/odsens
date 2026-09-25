@@ -12,7 +12,7 @@ import path from 'node:path';
 /**
  * Extend when a slice merges (05 §8; 00 DoD-4). S1.5c is listed from its build PR: its IDs were
  * assigned at Session A (05 §8 row, ADR-0040), so lint enforces them from the PR that assigns them. S1.5b likewise (its build PR, ADR-0041).
- * S1.6 likewise (its build PR, ADR-0043).
+ * S1.6 likewise (its build PR, ADR-0043). S1.8 likewise (its build PR, ADR-0045).
  */
 const SHIPPED_SLICES = [
   'S0',
@@ -25,6 +25,7 @@ const SHIPPED_SLICES = [
   'S1.5c',
   'S1.5b',
   'S1.6',
+  'S1.8',
 ];
 
 const ROOT = process.cwd();

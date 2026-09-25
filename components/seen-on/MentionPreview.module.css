@@ -1,0 +1,218 @@
+/* MentionPreview — DESIGN.md §12.2 Admin → Mentions "Add a mention" panel (pass-3 Seen On artboard
+   04); 03 §2.8 `MentionPreview` (tokens `--line-strong --slab --line-soft --mute`, plus
+   `--indigo-lift` for the fetched card's outline per the artboard). Tokens only (03 C-08); the
+   artboard's off-scale 22 / 14 / 10 px snap to --space-24 / 16 / 12. Dark-first, square edges
+   (DESIGN.md §3); the inputs keep their own 3px radius through `Field` / `Select`. */
+.mention-preview {
+  /* Containing block for the visually-hidden "Admin only" note — without it the absolutely
+     positioned span resolves against the viewport and can widen the page at 390. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+  padding: var(--space-24);
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+}
+
+/* Link row: the field grows, "Fetch" sits level with the input under the field label — the
+   `NotificationMatrix` add-email arrangement. Measured in the browser: the label line box is 21px
+   and the input starts 10px under it (gap + its 2px edge) = 31px, so the button's top edge takes
+   --space-32 (the recipe's --space-24 leaves the button 7px above the input's top edge). */
+.mention-preview-link {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+}
+
+.mention-preview-link-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.mention-preview-link > :last-child {
+  flex: none;
+  margin-top: var(--space-32);
+}
+
+/* `empty` — 03 §2.8: dashed --line-strong slot. */
+.mention-preview-slot {
+  margin: 0;
+  padding: var(--space-24) var(--space-16);
+  border: 2px dashed var(--line-strong);
+  color: var(--mute);
+  font-size: var(--text-ui);
+  text-align: center;
+}
+
+/* Inline error lines (03 C-30) — the `Field` error recipe: --danger, plain words. */
+.mention-preview-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-small);
+  line-height: 1.4;
+}
+
+/* `preview` — the fetched card: sunk fill, --indigo-lift outline (artboard 04). */
+.mention-preview-card {
+  display: flex;
+  gap: var(--space-16);
+  min-width: 0;
+  padding: var(--space-16);
+  background: var(--slab-sunk);
+  outline: 2px solid var(--indigo-lift);
+}
+
+/* 16:9 well on --ink. A YouTube thumb fills it (`next/image fill`); every other platform centres
+   its `PlatformMark` — no remote image (ADR-0002 #33). */
+.mention-preview-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 200px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--ink);
+  outline: 2px solid var(--line-soft);
+}
+
+.mention-preview-thumb img {
+  object-fit: cover;
+}
+
+.mention-preview-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.mention-preview-title {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-ui);
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.mention-preview-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-12);
+}
+
+.mention-preview-creator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+  color: var(--mute);
+  font-size: var(--text-label);
+  overflow-wrap: anywhere;
+}
+
+.mention-preview-date {
+  color: var(--mute-dim);
+  font-size: var(--text-label);
+}
+
+.mention-preview-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+/* "Edit fields" ghost under the card, left-aligned with the card's edge. */
+.mention-preview-edit {
+  display: flex;
+}
+
+/* `manual` / `error` — two columns from the tablet floor; Title and Creator link span both. */
+.mention-preview-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+.mention-preview-field-wide {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+/* Assign row — present in every state: the select on the left, PUBLISH pushed right (artboard 04:
+   `margin-left: auto`). The general error line, when there is one, reads beside the button. */
+.mention-preview-assign {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-16);
+}
+
+.mention-preview-assign-select {
+  flex: 0 1 320px;
+  min-width: 0;
+}
+
+.mention-preview-publish {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-12);
+  margin-inline-start: auto;
+}
+
+.mention-preview-helper {
+  margin: 0;
+  color: var(--mute-dim);
+  font-size: var(--text-label);
+  line-height: 1.4;
+}
+
+@media (max-width: 599px) {
+  .mention-preview {
+    padding: var(--space-16);
+  }
+
+  .mention-preview-link {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mention-preview-link > :last-child {
+    margin-top: 0;
+  }
+
+  .mention-preview-card {
+    flex-direction: column;
+  }
+
+  .mention-preview-thumb {
+    width: 100%;
+  }
+
+  .mention-preview-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mention-preview-assign {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mention-preview-assign-select {
+    flex-basis: auto;
+  }
+
+  .mention-preview-publish {
+    justify-content: flex-start;
+    margin-inline-start: 0;
+  }
+}

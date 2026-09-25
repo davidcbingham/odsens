@@ -34,8 +34,9 @@ import styles from './VideoFacade.module.css';
  * so focus moves to the iframe — after a user click only, never on first render, and never when
  * another facade's click sends this one back to `idle`.
  *
- * Sizes follow DESIGN.md §12.7 ("this section wins" — ADR-0043 D7): play block 88px `hero` /
- * `mention`, 44px `upnext`, 56px `short` + `card`; same square, triangle and `5px 5px 0` shadow.
+ * Sizes follow DESIGN.md §12.7 ("this section wins" — ADR-0043 D7): play block 88px `hero`, 44px
+ * `upnext`, 56px `short` + `card` + `mention` (ADR-0045); same square, triangle and `5px 5px 0`
+ * shadow.
  * The `CLICK TO LOAD YOUTUBE` chip hides when the facade is too narrow to hold it on one row beside
  * the duration chip (under 312px of rendered width — 03 O-19; the arithmetic is in the stylesheet)
  * with a container query — no script, no resize listener. Aspect 16:9, `short` 9:16.

@@ -1,0 +1,51 @@
+/* InTheWildStrip — DESIGN.md §12.2 Home IN THE WILD strip; 03 §2.8; pass-3 "Home In the wild
+   strip" (column gap 20, card gap 20). Padding and the band's bottom rule are the page's
+   (`app/(public)/page.module.css` `.home-wild`) — this file is the strip's own column + grid. */
+.in-the-wild-strip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  min-width: 0;
+}
+
+/* Title left, "All mentions →" right; on a narrow phone the action drops under the title instead
+   of squeezing it onto two lines. */
+.in-the-wild-strip-head {
+  flex-wrap: wrap;
+}
+
+/* 3 columns; one or two cards keep their third and never stretch. */
+.in-the-wild-strip-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-20);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.in-the-wild-strip-list[data-count='4'] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Cards in one row share a height: the item is a flex box and the card fills it. */
+.in-the-wild-strip-item {
+  display: flex;
+  min-width: 0;
+}
+
+/* tablet 600–899 = 2-up, phone ≤599 = 1-up (DESIGN.md §6 breakpoints) */
+@media (max-width: 899px) {
+  .in-the-wild-strip-list,
+  .in-the-wild-strip-list[data-count='4'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .in-the-wild-strip-list,
+  .in-the-wild-strip-list[data-count='4'] {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-16);
+  }
+}

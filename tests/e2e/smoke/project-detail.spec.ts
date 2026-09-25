@@ -2,7 +2,7 @@
  * tests/e2e/smoke/project-detail.spec.ts — `/projects/[slug]` (02 §2.3, SM-03; DESIGN.md §6 #3,
  * §12.5, §5 Gallery). Runs in `smoke-desktop` and `smoke-phone`.
  *
- *  - T-E2E-3, S1.2 + S1.4 scope (05 §8 rows: "except SEEN ON"): title/breadcrumb/header, ABOUT
+ *  - T-E2E-3, S1.2 + S1.4 + S1.8 scope: title/breadcrumb/header, ABOUT
  *    markdown, VERSIONS & FILES ("Download", never "Get"; `Changes ▾` expander), GET IT panel
  *    (primary → the Modrinth listing URL, built from the seed `external_id` `sd000102` —
  *    ADR-0037 D6 / ADR-0034 D1, never our slug; rows `1.6K` / `120`; combined line `1.7K`),
@@ -11,8 +11,9 @@
  *    `3 TOTAL` = the published root `…0201`, the creator reply `…0202` (CREATOR tag —
  *    `owner_profile_id`) and the `…0204` "Hidden by a moderator." slot; the deleted `…0205` has no
  *    replies (no "Deleted." slot) and the held `…0203` is invisible to anon; `SignInPrompt` in the
- *    composer slot ("Sign in to comment. Your handle is all anyone sees."). The SEEN ON row (S1.8)
- *    still extends this spec in its slice.
+ *    composer slot ("Sign in to comment. Your handle is all anyone sees."). S1.8: pixel-chameleon
+ *    has no mention, so the SEEN ON row renders NOTHING — no heading, no section, no empty state
+ *    (00 S1.8.AC3; DESIGN.md §12.1).
  *    Like counts and the `seed_user` handle are deliberately not asserted: the parallel `e2e`
  *    project likes/unlikes `…0201` (flows/comments.spec.ts repair) and renames `seed_user`
  *    (flows/profile.spec.ts) while this project runs.
@@ -20,7 +21,17 @@
  *    exercised as open→close on the single group member; the multi-member exclusivity is the
  *    component contract (03 `ChangelogExpander` groupName store).
  *  - T-E2E-5, S1.2 scope ("gallery/lightbox part"): metal-pipe-mace's 2-thumb gallery, thumb
- *    swap, Lightbox open/Esc/arrows. The SEEN ON MentionCard part is S1.8.
+ *    swap, Lightbox open/Esc/arrows.
+ *  - T-E2E-5 SEEN ON leg (S1.8 — its own test; 00 S1.8.AC2 / AC5 / AC12; 02 §2.3; 03 §2.8
+ *    `SeenOnRow` / `MentionCard`; ADR-0045 D16 / D17 / D18): the row sits between VERSIONS &
+ *    FILES and COMMENTS, `SectionTitle` count `1 MENTION` (singular), one `MentionCard` for SEED-10
+ *    `…0301` — facade (56px play block), creator `Seed Creator`, `1.2M VIEWS`, the YouTube mark, no
+ *    project footer strip. Before the click: no `<iframe>`, zero requests to a YouTube / Google
+ *    host (hostname match — the thumbnail is `/_next/image` on OUR host, 01 INV-54). Click → one
+ *    `iframe` `https://www.youtube-nocookie.com/embed/seedvid0001`, the card takes the
+ *    `--indigo-lift` outline, the "on YouTube ↗" ghost link arrives. H-10: the frame's own request
+ *    is aborted by the shared context — element + `src` are asserted, `data-state` is `loading`
+ *    or `playing`. axe before and after; shots `project-seen-on`, `project-seen-on-playing`.
  *
  * Seed truths (SEED-4/5/6): pixel-chameleon — mod, downloads 1568+120+0=1688, one beta version
  * `2.0.0-beta.1` with 2 files (primary jar first) and a changelog; CF link 900001 (120).
@@ -30,8 +41,30 @@ import { test, expect } from '../fixtures';
 import { expectNoSeriousA11y } from '../../helpers/axe';
 import { shoot } from '../../helpers/screenshots';
 
+/** Every host YouTube or Google could be reached on — tested against the HOSTNAME only. */
+const GOOGLE_HOST =
+  /(^|\.)(youtube\.com|youtube-nocookie\.com|youtu\.be|ytimg\.com|ggpht\.com|google\.com|googleapis\.com|googlevideo\.com|googleusercontent\.com|gstatic\.com|doubleclick\.net)$/;
+
+function googleHostRequests(requests: string[]): string[] {
+  return requests.filter((url) => {
+    try {
+      return GOOGLE_HOST.test(new URL(url).hostname);
+    } catch {
+      return false;
+    }
+  });
+}
+
+const GOLD = 'rgb(255, 198, 31)'; // --gold
+const INDIGO_LIFT = 'rgb(139, 134, 245)'; // --indigo-lift
+const LINE_SOFT = 'rgb(44, 58, 75)'; // --line-soft
+
+/** SEED-10 `…0301` (ADR-0045 D4): the YouTube mention on metal-pipe-mace. */
+const MENTION_TITLE = 'Metal Pipe Mace is the loudest mod I have ever installed';
+const MENTION_VIDEO_ID = 'seedvid0001';
+
 test.describe('project detail', () => {
-  test('T-E2E-3 /projects/pixel-chameleon — header, ABOUT, VERSIONS & FILES, changelog, GET IT, DETAILS, COMMENTS (3 TOTAL, slots, sign-in prompt)', async ({
+  test('T-E2E-3 /projects/pixel-chameleon — header, ABOUT, VERSIONS & FILES, changelog, GET IT, DETAILS, SEEN ON row absent, COMMENTS (3 TOTAL, slots, sign-in prompt)', async ({
     page,
   }) => {
     const response = await page.goto('/projects/pixel-chameleon');
@@ -120,6 +153,13 @@ test.describe('project detail', () => {
       'href',
       'https://modrinth.com/project/sd000102',
     );
+
+    // SEEN ON row absent (S1.8 part of T-E2E-3; 00 S1.8.AC3): this project has no mention, so the
+    // row renders nothing at all — no heading, no section, no card, no empty state.
+    await expect(page.getByRole('heading', { name: /SEEN ON/ })).toHaveCount(0);
+    await expect(page.locator('#section-title-seen-on')).toHaveCount(0);
+    await expect(page.locator('main article[data-variant]')).toHaveCount(0);
+    await expect(page.locator('main').getByRole('button', { name: /^Play / })).toHaveCount(0);
 
     // COMMENTS (S1.4 part of T-E2E-3): the section points at the thread's SectionTitle heading,
     // which announces "COMMENTS 3 total" once (03 §2.2); the visible `3 TOTAL` PixelLabel beside it.
@@ -215,5 +255,141 @@ test.describe('project detail', () => {
 
     await expectNoSeriousA11y(page);
     await shoot(page, 'project-detail-gallery');
+  });
+
+  test('T-E2E-5 SEEN ON row (S1.8) /projects/metal-pipe-mace — 1 MENTION, one MentionCard facade (Seed Creator, 1.2M VIEWS, YouTube mark), zero iframe + zero Google-host requests; click → nocookie iframe for seedvid0001, --indigo-lift outline, "on YouTube ↗"', async ({
+    page,
+    requests,
+  }) => {
+    const isPhone = (page.viewportSize()?.width ?? 1280) < 600;
+    const response = await page.goto('/projects/metal-pipe-mace', { waitUntil: 'networkidle' });
+    expect(response?.status()).toBe(200);
+    expect(await response?.text()).not.toContain('<iframe');
+
+    // The row: between VERSIONS & FILES and COMMENTS (02 §2.3), SectionTitle + singular count.
+    const row = page.locator('section[aria-labelledby="section-title-seen-on"]');
+    await expect(row).toHaveCount(1);
+    await expect(
+      row.getByRole('heading', { level: 2, name: 'SEEN ON 1 mention', exact: true }),
+    ).toBeVisible();
+    await expect(row.getByText('1 MENTION', { exact: true })).toBeVisible();
+    const order = await page.evaluate(() => {
+      const top = (selector: string): number =>
+        document.querySelector(selector)?.getBoundingClientRect().top ?? Number.NaN;
+      const versions = Array.from(document.querySelectorAll('h2')).find(
+        (h) => h.textContent?.trim() === 'VERSIONS & FILES',
+      );
+      return {
+        versions: versions?.getBoundingClientRect().top ?? Number.NaN,
+        seenOn: top('#section-title-seen-on'),
+        comments: top('section#comments'),
+      };
+    });
+    expect(order.seenOn).toBeGreaterThan(order.versions);
+    expect(order.comments).toBeGreaterThan(order.seenOn);
+
+    // One card — a facade, the creator line, the mention's title; no footer strip on this page.
+    const cards = row.locator('article[data-variant]');
+    await expect(cards).toHaveCount(1);
+    const card = cards.first();
+    await expect(card).toHaveAttribute('data-variant', 'inline');
+    await expect(card).toHaveAttribute('data-state', 'idle');
+    await expect(card).toHaveCSS('outline-color', LINE_SOFT);
+    await expect(card.getByRole('heading', { level: 3 })).toHaveText(MENTION_TITLE);
+    const creator = card.getByRole('link', { name: 'Seed Creator (opens in new tab)' });
+    await expect(creator).toHaveAttribute('href', 'https://www.youtube.com/@seedcreator');
+    await expect(creator).toHaveAttribute('target', '_blank');
+    await expect(creator).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(card.getByText('1.2M VIEWS', { exact: true })).toBeVisible();
+    await expect(card.getByRole('img', { name: 'YouTube' })).toHaveCount(1);
+    await expect(card.locator('time')).toHaveAttribute('datetime', /^2026-06-14T16:00:00/);
+    await expect(card.getByRole('link', { name: 'Metal Pipe Mace' })).toHaveCount(0);
+    await expect(card.getByRole('img', { name: 'odsens' })).toHaveCount(0);
+
+    const play = card.getByRole('button', { name: `Play ${MENTION_TITLE}`, exact: true });
+    await expect(play).toBeVisible();
+    const block = await card
+      .locator('[data-variant="mention"] > button > span:first-child')
+      .boundingBox();
+    expect(Math.round(block?.width ?? 0)).toBe(56); // ADR-0045 D17
+    const thumb = (await card.locator('img[alt=""]').first().getAttribute('src')) ?? '';
+    expect(thumb).toMatch(/^\/_next\/image\?/);
+    expect(decodeURIComponent(thumb)).toContain(`i.ytimg.com/vi/${MENTION_VIDEO_ID}/`);
+
+    // 2-up at 1280 (the single card keeps half the row — never stretched), 1-up on a phone.
+    const rowBox = await row.boundingBox();
+    const cardBox = await card.boundingBox();
+    expect(rowBox && cardBox).toBeTruthy();
+    if (rowBox && cardBox) {
+      if (isPhone) expect(Math.round(cardBox.width)).toBe(Math.round(rowBox.width));
+      else expect(cardBox.width).toBeLessThan(rowBox.width / 2);
+    }
+
+    // Nothing of YouTube's / Google's before the click — no frame, no request (hostname match).
+    await expect(page.locator('iframe')).toHaveCount(0);
+    expect(googleHostRequests(requests)).toEqual([]);
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth).toBe(page.viewportSize()?.width);
+
+    // Gold focus ring on the facade, drawn past the card's edge (the card never clips it).
+    await play.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expect(play).toBeFocused();
+    await expect(play).toHaveCSS('outline-color', GOLD);
+    await expect(play).toHaveCSS('outline-width', '3px');
+    await expect(card).toHaveCSS('overflow', 'visible');
+    await play.blur();
+
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'project-seen-on');
+
+    // Click → exactly one privacy-enhanced frame, inside the card; focus follows it.
+    const before = await card.boundingBox();
+    await play.click();
+    const frame = page.locator('iframe');
+    await expect(frame).toHaveCount(1);
+    await expect(card.locator('iframe')).toHaveCount(1);
+    await expect(frame).toHaveAttribute('title', MENTION_TITLE);
+    const src = new URL((await frame.getAttribute('src')) ?? '');
+    expect(src.origin).toBe('https://www.youtube-nocookie.com');
+    expect(src.pathname).toBe(`/embed/${MENTION_VIDEO_ID}`);
+    expect(src.searchParams.get('autoplay')).toBe('1');
+    await expect(frame).toHaveAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+    await expect(frame).toBeFocused();
+    await expect(card.locator('[data-variant="mention"]')).toHaveAttribute(
+      'data-state',
+      /^(loading|playing)$/,
+    );
+    await expect(play).toHaveCount(0);
+
+    // The playing signal: outline colour swap (same 2px) + the ghost link; the card keeps its size.
+    await expect(card).toHaveAttribute('data-state', 'playing');
+    await expect(card).toHaveCSS('outline-color', INDIGO_LIFT);
+    await expect(card).toHaveCSS('outline-width', '2px');
+    const watch = card.getByRole('link', { name: 'on YouTube ↗ (opens in new tab)' });
+    await expect(watch).toBeVisible();
+    await expect(watch).toHaveAttribute(
+      'href',
+      `https://www.youtube.com/watch?v=${MENTION_VIDEO_ID}`,
+    );
+    await expect(watch).toHaveAttribute('target', '_blank');
+    await expect(watch).toHaveAttribute('rel', 'noopener noreferrer');
+    expect((await watch.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    // Nothing moves at either width: while the link shares the row the date steps aside (the
+    // count stays), so the meta line never wraps and the card keeps its exact size.
+    await expect(card.getByText('1.2M VIEWS', { exact: true })).toBeVisible();
+    await expect(card.locator('time')).toHaveCount(0);
+    const after = await card.boundingBox();
+    expect([after?.width, after?.height]).toEqual([before?.width, before?.height]);
+    // The only Google-family host ever asked is the privacy-enhanced embed.
+    expect(
+      googleHostRequests(requests).every(
+        (url) => new URL(url).hostname === 'www.youtube-nocookie.com',
+      ),
+    ).toBe(true);
+
+    await expectNoSeriousA11y(page);
+    await shoot(page, 'project-seen-on-playing');
   });
 });

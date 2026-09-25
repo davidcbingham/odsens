@@ -8,25 +8,32 @@ import { PlatformMark } from '@/components/primitives/PlatformMark';
 import { FeaturedHero } from '@/components/projects/FeaturedHero';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { TipPanel } from '@/components/projects/TipPanel';
+import { InTheWildStrip } from '@/components/seen-on/InTheWildStrip';
 import { VideoCard } from '@/components/videos/VideoCard';
+import { getHomeMentions } from '@/lib/data/mentions';
 import { getHomeFeatured, isNewProject, listPublishedProjects } from '@/lib/data/projects';
 import { listVisibleVideos } from '@/lib/data/videos';
 import { YOUTUBE_CHANNEL_URL, latestLongVideos } from '@/lib/videos';
 import styles from './page.module.css';
 
 /**
- * Home `/` — S1.2 hero + Featured 4-up, S1.6 Latest videos + "Find me" row (02 §2.1 #1/#2/#4;
- * 00 S1.2.AC7 = 00-O-3 DECIDED; 00 S1.6.AC6; DESIGN.md §6.1). ISR(600) — reads via
- * `lib/data/projects.ts` and `lib/data/videos.ts` on the cookie-less anon client only (01
- * INV-09/INV-12/INV-15); the data cache carries tags `projects` and `videos` (02 §5/RP-23 —
- * `syncYoutube` and `updateVideo` refresh this page through `videos`; Home's last tag,
- * `mentions`, arrives with its data module in S1.8).
+ * Home `/` — S1.2 hero + Featured 4-up, S1.8 IN THE WILD strip, S1.6 Latest videos + "Find me"
+ * row (02 §2.1 #1–#4; 00 S1.2.AC7 = 00-O-3 DECIDED; 00 S1.6.AC6; 00 S1.8.AC3 / AC4; DESIGN.md
+ * §6.1, §12.2). ISR(600) — reads via `lib/data/projects.ts`, `lib/data/mentions.ts` and
+ * `lib/data/videos.ts` on the cookie-less anon client only (01 INV-09/INV-12/INV-15); the data
+ * cache carries tags `projects`, `videos` and `mentions` (02 §5/RP-23 — `syncYoutube` and
+ * `updateVideo` refresh this page through `videos`; `createMention`, `updateMention` and
+ * `refreshMentions` through `mentions`).
  *
  * Sections in DOM order (02 §2.1): 1. `FeaturedHero` (`h1`; NEW badge computed HERE server-side
  * — `published_at` < 30 days, ADR-0002 #41 — so the clock never bakes into the data cache);
  * 2. Featured 4-up (`ProjectCard density="tight"`; next featured by `featured_order`, hero
- * excluded, NO back-fill when anything is featured); 3. `InTheWildStrip` (S1.8 — slots in between
- * Featured and the row below); 4. ONE row, two columns (pass-3 "Home desktop"; ADR-0041 D6 —
+ * excluded, NO back-fill when anything is featured); 3. `InTheWildStrip` (S1.8; ADR-0045 D19 —
+ * `getHomeMentions` over the ONE cached `listPublishedMentions` read `/seen-on` and the project
+ * page also use: up to four featured mentions by `sort_order`, then the `ReachLine` over ALL
+ * published mentions, "All mentions →" to `/seen-on`; nothing featured → the component renders
+ * nothing, no empty state — AC3; YouTube cards are facades, no other platform's thumbnail is ever
+ * requested — ADR-0002 #33); 4. ONE row, two columns (pass-3 "Home desktop"; ADR-0041 D6 —
  * S1.6 fills the row the compact panel was holding; ADR-0043 D15):
  *   - videos column — `h2` LATEST VIDEOS + the "@OdSens on YouTube" channel link, then the two
  *     newest visible long videos as `VideoCard variant="home"` (`latestLongVideos` over the ONE
@@ -44,7 +51,8 @@ import styles from './page.module.css';
  * breakpoints and §3 gutters.
  *
  * Empty state (0 published, pre-first-sync): hero not rendered, intro strip + the compact
- * `TipPanel` render, Featured and the videos row hidden (02 §2.1 States; transient, no design).
+ * `TipPanel` render, Featured, IN THE WILD and the videos row hidden (02 §2.1 States; transient,
+ * no design).
  *
  * Metadata per 02 RP-05: `title.absolute = 'odsens'`, canonical `/`; description + OG default
  * image inherit from `app/layout.tsx`. Loading: `app/(public)/loading.tsx` (03 G-01).
@@ -63,14 +71,16 @@ const INTRO_LINE = 'OddSense makes things for Minecraft.';
 const LATEST_VIDEO_COUNT = 2;
 
 export default async function HomePage() {
-  const [{ hero, screenshot, featured }, projects, visibleVideos] = await Promise.all([
+  const [{ hero, screenshot, featured }, projects, visibleVideos, wild] = await Promise.all([
     getHomeFeatured(),
     listPublishedProjects(),
     listVisibleVideos(),
+    getHomeMentions(),
   ]);
 
   // 02 §2.1 States — empty (no published projects, pre-first-sync): hero not rendered, intro
-  // strip + the compact TipPanel render, Featured and the videos row hidden (transient; no design).
+  // strip + the compact TipPanel render; Featured, IN THE WILD and the videos row hidden
+  // (transient; no design).
   if (hero === null) {
     return (
       <section className={styles['home-empty']}>
@@ -114,7 +124,8 @@ export default async function HomePage() {
           </ul>
         </section>
       ) : null}
-      {/* 02 §2.1 #3 — S1.8: `InTheWildStrip` slots in here. */}
+      {/* 02 §2.1 #3 — IN THE WILD (S1.8). Renders nothing when no mention is featured (AC3). */}
+      <InTheWildStrip featured={wild.featured} reach={wild.reach} className={styles['home-wild']} />
       {/* 02 §2.1 #4 — videos column | Find me over the compact TipPanel (ADR-0041 D6). */}
       <div className={styles['home-latest']}>
         <section aria-labelledby="latest-videos" className={styles['home-videos']}>

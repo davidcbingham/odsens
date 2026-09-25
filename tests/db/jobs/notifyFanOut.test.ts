@@ -2,8 +2,9 @@
  * tests/db/jobs/notifyFanOut.test.ts — T-ACT-29 (fan-out, 04 §3.6 F1–F3) + T-ACT-32 (F0 stale,
  * 04 J-S / ADR-0030 D3) (05 §7.2 jobs layer; 01 INV-43 / INV-70 / INV-71; migrations
  * 20260903120000 + 20260903120100). `mutatesSeed`: the file writes SEED-1 (`admin_notify_emails`,
- * `discord_webhook_url`) and SEED-2 cells and backdates / removes SEED-12 `sync_runs` rows — every
- * test restores through `restoreSeedSettings()` and the content snapshot (05 H-1).
+ * `discord_webhook_url`) and SEED-2 cells, backdates / removes SEED-12 `sync_runs` rows and (S1.8,
+ * the J-S `mentions` condition — ADR-0045) hides SEED-10 `…0301` — every test restores through
+ * `restoreSeedSettings()` and the content snapshot (05 H-1).
  *
  * Harness per 05 §7.2: the job runs against the local DB; `spyFetch({})` guards H-5 (fan-out makes
  * no outbound call). Events come from `makeNotificationEvent`; the recipient rows the job creates are
@@ -28,12 +29,13 @@ import { sql } from '@/tests/helpers/db';
 import { withDbFault, withDbHook } from '@/tests/helpers/dbFault';
 import {
   cleanupFactories,
+  makeMention,
   makeNotificationEvent,
   makeRecipient,
   makeSyncRun,
   purgeNotificationEvents,
 } from '@/tests/helpers/factories';
-import { SEED_PROJECTS, SEED_SYNC_RUNS } from '@/tests/helpers/seedIds';
+import { SEED_MENTIONS, SEED_PROJECTS, SEED_SYNC_RUNS } from '@/tests/helpers/seedIds';
 import { spyFetch, spyLog, type FetchSpy, type LogSpy } from '@/tests/helpers/spies';
 
 setupActionMocks();
@@ -482,9 +484,70 @@ describe('T-ACT-32 notifyFanOut F0 stale check (04 J-S, ADR-0030 D3)', () => {
     expect(await eventsOfKind('sync.stale')).toHaveLength(0);
   });
 
-  it('T-ACT-32 mentions (condition false until S1.8), stats, notify and skins are never stale', async () => {
+  it('T-ACT-32 mentions only with YOUTUBE_API_KEY set and ≥ 1 YouTube mention refreshMentions would refresh (external_id set, draft | published) — S1.8, ADR-0045', async () => {
+    // Key set (.env.test) + SEED-10 …0301 (YouTube, seedvid0001, published), but SEED-12 has no
+    // `mentions` run: a source that never ran is never stale.
+    expect((await run()).stale).toBe(0);
+
     const at = new Date(Date.now() - 9 * HOUR_MS).toISOString();
-    for (const source of ['mentions', 'stats', 'notify', 'skins'] as const) {
+    await makeSyncRun({ source: 'mentions', ok: true, items: 0, started_at: at, finished_at: at });
+
+    // Key + the eligible seed mention + a 9 h-old last ok run → stale.
+    expect((await run()).stale).toBe(1);
+    const events = await eventsOfKind('sync.stale');
+    expect(events).toHaveLength(1);
+    expect(events[0]?.subject_type).toBe('sync_source');
+    expect(events[0]?.subject_id).toBe(syncSourceSubjectId('mentions'));
+    expect(events[0]?.payload.source).toBe('mentions');
+    expect(Math.round(Number(events[0]?.payload.hours_since_ok))).toBe(9);
+
+    // No key → never stale (even with the mention): `refreshMentions` skips without it.
+    await deleteStaleEvents();
+    const saved = env.YOUTUBE_API_KEY;
+    try {
+      env.YOUTUBE_API_KEY = undefined;
+      expect((await run()).stale).toBe(0);
+    } finally {
+      env.YOUTUBE_API_KEY = saved;
+    }
+    expect(await eventsOfKind('sync.stale')).toHaveLength(0);
+
+    // Key set but nothing the job would refresh → never stale: the seed YouTube mention hidden, and
+    // what is left is SEED-10 …0302 (TikTok), a SUGGESTED YouTube row and a YouTube row with no
+    // `external_id` (the snapshot restores the seed row afterwards).
+    const hide = await service
+      .from('mentions')
+      .update({ status: 'hidden' })
+      .eq('id', SEED_MENTIONS.youtube);
+    expect(hide.error).toBeNull();
+    await makeMention({ status: 'suggested', source: 'auto' });
+    await makeMention({
+      external_id: null,
+      url: 'https://www.youtube.com/@t_fanout_channel',
+      thumbnail_url: null,
+    });
+    expect((await run()).stale).toBe(0);
+    expect(await eventsOfKind('sync.stale')).toHaveLength(0);
+
+    // A DRAFT YouTube mention is refreshed by the job (04 §3.4), so it is watched too.
+    await makeMention({ status: 'draft' });
+    expect((await run()).stale).toBe(1);
+    expect((await eventsOfKind('sync.stale'))[0]?.payload.source).toBe('mentions');
+  });
+
+  it('T-ACT-32 a failed mentions count is J-P: counted in errors[], the run stays ok, no sync.stale for mentions', async () => {
+    const at = new Date(Date.now() - 9 * HOUR_MS).toISOString();
+    await makeSyncRun({ source: 'mentions', ok: true, items: 0, started_at: at, finished_at: at });
+    const summary = await withDbFault({ table: 'mentions', op: 'select' }, {}, () => run());
+    expect(summary.ok).toBe(true);
+    expect(summary.stale).toBe(0);
+    expect((summary.errors as string[])[0]).toMatch(/^stale mentions: mentions count failed/);
+    expect(await eventsOfKind('sync.stale')).toHaveLength(0);
+  });
+
+  it('T-ACT-32 stats, notify and skins are never stale', async () => {
+    const at = new Date(Date.now() - 9 * HOUR_MS).toISOString();
+    for (const source of ['stats', 'notify', 'skins'] as const) {
       await makeSyncRun({ source, ok: true, items: 0, started_at: at, finished_at: at });
     }
     const summary = await run();
