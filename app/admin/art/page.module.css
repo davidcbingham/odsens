@@ -1,0 +1,130 @@
+/* /admin/art — DESIGN.md §6 #9 (admin: Space Grotesk labels, clarity over flair), §5 Admin table,
+   §6 #6 natural aspect (the thumbs contain, never crop); 02 §1.3. Tokens only (03 C-08); section
+   rhythm and cell recipes are `/admin/skins`'s. */
+
+.admin-art {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-40);
+}
+
+.admin-art-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* The lede: 15px --mute under the (visually hidden) title. */
+.admin-art-intro {
+  margin: 0;
+  color: var(--mute);
+  font-size: var(--text-ui);
+  line-height: 1.4;
+}
+
+.admin-art-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+/* Admin section header — DESIGN.md §6 #9 "poster type goes": Space Grotesk 700, chalk. */
+.admin-art-heading {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-body);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Heading + its companion (the TOTAL label, the Cancel ghost) on one line. */
+.admin-art-heading-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+}
+
+/* 48px well on --ink; the picture contained at its natural aspect (`next/image fill`). */
+.admin-art-thumb {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  background: var(--ink);
+  outline: 2px solid var(--line-soft);
+}
+
+.admin-art-thumb img {
+  object-fit: contain;
+}
+
+/* The floor keeps the title readable when the table scrolls sideways on a phone (the
+   `/admin/mentions` recipe): the scroll stays inside `Table`'s wrapper. */
+.admin-art-name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 160px;
+}
+
+.admin-art-title {
+  color: var(--chalk);
+  font-size: var(--text-ui);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.admin-art-meta {
+  color: var(--mute-dim);
+  font-size: var(--text-label-sm);
+  overflow-wrap: anywhere;
+}
+
+/* A draft row steps back: the title drops to --mute. */
+.admin-art-name[data-status='draft'] .admin-art-title {
+  color: var(--mute);
+}
+
+.admin-art-kind {
+  color: var(--chalk);
+  font-size: var(--text-ui);
+  white-space: nowrap;
+}
+
+.admin-art-size {
+  color: var(--mute);
+  font-size: var(--text-ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Worded row buttons, right-aligned, never wrapping mid-pair out of the cell. */
+.admin-art-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
+.admin-art-order-help {
+  margin: 0;
+  color: var(--mute-dim);
+  font-size: var(--text-label);
+}
+
+.admin-art-order {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.admin-art-order-title {
+  color: var(--chalk);
+  font-size: var(--text-ui);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}

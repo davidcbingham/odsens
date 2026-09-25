@@ -1,0 +1,139 @@
+/* /skins skeleton — same column, gutters and stage grid as the page (page.module.css,
+   SkinsStage.module.css); the viewer shell carries the well's edges and aspect
+   (SkinViewer3D.module.css: 4:3 from 900px, 3:4 below), the card shells carry the SkinCard edges. */
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-32);
+  max-width: var(--measure-page);
+  /* The shells are shorter than the page: hold a full viewport so the footer does not paint in view
+     and then jump when the content is revealed (CLS). Only empty space grows — RP-24 still holds. */
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: var(--space-40);
+}
+
+.loading-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* Shell widths are desktop lengths — never wider than the column on phones. */
+.loading-head > span,
+.loading-panel > span {
+  max-width: 100%;
+}
+
+.loading-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-28);
+}
+
+/* The viewer well: --slab-sunk, 2px --line-soft, the box then the controls slab (as built). */
+.loading-viewer {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--slab-sunk);
+  outline: 2px solid var(--line-soft);
+}
+
+.loading-viewer-box {
+  position: relative;
+  aspect-ratio: 4 / 3;
+}
+
+.loading-viewer-media {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+}
+
+.loading-viewer-controls {
+  display: flex;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  background: var(--slab);
+  border-top: 2px solid var(--line-soft);
+}
+
+.loading-viewer-controls > span {
+  aspect-ratio: auto;
+}
+
+/* The details slab (SkinsStage.module.css .skins-stage-panel). */
+.loading-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+  padding: var(--space-20);
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+}
+
+.loading-panel > span[data-variant='media'] {
+  aspect-ratio: auto;
+}
+
+/* Four bust shells inside the SkinCard edges: 3:4 sunk slot with its bottom rule + a name row. */
+.loading-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-16);
+}
+
+.loading-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+}
+
+.loading-card-slot {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: var(--slab-sunk);
+  border-bottom: 2px solid var(--line-soft);
+}
+
+.loading-card-body {
+  padding: var(--space-12);
+  min-height: calc(2 * 1.15 * var(--text-body) + 2 * var(--space-12));
+}
+
+@media (max-width: 899px) {
+  .loading-stage {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-24);
+  }
+
+  .loading-viewer-box {
+    aspect-ratio: 3 / 4;
+  }
+
+  .loading-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .loading {
+    gap: var(--space-24);
+    padding: var(--space-24) var(--space-24) var(--space-40);
+  }
+
+  .loading-panel {
+    padding: var(--space-16);
+  }
+
+  .loading-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

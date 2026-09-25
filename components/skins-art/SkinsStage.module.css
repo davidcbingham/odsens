@@ -1,0 +1,159 @@
+/* SkinsStage — DESIGN.md §6 #5 (live viewer, name + description + DOWNLOAD PNG + Slim toggle,
+   4-up grid of 3:4 busts, selected card --indigo-lift), §3 (grid gap 16–20 on dense grids, 2px
+   outlines, 4–5px offset shadows), §5 Button primary (the DOWNLOAD PNG look — GetItPanel.module.css
+   precedent); pass-3 Skins artboard (details slab: padding 20, gap 12, Bungee name, mute line,
+   DOWNLOAD PNG indigo with a 4px offset shadow beside the Slim control; 4-up grid gap 16);
+   VideoStage.module.css (the ≥900px player + rail grid, 1.6fr / 1fr, gap 28). S1.7 ADR-0048 D16. */
+.skins-stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-32);
+  min-width: 0;
+}
+
+/* Viewer well + details slab: beside each other from 900px (the viewer and its controls stay in
+   the first screen), stacked below — the slab under the well, as DESIGN.md §6 #5 words it. */
+.skins-stage-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-28);
+}
+
+.skins-stage-viewer {
+  min-width: 0;
+}
+
+.skins-stage-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+  padding: var(--space-20);
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+  outline-offset: -2px;
+}
+
+/* Name: Bungee, the big-player title size (DESIGN.md §6.4 sibling — pass-3 Skins 22px); two line
+   boxes always, so a selection swap the visitor did not start (a direct ?skin= load) cannot move
+   what follows. */
+.skins-stage-name {
+  display: -webkit-box;
+  min-height: calc(2 * 1.1em);
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: var(--text-video-title);
+  font-weight: 400;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--white);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* The server-rendered Markdown (its own 17px / 1.65 type); holds three lines of room so the
+   one-line seed descriptions and a short paragraph take the same height. */
+.skins-stage-desc {
+  min-height: calc(3 * 1.65 * var(--text-body));
+  min-width: 0;
+}
+
+/* DOWNLOAD PNG — the primary-button look on a TrackedLink <a> (GetItPanel precedent; DESIGN.md
+   §5 Button primary; pass-3 Skins: indigo, 4px 4px 0 --indigo-deep). */
+.skins-stage-download {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-16);
+  background: var(--indigo);
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: var(--text-ui);
+  text-transform: uppercase;
+  text-decoration: none;
+  line-height: 1;
+  box-shadow: 4px 4px 0 var(--indigo-deep);
+  transition:
+    transform var(--dur-fast) ease-out,
+    box-shadow var(--dur-fast) ease-out,
+    background-color var(--dur-fast) ease-out;
+}
+
+.skins-stage-download:hover {
+  background: var(--indigo-hover);
+  box-shadow: 6px 6px 0 var(--indigo-deep);
+  transform: translate(-2px, -2px);
+}
+
+.skins-stage-download:active {
+  background: var(--indigo-deep);
+  box-shadow: none;
+  transform: translate(2px, 2px);
+}
+
+/* Slim: the visible word + the square Toggle (its own ON / OFF word beside it). */
+.skins-stage-slim {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  min-height: 44px;
+}
+
+.skins-stage-slim-word {
+  font-size: var(--text-ui);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+/* The 4-up grid (DESIGN.md §6 #5; pass-3 gap 16): 4 / 2 / 1 columns at 900 / 600. */
+.skins-stage-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-16);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skins-stage-item {
+  display: flex;
+  min-width: 0;
+}
+
+@media (max-width: 899px) {
+  .skins-stage-top {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-24);
+  }
+
+  .skins-stage-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .skins-stage {
+    gap: var(--space-24);
+  }
+
+  .skins-stage-panel {
+    padding: var(--space-16);
+  }
+
+  .skins-stage-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skins-stage-download:hover,
+  .skins-stage-download:active {
+    transform: none;
+  }
+}

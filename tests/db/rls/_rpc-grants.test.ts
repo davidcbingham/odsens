@@ -30,18 +30,28 @@
  *                                                   issues through the service client (ADR-0045;
  *                                                   migration 20260919120100); definer,
  *                                                   search_path=public, VOLATILE, returns integer
+ *   record_skin_download(uuid)                      anon/authenticated D · service A — the S1.7
+ *                                                   `/api/download/[fileId]` kind-skin counter
+ *                                                   (04 §2.3 D4; ADR-0002 C8; ADR-0048 D5;
+ *                                                   migration 20260925120100); raises on an unknown
+ *                                                   or draft skin (the `record_download` fail-closed
+ *                                                   twin); definer, search_path=public, VOLATILE
+ *   reorder_skins(jsonb) · reorder_art(jsonb)       anon/authenticated D · service A — the S1.7
+ *                                                   copies of `reorder_mentions` over `skins` / `art`
+ *                                                   (`updateSkin` / `updateArt` `{ reorder }`,
+ *                                                   04 §1.5; ADR-0048 D5); same shape, same
+ *                                                   errcodes, same grants
  * S1.5 (ADR-0030 D11, migration 20260903120200): `check_handle` is ALSO denied to `service_role` and
  * `can_comment`'s set is re-stated with an every-role revoke, so the cells above hold on Supabase
  * images whose default ACL grants EXECUTE on new functions to every API role (the PR #8 CI lesson).
- * Not yet in the schema (asserted absent so this file is revisited when it lands):
- *   record_skin_download → S1.7.
  * Every table-reading RPC is `security definer` with `search_path = public` (01 INV-49); `is_reserved_handle`
  * reads no table and stays invoker-rights on purpose (ADR-0020).
  *
  * T-RLS-133 (`can_comment` behaviour) is `mutatesSeed`: `site_settings.comments_closed_default` flips
  * to true through `service` and is restored in `afterAll`; its factory projects fall to
- * `cleanupFactories`. The `reorder_mentions` behaviour cases use factory mentions only (the seed
- * rows' `sort_order` is asserted untouched).
+ * `cleanupFactories`. The `reorder_mentions` / `reorder_skins` / `reorder_art` behaviour cases use
+ * factory rows only (the seed rows' `sort_order` is asserted untouched); `record_skin_download`
+ * bumps a factory skin only (the SEED-7 counters are asserted untouched).
  */
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
@@ -52,13 +62,22 @@ import { sql } from '@/tests/helpers/db';
 import { REPO_ROOT } from '@/tests/helpers/envTest';
 import {
   cleanupFactories,
+  makeArt,
   makeFile,
   makeMention,
   makeProject,
+  makeSkin,
   makeUser,
   makeVersion,
 } from '@/tests/helpers/factories';
-import { SEED_COMMENTS, SEED_MENTIONS, SEED_PROJECTS, SEED_USERS } from '@/tests/helpers/seedIds';
+import {
+  SEED_ART,
+  SEED_COMMENTS,
+  SEED_MENTIONS,
+  SEED_PROJECTS,
+  SEED_SKINS,
+  SEED_USERS,
+} from '@/tests/helpers/seedIds';
 
 const FUNCTIONS = {
   check_handle: 'public.check_handle(text)',
@@ -73,6 +92,9 @@ const FUNCTIONS = {
   migration_versions: 'public.migration_versions()',
   fold_project: 'public.fold_project(uuid,uuid)',
   reorder_mentions: 'public.reorder_mentions(jsonb)',
+  record_skin_download: 'public.record_skin_download(uuid)',
+  reorder_skins: 'public.reorder_skins(jsonb)',
+  reorder_art: 'public.reorder_art(jsonb)',
 } as const;
 
 function canExecute(role: 'anon' | 'authenticated' | 'service_role', fn: string): boolean {
@@ -203,11 +225,25 @@ describe('T-RLS-129 RPC grants (catalog)', () => {
     ]);
   });
 
-  it('T-RLS-129 later-slice RPCs are not present yet (record_skin_download S1.7)', () => {
+  it.each(['record_skin_download', 'reorder_skins', 'reorder_art'] as const)(
+    'T-RLS-129 %s: anon/authenticated denied, service_role allowed, never PUBLIC (S1.7)',
+    (name) => {
+      expect(canExecute('anon', FUNCTIONS[name])).toBe(false);
+      expect(canExecute('authenticated', FUNCTIONS[name])).toBe(false);
+      expect(canExecute('service_role', FUNCTIONS[name])).toBe(true);
+      expect(publicCanExecute(name)).toBe(false);
+    },
+  );
+
+  it('T-RLS-129 every S1.7 RPC is a volatile plpgsql security-definer function with search_path = public', () => {
     const rows = sql(
-      "select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('record_skin_download')",
+      "select p.proname, p.prosecdef, p.provolatile, l.lanname, coalesce(array_to_string(p.proconfig, ','), ''), pg_get_function_result(p.oid), pg_get_function_identity_arguments(p.oid) from pg_proc p join pg_namespace n on n.oid = p.pronamespace join pg_language l on l.oid = p.prolang where n.nspname = 'public' and p.proname in ('record_skin_download','reorder_skins','reorder_art') order by 1",
     );
-    expect(rows).toEqual([]);
+    expect(rows).toEqual([
+      ['record_skin_download', 't', 'v', 'plpgsql', 'search_path=public', 'void', 'p_skin_id uuid'],
+      ['reorder_art', 't', 'v', 'plpgsql', 'search_path=public', 'integer', 'p_items jsonb'],
+      ['reorder_skins', 't', 'v', 'plpgsql', 'search_path=public', 'integer', 'p_items jsonb'],
+    ]);
   });
 });
 
@@ -839,6 +875,227 @@ describe('T-RLS-129 reorder_mentions grants + behaviour (ADR-0045)', () => {
       const { data, error } = await service.rpc('reorder_mentions', {
         p_items: p_items as Item[],
       });
+      expect(error?.code, label).toBe('22023');
+      expect(data, label).toBeNull();
+    }
+    expect(await orderOf([id])).toEqual({ [id]: 5 });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-RLS-129 record_skin_download(p_skin_id uuid) — S1.7, ADR-0048 D5 (migration 20260925120100).
+// `/api/download/[fileId]` calls it through the service client for kind `skin` after
+// `resolveDownloadable` said "published" (04 §2.3 D4; the route-level cases are T-ACT-76). Every JWT
+// role is refused; a draft or unknown id raises (fail-closed — nothing counted). Factory skins only
+// (`fixture: null` — the counter needs no object); the SEED-7 counters are asserted untouched.
+// ---------------------------------------------------------------------------------------------
+describe('T-RLS-129 record_skin_download behaviour (S1.7)', () => {
+  const service = asRole('service');
+
+  afterAll(cleanupFactories);
+
+  async function downloadsOf(id: string): Promise<number> {
+    const { data, error } = await service.from('skins').select('downloads').eq('id', id).single();
+    expect(error).toBeNull();
+    return data?.downloads ?? -1;
+  }
+
+  it.each(['anon', 'user', 'banned', 'mod', 'admin'] as const)(
+    'T-RLS-129 %s cannot call record_skin_download (42501) and nothing is counted',
+    async (role) => {
+      const id = await makeSkin({ fixture: null });
+      const { data, error } = await asRole(role).rpc('record_skin_download', { p_skin_id: id });
+      expect(error?.code).toBe('42501');
+      expect(data).toBeNull();
+      expect(await downloadsOf(id)).toBe(0);
+    },
+  );
+
+  it('T-RLS-129 service counts a published skin: +1 per call, only that row', async () => {
+    const [id, bystander] = await Promise.all([
+      makeSkin({ fixture: null }),
+      makeSkin({ fixture: null }),
+    ]);
+    const seedBefore = await Promise.all([
+      downloadsOf(SEED_SKINS.skinA),
+      downloadsOf(SEED_SKINS.skinB),
+    ]);
+    const first = await service.rpc('record_skin_download', { p_skin_id: id });
+    expect(first.error).toBeNull();
+    expect(await downloadsOf(id)).toBe(1);
+    const second = await service.rpc('record_skin_download', { p_skin_id: id });
+    expect(second.error).toBeNull();
+    expect(await downloadsOf(id)).toBe(2);
+    expect(await downloadsOf(bystander)).toBe(0);
+    expect([await downloadsOf(SEED_SKINS.skinA), await downloadsOf(SEED_SKINS.skinB)]).toEqual(
+      seedBefore,
+    );
+  });
+
+  it('T-RLS-129 a DRAFT skin raises (P0001, plain message) and stays at 0 — the fail-closed backstop', async () => {
+    const id = await makeSkin({ status: 'draft', fixture: null });
+    const { data, error } = await service.rpc('record_skin_download', { p_skin_id: id });
+    expect(error?.code).toBe('P0001');
+    expect(error?.message).toBe(`record_skin_download: unknown or unpublished skin ${id}`);
+    expect(data).toBeNull();
+    expect(await downloadsOf(id)).toBe(0);
+  });
+
+  it('T-RLS-129 an unknown id raises the same way', async () => {
+    const id = randomUUID();
+    const { error } = await service.rpc('record_skin_download', { p_skin_id: id });
+    expect(error?.code).toBe('P0001');
+    expect(error?.message).toBe(`record_skin_download: unknown or unpublished skin ${id}`);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-RLS-129 reorder_skins / reorder_art (p_items jsonb) — S1.7, ADR-0048 D5 (migration
+// 20260925120100): copies of `reorder_mentions` over `skins` / `art` — `updateSkin` / `updateArt`
+// `{ reorder }` issue them through the service client after `requireRole('admin')` (04 §1.5; the
+// action-level cases are T-ACT-59 / T-ACT-60). Same cells as the mentions block, parametrised.
+// Factory rows only (`fixture: null`) — the SEED-7 / SEED-8 order is asserted untouched (05 H-1).
+// ---------------------------------------------------------------------------------------------
+type ReorderTarget = {
+  fn: 'reorder_skins' | 'reorder_art';
+  table: 'skins' | 'art';
+  make: (sortOrder: number, status?: 'draft' | 'published') => Promise<string>;
+  seedIds: readonly [string, string];
+  seedOrder: Record<string, number>;
+  missing: string;
+};
+
+const REORDER_TARGETS: readonly ReorderTarget[] = [
+  {
+    fn: 'reorder_skins',
+    table: 'skins',
+    make: (sort_order, status = 'published') => makeSkin({ sort_order, status, fixture: null }),
+    seedIds: [SEED_SKINS.skinA, SEED_SKINS.skinB],
+    seedOrder: { [SEED_SKINS.skinA]: 2, [SEED_SKINS.skinB]: 1 },
+    missing: 'One of those skins could not be found.',
+  },
+  {
+    fn: 'reorder_art',
+    table: 'art',
+    make: (sort_order, status = 'published') => makeArt({ sort_order, status, fixture: null }),
+    seedIds: [SEED_ART.avatar, SEED_ART.thumb],
+    seedOrder: { [SEED_ART.avatar]: 1, [SEED_ART.thumb]: 2 },
+    missing: 'One of those pieces could not be found.',
+  },
+];
+
+describe.each(REORDER_TARGETS)('T-RLS-129 $fn grants + behaviour (S1.7)', (target) => {
+  const service = asRole('service');
+  type Item = { id: string; sort_order: number };
+
+  afterAll(cleanupFactories);
+
+  /** `sort_order` of the given rows, keyed by id (service read). */
+  async function orderOf(ids: string[]): Promise<Record<string, number>> {
+    const { data, error } = await service.from(target.table).select('id, sort_order').in('id', ids);
+    expect(error).toBeNull();
+    return Object.fromEntries((data ?? []).map((row) => [row.id, row.sort_order]));
+  }
+
+  const seedOrder = (): Promise<Record<string, number>> => orderOf([...target.seedIds]);
+
+  it.each(['anon', 'user', 'banned', 'mod', 'admin'] as const)(
+    `T-RLS-129 %s cannot call ${target.fn} (42501) and no sort_order moves`,
+    async (role) => {
+      const id = await target.make(5);
+      const { data, error } = await asRole(role).rpc(target.fn, {
+        p_items: [
+          { id, sort_order: 1 },
+          { id: target.seedIds[0], sort_order: 9 },
+        ],
+      });
+      expect(error?.code).toBe('42501');
+      expect(data).toBeNull();
+      expect(await orderOf([id])).toEqual({ [id]: 5 });
+      expect(await seedOrder()).toEqual(target.seedOrder);
+    },
+  );
+
+  it(`T-RLS-129 service ${target.fn} reorders every listed row in ONE call and returns the count; unlisted rows and other columns stay put`, async () => {
+    const [a, b, c, bystander] = await Promise.all([
+      target.make(1),
+      target.make(2),
+      target.make(3, 'draft'),
+      target.make(4),
+    ]);
+    const before = await service
+      .from(target.table)
+      .select('id, updated_at')
+      .in('id', [a, b, c, bystander]);
+    const stampBefore = new Map((before.data ?? []).map((row) => [row.id, row.updated_at]));
+
+    const items: Item[] = [
+      { id: c, sort_order: 1 },
+      { id: a, sort_order: 2 },
+      { id: b, sort_order: 3 },
+    ];
+    const { data, error } = await service.rpc(target.fn, { p_items: items });
+    expect(error).toBeNull();
+    expect(data).toBe(3);
+
+    expect(await orderOf([a, b, c, bystander])).toEqual({ [c]: 1, [a]: 2, [b]: 3, [bystander]: 4 });
+    const after = await service
+      .from(target.table)
+      .select('id, status, updated_at')
+      .in('id', [a, b, c, bystander]);
+    const rows = new Map((after.data ?? []).map((row) => [row.id, row]));
+    // Only `sort_order` is written: a draft stays a draft; the trigger stamps the listed rows
+    // (01 INV-97) and leaves the unlisted one alone.
+    expect(rows.get(c)?.status).toBe('draft');
+    expect(rows.get(bystander)?.status).toBe('published');
+    for (const id of [a, b, c]) {
+      expect(Date.parse(rows.get(id)?.updated_at ?? ''), id).toBeGreaterThan(
+        Date.parse(stampBefore.get(id) ?? ''),
+      );
+    }
+    expect(rows.get(bystander)?.updated_at).toBe(stampBefore.get(bystander));
+    expect(await seedOrder()).toEqual(target.seedOrder);
+  });
+
+  it(`T-RLS-129 ${target.fn}: an unknown id → P0002 with a plain message and NOTHING applied`, async () => {
+    const [a, b] = await Promise.all([target.make(1), target.make(2)]);
+    const { data, error } = await service.rpc(target.fn, {
+      p_items: [
+        { id: b, sort_order: 1 },
+        { id: randomUUID(), sort_order: 2 },
+        { id: a, sort_order: 3 },
+      ],
+    });
+    expect(error?.code).toBe('P0002');
+    expect(error?.message).toBe(target.missing);
+    expect(data).toBeNull();
+    expect(await orderOf([a, b])).toEqual({ [a]: 1, [b]: 2 });
+  });
+
+  it(`T-RLS-129 ${target.fn}: an empty list is a no-op → 0`, async () => {
+    const { data, error } = await service.rpc(target.fn, { p_items: [] });
+    expect(error).toBeNull();
+    expect(data).toBe(0);
+    expect(await seedOrder()).toEqual(target.seedOrder);
+  });
+
+  it(`T-RLS-129 ${target.fn}: a payload the action would never send → 22023 and nothing applied (not an array · a missing field · an id listed twice)`, async () => {
+    const id = await target.make(5);
+    const payloads: Array<[string, unknown]> = [
+      ['not an array', { id, sort_order: 1 }],
+      ['null', null],
+      ['no sort_order', [{ id }]],
+      ['no id', [{ sort_order: 1 }]],
+      [
+        'listed twice',
+        [
+          { id, sort_order: 1 },
+          { id, sort_order: 2 },
+        ],
+      ],
+    ];
+    for (const [label, p_items] of payloads) {
+      const { data, error } = await service.rpc(target.fn, { p_items: p_items as Item[] });
       expect(error?.code, label).toBe('22023');
       expect(data, label).toBeNull();
     }

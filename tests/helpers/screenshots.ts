@@ -21,17 +21,29 @@ export function screenshotPath(page: Page, name: string): string {
  * the top. "Finished" = `complete` (loaded OR errored): seed media that cannot exist locally yet
  * (the S1.3 `project-media` Storage icon — ADR-0002 C10) renders as a broken image by design in
  * S1.2 e2e, and must not hang the capture.
+ *
+ * The walk is not enough on its own (S1.7, 2026-09-25): on a very tall page (`/dev/components`
+ * passed 56k px) under headless Chromium's software GL, frames drop during the 40 ms steps and
+ * the lazy-load observer never sees some images — they stay `loading="lazy"`, off-screen and
+ * incomplete forever, and the wait below times out. So after the walk every rendered image that
+ * is still pending is switched to `loading = "eager"` (the same bytes a visitor's scroll would
+ * fetch) before the wait — the capture then shows every image, which is what the walk is for.
  */
 async function settlePage(page: Page): Promise<void> {
   await page.evaluate(async () => {
     const step = Math.max(400, Math.floor(window.innerHeight * 0.8));
     const height = document.documentElement.scrollHeight;
-    for (let y = 0; y <= height; y += step) {
+    for (let y = 0; y <= step + height; y += step) {
       window.scrollTo(0, y);
       await new Promise((resolve) => setTimeout(resolve, 40));
     }
     window.scrollTo(0, 0);
     await document.fonts.ready;
+    for (const img of Array.from(document.images)) {
+      if (!img.complete && img.loading === 'lazy' && img.getClientRects().length > 0) {
+        img.loading = 'eager';
+      }
+    }
   });
   await page.waitForFunction(
     () =>

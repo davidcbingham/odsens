@@ -7,8 +7,11 @@
  * `makeSyncRun` (05 §8 row S1.2). S1.4: `makeComment` (+ `restoreSeedCommentCounts`, `trackComment`,
  * `purgeNotificationEvents`). S1.5: `makeNotificationEvent` / `makeRecipient` (+ `trackNotificationEvent`,
  * `trackRecipient`, `purgeNotificationRecipients`; `purgeNotificationEvents` now empties the recipients
- * queue first). S1.6: `makeVideo` (05 §8 row S1.6). S1.8: `makeMention` (05 §8 row S1.8). Later
- * content factories (`makeSkin`, `makeArt`) stay stubs until their slice.
+ * queue first). S1.6: `makeVideo` (05 §8 row S1.6). S1.8: `makeMention` (05 §8 row S1.8). S1.7:
+ * `makeSkin` / `makeArt` (05 §8 row S1.7; ADR-0048 D23) — each ALSO uploads a fixture to the
+ * row's own Storage folder (the owner-path CHECKs need the row to name `skins/<id>/…` / `art/<id>/…`,
+ * and a download / render test needs real bytes there); `cleanupFactories` removes `skins/<id>/*`
+ * and `art/<id>/*` with the rows.
  *
  *   const id = await makeUser({ role: 'moderator' });          // handle `t_<8 hex>`, not banned
  *   const newbie = await makeUser({ handle: null });           // onboarding incomplete
@@ -22,10 +25,13 @@
  *   const runId = await makeSyncRun({ source: 'modrinth' });
  *   const videoId = await makeVideo({ hidden: true });          // youtube_id `t_<8 hex>0` (11 chars)
  *   const mentionId = await makeMention({ status: 'draft' });   // youtube, external_id `t_<8 hex>0`
+ *   const skinId = await makeSkin({ model: 'slim', status: 'draft' }); // + images/skin-64.png at skins/<id>/texture.png
+ *   const artId = await makeArt({ kind: 'thumbnail', fixture: 'images/thumb-1280x720.png', width: 1280, height: 720 });
  *   const eventId = await makeNotificationEvent({ kind: 'comment.held' }); // subject = SEED-9 …0201
  *   const rowId = await makeRecipient({ event_id: eventId, channel: 'discord', status: 'skipped', address: null });
  */
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import {
   asRole,
   factoryEmail,
@@ -35,8 +41,9 @@ import {
   SEED_PASSWORD,
 } from './asRole';
 import { SEED_COMMENTS, SEED_PROJECTS, SEED_USERS } from './seedIds';
+import { fixturePath } from './fixtures';
 import { forgetSessionCookies } from './sessionCookies';
-import { listObjects, removeObjects } from './storage';
+import { listObjects, removeObjects, uploadFixture, type Bucket } from './storage';
 
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 export type FactoryOverrides = Record<string, Json | undefined>;
@@ -113,6 +120,62 @@ export type MentionOverrides = FactoryOverrides & {
   /** Default: the seed admin (…0001), as `createMention` stamps it (04 §1.6); `null` for an auto row. */
   created_by?: string | null;
 };
+/** S1.7 — `skins` columns (supabase/migrations/20260925120000_skins_art.sql). */
+export type SkinOverrides = FactoryOverrides & {
+  /** Default `t-<8 hex>` — the `t_` tag with a DASH: the 04 slug regex (`skins_slug_format`) has no underscore; unique (`skins_slug_key`). */
+  slug?: string;
+  name?: string;
+  description_md?: string | null;
+  /**
+   * Default `skins/<id>/texture.png` — the ONLY value the CHECK `skins_texture_path_own` accepts for
+   * this row; pass it explicitly only to prove the CHECK (the insert then fails with 23514).
+   */
+  texture_path?: string;
+  model?: 'classic' | 'slim';
+  /** Default NULL (not rendered yet — the card's live fallback); `skins/<id>/bust.png` is the only other valid value. */
+  render_bust_path?: string | null;
+  is_exclusive?: boolean;
+  /** Default `published` (visible, like `makeProject` / `makeVideo`). */
+  status?: 'draft' | 'published';
+  sort_order?: number;
+  downloads?: number;
+  created_at?: string;
+  /**
+   * NOT a column: the fixture (relative to tests/fixtures/) uploaded to `skins/<id>/texture.png`
+   * through the service client; default `images/skin-64.png` (the 64×64 brand skin — what
+   * `renderSkinBust` and `/api/download` need). `null` skips the upload (a row with no object).
+   */
+  fixture?: string | null;
+};
+/** S1.7 — `art` columns (supabase/migrations/20260925120000_skins_art.sql). */
+export type ArtOverrides = FactoryOverrides & {
+  /** Default `t-<8 hex>` — the `t_` tag with a DASH (`art_slug_format` has no underscore); unique (`art_slug_key`). */
+  slug?: string;
+  title?: string;
+  /** Default `avatar`. */
+  kind?: 'avatar' | 'thumbnail' | 'icon' | 'render' | 'other';
+  /**
+   * Default `art/<id>/<hash16 of the fixture>.png` — content-addressed like the commit phase writes
+   * it (04 SC-21) and inside the row's own folder (CHECK `art_image_path_own`). Pass it explicitly
+   * only to prove the CHECK; the upload then still targets THIS path's object name.
+   */
+  image_path?: string;
+  /** Default 256×256 (the `images/icon-256.png` fixture's size) — pass the real size with another fixture. */
+  width?: number;
+  height?: number;
+  year?: number | null;
+  credit?: string | null;
+  downloadable?: boolean;
+  /** Default `published`. */
+  status?: 'draft' | 'published';
+  sort_order?: number;
+  created_at?: string;
+  /**
+   * NOT a column: the PNG / JPEG / WebP fixture (relative to tests/fixtures/) uploaded to the
+   * row's `image_path` object; default `images/icon-256.png`. `null` skips the upload.
+   */
+  fixture?: string | null;
+};
 export type SyncRunOverrides = FactoryOverrides & {
   /** The 7 registry values (sync_runs_source_check). */
   source?: 'modrinth' | 'curseforge' | 'youtube' | 'mentions' | 'stats' | 'notify' | 'skins';
@@ -174,12 +237,6 @@ export type RecipientOverrides = FactoryOverrides & {
 };
 
 type Factory<O extends FactoryOverrides = FactoryOverrides> = (overrides?: O) => Promise<string>;
-
-function notYet<O extends FactoryOverrides>(name: string): Factory<O> {
-  return () => {
-    throw new Error(`${name}: available from S1.2`);
-  };
-}
 
 const createdUsers: string[] = [];
 
@@ -559,8 +616,117 @@ export function trackMention(id: string): void {
   createdMentions.push(id);
 }
 
-export const makeSkin: Factory = notYet('makeSkin');
-export const makeArt: Factory = notYet('makeArt');
+// ---- S1.7 skins + art factories ----------------------------------------------------------------
+// The row AND its Storage object: every `*_path` is CHECK-bound to the row's own folder (ADR-0048
+// ADR-0048 D2), so the factory mints the id first, builds the path from it, uploads the fixture there
+// through the service client (the legitimate "server uploads" path, 01 INV-14) and inserts the
+// row. `cleanupFactories` removes `skins/<id>/*` / `art/<id>/*` (anything a test rendered or
+// replaced under the folder goes with it) after the rows.
+
+const createdSkins: string[] = [];
+const createdArt: string[] = [];
+
+/** First 16 hex of sha256 over a fixture's bytes — the `{hash16}` segment `createArt` derives (04 SC-21). */
+export async function fixtureHash16(fixtureFile: string): Promise<string> {
+  const slash = fixtureFile.indexOf('/');
+  const source = fixtureFile.slice(0, slash) as Parameters<typeof fixturePath>[0];
+  const bytes = await readFile(fixturePath(source, fixtureFile.slice(slash + 1)));
+  return createHash('sha256').update(bytes).digest('hex').slice(0, 16);
+}
+
+/** `skins/<id>/texture.png` — the DB-stored (bucket-prefixed) texture path of a skin (04 SC-21). */
+export function factorySkinTexturePath(id: string): string {
+  return `skins/${id}/texture.png`;
+}
+
+/** The object path inside `bucket` of a DB-stored path (`skins/<id>/x.png` → `<id>/x.png`). */
+function objectPathOf(bucket: Bucket, dbPath: string): string {
+  const prefix = `${bucket}/`;
+  if (!dbPath.startsWith(prefix)) {
+    throw new Error(`factories: "${dbPath}" is not a ${bucket} path (expected "${prefix}…")`);
+  }
+  return dbPath.slice(prefix.length);
+}
+
+/**
+ * S1.7: a `skins` row through the service client — a published classic skin (slug `t-<8 hex>`:
+ * the factory tag with a dash, since the slug CHECK admits no underscore; name `t_<8 hex>`), not exclusive,
+ * `sort_order 0`, `downloads 0`, `render_bust_path` NULL, `texture_path = skins/<id>/texture.png`
+ * — plus `images/skin-64.png` uploaded to that object (`fixture: null` skips it). Returns the row
+ * `id`. The upload happens BEFORE the insert so a CHECK-proving override that fails the insert
+ * still gets its object cleaned (the id is tracked either way).
+ */
+export const makeSkin: Factory<SkinOverrides> = async (overrides = {}) => {
+  const id = typeof overrides.id === 'string' ? overrides.id : randomUUID();
+  const tag = shortTag(id);
+  const { fixture = 'images/skin-64.png', ...columns } = overrides;
+  const row: Record<string, Json> = {
+    id,
+    slug: `t-${tag}`,
+    name: `t_${tag}`,
+    description_md: null,
+    texture_path: factorySkinTexturePath(id),
+    model: 'classic',
+    render_bust_path: null,
+    is_exclusive: false,
+    status: 'published',
+    sort_order: 0,
+    downloads: 0,
+    ...defined(columns),
+  };
+  createdSkins.push(id);
+  if (fixture !== null) {
+    await uploadFixture('skins', objectPathOf('skins', String(row.texture_path)), fixture);
+  }
+  await insertContentRow('makeSkin', 'skins', row, [], id);
+  return id;
+};
+
+/**
+ * S1.7: an `art` row through the service client — a published avatar, 256×256, not downloadable,
+ * `year` / `credit` NULL, `sort_order 0`, `image_path = art/<id>/<hash16 of the fixture>.png` —
+ * plus `images/icon-256.png` uploaded to that object (`fixture: null` skips it; another fixture
+ * changes the hash segment and the bytes — pass its real `width` / `height` too). Returns the row
+ * `id`. Same upload-then-insert order as `makeSkin`.
+ */
+export const makeArt: Factory<ArtOverrides> = async (overrides = {}) => {
+  const id = typeof overrides.id === 'string' ? overrides.id : randomUUID();
+  const tag = shortTag(id);
+  const { fixture = 'images/icon-256.png', ...columns } = overrides;
+  const ext = fixture === null ? 'png' : (fixture.split('.').pop() ?? 'png').toLowerCase();
+  const hash16 = fixture === null ? '0'.repeat(16) : await fixtureHash16(fixture);
+  const row: Record<string, Json> = {
+    id,
+    slug: `t-${tag}`,
+    title: `t_${tag}`,
+    kind: 'avatar',
+    image_path: `art/${id}/${hash16}.${ext === 'jpeg' ? 'jpg' : ext}`,
+    width: 256,
+    height: 256,
+    year: null,
+    credit: null,
+    downloadable: false,
+    status: 'published',
+    sort_order: 0,
+    ...defined(columns),
+  };
+  createdArt.push(id);
+  if (fixture !== null) {
+    await uploadFixture('art', objectPathOf('art', String(row.image_path)), fixture);
+  }
+  await insertContentRow('makeArt', 'art', row, [], id);
+  return id;
+};
+
+/** S1.7: adopts a skin row created OUTSIDE the factories (by `createSkin` in an action test) — row + `skins/<id>/*` leave with the file. */
+export function trackSkin(id: string): void {
+  createdSkins.push(id);
+}
+
+/** S1.7: adopts an art row created OUTSIDE the factories (by `createArt` in an action test) — row + `art/<id>/*` leave with the file. */
+export function trackArt(id: string): void {
+  createdArt.push(id);
+}
 
 export const makeSyncRun: Factory<SyncRunOverrides> = async (overrides = {}) => {
   const id = typeof overrides.id === 'string' ? overrides.id : randomUUID();
@@ -577,10 +743,12 @@ const CLEANUP_CHUNK = 100;
 
 /**
  * Removes every row created by the factories in the current test file: content rows child-first
- * (recipients → events → comments → files → versions → mentions → projects → sync_runs → videos;
- * links/overrides a test hung on a factory project fall to its FK cascade — a mention does not, its
- * FK is `on delete set null`, hence its own entry before `projects`), then avatar objects under
- * `avatars/<id>/`, then the auth user (profiles cascade; `mentions.created_by` is set null).
+ * (recipients → events → comments → files → versions → mentions → projects → sync_runs → videos →
+ * skins → art; links/overrides a test hung on a factory project fall to its FK cascade — a mention
+ * does not, its FK is `on delete set null`, hence its own entry before `projects`), then the
+ * `skins/<id>/*` and `art/<id>/*` objects of the factory / tracked skins and art (S1.7), then
+ * avatar objects under `avatars/<id>/`, then the auth user (profiles cascade; `mentions.created_by`
+ * is set null).
  * Safe to call when a test already deleted a row — 0 affected rows is a no-op, user "not found" is
  * ignored. Deletes go out `CLEANUP_CHUNK` ids at a time: the `in.(…)` filter rides the request URL,
  * and ~230 tracked uuids in one filter answered "URI too long" — which threw on that table and
@@ -599,7 +767,12 @@ export const cleanupFactories: () => Promise<void> = async () => {
     ['projects', createdProjects],
     ['sync_runs', createdSyncRuns],
     ['videos', createdVideos],
+    ['skins', createdSkins],
+    ['art', createdArt],
   ];
+  // Copied before the loop splices the lists: the object folders are named by the same ids.
+  const skinFolders = [...createdSkins];
+  const artFolders = [...createdArt];
   for (const [table, tracked] of contentTables) {
     const ids = tracked.splice(0, tracked.length);
     if (ids.length === 0) continue;
@@ -610,8 +783,21 @@ export const cleanupFactories: () => Promise<void> = async () => {
     }
   }
   if (touchedComments) await restoreSeedCommentCounts();
-  const ids = createdUsers.splice(0, createdUsers.length);
   const storageFailures: string[] = [];
+  for (const [bucket, folders] of [
+    ['skins', skinFolders],
+    ['art', artFolders],
+  ] as const) {
+    for (const id of folders) {
+      try {
+        await removeObjects(bucket, await listObjects(bucket, id));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!/bucket not found/i.test(message)) storageFailures.push(`${bucket}/${id}: ${message}`);
+      }
+    }
+  }
+  const ids = createdUsers.splice(0, createdUsers.length);
   for (const id of ids) {
     try {
       const objects = await listObjects('avatars', id);
@@ -631,7 +817,7 @@ export const cleanupFactories: () => Promise<void> = async () => {
   }
   if (storageFailures.length > 0) {
     throw new Error(
-      `cleanupFactories: avatar object cleanup failed (05 H-1) — ${storageFailures.join('; ')}`,
+      `cleanupFactories: storage object cleanup failed (05 H-1) — ${storageFailures.join('; ')}`,
     );
   }
 };
