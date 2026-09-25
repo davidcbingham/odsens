@@ -137,8 +137,6 @@
 .mention-preview-stored-word {
   flex: none;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 .mention-preview-stored-url {

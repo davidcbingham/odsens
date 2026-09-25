@@ -45,6 +45,32 @@ test.describe('projects', () => {
       'true',
     );
 
+    // Phone (ADR-0046 D4): the five type links overflow into a scroll box that carries 5px of
+    // padding for the focus ring. At rest the row must sit where it always did — first link at the
+    // bar's 12px content edge, scrollLeft 0 (scroll-snap must not rest on that padding) — and the
+    // focused first link's 5px gold ring (2px offset + 3px) must not be clipped by the box.
+    if ((page.viewportSize()?.width ?? 0) < 600) {
+      const box = async (locator: ReturnType<typeof page.locator>) => {
+        const rect = await locator.boundingBox();
+        if (!rect) throw new Error('no bounding box');
+        return rect;
+      };
+      const allLink = filter.getByRole('link', { name: 'ALL 3' });
+      const types = allLink.locator('..');
+      expect(await types.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+      expect(await types.evaluate((el) => el.scrollLeft)).toBe(0);
+      expect(Math.round((await box(allLink)).x)).toBe(Math.round((await box(filter)).x + 12));
+      await allLink.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      await expect(allLink).toBeFocused();
+      await expect(allLink).toHaveCSS('outline-color', 'rgb(255, 198, 31)'); // --gold
+      await expect(allLink).toHaveCSS('outline-offset', '2px');
+      expect((await box(allLink)).x - 5).toBeGreaterThanOrEqual((await box(types)).x);
+      expect(await types.evaluate((el) => el.scrollLeft)).toBe(0);
+      await allLink.blur();
+    }
+
     // Each card is one link; TypeBadge = glyph (aria-hidden svg) + word; download count in footer.
     const firstCard = grid.locator(CARDS).first(); // downloads desc → Metal Pipe Mace (2531)
     expect(await firstCard.locator('a').count()).toBe(1);
