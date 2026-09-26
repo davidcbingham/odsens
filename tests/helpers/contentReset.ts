@@ -31,6 +31,11 @@
  * prerenders `/skins` and `/art` from whatever the db lane left (H-1). Storage objects are NOT
  * part of the snapshot: `cleanupFactories` removes the factory folders and seed objects are
  * re-upserted by the globalSetup on every run (SEED-13).
+ * S1.9 adds `stats_daily` LAST (no FKs in or out — data-model §2.9; composite PK = the five key
+ * columns, the `project_links` precedent): a `snapshotStats` run upserts today's rows for every
+ * entity — the SEED-12 pair included — and T-ACT-55, the cron route, `triggerSync` and T-E2E-40 all
+ * run it, while the `/admin/stats` tiles read the seed pair (ADR-0049 D4 / ADR-0049 D16), so every such file
+ * restores (H-1).
  * Service-role client only (arranging state, 05 §1.3 `asRole('service')`).
  *
  * S1.5 adds the settings tables' documented shape as constants + a constant-based restore (no
@@ -57,6 +62,7 @@ const TABLES = [
   'mentions', // after `projects` — restore upserts run in this order, parents first
   'skins', // S1.7 — no FKs (data-model §2.4)
   'art', // S1.7 — no FKs
+  'stats_daily', // S1.9 — no FKs; composite PK (ADR-0049 D16) — appended LAST
 ] as const;
 
 type ContentTable = (typeof TABLES)[number];
@@ -75,6 +81,7 @@ const PK: Record<ContentTable, string[]> = {
   mentions: ['id'],
   skins: ['id'],
   art: ['id'],
+  stats_daily: ['day', 'metric', 'source', 'entity_type', 'entity_id'],
 };
 
 /** Generated columns cannot be written back (`projects.search` is GENERATED ALWAYS … STORED). */
@@ -94,6 +101,7 @@ const CHILD_FIRST: ContentTable[] = [
   'videos', // no FK in or out (data-model §2.3) — order is free
   'skins', // no FK in or out (data-model §2.4) — order is free
   'art', // no FK in or out (data-model §2.4) — order is free
+  'stats_daily', // no FK in or out (data-model §2.9) — order is free
 ];
 
 function pkKey(table: ContentTable, row: Row): string {

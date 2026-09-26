@@ -41,6 +41,13 @@
  *                                                   (`updateSkin` / `updateArt` `{ reorder }`,
  *                                                   04 §1.5; ADR-0048 D5); same shape, same
  *                                                   errcodes, same grants
+ *   list_stale_objects(text,integer,integer)        anon/authenticated D · service A — the S1.9 U1
+ *                                                   orphan-sweep candidate list `snapshotStats`
+ *                                                   reads through the service client (04 §1.4.5 /
+ *                                                   §3.5; ADR-0049 D3; migration 20260926120100): every
+ *                                                   object of one bucket older than N hours, oldest
+ *                                                   first, capped; definer, search_path=public,
+ *                                                   STABLE SQL (lists only, never deletes)
  * S1.5 (ADR-0030 D11, migration 20260903120200): `check_handle` is ALSO denied to `service_role` and
  * `can_comment`'s set is re-stated with an every-role revoke, so the cells above hold on Supabase
  * images whose default ACL grants EXECUTE on new functions to every API role (the PR #8 CI lesson).
@@ -51,7 +58,10 @@
  * to true through `service` and is restored in `afterAll`; its factory projects fall to
  * `cleanupFactories`. The `reorder_mentions` / `reorder_skins` / `reorder_art` behaviour cases use
  * factory rows only (the seed rows' `sort_order` is asserted untouched); `record_skin_download`
- * bumps a factory skin only (the SEED-7 counters are asserted untouched).
+ * bumps a factory skin only (the SEED-7 counters are asserted untouched). The `list_stale_objects`
+ * behaviour case uploads its own `project-media/<uuid>/gallery/t_stale_*.webp` objects, ages them
+ * through `sql()` (`update storage.objects set created_at = …`) and removes them in `afterAll` —
+ * no seed object is touched.
  */
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
@@ -78,6 +88,7 @@ import {
   SEED_SKINS,
   SEED_USERS,
 } from '@/tests/helpers/seedIds';
+import { removeObjects, uploadFixture } from '@/tests/helpers/storage';
 
 const FUNCTIONS = {
   check_handle: 'public.check_handle(text)',
@@ -95,6 +106,7 @@ const FUNCTIONS = {
   record_skin_download: 'public.record_skin_download(uuid)',
   reorder_skins: 'public.reorder_skins(jsonb)',
   reorder_art: 'public.reorder_art(jsonb)',
+  list_stale_objects: 'public.list_stale_objects(text,integer,integer)',
 } as const;
 
 function canExecute(role: 'anon' | 'authenticated' | 'service_role', fn: string): boolean {
@@ -243,6 +255,29 @@ describe('T-RLS-129 RPC grants (catalog)', () => {
       ['record_skin_download', 't', 'v', 'plpgsql', 'search_path=public', 'void', 'p_skin_id uuid'],
       ['reorder_art', 't', 'v', 'plpgsql', 'search_path=public', 'integer', 'p_items jsonb'],
       ['reorder_skins', 't', 'v', 'plpgsql', 'search_path=public', 'integer', 'p_items jsonb'],
+    ]);
+  });
+
+  it('T-RLS-129 list_stale_objects: anon/authenticated denied, service_role allowed, never PUBLIC (S1.9)', () => {
+    expect(canExecute('anon', FUNCTIONS.list_stale_objects)).toBe(false);
+    expect(canExecute('authenticated', FUNCTIONS.list_stale_objects)).toBe(false);
+    expect(canExecute('service_role', FUNCTIONS.list_stale_objects)).toBe(true);
+    expect(publicCanExecute('list_stale_objects')).toBe(false);
+  });
+
+  it('T-RLS-129 list_stale_objects is a stable SQL security-definer function with search_path = public returning (name, created_at) rows', () => {
+    const rows = sql(
+      "select p.prosecdef, p.provolatile, l.lanname, coalesce(array_to_string(p.proconfig, ','), ''), pg_get_function_result(p.oid), pg_get_function_identity_arguments(p.oid) from pg_proc p join pg_namespace n on n.oid = p.pronamespace join pg_language l on l.oid = p.prolang where n.nspname = 'public' and p.proname = 'list_stale_objects'",
+    );
+    expect(rows).toEqual([
+      [
+        't',
+        's',
+        'sql',
+        'search_path=public',
+        'TABLE(name text, created_at timestamp with time zone)',
+        'p_bucket text, p_min_age_hours integer, p_limit integer',
+      ],
     ]);
   });
 });
@@ -1100,5 +1135,130 @@ describe.each(REORDER_TARGETS)('T-RLS-129 $fn grants + behaviour (S1.7)', (targe
       expect(data, label).toBeNull();
     }
     expect(await orderOf([id])).toEqual({ [id]: 5 });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T-RLS-129 list_stale_objects(p_bucket, p_min_age_hours, p_limit) — S1.9, ADR-0049 D3 (migration
+// 20260926120100). `snapshotStats` reads the U1 orphan-sweep candidates through the service client
+// (04 §1.4.5 / §3.5): every object of ONE bucket older than the given hours, oldest first, at most
+// `p_limit`; the job subtracts the referenced paths and removes the rest itself — the RPC never
+// deletes. Every JWT role is refused (42501). Behaviour: the file's own objects under
+// `project-media/<uuid>/gallery/` — fresh ones are not listed, aged ones (created_at moved back
+// through `sql()`) are, oldest first; a higher age bar hides them again; `p_limit` 0 lists nothing;
+// an unknown bucket lists nothing. The objects are removed in `afterAll`; nothing else is touched.
+// ---------------------------------------------------------------------------------------------
+describe('T-RLS-129 list_stale_objects grants + behaviour (S1.9)', () => {
+  const service = asRole('service');
+  const BUCKET = 'project-media';
+  const folder = randomUUID();
+  const older = `${folder}/gallery/t_stale_a.webp`;
+  const newer = `${folder}/gallery/t_stale_b.webp`;
+  const fresh = `${folder}/gallery/t_fresh.webp`;
+  const ours = new Set([older, newer, fresh]);
+
+  type StaleRow = { name: string; created_at: string };
+
+  /** The RPC's answer narrowed to this file's own objects (other stale objects may exist). */
+  async function listOurs(
+    p_min_age_hours: number,
+    p_limit = 200,
+    p_bucket: string = BUCKET,
+  ): Promise<StaleRow[]> {
+    const { data, error } = await service.rpc('list_stale_objects', {
+      p_bucket,
+      p_min_age_hours,
+      p_limit,
+    });
+    expect(error).toBeNull();
+    return (data ?? []).filter((row) => ours.has(row.name));
+  }
+
+  function age(name: string, hours: number): void {
+    sql(
+      `update storage.objects set created_at = now() - interval '${String(hours)} hours' where bucket_id = '${BUCKET}' and name = '${name}'`,
+    );
+  }
+
+  beforeAll(async () => {
+    await uploadFixture(BUCKET, older, 'images/tiny.webp');
+    await uploadFixture(BUCKET, newer, 'images/tiny.webp');
+    await uploadFixture(BUCKET, fresh, 'images/tiny.webp');
+  });
+
+  afterAll(async () => {
+    await removeObjects(BUCKET, [older, newer, fresh]);
+  });
+
+  it.each(['anon', 'user', 'banned', 'mod', 'admin'] as const)(
+    'T-RLS-129 %s cannot call list_stale_objects (42501)',
+    async (role) => {
+      const { data, error } = await asRole(role).rpc('list_stale_objects', {
+        p_bucket: BUCKET,
+        p_min_age_hours: 0,
+        p_limit: 10,
+      });
+      expect(error?.code).toBe('42501');
+      expect(data).toBeNull();
+    },
+  );
+
+  it('T-RLS-129 service: fresh objects are not stale at 24 h; an unknown bucket lists nothing', async () => {
+    expect(await listOurs(24)).toEqual([]);
+    const { data, error } = await service.rpc('list_stale_objects', {
+      p_bucket: 't_no_such_bucket',
+      p_min_age_hours: 0,
+      p_limit: 10,
+    });
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+  });
+
+  it('T-RLS-129 service: aged objects are listed oldest first with their created_at; a higher age bar hides them; the fresh one never appears', async () => {
+    age(older, 30);
+    age(newer, 25);
+
+    const stale = await listOurs(24);
+    expect(stale.map((row) => row.name)).toEqual([older, newer]);
+    const now = Date.now();
+    const hoursAgo = (iso: string): number => (now - Date.parse(iso)) / 3_600_000;
+    expect(hoursAgo(stale[0]?.created_at ?? '')).toBeGreaterThan(29.9);
+    expect(hoursAgo(stale[0]?.created_at ?? '')).toBeLessThan(30.1);
+    expect(hoursAgo(stale[1]?.created_at ?? '')).toBeGreaterThan(24.9);
+    expect(hoursAgo(stale[1]?.created_at ?? '')).toBeLessThan(25.1);
+
+    // 25 h and 30 h old are not stale against a 48 h bar.
+    expect(await listOurs(48)).toEqual([]);
+    // A 0 h bar lists the fresh one too (oldest first still holds).
+    expect((await listOurs(0)).map((row) => row.name)).toEqual([older, newer, fresh]);
+  });
+
+  it('T-RLS-129 service: p_limit caps the list (0 → nothing, negative → nothing, 1 → one row) and GET works (stable)', async () => {
+    for (const p_limit of [0, -1]) {
+      const { data, error } = await service.rpc('list_stale_objects', {
+        p_bucket: BUCKET,
+        p_min_age_hours: 24,
+        p_limit,
+      });
+      expect(error, String(p_limit)).toBeNull();
+      expect(data, String(p_limit)).toEqual([]);
+    }
+    const one = await service.rpc('list_stale_objects', {
+      p_bucket: BUCKET,
+      p_min_age_hours: 24,
+      p_limit: 1,
+    });
+    expect(one.error).toBeNull();
+    expect(one.data).toHaveLength(1);
+    const get = await service.rpc(
+      'list_stale_objects',
+      { p_bucket: BUCKET, p_min_age_hours: 24, p_limit: 200 },
+      { get: true },
+    );
+    expect(get.error).toBeNull();
+    expect((get.data ?? []).filter((row) => ours.has(row.name)).map((row) => row.name)).toEqual([
+      older,
+      newer,
+    ]);
   });
 });

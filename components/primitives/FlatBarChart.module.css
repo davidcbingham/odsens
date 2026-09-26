@@ -1,0 +1,122 @@
+/* FlatBarChart — DESIGN.md §11.1 Flat bar chart; 03 §2.2 `FlatBarChart` (tokens: --slab-sunk
+   --line-soft --emerald --orange --indigo-lift --font-pixel --text-pixel-11 --track-pixel --mute-dim
+   --mute --text-small --space-*). Two figures in one root, toggled by width (ADR-0049 D12); the axis labels
+   are HTML so Silkscreen 11px never scales with the stretched SVG; the SVG heights (220 / 180px) and
+   the bar geometry are raw px per 03 §9. Zero radius, no gradients, no strokes, nothing hovers. */
+.flat-bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+/* One variant: Y column beside the well, then the end labels, legend and note under the well. */
+.flat-bar-chart-figure {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'y well'
+    '. x'
+    '. legend'
+    '. note';
+  column-gap: var(--space-8);
+  row-gap: var(--space-12);
+  margin: 0;
+  min-width: 0;
+}
+
+/* Y labels — max at the well's top edge, half in the middle, 0 at the floor. */
+.flat-bar-chart-y {
+  grid-area: y;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  min-width: 3ch;
+  text-align: right;
+}
+
+/* The well: --slab-sunk with the 2px --line-soft outline (drawn outside, never shifts layout). */
+.flat-bar-chart-well {
+  grid-area: well;
+  min-width: 0;
+  padding: 0 var(--space-4);
+  background: var(--slab-sunk);
+  outline: 2px solid var(--line-soft);
+}
+
+/* The SVG stretches to the well (preserveAspectRatio="none"); 220px full, 180px compact. */
+.flat-bar-chart-svg {
+  display: block;
+  width: 100%;
+  height: 220px;
+}
+
+.flat-bar-chart-figure[data-compact] .flat-bar-chart-svg {
+  height: 180px;
+}
+
+/* Fixed source colours (DESIGN.md §11.1; `sourceColor` names the same tokens). */
+.flat-bar-chart-svg rect[data-source='modrinth'] {
+  fill: var(--emerald);
+}
+
+.flat-bar-chart-svg rect[data-source='curseforge'] {
+  fill: var(--orange);
+}
+
+.flat-bar-chart-svg rect[data-source='direct'] {
+  fill: var(--indigo-lift);
+}
+
+/* `30 DAYS AGO` … `TODAY` under the well's two ends. */
+.flat-bar-chart-x {
+  grid-area: x;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+/* Silkscreen 11px, uppercase, tracked, --mute-dim — the axis-label recipe (DESIGN.md §11.1). */
+.flat-bar-chart-pixel {
+  font-family: var(--font-pixel);
+  font-size: var(--text-pixel-11);
+  line-height: 1;
+  letter-spacing: var(--track-pixel);
+  text-transform: uppercase;
+  color: var(--mute-dim);
+}
+
+/* Legend: the three swatches, each with its word (03 C-26). */
+.flat-bar-chart-legend {
+  grid-area: legend;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-20);
+  font-size: var(--text-small);
+  color: var(--mute);
+}
+
+/* The compact note "15 bars, two days each" (the full figure's caption is visually hidden). */
+.flat-bar-chart-note {
+  grid-area: note;
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--mute-dim);
+}
+
+/* ---- the width toggle (ADR-0049 D12): `data-variant="both"` shows one figure at a time ---- */
+.flat-bar-chart[data-variant='both'] .flat-bar-chart-figure[data-compact] {
+  display: none;
+}
+
+/* ≤ --bp-phone (599px): the compact figure takes over — 15 bars, two days each. */
+@media (max-width: 599px) {
+  .flat-bar-chart[data-variant='both'] .flat-bar-chart-figure[data-full] {
+    display: none;
+  }
+
+  .flat-bar-chart[data-variant='both'] .flat-bar-chart-figure[data-compact] {
+    display: grid;
+  }
+}

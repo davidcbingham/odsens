@@ -14,7 +14,7 @@
 --   SEED-9  comments (5) + comment_likes + comment_reports — S1.4 (below)
 --   SEED-10 mentions (2)                                  — S1.8 (below; ADR-0045)
 --   SEED-11 videos (7)                                    — S1.6 (below; ADR-0043 D8)
---   SEED-12 sync_runs (3) — S1.2 (below); stats_daily (6) — arrives in S1.9
+--   SEED-12 sync_runs (3) — S1.2 (below); stats_daily (6) — S1.9 (below; ADR-0049 D4)
 --   SEED-13 Storage objects — not SQL; uploaded by the e2e/db globalSetup (`uploadFixture`)
 --   SEED-14 this guard line (first line of the file) — present from S0
 
@@ -494,7 +494,8 @@ on conflict (id) do nothing;
 -- =============================================================================================
 -- SEED-12 (S1.2 part) — sync_runs (3): one ok=true run per source (modrinth, curseforge, youtube)
 -- finished 30 minutes ago, so the 04 J-F edge fires on the first failing test run. Fixed ids extend
--- the seed uuid scheme with group 08 (sync_runs) for idempotency. stats_daily rows arrive in S1.9.
+-- the seed uuid scheme with group 08 (sync_runs) for idempotency. The stats_daily rows follow below
+-- (S1.9 part).
 -- =============================================================================================
 insert into public.sync_runs (id, source, started_at, finished_at, ok, items, error) values
   ('00000000-0000-4000-8000-000000000801', 'modrinth',
@@ -504,3 +505,23 @@ insert into public.sync_runs (id, source, started_at, finished_at, ok, items, er
   ('00000000-0000-4000-8000-000000000803', 'youtube',
    now() - interval '35 minutes', now() - interval '30 minutes', true, 21, null)
 on conflict (id) do nothing;
+
+-- =============================================================================================
+-- SEED-12 (S1.9 part) — stats_daily (6): the site `downloads` row per source for two UTC days
+-- (sentinel entity_id, entity_type 'site'). Today = the seed projects' live totals (SEED-4:
+-- modrinth 2531 + 1568 = 4099, curseforge 120, direct 7 — sum 4226, so the all-time tile reads
+-- `4.2K` and a first `snapshotStats` run on the pristine seed rewrites today's rows with the SAME
+-- values); yesterday = today − (40, 3, 2), so the 7-day tile reads `45` on the pristine seed
+-- (T-E2E-40). `day` is the UTC date at reset time (01 INV-68) — like the sync_runs ages above it is
+-- relative to the reset, so a stack reset before UTC midnight and read after it shows the pair one
+-- day older. No fixed ids (composite PK); the upsert arm is the job's own (04 §3.5) so a re-run of
+-- the seed refreshes the values in place. ADR-0049 D4.
+-- =============================================================================================
+insert into public.stats_daily (day, metric, source, entity_type, entity_id, value) values
+  ((now() at time zone 'utc')::date,     'downloads', 'modrinth',   'site', '00000000-0000-0000-0000-000000000000', 4099),
+  ((now() at time zone 'utc')::date,     'downloads', 'curseforge', 'site', '00000000-0000-0000-0000-000000000000', 120),
+  ((now() at time zone 'utc')::date,     'downloads', 'direct',     'site', '00000000-0000-0000-0000-000000000000', 7),
+  ((now() at time zone 'utc')::date - 1, 'downloads', 'modrinth',   'site', '00000000-0000-0000-0000-000000000000', 4059),
+  ((now() at time zone 'utc')::date - 1, 'downloads', 'curseforge', 'site', '00000000-0000-0000-0000-000000000000', 117),
+  ((now() at time zone 'utc')::date - 1, 'downloads', 'direct',     'site', '00000000-0000-0000-0000-000000000000', 5)
+on conflict (day, metric, source, entity_type, entity_id) do update set value = excluded.value;

@@ -17,7 +17,9 @@
  * `projects_public` (the assign select — `listMentionProjectOptions`) + `sync_runs` (mentions —
  * `MENTIONS_SYNC_SOURCES`); the S1.8 block. S1.7 (ADR-0048 D12): `/admin/skins` = `skins` (all
  * statuses — `listAdminSkins` / `getAdminSkin`) and `/admin/art` = `art` (all statuses —
- * `listAdminArt` / `getAdminArt`); the block at the end of the file.
+ * `listAdminArt` / `getAdminArt`); the block at the end of the file. S1.9 (ADR-0049 D14): `/admin/stats` =
+ * `stats_daily` through `lib/data/stats.ts` + `sync_runs` for every job that feeds the numbers
+ * (`STATS_SYNC_SOURCES`, right after the S1.8 block).
  *
  * The admin read seam is the REQUEST-COOKIE server client (`lib/supabase/server.ts`) under the
  * S1.2 RLS policies (ADR-0022 `project_is_visible() or is_admin()` arms) — admin routes are
@@ -1020,6 +1022,24 @@ export const MENTIONS_SYNC_SOURCES = ['mentions'] as const;
 export type MentionsSyncSource = (typeof MENTIONS_SYNC_SOURCES)[number];
 
 // ---- S1.8 block END --------------------------------------------------------------------------
+
+// ---- /admin/stats (S1.9; 02 §1.3 row; ADR-0049 D14) ---------------------------------------------------
+
+/**
+ * The sources `/admin/stats` shows a `SyncStatus` row for (03 §2.10 `SyncStatus`; ADR-0049 D14): every job
+ * that feeds the numbers — the three platform syncs, the mentions refresh and `snapshotStats` itself
+ * (`sync_runs.source = 'stats'`, 04 §3.5) — so the page shows the whole picture and a dead snapshot
+ * cron is visible on its own row (ADR-0049 D11); "Sync now" on the `stats` row runs `snapshotStats` through
+ * `triggerSync({ source: 'stats' })` (ADR-0049 D9). Feed it to `listSyncStatus`.
+ */
+export const STATS_SYNC_SOURCES = [
+  'modrinth',
+  'curseforge',
+  'youtube',
+  'mentions',
+  'stats',
+] as const; // ADR-0049 D14
+export type StatsSyncSource = (typeof STATS_SYNC_SOURCES)[number];
 
 // ---- /admin/skins + /admin/art (S1.7; 02 §1.3 rows; 04 §1.5; ADR-0048 D19 / D27 / D12) ----------
 // ---- S1.7 block START ------------------------------------------------------------------------
