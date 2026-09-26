@@ -8,6 +8,7 @@ import { expectNoSeriousA11y } from '../../helpers/axe';
 import { shoot } from '../../helpers/screenshots';
 
 const BUTTON_VARIANTS = ['primary', 'secondary', 'ghost', 'gold', 'gold-ink'] as const;
+const CHALK = 'rgb(238, 241, 246)'; // --chalk (the skins.spec settle colour)
 
 test.describe('components preview', () => {
   test('T-E2E-48 /dev/components renders every Button variant, labelled svgs, axe clean', async ({
@@ -43,6 +44,29 @@ test.describe('components preview', () => {
     // No horizontal overflow at either viewport: the capture must be exactly the viewport width.
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth, 'document scrollWidth == viewport width').toBe(page.viewportSize()?.width);
+
+    // The SkinViewer3D stage specimens reach `ready` a beat after load and their controls then
+    // ease from the disabled look to chalk-on-slab over --dur-fast; an axe pass that samples
+    // mid-fade reports a ~3:1 blend on Spin / Walk / Front (seen 2026-09-26, S1.9, once the
+    // gallery grew by the FlatBarChart specimens). The skins.spec idiom: every viewer settles to a
+    // terminal state, then every un-pressed secondary control of a `ready` viewer rests at chalk.
+    const viewers = page.locator('section[data-preview="SkinViewer3D"] [data-state]');
+    await expect
+      .poll(
+        async () =>
+          (
+            await viewers.evaluateAll((els) => els.map((el) => el.getAttribute('data-state')))
+          ).every((state) => state !== 'loading'),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    const controls = page.locator(
+      'section[data-preview="SkinViewer3D"] [data-state="ready"] button[data-variant="secondary"]:not([aria-pressed="true"])',
+    );
+    const controlCount = await controls.count();
+    for (let i = 0; i < controlCount; i += 1) {
+      await expect(controls.nth(i)).toHaveCSS('color', CHALK);
+    }
 
     await expectNoSeriousA11y(page);
     await shoot(page, 'components');

@@ -1,0 +1,75 @@
+/* /admin/stats skeleton — the page's rhythm (page.module.css: 40px sections, the 4 / 2×2 tiles
+   grid), a tile shell per StatTile (slab + 2px --line-soft, the real tile's padding), the chart's
+   --slab-sunk well at the full variant's 220px, and the admin table shell (DESIGN.md §5 Admin table
+   geometry, §11.1 skeleton depths) — the same table recipe as app/admin/mentions/loading.module.css.
+   899px = --bp-tablet (custom properties cannot appear in a media query). */
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-40);
+}
+
+.loading-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.loading-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-16);
+}
+
+.loading-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-20);
+  background: var(--slab);
+  outline: 2px solid var(--line-soft);
+}
+
+.loading-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* The chart well shell — the FlatBarChart well's own recipe (--slab-sunk, 2px --line-soft). */
+.loading-well {
+  padding: 0 var(--space-4);
+  background: var(--slab-sunk);
+  outline: 2px solid var(--line-soft);
+}
+
+.loading-table {
+  display: flex;
+  flex-direction: column;
+  background: var(--slab);
+  border: 2px solid var(--line-soft);
+}
+
+.loading-table-head {
+  padding: var(--space-12) var(--space-16);
+  background: var(--slab-sunk);
+  border-bottom: 2px solid var(--line);
+}
+
+.loading-table-row {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 2px solid var(--table-divider);
+}
+
+.loading-table-row:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 899px) {
+  .loading-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

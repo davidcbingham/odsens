@@ -3,10 +3,12 @@
  * (05 §7.2; 04 §1.7, SC-13, SC-24; 01 INV-72; ADR-0002 C7 / C16; migration 20260827090400).
  * `mutatesSeed`: the admin run is a real `syncCurseforge` pass (no-change against the SEED-6
  * fixture-mirroring link, so only `synced_at` moves and one `sync_runs` row lands), from S1.6 a real
- * `syncYoutube` pass with `full:true` (the fixture channel's 19 mapped uploads land next to SEED-11)
- * and, from S1.8, a real `refreshMentions` pass (no-change: the fixture never answers SEED-10's
- * `seedvid0001`, so only a `sync_runs` row lands) — content tables (`videos`, `mentions` +
- * `sync_runs` included) restore from a snapshot in `afterAll` (05 H-1).
+ * `syncYoutube` pass with `full:true` (the fixture channel's 19 mapped uploads land next to SEED-11),
+ * from S1.8 a real `refreshMentions` pass (no-change: the fixture never answers SEED-10's
+ * `seedvid0001`, so only a `sync_runs` row lands) and, from S1.9, a real `snapshotStats` pass
+ * (today's `stats_daily` rows for every entity — the SEED-12 pair rewritten with the same values)
+ * — content tables (`videos`, `mentions`, `stats_daily` + `sync_runs` included) restore from a
+ * snapshot in `afterAll` (05 H-1).
  *
  * Auth: admin A, **mod D `forbidden`**, user D `forbidden` (ADR-0002 C7), anon `unauthenticated`.
  * Input: `source` ∈ the five triggerable values — `notify`, `skins` (a `sync_runs` source with no
@@ -17,8 +19,9 @@
  * (T-ACT-70; the job/route sides live in tests/db/jobs/). `youtube` runs `syncYoutube` since S1.6
  * (`full:true` reaches the job as the uploads-playlist walk — 04 §3.3 step 3; `spyFetch` keys are the
  * real request prefixes, never the bare `YOUTUBE_API_BASE`). `mentions` runs `refreshMentions` since
- * S1.8 (04 §3.4; ADR-0045 — its "Sync now" button lives on `/admin/mentions`). `stats` is enum-valid
- * but its job lands in S1.9 — until then the action answers `upstream_error`.
+ * S1.8 (04 §3.4; ADR-0045 — its "Sync now" button lives on `/admin/mentions`). `stats` runs
+ * `snapshotStats` since S1.9 (04 §3.5; ADR-0049 D9 — the `stats` row of the `/admin/stats` SYNC board; the
+ * adapter's one `channels.list` request is answered by `youtube/channels.json`).
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { triggerSync } from '@/lib/actions/admin';
@@ -45,6 +48,7 @@ const RSS_BASE = process.env.YOUTUBE_RSS_BASE ?? '';
 const YT_API_BASE = process.env.YOUTUBE_API_BASE ?? '';
 const YT_VIDEOS_URL = `${YT_API_BASE}/videos`;
 const YT_PLAYLIST_URL = `${YT_API_BASE}/playlistItems`;
+const YT_CHANNELS_URL = `${YT_API_BASE}/channels`;
 
 let snapshot: ContentSnapshot;
 
@@ -95,18 +99,72 @@ describe('T-ACT-42 triggerSync', () => {
       input: { source: 'curseforge', full: true },
     },
     { name: 'full:true for mentions (youtube only)', input: { source: 'mentions', full: true } },
+    { name: 'full:true for stats (youtube only)', input: { source: 'stats', full: true } },
   ])('T-ACT-42 $name → validation', async ({ input }) => {
     expectFail(await callAction(triggerSync, input, { role: 'admin' }), 'validation');
   });
 
-  it("T-ACT-42 source 'stats' passes the schema but its job is not built yet (S1.9) → upstream_error, no sync_runs row", async () => {
+  it("T-ACT-42 source 'stats' runs snapshotStats directly (S1.9) → {ok:true, data:<JobSummary>} with source 'stats', one channels.list request, today's rows written, a new sync_runs row, SC-24", async () => {
     const before = await syncRunCount('stats');
-    const error = expectFail(
-      await callAction(triggerSync, { source: 'stats' }, { role: 'admin' }),
-      'upstream_error',
-    );
-    expect(error.message).toBe("That sync isn't built yet.");
-    expect(await syncRunCount('stats')).toBe(before);
+    const fetchSpy = spyFetch({ [YT_CHANNELS_URL]: 'youtube/channels.json' });
+    const logs = spyLog();
+    try {
+      const summary = expectOk(
+        await callAction(triggerSync, { source: 'stats' }, { role: 'admin' }),
+      );
+      expect(summary.ok).toBe(true);
+      expect(summary.source).toBe('stats');
+      expect(typeof summary.run_id).toBe('string');
+      expect(typeof summary.ms).toBe('number');
+      expect(summary.skipped).toBeUndefined();
+      // The ADR-0049 D7 shape: today's rows for every entity, the one channels.list unit, no errors.
+      expect(summary.items).toBeGreaterThan(10);
+      expect(summary.units).toBe(1);
+      expect(summary.errors).toEqual([]);
+      expect(summary.rows).toMatchObject({ site: 10, channel: 2 });
+      expect(summary.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(fetchSpy.calls).toHaveLength(1);
+      expect(fetchSpy.calls[0]?.startsWith(`${YT_CHANNELS_URL}?part=statistics&id=`)).toBe(true);
+      const { count: written } = await service
+        .from('stats_daily')
+        .select('*', { count: 'exact', head: true })
+        .eq('day', String(summary.day));
+      expect(written).toBe(summary.items);
+
+      // The job function ran in-process (01 INV-72 — no request to the cron route), as a manual run.
+      expect(fetchSpy.calls.some((url) => url.includes('/api/cron/'))).toBe(false);
+      const done = (logs.lines as Array<Record<string, unknown>>).filter(
+        (line) => line.job === 'snapshotStats' && line.msg === 'done',
+      );
+      expect(done).toHaveLength(1);
+      expect((done[0]?.meta as { trigger?: string }).trigger).toBe('manual');
+
+      expect(await syncRunCount('stats')).toBe(before + 1);
+      const { data: run, error } = await service
+        .from('sync_runs')
+        .select('source, finished_at, ok, items')
+        .eq('id', summary.run_id)
+        .single();
+      expect(error).toBeNull();
+      expect(run?.source).toBe('stats');
+      expect(run?.finished_at).not.toBeNull();
+      expect(run?.ok).toBe(true);
+      expect(run?.items).toBe(summary.items);
+
+      // SC-24: keys only.
+      const adminLines = (logs.lines as Array<Record<string, unknown>>).filter(
+        (line) => line.msg === 'admin',
+      );
+      expect(adminLines).toHaveLength(1);
+      const line = adminLines[0] as { action: string; meta: Record<string, unknown> };
+      expect(line.action).toBe('triggerSync');
+      expect(line.meta.target_type).toBe('sync_run');
+      expect(line.meta.target_id).toBe(summary.run_id);
+      expect(line.meta.fields).toEqual(['source']);
+    } finally {
+      logs.restore();
+      fetchSpy.restore();
+    }
   });
 
   it("T-ACT-42 source 'mentions' runs refreshMentions directly (S1.8) → {ok:true, data:<JobSummary>}, one part=statistics request, sync_runs written, SC-24", async () => {

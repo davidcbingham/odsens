@@ -77,6 +77,16 @@
  *    server-derived 1280×720 off the row, publishes it and polls `/art` to three cards at natural
  *    aspect. Both rows are unpublished THROUGH THE UI, the public pages polled back to seed truth,
  *    and only then removed — rows and objects — with the service client (no delete action).
+ *  - S1.9 (same file, same reason — ADR-0049): T-E2E-42 gains the `/admin/stats` leg (axe + shots
+ *    at 1280 AND 390 — 00 S1.9.AC10) right after the art edit view, pristine seed first; the final
+ *    describe holds T-E2E-40 — the four tiles on the SEED-12 `stats_daily` pair (`45` · `4.2K` ·
+ *    `0` · `0`), the chart (30 columns at 1280, 15 at 390 with its note), the hidden table, the
+ *    honest line, the SYNC board over every feeding job; the cron route hit twice with the bearer
+ *    (equal `items`, the comments tile with the held count, the stats row LIVE); the moderator's
+ *    zero tiles + "Only admins see the numbers." + disabled "Sync now"; and the empty leg (every
+ *    `stats_daily` row deleted → every tile `0` + "No data yet.", the chart still drawn).
+ *    `stats_daily` is in the content snapshot, so `restoreContentTables` puts SEED-12 back in its
+ *    `afterAll` (`mutatesSeed`).
  *
  * Seed truths: SEED-4..6 (3 published projects; overrides featured 1 = pixel-chameleon,
  * 2 = seed-exclusive-pack; CF link 900001 on pixel-chameleon), SEED-12 (one ok run per source),
@@ -90,7 +100,7 @@
  */
 import type { Locator, Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
-import { freeHandle, readProfile } from '../../helpers/arrange';
+import { freeHandle, readProfile, touchSeedSyncRuns } from '../../helpers/arrange';
 import { asRole, loose } from '../../helpers/asRole';
 import { expectNoSeriousA11y } from '../../helpers/axe';
 import {
@@ -104,7 +114,7 @@ import {
   snapshotContentTables,
   type ContentSnapshot,
 } from '../../helpers/contentReset';
-import { loadEnvTest } from '../../helpers/envTest';
+import { loadEnvTest, requireTestEnv } from '../../helpers/envTest';
 import {
   cleanupFactories,
   makeComment,
@@ -385,6 +395,34 @@ test('T-E2E-42 admin routes: axe zero serious/critical + 1280 screenshots (/admi
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await expectNoSeriousA11y(page);
   await shoot(page, 'admin-art-edit');
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  // S1.9: the stats page — desktop AND phone (00 S1.9.AC10; ADR-0049 D22), pristine seed: the four
+  // tiles, the full chart at 1280 / the compact one at 390 (ADR-0049 D12), the SYNC board over the five
+  // feeding jobs (ADR-0049 D14). The numbers themselves are T-E2E-40's, at the end of this file.
+  await page.goto('/admin/stats');
+  await expect(page).toHaveTitle('Stats · Admin');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Stats');
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'DOWNLOADS · LAST 30 DAYS' }),
+  ).toBeVisible();
+  await expect(page.locator('dl')).toHaveCount(4);
+  await expect(page.locator('figure[data-full] svg[role="img"]')).toBeVisible();
+  await expect(page.locator('figure[data-compact]')).toBeHidden();
+  const statsSync = page.locator('section', {
+    has: page.getByRole('heading', { level: 2, name: 'SYNC' }),
+  });
+  await expect(statsSync.locator('tbody tr')).toHaveCount(5);
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-stats');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('figure[data-compact] svg[role="img"]')).toBeVisible();
+  await expect(page.locator('figure[data-full]')).toBeHidden();
+  // The chart stretches to its well and the SYNC table scrolls inside its own wrapper — the
+  // page itself never scrolls sideways at 390.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await expectNoSeriousA11y(page);
+  await shoot(page, 'admin-stats');
   await page.setViewportSize({ width: 1280, height: 800 });
 });
 
@@ -5349,5 +5387,465 @@ test.describe('skins + art on /admin/skins and /admin/art (S1.7 — T-E2E-38)', 
     expect(await listObjects('skins', storedSkin?.id ?? '')).toEqual([]);
     expect(await listObjects('art', storedArt?.id ?? '')).toEqual([]);
     restoredThroughApp = true;
+  });
+});
+
+/**
+ * S1.9 — the stats page (ADR-0049 D22; 00 §S1.9 AC2 / AC3 / AC10; 02 §1.3 `/admin/stats`; 05 T-E2E-40).
+ * Lives in THIS file for the same reason as every admin describe: the `admin` project is serial only
+ * within a file. Runs LAST: it hits the real cron route (`snapshotStats` writes today's `stats_daily`
+ * rows for every entity and runs the housekeeping purges) and the empty leg deletes every
+ * `stats_daily` row — `stats_daily` is in the content snapshot, so `restoreContentTables` puts
+ * SEED-12 back in `afterAll` (05 H-1 `mutatesSeed`); a failed run may have emitted `sync.failed`,
+ * so the notification events are purged too.
+ *
+ * Seed truth on the tiles (ADR-0049 D4 / ADR-0049 D11): today `4099 / 120 / 7`, yesterday `4059 / 117 / 5` →
+ * `Downloads · 7 days` = 45 with "First week counted." (no snapshot in the week before),
+ * `Downloads · all time` = 4226 → `4.2K` with "Modrinth 4.1K · CurseForge 120 · direct 7",
+ * `Comments` and `Tips · 30 days` = 0 + "No data yet.". The seed pair is dated at reset time (UTC);
+ * a reset before midnight read after it moves both a day older, which every assertion here
+ * tolerates (the 7-day window holds the pair for six days; the all-time tile reads the latest day
+ * whatever it is; the chart keeps its one drawn column). After the route runs, today's site rows
+ * carry the live project totals — equal to the seed's today on a pristine seed, so the download
+ * tiles read the same numbers; the expectations are derived from the totals the service client
+ * reads rather than hard-coded, so a stray direct download from an earlier flow cannot fail the
+ * leg (the seed-pure numbers are asserted BEFORE the run).
+ *
+ * SYNC board (ADR-0049 D14): SEED-12's three ok runs are re-asserted to "30 minutes ago"
+ * (`touchSeedSyncRuns` — on a stack reset hours ago they would read STALE) and the `mentions` /
+ * `stats` runs earlier tests in this file leave behind (T-E2E-39's "Sync now") are removed AFTER the
+ * snapshot, so the board reads seed truth: modrinth / curseforge / youtube LIVE, mentions / stats
+ * STALE — and the snapshot restores every row.
+ */
+test.describe('stats on /admin/stats (S1.9 — T-E2E-40)', () => {
+  const CRON_PATH = '/api/cron/stats-snapshot';
+  const NO_DATA_YET = 'No data yet.';
+  const COMPACT_NOTE = '15 bars, two days each';
+  const INTRO_LINE = 'One snapshot a day, taken at 03:00 UTC.';
+  const MODERATOR_LINE = 'Only admins see the numbers.';
+  const HONEST_LINE =
+    'Modrinth and CurseForge report their own counts. Direct downloads are the ones we serve.';
+  const CHART_HEADING = 'DOWNLOADS · LAST 30 DAYS';
+  const CHART_TITLE = 'Downloads · last 30 days';
+  const TILE_LABELS = [
+    'Downloads · 7 days',
+    'Downloads · all time',
+    'Comments',
+    'Tips · 30 days',
+  ] as const;
+  /** ADR-0049 D4: the seed's later day = the seed projects' live totals (2531 + 1568, 120, 7). */
+  const SEED_TODAY = { modrinth: 4099, curseforge: 120, direct: 7 } as const;
+  const SEED_WEEK_GAIN = 45; // 40 + 3 + 2
+
+  let statsSnapshot: ContentSnapshot;
+
+  function service() {
+    return loose(asRole('service'));
+  }
+
+  /** `formatCount` for the counts this page can show (< 1M): verbatim below 1000, else `K`. */
+  function compactCount(n: number): string {
+    if (n < 1000) return String(n);
+    const k = Math.round((n / 1000) * 10) / 10;
+    return `${Number.isInteger(k) ? String(k) : k.toFixed(1)}K`;
+  }
+
+  /** The four `StatTile`s in page order — nothing else on the page is a `<dl>` (03 §2.2). */
+  function tiles(page: Page) {
+    return page.locator('dl');
+  }
+
+  async function expectTile(
+    page: Page,
+    index: number,
+    label: string,
+    value: string,
+    context: string,
+    tone: 'up' | 'attention' | 'neutral',
+  ): Promise<void> {
+    const tile = tiles(page).nth(index);
+    await expect(tile.locator('dt')).toHaveText(label);
+    await expect(tile.locator('dd').first()).toHaveText(value);
+    const line = tile.locator('dd').nth(1);
+    await expect(line).toHaveText(context);
+    await expect(line).toHaveAttribute('data-tone', tone);
+  }
+
+  async function expectEmptyTiles(page: Page): Promise<void> {
+    await expect(tiles(page)).toHaveCount(4);
+    for (const [index, label] of TILE_LABELS.entries()) {
+      await expectTile(page, index, label, '0', NO_DATA_YET, 'neutral');
+    }
+  }
+
+  function syncSection(page: Page) {
+    return page.locator('section', {
+      has: page.getByRole('heading', { level: 2, name: 'SYNC' }),
+    });
+  }
+
+  function syncRow(page: Page, word: string | RegExp) {
+    return syncSection(page).locator('tbody tr', { hasText: word });
+  }
+
+  /** The visible chart figure's columns / bars (the other variant is `display: none`). */
+  function drawn(page: Page, variant: 'full' | 'compact') {
+    const figure = page.locator(`figure[data-${variant}]`);
+    return {
+      figure,
+      svg: figure.locator('svg[role="img"]'),
+      columns: figure.locator('g[data-day]'),
+      bars: figure.locator('rect[data-source]'),
+    };
+  }
+
+  /** GET the cron route with the `.env.test` bearer (ADR-0049 D22) → the 200 `JobSummary`. */
+  async function hitCron(page: Page): Promise<{ items: number }> {
+    const res = await page.request.get(CRON_PATH, {
+      headers: { authorization: `Bearer ${requireTestEnv('CRON_SECRET')}` },
+    });
+    expect(res.status(), CRON_PATH).toBe(200);
+    const body = (await res.json()) as { ok: boolean; source: string; items: number };
+    expect(body.ok, 'the snapshot run is ok').toBe(true);
+    expect(body.source).toBe('stats');
+    return body;
+  }
+
+  test.beforeAll(async () => {
+    loadEnvTest();
+    statsSnapshot = await snapshotContentTables();
+    await touchSeedSyncRuns();
+    const cleared = await service().from('sync_runs').delete().in('source', ['mentions', 'stats']);
+    expect(cleared.error).toBeNull();
+  });
+
+  test.afterAll(async () => {
+    await restoreContentTables(statsSnapshot);
+    await purgeNotificationEvents();
+  });
+
+  test('T-E2E-40 admin, pristine seed: four tiles 45 · 4.2K · 0 · 0, the 30-column chart named by its heading + fixed fills + legend words + the hidden table, the honest line, the SYNC board (3 LIVE, 2 STALE); the cron route twice → 200 + equal items → the comments tile with its held count, the stats row LIVE', async ({
+    page,
+  }) => {
+    await loginAs(page, 'admin');
+    await page.goto('/admin/stats');
+    await expect(page).toHaveTitle('Stats · Admin');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Stats');
+    await expect(page.getByText(INTRO_LINE)).toBeVisible();
+    await expect(page.getByText(MODERATOR_LINE)).toHaveCount(0);
+
+    // -- Tiles (ADR-0049 D11 on the ADR-0049 D4 pair; §5 copy) ----------------------------------------------------
+    await expect(tiles(page)).toHaveCount(4);
+    await expectTile(
+      page,
+      0,
+      TILE_LABELS[0],
+      String(SEED_WEEK_GAIN),
+      'First week counted.',
+      'neutral',
+    );
+    await expectTile(
+      page,
+      1,
+      TILE_LABELS[1],
+      '4.2K',
+      'Modrinth 4.1K · CurseForge 120 · direct 7',
+      'neutral',
+    );
+    await expectTile(page, 2, TILE_LABELS[2], '0', NO_DATA_YET, 'neutral');
+    await expectTile(page, 3, TILE_LABELS[3], '0', NO_DATA_YET, 'neutral');
+
+    // -- Chart (ADR-0049 D12): the full figure at 1280, named by the visible h2, 30 day columns; the
+    // seed pair yields ONE day of gains (40 / 3 / 2) — three stacked rects in that column and
+    // nothing anywhere else; the compact figure is display:none (out of the a11y tree). -----------
+    const heading = page.getByRole('heading', { level: 2, name: CHART_HEADING });
+    await expect(heading).toBeVisible();
+    const headingId = await heading.getAttribute('id');
+    expect(headingId, 'the chart heading carries the id the SVG is named by').toBeTruthy();
+    const full = drawn(page, 'full');
+    await expect(full.figure).toBeVisible();
+    await expect(drawn(page, 'compact').figure).toBeHidden();
+    await expect(full.svg).toBeVisible();
+    await expect(full.svg).toHaveAttribute('aria-labelledby', headingId ?? '');
+    await expect(full.columns).toHaveCount(30);
+    await expect(full.bars).toHaveCount(3);
+    for (const source of ['modrinth', 'curseforge', 'direct']) {
+      await expect(full.figure.locator(`rect[data-source="${source}"]`)).toHaveCount(1);
+    }
+    // No radius, no stroke, no gradient — flat rects only (00 AC3).
+    expect(await full.svg.locator('rect[rx], rect[ry], rect[stroke], linearGradient').count()).toBe(
+      0,
+    );
+    // The fixed source colours (DESIGN.md §11.1): each rect's computed fill IS the token's colour.
+    const fills = await page.evaluate(() => {
+      const probe = document.createElement('span');
+      document.body.appendChild(probe);
+      const token = (name: string) => {
+        probe.style.color = `var(${name})`;
+        return getComputedStyle(probe).color;
+      };
+      const fill = (source: string) => {
+        const el = document.querySelector(`figure[data-full] rect[data-source="${source}"]`);
+        return el ? getComputedStyle(el).fill : null;
+      };
+      const out = {
+        modrinth: { fill: fill('modrinth'), token: token('--emerald') },
+        curseforge: { fill: fill('curseforge'), token: token('--orange') },
+        direct: { fill: fill('direct'), token: token('--indigo-lift') },
+      };
+      probe.remove();
+      return out;
+    });
+    for (const [source, { fill, token }] of Object.entries(fills)) {
+      expect(fill, `${source} fill`).toBe(token);
+    }
+    // Legend: swatch + word ×3, visible under the well (03 C-26).
+    for (const word of ['Modrinth', 'CurseForge', 'Direct']) {
+      await expect(full.figure.getByText(word, { exact: true })).toBeVisible();
+    }
+    await expect(full.figure.getByText(COMPACT_NOTE)).toHaveCount(0);
+
+    // -- Text alternative (00 AC10): ONE table with the same numbers inside a visually-hidden
+    // wrapper — attached, 30 body rows, the seed day's total 45 and 29 zeros. It is clipped, never
+    // `display:none` (so `toBeHidden` is the wrong question). The WRAPPER carries the recipe: a
+    // bare `<table>` keeps its min-content width under the class's 1px and widened the document
+    // at 390 (ADR-0049 D28 e), so the proof is the wrapper's computed clip AND its 1px box. -------
+    const table = page.getByTestId('flat-bar-chart-table');
+    const tableWrap = table.locator('..');
+    await expect(table).toHaveCount(1);
+    await expect(table).toBeAttached();
+    await expect(table.locator('caption')).toHaveText(CHART_TITLE);
+    await expect(table.locator('thead th')).toHaveText([
+      'Day',
+      'Modrinth',
+      'CurseForge',
+      'Direct',
+      'Total',
+    ]);
+    await expect(table.locator('tbody tr')).toHaveCount(30);
+    const totals = await table.locator('tbody td:nth-child(5)').allTextContents();
+    expect(totals.filter((t) => t === String(SEED_WEEK_GAIN))).toHaveLength(1);
+    expect(totals.filter((t) => t === '0')).toHaveLength(29);
+    await expect(tableWrap).toHaveClass(/visually-hidden/);
+    expect(
+      await tableWrap.evaluate((el) => {
+        const style = getComputedStyle(el);
+        const box = el.getBoundingClientRect();
+        return {
+          position: style.position,
+          clipPath: style.clipPath,
+          overflow: style.overflow,
+          width: Math.round(box.width),
+          height: Math.round(box.height),
+        };
+      }),
+    ).toEqual({
+      position: 'absolute',
+      clipPath: 'inset(50%)',
+      overflow: 'hidden',
+      width: 1,
+      height: 1,
+    });
+
+    // -- The honest line (DESIGN.md §11.3 #16; `COMBINED_COUNT_LINE`) ---------------------------
+    await expect(page.getByText(HONEST_LINE, { exact: true })).toBeVisible();
+
+    // -- SYNC (ADR-0049 D14): every feeding job; the three seeded ok runs LIVE, the two jobs that never ran
+    // STALE; five enabled "Sync now" for an admin. -----------------------------------------------
+    await expect(syncSection(page).locator('tbody tr')).toHaveCount(5);
+    for (const word of ['Modrinth', 'CurseForge', /YouTube/]) {
+      await expect(syncRow(page, word).getByText('LIVE', { exact: true })).toBeVisible();
+    }
+    for (const word of ['Mentions', 'Stats']) {
+      await expect(syncRow(page, word).getByText('STALE', { exact: true })).toBeVisible();
+    }
+    const syncButtons = page.getByRole('button', { name: 'Sync now' });
+    await expect(syncButtons).toHaveCount(5);
+    for (let i = 0; i < 5; i += 1) await expect(syncButtons.nth(i)).toBeEnabled();
+
+    // -- The demo script: hit the route twice with the bearer (ADR-0049 D22; 00 AC1 "twice = same rows").
+    // Both 200, the same `items` — the second run upserts the same keys. --------------------------
+    const first = await hitCron(page);
+    const second = await hitCron(page);
+    expect(first.items).toBeGreaterThan(0);
+    expect(second.items).toBe(first.items);
+
+    // What the job counted, read back the way the job reads it (ADR-0049 D5: every project row; comments
+    // by status) — the tiles must show exactly these after a reload.
+    const projects = await service()
+      .from('projects')
+      .select('downloads_modrinth, downloads_curseforge, downloads_direct');
+    expect(projects.error).toBeNull();
+    const live = { modrinth: 0, curseforge: 0, direct: 0 };
+    for (const row of (projects.data ?? []) as Record<string, number | null>[]) {
+      live.modrinth += row.downloads_modrinth ?? 0;
+      live.curseforge += row.downloads_curseforge ?? 0;
+      live.direct += row.downloads_direct ?? 0;
+    }
+    const published = await service()
+      .from('comments')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'published');
+    const held = await service()
+      .from('comments')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'held');
+    expect(published.error).toBeNull();
+    expect(held.error).toBeNull();
+    const publishedCount = published.count ?? 0;
+    const heldCount = held.count ?? 0;
+    // Seed truth (05 §3 SEED-9): 2 published, 1 held — what the brief's "2 with 1 held" reads.
+    // Today's gains = the live totals over the seed's later day, clamped ≥ 0 per source (ADR-0049 D10).
+    const gainToday =
+      Math.max(0, live.modrinth - SEED_TODAY.modrinth) +
+      Math.max(0, live.curseforge - SEED_TODAY.curseforge) +
+      Math.max(0, live.direct - SEED_TODAY.direct);
+
+    await page.reload();
+    await expect(tiles(page)).toHaveCount(4);
+    await expectTile(
+      page,
+      0,
+      TILE_LABELS[0],
+      compactCount(SEED_WEEK_GAIN + gainToday),
+      'First week counted.',
+      'neutral',
+    );
+    await expectTile(
+      page,
+      1,
+      TILE_LABELS[1],
+      compactCount(live.modrinth + live.curseforge + live.direct),
+      `Modrinth ${compactCount(live.modrinth)} · CurseForge ${compactCount(live.curseforge)} · direct ${compactCount(live.direct)}`,
+      'neutral',
+    );
+    await expectTile(
+      page,
+      2,
+      TILE_LABELS[2],
+      compactCount(publishedCount),
+      `${compactCount(heldCount)} held`,
+      heldCount > 0 ? 'attention' : 'neutral',
+    );
+    // v1: `tips/kofi` is written as 0, so the tile reads 0 with the Ko-fi line (§5).
+    await expectTile(page, 3, TILE_LABELS[3], '0', "Ko-fi isn't counted yet.", 'neutral');
+    // The stats row is LIVE now, with the run's item count.
+    const statsRow = syncRow(page, 'Stats');
+    await expect(statsRow.getByText('LIVE', { exact: true })).toBeVisible();
+    await expect(statsRow).toContainText(compactCount(first.items));
+    const latest = await service()
+      .from('sync_runs')
+      .select('ok, finished_at, error')
+      .eq('source', 'stats')
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .single();
+    expect(latest.error).toBeNull();
+    expect(latest.data?.ok).toBe(true);
+    expect(latest.data?.finished_at).not.toBeNull();
+    expect(latest.data?.error).toBeNull();
+  });
+
+  test('T-E2E-40 phone (390): the compact figure — 15 columns of two days, "15 bars, two days each" visible, the full figure gone, no page overflow, the same hidden table; axe', async ({
+    page,
+  }) => {
+    await loginAs(page, 'admin');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/admin/stats');
+    await expect(page.getByRole('heading', { level: 2, name: CHART_HEADING })).toBeVisible();
+    const compact = drawn(page, 'compact');
+    await expect(compact.figure).toBeVisible();
+    await expect(drawn(page, 'full').figure).toBeHidden();
+    await expect(compact.svg).toBeVisible();
+    await expect(compact.columns).toHaveCount(15);
+    await expect(compact.figure.getByText(COMPACT_NOTE, { exact: true })).toBeVisible();
+    for (const word of ['Modrinth', 'CurseForge', 'Direct']) {
+      await expect(compact.figure.getByText(word, { exact: true })).toBeVisible();
+    }
+    // ONE text alternative whatever the width: still the 30 daily rows.
+    await expect(page.getByTestId('flat-bar-chart-table').locator('tbody tr')).toHaveCount(30);
+    // 2×2 tiles, the chart stretched to its well, the SYNC table scrolling inside its wrapper.
+    await expect(tiles(page)).toHaveCount(4);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+    await expectNoSeriousA11y(page);
+  });
+
+  test('T-E2E-40 moderator: the page renders (200), every tile 0 + "No data yet." (RLS — ADR-0049 D13), "Only admins see the numbers.", the chart drawn empty, every "Sync now" disabled under title="Admin only" with the note and no POST on click, every SYNC row STALE; axe', async ({
+    page,
+  }) => {
+    await loginAs(page, 'mod');
+    const response = await page.goto('/admin/stats');
+    expect(response?.status()).toBe(200);
+    await expect(page).toHaveTitle('Stats · Admin');
+    await expect(page.getByText(MODERATOR_LINE, { exact: true })).toBeVisible();
+    await expectEmptyTiles(page);
+
+    // The chart is still the chart — 30 empty columns, no bar, the table all zeros.
+    const full = drawn(page, 'full');
+    await expect(full.figure).toBeVisible();
+    await expect(full.columns).toHaveCount(30);
+    await expect(full.bars).toHaveCount(0);
+    const table = page.getByTestId('flat-bar-chart-table');
+    await expect(table.locator('tbody tr')).toHaveCount(30);
+    expect(
+      (await table.locator('tbody td:nth-child(5)').allTextContents()).every((t) => t === '0'),
+    ).toBe(true);
+
+    // `sync_runs` is admin-only RLS (05 T-RLS-111): every row reads STALE for a moderator; the
+    // buttons are present, disabled, titled and described "Admin only" (03 §2.10), never absent.
+    await expect(syncSection(page).locator('tbody tr')).toHaveCount(5);
+    await expect(syncSection(page).getByText('STALE', { exact: true })).toHaveCount(5);
+    const syncButtons = page.getByRole('button', { name: 'Sync now' });
+    await expect(syncButtons).toHaveCount(5);
+    for (let i = 0; i < 5; i += 1) {
+      const button = syncButtons.nth(i);
+      await expect(button).toBeDisabled();
+      expect(await button.evaluate((el) => el.closest('[title="Admin only"]') !== null)).toBe(true);
+      const noteId = await button.getAttribute('aria-describedby');
+      expect(noteId, 'the disabled button points at its note').toBeTruthy();
+      await expect(page.locator(`[id="${noteId}"]`)).toHaveText(ADMIN_ONLY);
+    }
+
+    // Clicking a disabled control issues no action call and no forbidden toast (02 §1.3).
+    const posts: string[] = [];
+    page.on('request', (req) => {
+      if (req.method() === 'POST') posts.push(req.url());
+    });
+    await syncButtons.first().click({ force: true });
+    await page.waitForTimeout(500);
+    expect(posts, 'no server-action POST left the page').toEqual([]);
+    await expect(page.getByText('Not allowed.')).toHaveCount(0);
+    await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0);
+
+    await expectNoSeriousA11y(page);
+  });
+
+  test('T-E2E-40 empty: with every stats_daily row gone the admin sees every tile 0 + "No data yet." and the chart still drawn (30 columns, no bar, an all-zero table)', async ({
+    page,
+  }) => {
+    // Arrange (service client; the snapshot restores SEED-12 in afterAll — H-1 `mutatesSeed`).
+    // PostgREST needs a filter on a delete; every `day` is on or after the epoch.
+    const wiped = await service().from('stats_daily').delete().gte('day', '1970-01-01');
+    expect(wiped.error).toBeNull();
+    const left = await service().from('stats_daily').select('day', { count: 'exact', head: true });
+    expect(left.error).toBeNull();
+    expect(left.count).toBe(0);
+
+    await loginAs(page, 'admin');
+    await page.goto('/admin/stats');
+    await expect(page.getByText(MODERATOR_LINE)).toHaveCount(0);
+    await expectEmptyTiles(page);
+
+    const full = drawn(page, 'full');
+    await expect(full.figure).toBeVisible();
+    await expect(full.svg).toBeVisible();
+    await expect(full.columns).toHaveCount(30);
+    await expect(full.bars).toHaveCount(0);
+    const table = page.getByTestId('flat-bar-chart-table');
+    await expect(table.locator('tbody tr')).toHaveCount(30);
+    expect(
+      (await table.locator('tbody td:nth-child(5)').allTextContents()).every((t) => t === '0'),
+    ).toBe(true);
+    await expect(page.getByText(HONEST_LINE, { exact: true })).toBeVisible();
   });
 });
