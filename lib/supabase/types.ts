@@ -1082,6 +1082,39 @@ export type Database = {
         }
         Relationships: []
       }
+      stats_daily: {
+        Row: {
+          created_at: string
+          day: string
+          entity_id: string
+          entity_type: string
+          metric: string
+          source: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          entity_id: string
+          entity_type: string
+          metric: string
+          source: string
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          entity_id?: string
+          entity_type?: string
+          metric?: string
+          source?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
       sync_runs: {
         Row: {
           created_at: string
@@ -1340,6 +1373,13 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_moderator: { Args: never; Returns: boolean }
       is_reserved_handle: { Args: { p_handle: string }; Returns: boolean }
+      list_stale_objects: {
+        Args: { p_bucket: string; p_limit: number; p_min_age_hours: number }
+        Returns: {
+          created_at: string
+          name: string
+        }[]
+      }
       migration_versions: { Args: never; Returns: string[] }
       moderator_thread: {
         Args: { p_target_id: string; p_target_type: string }

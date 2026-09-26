@@ -5,6 +5,7 @@
     { "path": "/api/cron/sync-curseforge", "schedule": "17 * * * *" },
     { "path": "/api/cron/sync-youtube", "schedule": "27 * * * *" },
     { "path": "/api/cron/refresh-mentions", "schedule": "37 * * * *" },
+    { "path": "/api/cron/stats-snapshot", "schedule": "0 3 * * *" },
     { "path": "/api/cron/notify", "schedule": "*/5 * * * *" }
   ]
 }

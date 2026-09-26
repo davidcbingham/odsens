@@ -140,3 +140,5 @@ export {
   type SkinFormFixture,
   type ArtFormFixture,
 } from './adminForms';
+// ---- S1.9 Stats ----
+export { flatBarChartFixtures, type FlatBarChartFixture } from './flatBarChart';

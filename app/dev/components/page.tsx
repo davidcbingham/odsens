@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
 import { isVercel, nodeEnv } from '@/lib/env';
+import { CHART_TITLE } from '@/lib/stats';
 import { SkipLink } from '@/components/layout/SkipLink';
 import { Nav } from '@/components/layout/Nav';
 import { NavLinks } from '@/components/layout/Nav.Links';
@@ -19,6 +20,7 @@ import { Breadcrumb } from '@/components/primitives/Breadcrumb';
 import { Chip } from '@/components/primitives/Chip';
 import { EmptyState } from '@/components/primitives/EmptyState';
 import { Field } from '@/components/primitives/Field';
+import { FlatBarChart } from '@/components/primitives/FlatBarChart';
 import { Markdown } from '@/components/primitives/Markdown';
 import { PlatformMark } from '@/components/primitives/PlatformMark';
 import { SearchBox } from '@/components/primitives/SearchBox';
@@ -158,6 +160,7 @@ import {
   artGalleryFixtures,
   skinFormFixtures,
   artFormFixtures,
+  flatBarChartFixtures,
 } from '@/tests/fixtures/ui';
 import styles from './page.module.css';
 
@@ -713,6 +716,24 @@ export default function ComponentsPreviewPage() {
                 <SyncStatus {...props} />
               </Specimen>
             ))}
+          </div>
+
+          <div className={styles['preview-group']} data-wide="">
+            {flatBarChartFixtures.map(({ label, props }, index) => {
+              // ADR-0049 D24: the chart renders no heading of its own — the gallery supplies the
+              // visually-hidden <h3 id> its SVGs are labelled by, one id per specimen.
+              const headingId = `flat-bar-chart-specimen-${index}-title`;
+              return (
+                <Specimen key={label} name="FlatBarChart" label={label}>
+                  <div>
+                    <h3 id={headingId} className="visually-hidden">
+                      {CHART_TITLE}
+                    </h3>
+                    <FlatBarChart {...props} titleId={headingId} />
+                  </div>
+                </Specimen>
+              );
+            })}
           </div>
 
           <div className={styles['preview-group']} data-wide="">
